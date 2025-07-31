@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fediverse Client</title>
+    <title>Feedstadon</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
@@ -24,7 +24,7 @@
         }
         .container { max-width: 700px; margin: 0 auto; padding: 20px 10px; display: flex; flex-direction: column; gap: 15px; }
         
-        /* Top Navigation Bar */
+        /* Styles as before... */
         .top-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
             border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
@@ -44,8 +44,6 @@
         .nav-right .dropdown-content { left: auto; right: 0; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; }
         .dropdown.active .dropdown-content { display: block; }
-        
-        /* Main Content & Posts */
         #app-view { display: none; }
         #timeline { display: flex; flex-direction: column; gap: 12px; }
         .status { background-color: var(--card-color); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
@@ -54,13 +52,8 @@
         .status-header .display-name { font-weight: bold; cursor: pointer; }
         .status-header .acct { color: #818384; }
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-        /* MODIFIED: Hyperlink styling */
         .status-content a, .profile-bio a { color: var(--accent-color); text-decoration: none; }
-        .status-content a:hover, .profile-bio a:hover { text-decoration: underline; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
-        .status-action { cursor: pointer; }
-        
-        /* Modal, Comments & Profiles */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: flex-start;
@@ -75,11 +68,6 @@
         .profile-info { display: flex; gap: 20px; align-items: center; }
         .profile-info img { width: 80px; height: 80px; border-radius: 50%; }
         .profile-bio { margin-top: 15px; line-height: 1.5; }
-        .comment-thread {
-            max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; padding-left: 15px;
-            margin-top: 10px; border-left: 2px solid var(--border-color);
-        }
-        .comment-thread.visible { max-height: 1500px; }
     </style>
 </head>
 <body>
@@ -128,7 +116,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
+            // --- DOM Elements and State as before ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -145,24 +133,27 @@
             const profileLink = document.getElementById('profile-link');
             const searchForm = document.getElementById('search-form');
             const searchInput = document.getElementById('search-input');
-
-            // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
 
-            // --- API Helper & Modal Controls ---
-            async function apiFetch(endpoint, options = {}) {
+            async function apiFetch(endpoint, options = {}) { /* as before */ 
                 const url = `https://${instanceUrl}${endpoint}`;
                 const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
                 const response = await fetch(url, { ...options, headers });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             }
-            function showModal(contentNode) { modalBody.innerHTML = ''; modalBody.appendChild(contentNode); modal.classList.add('visible'); }
-            function hideModal() { modal.classList.remove('visible'); }
+            function showModal(contentNode) { /* as before */ 
+                modalBody.innerHTML = '';
+                modalBody.appendChild(contentNode);
+                modal.classList.add('visible');
+            }
+            function hideModal() { /* as before */ modal.classList.remove('visible'); }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- Rendering Functions ---
             function renderStatus(status) {
+                // NEW: Debugging line to inspect the post data
+                console.log(status);
+
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
                 statusDiv.innerHTML = `
@@ -174,42 +165,13 @@
                         </div>
                     </div>
                     <div class="status-content">${status.content}</div>
-                    <div class="status-footer"><span class="status-action reply" title="Reply">💬 ${status.replies_count}</span></div>
                 `;
-                statusDiv.querySelector('img').onclick = (e) => { e.stopPropagation(); showProfile(status.account.id); };
-                statusDiv.querySelector('.display-name').onclick = (e) => { e.stopPropagation(); showProfile(status.account.id); };
-                statusDiv.querySelector('.reply').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleCommentThread(status, statusDiv);
-                });
+                statusDiv.querySelector('img').onclick = () => showProfile(status.account.id);
+                statusDiv.querySelector('.display-name').onclick = () => showProfile(status.account.id);
                 return statusDiv;
             }
-            
-            // --- Feature Functions ---
-            async function toggleCommentThread(status, statusElement) {
-                const existingThread = statusElement.querySelector('.comment-thread');
-                if (existingThread) {
-                    existingThread.remove();
-                    return;
-                }
-                const threadContainer = document.createElement('div');
-                threadContainer.className = 'comment-thread';
-                threadContainer.innerHTML = `<p>Loading replies...</p>`;
-                statusElement.appendChild(threadContainer);
-                requestAnimationFrame(() => threadContainer.classList.add('visible'));
-                
-                try {
-                    const context = await apiFetch(`/api/v1/statuses/${status.id}/context`);
-                    threadContainer.innerHTML = '';
-                    if (context.descendants && context.descendants.length > 0) {
-                        context.descendants.forEach(reply => threadContainer.appendChild(renderStatus(reply)));
-                    } else {
-                        threadContainer.innerHTML = '<p>No replies yet.</p>';
-                    }
-                } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
-            }
 
-            async function fetchTimeline(type) {
+            async function fetchTimeline(type) { /* as before */ 
                 timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
                     const statuses = await apiFetch(`/api/v1/timelines/${type}`);
@@ -218,21 +180,18 @@
                 } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
             }
             
-            async function showProfile(accountId) {
+            async function showProfile(accountId) { /* as before */ 
                 const container = document.createElement('div');
                 showModal(container);
                 container.innerHTML = `<p>Loading profile...</p>`;
                 try {
-                    // Fetch account, statuses, and relationship in parallel
                     const [account, statuses, relationships] = await Promise.all([
                         apiFetch(`/api/v1/accounts/${accountId}`),
                         apiFetch(`/api/v1/accounts/${accountId}/statuses?limit=20`),
                         apiFetch(`/api/v1/accounts/relationships?id[]=${accountId}`)
                     ]);
-
                     const relationship = relationships[0];
                     const isFollowing = relationship.following;
-                    
                     container.innerHTML = `
                        <div class="profile-header">
                            <div class="profile-info">
@@ -243,34 +202,25 @@
                        </div>
                        <div class="profile-bio">${account.note}</div><hr><h4>Posts</h4>
                     `;
-
-                    // MODIFIED: Use renderStatus for posts in profile view
                     const postsContainer = document.createElement('div');
                     postsContainer.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
                     statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
                     container.appendChild(postsContainer);
-                    
-                    // MODIFIED: Add follow button logic
                     const followBtn = container.querySelector('#follow-btn');
                     if (currentUser.id === accountId) {
-                        followBtn.style.display = 'none'; // Hide follow button on your own profile
+                        followBtn.style.display = 'none';
                     } else {
                         followBtn.onclick = async () => {
                            const currentlyFollowing = followBtn.textContent === 'Unfollow';
                            const endpoint = `/api/v1/accounts/${accountId}/${currentlyFollowing ? 'unfollow' : 'follow'}`;
-                           try {
-                               const newRelationship = await apiFetch(endpoint, { method: 'POST' });
-                               followBtn.textContent = newRelationship.following ? 'Unfollow' : 'Follow';
-                           } catch (error) {
-                               alert('Action failed.');
-                           }
+                           const newRelationship = await apiFetch(endpoint, { method: 'POST' });
+                           followBtn.textContent = newRelationship.following ? 'Unfollow' : 'Follow';
                         };
                     }
                 } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
             }
 
-            async function performSearch(query) {
-                // Search logic as before
+            async function performSearch(query) { /* as before */ 
                 const container = document.createElement('div');
                 container.innerHTML = `<p>Searching...</p>`;
                 showModal(container);
@@ -294,7 +244,7 @@
             }
 
             // --- App Initialization & Event Listeners ---
-            async function initializeApp() {
+            async function initializeApp() { /* as before */ 
                 try {
                     currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
                     loginView.style.display = 'none';
@@ -305,7 +255,6 @@
                 } catch (error) { loginError.textContent = 'Connection failed.'; }
             }
             
-            // Event listeners as before
             window.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active')); });
             [feedsDropdown, userDropdown].forEach(dd => { dd.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); }); dd.classList.toggle('active'); }); });
             feedsDropdown.querySelectorAll('a').forEach(link => { link.addEventListener('click', (e) => fetchTimeline(e.target.dataset.timeline)); });
