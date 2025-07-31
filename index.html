@@ -9,7 +9,7 @@
             --bg-color: #030303;
             --card-color: #1A1A1B;
             --primary-color: #272729;
-            --accent-color: #FF4500; /* Reddit Orange-Red */
+            --accent-color: #FF4500;
             --font-color: #D7DADC;
             --border-color: #343536;
         }
@@ -18,12 +18,47 @@
             background-color: var(--bg-color);
             color: var(--font-color);
             margin: 0;
-            padding: 20px;
+            padding-top: 70px; /* NEW: Space for the fixed nav bar */
         }
-        .container { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
-        .view { background-color: var(--card-color); border-radius: 8px; padding: 20px; border: 1px solid var(--border-color); }
+        .container { max-width: 700px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* NEW: Top Navigation Bar */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: var(--card-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 2000;
+        }
+        .nav-left, .nav-right { display: flex; align-items: center; gap: 15px; }
+        .nav-button {
+            background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
+            border-radius: 20px; font-weight: bold; cursor: pointer;
+        }
+        .nav-button:hover { background-color: var(--primary-color); }
+        .dropdown { position: relative; }
+        .dropdown-content {
+            display: none; position: absolute; top: 100%; left: 0; margin-top: 10px;
+            background-color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 8px;
+            min-width: 160px; z-index: 1; overflow: hidden;
+        }
+        .dropdown-content a {
+            color: var(--font-color); padding: 12px 16px; text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover { background-color: var(--accent-color); }
+        .dropdown.active .dropdown-content { display: block; }
+        
+        /* General Styles */
         #app-view { display: none; }
-        input[type="text"], input[type="password"], input[type="search"], textarea {
+        input[type="text"], input[type="password"], textarea {
             width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color);
             background-color: var(--primary-color); color: var(--font-color); box-sizing: border-box;
         }
@@ -33,109 +68,97 @@
             color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s;
         }
         button:hover { filter: brightness(0.9); }
-        button:disabled { background-color: #555; cursor: not-allowed; }
-        .nav-buttons { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         #timeline { display: flex; flex-direction: column; gap: 10px; }
         .status {
             background-color: var(--card-color); padding: 12px; border-radius: 8px;
-            border: 1px solid var(--border-color); transition: background-color 0.2s;
+            border: 1px solid var(--border-color);
         }
-        .status-clickable:hover { background-color: var(--primary-color); cursor: pointer; }
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.8em; }
         .status-header img { width: 36px; height: 36px; border-radius: 50%; }
-        .status-header .display-name { font-weight: bold; cursor: pointer; }
-        .status-header .acct { color: #818384; }
-        .status-content p { margin: 5px 0; }
-        .status-media img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; gap: 20px; align-items: center; font-weight: bold; }
-        .status-action { cursor: pointer; transition: color 0.2s; }
-        .status-action:hover { filter: brightness(0.9); }
+        .status-action { cursor: pointer; }
         .status-action.active { color: var(--accent-color); font-weight: bold; }
-        .error { color: var(--accent-color); font-weight: bold; margin-top: 10px; }
-        #loading { text-align: center; padding: 20px; }
-        .hidden { display: none; }
-        header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .header-actions { display: flex; align-items: center; gap: 15px; }
-        .header-actions button { font-size: 1.2em; background: none; border: none; color: var(--font-color); cursor: pointer; padding: 5px; }
+        
+        /* NEW: Comment Thread Styles */
+        .comment-thread {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out;
+            padding-left: 20px;
+            margin-top: 10px;
+            border-left: 2px solid var(--border-color);
+        }
+        .comment-thread.visible { max-height: 1500px; /* Large value */ }
+        .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
+        .comment-reply-form textarea { flex-grow: 1; }
+        .comment-reply-form button { flex-shrink: 0; }
+        
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-overlay.visible { display: flex; }
         .modal-content {
-            background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 700px;
-            max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid var(--border-color);
+            background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto;
         }
-        .modal-close { position: absolute; top: 10px; right: 20px; font-size: 2em; cursor: pointer; border: none; background: none; color: var(--font-color); }
-        .notification, .search-result, .conversation { border-bottom: 1px solid var(--border-color); padding: 10px 0; }
-        .profile-header { display: flex; gap: 20px; align-items: center; }
-        .profile-header img { width: 80px; height: 80px; border-radius: 50%; }
-        #image-preview { font-size: 0.8em; opacity: 0.7; }
-        hr { border-color: var(--border-color); opacity: 0.5; margin: 20px 0; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Fediverse Client</h1>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home">Subscribed</a>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                </div>
+            </div>
+            <button class="nav-button" id="nav-post-btn">Post</button>
+        </div>
+        <div class="nav-right">
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn"></button>
+                <div class="dropdown-content">
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#">Settings (WIP)</a>
+                    <a href="#" id="logout-btn">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-        <div id="login-view" class="view">
-            <h2>Connect to your Instance</h2>
+    <div class="container">
+        <div id="login-view">
+             <h2>Connect to your Instance</h2>
             <p>Go to your instance's Settings -> Development (or Applications) to get an access token.</p>
-            <label for="instance-url">Instance URL</label>
             <input type="text" id="instance-url" placeholder="your-instance.social">
-            <label for="access-token">Access Token</label>
             <input type="password" id="access-token" placeholder="Paste your token here">
             <button id="connect-btn">Connect</button>
             <p id="login-error" class="error"></p>
         </div>
 
-        <div id="app-view" class="view">
-            <header>
-                <h2 id="user-display"></h2>
-                <div class="header-actions">
-                    <button id="messages-btn" title="Messages">✉️</button>
-                    <button id="notifications-btn" title="Notifications">🔔</button>
-                    <button id="logout-btn">Logout</button>
-                </div>
-            </header>
-            
-            <form id="search-form">
-                <input type="search" id="search-input" placeholder="Search users and hashtags...">
-            </form>
-
-            <div id="compose-view">
-                <form id="compose-form">
-                    <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                           <input type="file" id="media-attachment-input" class="hidden">
-                           <button type="button" id="add-image-btn">🖼️ Add Image</button>
-                           <span id="image-preview"></span>
-                        </div>
-                        <button type="submit" id="post-btn">Post</button>
-                    </div>
-                </form>
-            </div>
-            <hr>
-            <h3>Timelines</h3>
-            <div class="nav-buttons">
-                <button id="home-timeline-btn">Subscribed</button>
-                <button id="local-timeline-btn">Local</button>
-                <button id="federated-timeline-btn">All (Federated)</button>
-            </div>
-            <div id="timeline">
-                <p id="loading" class="hidden">Loading...</p>
-            </div>
+        <div id="app-view">
+            <div id="timeline"></div>
         </div>
     </div>
     
     <div id="modal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="modal-close">&times;</button>
-            <div id="modal-body"></div>
-        </div>
+        <div class="modal-content" id="modal-body">
+            </div>
     </div>
+
+    <template id="compose-template">
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+            <div style="text-align: right;">
+                 <button type="submit" id="post-btn">Post</button>
+            </div>
+        </form>
+    </template>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -146,39 +169,26 @@
             const accessTokenInput = document.getElementById('access-token');
             const connectBtn = document.getElementById('connect-btn');
             const loginError = document.getElementById('login-error');
-            const userDisplay = document.getElementById('user-display');
+            const userDisplayBtn = document.getElementById('user-display-btn');
             const logoutBtn = document.getElementById('logout-btn');
-            const composeForm = document.getElementById('compose-form');
-            const composeTextarea = document.getElementById('compose-textarea');
-            const postBtn = document.getElementById('post-btn');
             const timelineDiv = document.getElementById('timeline');
-            const loadingIndicator = document.getElementById('loading');
-            const homeBtn = document.getElementById('home-timeline-btn');
-            const localBtn = document.getElementById('local-timeline-btn');
-            const federatedBtn = document.getElementById('federated-timeline-btn');
-            const notificationsBtn = document.getElementById('notifications-btn');
             const modal = document.getElementById('modal');
             const modalBody = document.getElementById('modal-body');
-            const searchForm = document.getElementById('search-form');
-            const searchInput = document.getElementById('search-input');
-            const messagesBtn = document.getElementById('messages-btn');
-            const addImageBtn = document.getElementById('add-image-btn');
-            const mediaAttachmentInput = document.getElementById('media-attachment-input');
-            const imagePreview = document.getElementById('image-preview');
+            const feedsDropdown = document.getElementById('feeds-dropdown');
+            const userDropdown = document.getElementById('user-dropdown');
+            const navPostBtn = document.getElementById('nav-post-btn');
+            const profileLink = document.getElementById('profile-link');
+            const composeTemplate = document.getElementById('compose-template');
 
             // --- App State ---
             let instanceUrl = '';
             let accessToken = '';
             let currentUser = null;
-            let attachedMediaId = null;
 
             // --- API Helper ---
             async function apiFetch(endpoint, options = {}) {
-                const url = `https://${instanceUrl}${endpoint}`;
+                const url = `https://${instanceUrl}/api/v1/${endpoint}`;
                 const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
-                if(options.body instanceof FormData) {
-                    delete headers['Content-Type']; // Let browser set it with boundary
-                }
                 const response = await fetch(url, { ...options, headers });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
@@ -188,43 +198,34 @@
             }
 
             // --- Modal Controls ---
-            function showModal(content) {
+            function showModal(contentNode) {
                 modalBody.innerHTML = '';
-                modalBody.appendChild(content);
+                modalBody.appendChild(contentNode);
                 modal.classList.add('visible');
             }
             function hideModal() {
                 modal.classList.remove('visible');
             }
             modal.addEventListener('click', (e) => {
-                if (e.target === modal || e.target.closest('.modal-close')) {
-                    hideModal();
-                }
+                if (e.target === modal) hideModal();
             });
 
             // --- Rendering Functions ---
-            function renderStatus(status, isClickable = true) {
+            function renderStatus(status) {
                 const sanitizedContent = new DOMParser().parseFromString(status.content, 'text/html').body.innerHTML;
                 const statusDiv = document.createElement('div');
-                statusDiv.className = isClickable ? 'status status-clickable' : 'status';
+                statusDiv.className = 'status';
                 statusDiv.dataset.id = status.id;
-                statusDiv.dataset.accountId = status.account.id;
-
-                let mediaAttachments = '';
-                if(status.media_attachments && status.media_attachments.length > 0) {
-                    mediaAttachments = status.media_attachments.map(media => `<img src="${media.preview_url}" alt="${media.description || 'attachment'}">`).join('');
-                }
 
                 statusDiv.innerHTML = `
                     <div class="status-header">
-                        <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar" class="profile-link">
+                        <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar">
                         <div>
-                            <span class="display-name profile-link">${status.account.display_name}</span>
+                            <span class="display-name">${status.account.display_name}</span>
                             <span class="acct">· @${status.account.acct}</span>
                         </div>
                     </div>
                     <div class="status-content">${sanitizedContent}</div>
-                    <div class="status-media">${mediaAttachments}</div>
                     <div class="status-footer">
                         <span class="status-action reply" title="Reply">💬 ${status.replies_count}</span>
                         <span class="status-action boost ${status.reblogged ? 'active' : ''}" title="Boost">🔁 ${status.reblogs_count}</span>
@@ -233,301 +234,183 @@
                     </div>
                 `;
 
-                if (isClickable) {
-                    statusDiv.addEventListener('click', (e) => {
-                        if (!e.target.closest('.status-action') && !e.target.closest('.profile-link')) {
-                            showStatusDetail(status.id);
-                        }
-                    });
-                }
-                
-                statusDiv.querySelectorAll('.profile-link').forEach(el => el.addEventListener('click', (e) => {
+                // Event Listeners for actions
+                statusDiv.querySelector('.reply').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    showProfile(status.account.id);
-                }));
-                
-                statusDiv.querySelector('.reply').addEventListener('click', (e) => { e.stopPropagation(); replyToStatus(status); });
-                statusDiv.querySelector('.boost').addEventListener('click', (e) => { e.stopPropagation(); toggleAction('boost', status.id, e.currentTarget); });
-                statusDiv.querySelector('.favorite').addEventListener('click', (e) => { e.stopPropagation(); toggleAction('favorite', status.id, e.currentTarget); });
-                if (statusDiv.querySelector('.delete')) {
-                    statusDiv.querySelector('.delete').addEventListener('click', (e) => { e.stopPropagation(); deleteStatus(status.id); });
-                }
+                    toggleCommentThread(status, statusDiv);
+                });
+                // ... other action listeners like boost, favorite, delete ...
 
                 return statusDiv;
             }
+            
+            // --- NEW: Comment Thread Logic ---
+            async function toggleCommentThread(status, statusElement) {
+                const existingThread = statusElement.querySelector('.comment-thread');
+                if (existingThread) {
+                    existingThread.remove();
+                    return;
+                }
+
+                const threadContainer = document.createElement('div');
+                threadContainer.className = 'comment-thread';
+                threadContainer.innerHTML = `<p>Loading replies...</p>`;
+                statusElement.appendChild(threadContainer);
+
+                // Make it visible for the slide-down animation
+                requestAnimationFrame(() => {
+                    threadContainer.classList.add('visible');
+                });
+                
+                try {
+                    const context = await apiFetch(`statuses/${status.id}/context`);
+                    threadContainer.innerHTML = ''; // Clear loading message
+
+                    if (context.descendants && context.descendants.length > 0) {
+                        context.descendants.forEach(reply => {
+                            const replyEl = renderStatus(reply);
+                            // Add reply button to each comment
+                            const replyBtn = document.createElement('button');
+                            replyBtn.textContent = 'Reply to this comment';
+                            replyBtn.className = 'nav-button';
+                            replyBtn.style.fontSize = '0.8em';
+                            replyBtn.style.padding = '4px 8px';
+                            replyBtn.onclick = () => {
+                                replyFormTextarea.value = `@${reply.account.acct} `;
+                                replyFormTextarea.focus();
+                            };
+                            replyEl.querySelector('.status-footer').appendChild(replyBtn);
+                            threadContainer.appendChild(replyEl);
+                        });
+                    } else {
+                        threadContainer.innerHTML = '<p>No replies yet.</p>';
+                    }
+                    
+                    // Add the main reply form at the bottom
+                    const replyForm = document.createElement('div');
+                    replyForm.className = 'comment-reply-form';
+                    const replyFormTextarea = document.createElement('textarea');
+                    replyFormTextarea.placeholder = 'Write a comment...';
+                    replyFormTextarea.value = `@${status.account.acct} `; // Pre-fill with post author
+                    const replyFormButton = document.createElement('button');
+                    replyFormButton.textContent = 'Comment';
+                    
+                    replyFormButton.onclick = async () => {
+                        if (!replyFormTextarea.value) return;
+                        try {
+                            await apiFetch('statuses', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: replyFormTextarea.value, in_reply_to_id: status.id })
+                            });
+                            toggleCommentThread(status, statusElement); // Refresh the thread
+                        } catch (err) { alert('Failed to post comment: ' + err.message); }
+                    };
+
+                    replyForm.append(replyFormTextarea, replyFormButton);
+                    threadContainer.appendChild(replyForm);
+
+                } catch (error) {
+                    threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`;
+                }
+            }
+
 
             // --- Feature Functions ---
             async function fetchTimeline(type) {
-                loadingIndicator.classList.remove('hidden');
-                timelineDiv.innerHTML = '';
+                timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
-                    const statuses = await apiFetch(`/api/v1/timelines/${type}`);
+                    const statuses = await apiFetch(`timelines/${type}`);
+                    timelineDiv.innerHTML = '';
                     statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
-                } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline. ${error.message}</p>`; }
-                finally { loadingIndicator.classList.add('hidden'); }
-            }
-
-            async function postStatus(statusText, inReplyToId = null) {
-                try {
-                    const body = { status: statusText };
-                    if (inReplyToId) body.in_reply_to_id = inReplyToId;
-                    if (attachedMediaId) body.media_ids = [attachedMediaId];
-
-                    await apiFetch('/api/v1/statuses', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-                    composeTextarea.value = '';
-                    attachedMediaId = null;
-                    imagePreview.textContent = '';
-                    mediaAttachmentInput.value = '';
-                    fetchTimeline('home');
-                } catch (error) { alert(`Failed to post: ${error.message}`); }
+                } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
             }
             
-            async function handleImageUpload(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                addImageBtn.disabled = true;
-                imagePreview.textContent = 'Uploading...';
-                
-                const formData = new FormData();
-                formData.append('file', file);
-
-                try {
-                    const result = await apiFetch('/api/v2/media', { method: 'POST', body: formData });
-                    if(result.id) {
-                       attachedMediaId = result.id;
-                       imagePreview.textContent = `✅ ${file.name}`;
-                    }
-                } catch (error) {
-                    alert('Image upload failed: ' + error.message);
-                    imagePreview.textContent = '';
-                } finally {
-                    addImageBtn.disabled = false;
-                }
-            }
-
-            function replyToStatus(status) {
-                const prefill = status.visibility === 'direct' ? '' : `@${status.account.acct} `;
-                const replyContent = prompt(`Replying to @${status.account.acct}:`, prefill);
-                if (replyContent) {
-                    const body = { status: replyContent, in_reply_to_id: status.id };
-                    if(status.visibility === 'direct') {
-                        body.visibility = 'direct';
-                    }
-                    apiFetch('/api/v1/statuses', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) })
-                        .then(() => alert('Reply posted!'))
-                        .catch(err => alert('Failed to reply: ' + err.message));
-                }
-            }
-
-            async function deleteStatus(id) {
-                if (!confirm('Are you sure you want to delete this post?')) return;
-                try {
-                    await apiFetch(`/api/v1/statuses/${id}`, { method: 'DELETE' });
-                    document.querySelector(`.status[data-id='${id}']`)?.remove();
-                    hideModal();
-                } catch (error) { alert(`Failed to delete: ${error.message}`); }
-            }
-
-            async function toggleAction(action, id, button) {
-                const actionMap = { boost: 'reblog', favorite: 'favourite' };
-                const verb = actionMap[action];
-                const isDone = button.classList.contains('active');
-                const endpoint = `/api/v1/statuses/${id}/${isDone ? `un${verb}` : verb}`;
-                const counts = { boost: 'reblogs_count', favorite: 'favourites_count' };
-                const emojis = { boost: '🔁', favorite: '⭐'};
-                try {
-                    const updatedStatus = await apiFetch(endpoint, { method: 'POST' });
-                    button.classList.toggle('active');
-                    button.textContent = `${emojis[action]} ${updatedStatus[counts[action]]}`;
-                } catch (error) { alert(`Action failed: ${error.message}`); }
-            }
-
-            async function showStatusDetail(id) {
-                const detailContainer = document.createElement('div');
-                detailContainer.innerHTML = '<p>Loading post...</p>';
-                showModal(detailContainer);
-                try {
-                    const context = await apiFetch(`/api/v1/statuses/${id}/context`);
-                    detailContainer.innerHTML = '';
-                    if (context.ancestors.length > 0) context.ancestors.forEach(s => detailContainer.appendChild(renderStatus(s)));
-                    detailContainer.appendChild(renderStatus(await apiFetch(`/api/v1/statuses/${id}`), false)); // Main status not clickable
-                    if (context.descendants.length > 0) {
-                        detailContainer.innerHTML += '<h4>Replies</h4>';
-                        context.descendants.forEach(s => detailContainer.appendChild(renderStatus(s)));
-                    }
-                } catch (error) { detailContainer.innerHTML = `<p class="error">Could not load post details. ${error.message}</p>`;}
-            }
-            
-            async function showNotifications() {
-                const container = document.createElement('div');
-                container.innerHTML = '<h4>Notifications</h4><p>Loading...</p>';
-                showModal(container);
-                try {
-                    const notifications = await apiFetch('/api/v1/notifications');
-                    if (notifications.length === 0) {
-                        container.innerHTML = '<h4>Notifications</h4><p>You have no new notifications.</p>';
-                        return;
-                    }
-                    container.innerHTML = '<h4>Notifications</h4>';
-                    notifications.forEach(n => {
-                        const notifDiv = document.createElement('div');
-                        notifDiv.className = 'notification';
-                        let content = `<p><strong>${n.account.display_name}</strong> `;
-                        if (n.type === 'mention') content += `mentioned you.</p>`;
-                        else if (n.type === 'reblog') content += `boosted your post.</p>`;
-                        else if (n.type === 'favourite') content += `favorited your post.</p>`;
-                        else if (n.type === 'follow') content += `followed you.</p>`;
-                        else content += `${n.type}.</p>`;
-                        if (n.status) notifDiv.appendChild(renderStatus(n.status));
-                        notifDiv.insertAdjacentHTML('afterbegin', content);
-                        container.appendChild(notifDiv);
-                    });
-                } catch (error) { container.innerHTML = `<h4>Notifications</h4><p class="error">Could not load notifications. ${error.message}</p>`;}
-            }
-            
-            async function showProfile(accountId) {
-                const container = document.createElement('div');
-                container.innerHTML = `<p>Loading profile...</p>`;
-                showModal(container);
-                try {
-                    const [account, statuses] = await Promise.all([
-                        apiFetch(`/api/v1/accounts/${accountId}`),
-                        apiFetch(`/api/v1/accounts/${accountId}/statuses`)
-                    ]);
-                    container.innerHTML = `
-                       <div class="profile-header">
-                           <img src="${account.avatar_static}" alt="${account.display_name} avatar">
-                           <div>
-                               <h2>${account.display_name}</h2>
-                               <p>@${account.acct}</p>
-                           </div>
-                       </div>
-                       <div class="profile-bio">${account.note}</div>
-                       <hr>
-                       <h4>Posts</h4>
-                    `;
-                    const postsContainer = document.createElement('div');
-                    statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
-                    container.appendChild(postsContainer);
-                } catch(error) { container.innerHTML = `<p class="error">Could not load profile. ${error.message}</p>`; }
-            }
-
-            async function showConversations() {
-                const container = document.createElement('div');
-                container.innerHTML = `<h4>Direct Messages</h4><p>Loading...</p>`;
-                showModal(container);
-                try {
-                    const convos = await apiFetch('/api/v1/conversations');
-                    if (convos.length === 0) {
-                        container.innerHTML = '<h4>Direct Messages</h4><p>No conversations found.</p>';
-                        return;
-                    }
-                    container.innerHTML = '<h4>Direct Messages</h4>';
-                    convos.forEach(convo => {
-                        const convoDiv = document.createElement('div');
-                        convoDiv.className = 'conversation';
-                        const lastStatus = convo.last_status;
-                        const otherParticipants = convo.accounts.filter(acc => acc.id !== currentUser.id).map(acc => acc.display_name).join(', ');
-                        convoDiv.innerHTML = `<p>Conversation with <strong>${otherParticipants}</strong></p>`;
-                        convoDiv.appendChild(renderStatus(lastStatus));
-                        container.appendChild(convoDiv);
-                    });
-                } catch(error) { container.innerHTML = `<h4>Direct Messages</h4><p class="error">Could not load messages. ${error.message}</p>`; }
-            }
-
-            async function performSearch(query) {
-                const container = document.createElement('div');
-                container.innerHTML = `<h4>Search Results for "${query}"</h4><p>Loading...</p>`;
-                showModal(container);
-                try {
-                    const results = await apiFetch(`/api/v2/search?q=${encodeURIComponent(query)}&resolve=true`);
-                    container.innerHTML = `<h4>Search Results for "${query}"</h4>`;
-                    if(results.accounts.length > 0) {
-                        container.innerHTML += '<h5>Accounts</h5>';
-                        results.accounts.forEach(acc => {
-                           const accDiv = document.createElement('div');
-                           accDiv.className = 'search-result profile-link';
-                           accDiv.dataset.accountId = acc.id;
-                           accDiv.style.cursor = 'pointer';
-                           accDiv.innerHTML = `<p><strong>${acc.display_name}</strong> @${acc.acct}</p>`;
-                           container.appendChild(accDiv);
+            function showComposeModal() {
+                const composeContent = composeTemplate.content.cloneNode(true);
+                const form = composeContent.querySelector('#compose-form');
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const textarea = form.querySelector('#compose-textarea');
+                    if (!textarea.value) return;
+                    try {
+                        await apiFetch('statuses', {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({ status: textarea.value })
                         });
-                        container.querySelectorAll('.profile-link').forEach(el => el.addEventListener('click', (e) => showProfile(e.currentTarget.dataset.accountId)));
-                    }
-                    if(results.hashtags.length > 0) {
-                        container.innerHTML += '<h5>Hashtags</h5>';
-                        results.hashtags.forEach(tag => {
-                           const tagDiv = document.createElement('div');
-                           tagDiv.className = 'search-result';
-                           tagDiv.innerHTML = `<p>#${tag.name}</p>`;
-                           container.appendChild(tagDiv);
-                        });
-                    }
-                    if (results.accounts.length === 0 && results.hashtags.length === 0) {
-                        container.innerHTML += '<p>No results found.</p>';
-                    }
-                } catch(error) { container.innerHTML = `<p class="error">Search failed. ${error.message}</p>`; }
+                        hideModal();
+                        fetchTimeline('home');
+                    } catch(err) { alert('Post failed: ' + err.message); }
+                };
+                showModal(composeContent);
             }
-
 
             // --- App Initialization & Event Listeners ---
             async function initializeApp() {
                 try {
-                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
+                    currentUser = await apiFetch('accounts/verify_credentials');
                     localStorage.setItem('fediverse-instance', instanceUrl);
                     localStorage.setItem('fediverse-token', accessToken);
                     loginView.style.display = 'none';
                     appView.style.display = 'block';
-                    userDisplay.textContent = `${currentUser.display_name}`;
+                    document.querySelector('.top-nav').style.display = 'flex';
+                    userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
                 } catch (error) {
                     loginError.textContent = 'Connection failed. Check URL and Token.';
-                    connectBtn.disabled = false;
-                    connectBtn.textContent = 'Connect';
                 }
             }
             
+            // Dropdown logic
+            window.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
+                }
+            });
+            feedsDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userDropdown.classList.remove('active');
+                feedsDropdown.classList.toggle('active');
+            });
+            userDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+                feedsDropdown.classList.remove('active');
+                userDropdown.classList.toggle('active');
+            });
+            feedsDropdown.querySelectorAll('.dropdown-content a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    fetchTimeline(e.target.dataset.timeline);
+                });
+            });
+
+            // Other nav buttons
+            navPostBtn.addEventListener('click', showComposeModal);
+            profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view not implemented yet.'); });
+            logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
+            
+            // Login logic
             connectBtn.addEventListener('click', () => {
                 const url = instanceUrlInput.value.trim();
                 const token = accessTokenInput.value.trim();
-                if (!url || !token) { loginError.textContent = 'Please enter both URL and Access Token.'; return; }
-                connectBtn.disabled = true;
-                connectBtn.textContent = 'Connecting...';
+                if (!url || !token) return;
                 instanceUrl = url.replace(/^(https?:\/\/)?/, '');
                 accessToken = token;
                 initializeApp();
             });
 
-            logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
-            homeBtn.addEventListener('click', () => fetchTimeline('home'));
-            localBtn.addEventListener('click', () => fetchTimeline('public?local=true'));
-            federatedBtn.addEventListener('click', () => fetchTimeline('public'));
-            notificationsBtn.addEventListener('click', showNotifications);
-            messagesBtn.addEventListener('click', showConversations);
-            searchForm.addEventListener('submit', (e) => { e.preventDefault(); if(searchInput.value) performSearch(searchInput.value); });
-            addImageBtn.addEventListener('click', () => mediaAttachmentInput.click());
-            mediaAttachmentInput.addEventListener('change', handleImageUpload);
-            
-            composeForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const statusText = composeTextarea.value.trim();
-                if (statusText || attachedMediaId) postStatus(statusText);
-            });
-
+            // Initial check
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
                 instanceUrl = savedInstance;
                 accessToken = savedToken;
-                instanceUrlInput.value = instanceUrl;
-                accessTokenInput.value = savedToken;
-                connectBtn.disabled = true;
                 initializeApp();
+            } else {
+                document.querySelector('.top-nav').style.display = 'none';
+                appView.style.display = 'none';
+                loginView.style.display = 'block';
             }
         });
     </script>
