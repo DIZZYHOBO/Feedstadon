@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedstadon</title>
+    <title>Fediverse Client</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
@@ -24,7 +24,7 @@
         }
         .container { max-width: 700px; margin: 0 auto; padding: 20px 10px; display: flex; flex-direction: column; gap: 15px; }
         
-        /* Styles as before... */
+        /* Styles as before */
         .top-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
             border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
@@ -54,6 +54,7 @@
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
         .status-content a, .profile-bio a { color: var(--accent-color); text-decoration: none; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
+        .reblog-info { font-size: 0.8em; color: #818384; margin-bottom: 8px; font-weight: bold; }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: flex-start;
@@ -150,24 +151,26 @@
             function hideModal() { /* as before */ modal.classList.remove('visible'); }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
+            // --- MODIFIED: renderStatus now handles reblogs for Lemmy posts ---
             function renderStatus(status) {
-                // NEW: Debugging line to inspect the post data
-                console.log(status);
+                const originalPost = status.reblog || status; // Use the reblog object if it exists, otherwise use the status itself.
+                const isReblog = !!status.reblog;
 
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
                 statusDiv.innerHTML = `
+                    ${isReblog ? `<div class="reblog-info">🔁 Boosted by ${status.account.display_name}</div>` : ''}
                     <div class="status-header">
-                        <img src="${status.account.avatar_static}">
+                        <img src="${originalPost.account.avatar_static}">
                         <div>
-                            <span class="display-name">${status.account.display_name}</span>
-                            <span class="acct"> · @${status.account.acct}</span>
+                            <span class="display-name">${originalPost.account.display_name}</span>
+                            <span class="acct"> · @${originalPost.account.acct}</span>
                         </div>
                     </div>
-                    <div class="status-content">${status.content}</div>
+                    <div class="status-content">${originalPost.content}</div>
                 `;
-                statusDiv.querySelector('img').onclick = () => showProfile(status.account.id);
-                statusDiv.querySelector('.display-name').onclick = () => showProfile(status.account.id);
+                statusDiv.querySelector('img').onclick = () => showProfile(originalPost.account.id);
+                statusDiv.querySelector('.display-name').onclick = () => showProfile(originalPost.account.id);
                 return statusDiv;
             }
 
