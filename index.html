@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fediverse Client</title>
     <style>
+        /* MODIFIED: Reddit Dark Mode Theme */
         :root {
-            --bg-color: #1a1a2e;
-            --card-color: #16213e;
-            --primary-color: #0f3460;
-            --accent-color: #e94560;
-            --font-color: #dcdcdc;
-            --border-color: #5372F0;
+            --bg-color: #030303;
+            --card-color: #1A1A1B;
+            --primary-color: #272729;
+            --accent-color: #FF4500; /* Reddit Orange-Red */
+            --font-color: #D7DADC;
+            --border-color: #343536;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -20,35 +21,36 @@
             margin: 0;
             padding: 20px;
         }
-        .container { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-        .view { background-color: var(--card-color); border-radius: 8px; padding: 20px; border: 1px solid var(--primary-color); }
+        .container { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .view { background-color: var(--card-color); border-radius: 8px; padding: 20px; border: 1px solid var(--border-color); }
         #app-view { display: none; }
         input[type="text"], input[type="password"], textarea {
-            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--primary-color);
-            background-color: var(--bg-color); color: var(--font-color); box-sizing: border-box;
+            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color);
+            background-color: var(--primary-color); color: var(--font-color); box-sizing: border-box;
         }
         textarea { min-height: 80px; resize: vertical; }
         button {
-            padding: 10px 15px; border: none; border-radius: 5px; background-color: var(--border-color);
+            padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
             color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s;
         }
-        button:hover { background-color: #3e5ac4; }
+        button:hover { filter: brightness(0.9); }
         button:disabled { background-color: #555; cursor: not-allowed; }
         .nav-buttons { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        #timeline { display: flex; flex-direction: column; gap: 15px; }
+        #timeline { display: flex; flex-direction: column; gap: 10px; }
         .status {
-            background-color: var(--primary-color); padding: 15px; border-radius: 8px;
-            border-left: 4px solid var(--accent-color); transition: background-color 0.2s;
+            background-color: var(--card-color); padding: 12px; border-radius: 8px;
+            border: 1px solid var(--border-color); transition: background-color 0.2s;
         }
-        .status:hover { background-color: #1a3a69; cursor: pointer; }
-        .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .status-header img { width: 48px; height: 48px; border-radius: 50%; }
+        .status:hover { background-color: var(--primary-color); cursor: pointer; }
+        .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.8em; }
+        .status-header img { width: 36px; height: 36px; border-radius: 50%; }
         .status-header .display-name { font-weight: bold; }
-        .status-header .acct { color: #aaa; }
+        .status-header .acct { color: #818384; }
+        .status-content { font-size: 1em; line-height: 1.4; }
         .status-content p { margin: 5px 0; }
-        .status-footer { font-size: 0.9em; color: #aaa; margin-top: 15px; display: flex; gap: 20px; align-items: center; }
+        .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; gap: 20px; align-items: center; font-weight: bold; }
         .status-action { cursor: pointer; transition: color 0.2s; }
-        .status-action:hover { color: var(--font-color); }
+        .status-action:hover { filter: brightness(0.9); }
         .status-action.active { color: var(--accent-color); font-weight: bold; }
         .error { color: var(--accent-color); font-weight: bold; margin-top: 10px; }
         #loading { text-align: center; padding: 20px; }
@@ -56,20 +58,18 @@
         header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .header-actions { display: flex; align-items: center; gap: 20px; }
         #notifications-btn { font-size: 1.5em; background: none; border: none; color: var(--font-color); cursor: pointer; }
-        /* CORRECTED: Ensure modal is hidden by default */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: center; z-index: 1000;
         }
-        .modal-overlay.visible {
-            display: flex;
-        }
+        .modal-overlay.visible { display: flex; }
         .modal-content {
             background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 700px;
-            max-height: 90vh; overflow-y: auto; position: relative;
+            max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid var(--border-color);
         }
         .modal-close { position: absolute; top: 10px; right: 20px; font-size: 2em; cursor: pointer; border: none; background: none; color: var(--font-color); }
-        .notification { border-bottom: 1px solid var(--primary-color); padding: 10px 0; }
+        .notification { border-bottom: 1px solid var(--border-color); padding: 10px 0; }
+        hr { border-color: var(--border-color); opacity: 0.5; }
     </style>
 </head>
 <body>
@@ -189,13 +189,13 @@
                     <div class="status-header">
                         <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar">
                         <div>
-                            <div class="display-name">${status.account.display_name}</div>
-                            <div class="acct">@${status.account.acct}</div>
+                            <span class="display-name">${status.account.display_name}</span>
+                            <span class="acct">· @${status.account.acct}</span>
                         </div>
                     </div>
                     <div class="status-content">${sanitizedContent}</div>
                     <div class="status-footer">
-                        <span class="status-action reply" title="Reply">↩️ ${status.replies_count}</span>
+                        <span class="status-action reply" title="Reply">💬 ${status.replies_count}</span>
                         <span class="status-action boost ${status.reblogged ? 'active' : ''}" title="Boost">🔁 ${status.reblogs_count}</span>
                         <span class="status-action favorite ${status.favourited ? 'active' : ''}" title="Favorite">⭐ ${status.favourites_count}</span>
                         ${currentUser && status.account.id === currentUser.id ? '<span class="status-action delete" title="Delete">🗑️</span>' : ''}
