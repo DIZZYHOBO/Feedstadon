@@ -53,7 +53,6 @@
         .status-header .display-name { font-weight: bold; cursor: pointer; }
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
         .status-content a.hashtag { color: var(--accent-color); text-decoration: none; font-weight: bold; }
-        .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
         
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
@@ -65,25 +64,6 @@
             background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 600px;
             max-height: 85vh; overflow-y: auto;
         }
-        
-        #autocomplete-container { position: relative; }
-        #autocomplete-list {
-            display: none;
-            position: absolute;
-            bottom: 100%;
-            left: 0;
-            width: calc(100% - 20px);
-            background-color: var(--primary-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 5px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 100;
-        }
-        #autocomplete-list.visible { display: block; }
-        #autocomplete-list div { padding: 10px; cursor: pointer; }
-        #autocomplete-list div:hover { background-color: var(--border-color); }
     </style>
 </head>
 <body>
@@ -98,6 +78,7 @@
                     <a href="#" data-timeline="public">All</a>
                 </div>
             </div>
+            <button class="nav-button" id="nav-post-btn">Post</button>
         </div>
         <div class="nav-right">
              <form id="search-form" style="margin-bottom: 0;">
@@ -122,19 +103,6 @@
             <p id="login-error" class="error"></p>
         </div>
         <div id="app-view">
-            <div id="compose-view">
-                <form id="compose-form">
-                    <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                    <div id="autocomplete-container">
-                        <div id="autocomplete-list"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <button type="button" class="nav-button" id="trending-tags-btn">Trending #</button>
-                        <button type="submit" id="post-btn">Post</button>
-                    </div>
-                </form>
-            </div>
-            <hr style="border-color: var(--border-color); margin: 20px 0;">
             <div id="timeline"></div>
         </div>
     </div>
@@ -142,6 +110,16 @@
     <div id="modal" class="modal-overlay">
         <div class="modal-content" id="modal-body"></div>
     </div>
+
+    <template id="compose-template">
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+            <div style="display: flex; justify-content: flex-end; align-items: center;">
+                <button type="submit" id="post-btn">Post</button>
+            </div>
+        </form>
+    </template>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -162,10 +140,8 @@
             const profileLink = document.getElementById('profile-link');
             const searchForm = document.getElementById('search-form');
             const searchInput = document.getElementById('search-input');
-            const composeForm = document.getElementById('compose-form');
-            const composeTextarea = document.getElementById('compose-textarea');
-            const trendingTagsBtn = document.getElementById('trending-tags-btn');
-            const autocompleteList = document.getElementById('autocomplete-list');
+            const navPostBtn = document.getElementById('nav-post-btn'); // NEW
+            const composeTemplate = document.getElementById('compose-template'); // NEW
 
             // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
@@ -242,29 +218,7 @@
                     container.appendChild(postsContainer);
                 } catch(error) { container.innerHTML = `<p class="error">Could not load hashtag feed.</p>`; }
             }
-
-            async function showTrendingTags() {
-                try {
-                    const tags = await apiFetch(`/api/v1/trends/tags?limit=4`);
-                    autocompleteList.innerHTML = '';
-                    if (tags.length > 0) {
-                        tags.forEach(tag => {
-                            const tagDiv = document.createElement('div');
-                            tagDiv.textContent = `#${tag.name}`;
-                            tagDiv.onclick = () => {
-                                composeTextarea.value += ` #${tag.name} `;
-                                autocompleteList.classList.remove('visible');
-                                composeTextarea.focus();
-                            };
-                            autocompleteList.appendChild(tagDiv);
-                        });
-                        autocompleteList.classList.add('visible');
-                    }
-                } catch (error) {
-                    alert('Could not fetch trending tags.');
-                }
-            }
-
+            
             async function fetchTimeline(type) {
                 timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
@@ -272,6 +226,30 @@
                     timelineDiv.innerHTML = '';
                     statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
                 } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
+            }
+
+            // NEW: Function to show the compose modal
+            function showComposeModal() {
+                const composeContent = composeTemplate.content.cloneNode(true);
+                const form = composeContent.querySelector('#compose-form');
+                const textarea = composeContent.querySelector('#compose-textarea');
+                
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const text = textarea.value.trim();
+                    if (!text) return;
+                    try {
+                        await apiFetch('/api/v1/statuses', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ status: text })
+                        });
+                        hideModal();
+                        fetchTimeline('home');
+                    } catch (error) { alert('Failed to post.'); }
+                });
+                
+                showModal(composeContent);
+                textarea.focus();
             }
             
             async function showProfile(accountId) {
@@ -328,9 +306,6 @@
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
                 }
-                if (!e.target.closest('#autocomplete-container') && !e.target.closest('#trending-tags-btn')) {
-                    autocompleteList.classList.remove('visible');
-                }
             });
 
             [feedsDropdown, userDropdown].forEach(dd => {
@@ -344,25 +319,11 @@
             feedsDropdown.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', (e) => fetchTimeline(e.target.dataset.timeline));
             });
-
+            
+            navPostBtn.addEventListener('click', showComposeModal); // NEW
             profileLink.addEventListener('click', () => showProfile(currentUser.id));
             logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
             searchForm.addEventListener('submit', (e) => { e.preventDefault(); if(searchInput.value) performSearch(searchInput.value.trim()); });
-            
-            trendingTagsBtn.addEventListener('click', showTrendingTags);
-            composeForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const text = composeTextarea.value.trim();
-                if (!text) return;
-                try {
-                    await apiFetch('/api/v1/statuses', {
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ status: text })
-                    });
-                    composeTextarea.value = '';
-                    fetchTimeline('home');
-                } catch (error) { alert('Failed to post.'); }
-            });
 
             connectBtn.addEventListener('click', () => {
                 instanceUrl = instanceUrlInput.value.trim().replace(/^(https?:\/\/)?/, '');
