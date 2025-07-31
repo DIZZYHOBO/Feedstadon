@@ -15,6 +15,7 @@
             --font-color: #DEDEDE;
             --font-color-muted: #8E8F90;
             --border-color: #333435;
+            --link-color: #88C0D0; /* Nord Frost Blue for links */
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -40,16 +41,12 @@
         }
         .nav-left, .nav-right { display: flex; align-items: center; gap: 10px; }
         .nav-button {
-            background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
-            border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap;
-        }
-        .icon-button {
-            font-size: 1.5em;
-            border: none;
+            background: none; border: none; color: var(--font-color); padding: 8px 12px;
+            font-weight: bold; cursor: pointer; font-size: 1.5em; display: flex; align-items: center;
         }
         .dropdown { position: relative; }
         .dropdown-content {
-            display: none; position: absolute; top: 100%; left: 0; margin-top: 10px;
+            display: none; position: absolute; top: 100%;
             background-color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 8px;
             min-width: 200px; z-index: 1; overflow: hidden;
         }
@@ -67,10 +64,301 @@
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
+        .status-content a { color: var(--link-color); text-decoration: none; } /* MODIFIED: Hyperlink Color */
+        .status-media img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
         .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; }
         .status-action { cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
         .status-action:hover { background-color: var(--primary-color); }
         .status-action.active { color: var(--accent-color); }
+        .icon { width: 20px; height: 20px; fill: currentColor; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal-content {
+            background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 600px;
+            max-height: 85vh; overflow-y: auto;
+        }
+        textarea {
+            font-family: 'Inter', sans-serif; width: 100%; padding: 10px; border-radius: 8px;
+            border: 1px solid var(--border-color); background-color: var(--primary-color); color: var(--font-color);
+            box-sizing: border-box; min-height: 120px; margin-bottom: 10px;
+        }
+        button {
+             background-color: var(--accent-color); color: white; border: none;
+             border-radius: 18px; font-weight: bold; cursor: pointer; padding: 10px 15px;
+        }
+        .compose-actions { display: flex; justify-content: space-between; align-items: center; }
+        #media-preview { font-size: 0.8em; color: var(--font-color-muted); }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button" style="font-size: 1rem; border: 1px solid var(--border-color); border-radius: 20px;">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home">Subscribed</a>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                </div>
+            </div>
+            <button class="nav-button" id="nav-post-btn" style="font-size: 1rem; border: 1px solid var(--border-color); border-radius: 20px;">Post</button>
+        </div>
+        <div class="nav-right">
+            <div class="dropdown" id="notifications-dropdown">
+                <button class="nav-button icon-button" id="notifications-btn"></button>
+                <div class="dropdown-content" id="notifications-list"></div>
+            </div>
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn" style="font-size: 1rem; border: 1px solid var(--border-color); border-radius: 20px;"></button>
+                <div class="dropdown-content">
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="logout-btn">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="login-view">
+            <h2>Connect to your Instance</h2>
+            <input type="text" id="instance-url" placeholder="your-instance.social" style="border-radius: 8px; min-height: 30px; margin-bottom: 10px;">
+            <input type="password" id="access-token" placeholder="Paste your token here" style="border-radius: 8px; min-height: 30px; margin-bottom: 10px;">
+            <button id="connect-btn" style="width: 100%; margin-top: 10px;">Connect</button>
+            <p id="login-error" style="color: var(--accent-color); text-align: center;"></p>
+        </div>
+        <div id="app-view">
+            <div id="timeline"></div>
+        </div>
+    </div>
+    
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content" id="modal-body"></div>
+    </div>
+
+    <template id="compose-template">
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea placeholder="What's on your mind?"></textarea>
+            <div class="compose-actions">
+                <div>
+                    <input type="file" id="media-input" accept="image/*,video/*" style="display: none;">
+                    <button type="button" id="media-btn" style="font-size: 0.8rem; padding: 8px 12px;">Add Media</button>
+                    <span id="media-preview"></span>
+                </div>
+                <button type="submit">Post</button>
+            </div>
+        </form>
+    </template>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const loginView = document.getElementById('login-view');
+            const appView = document.getElementById('app-view');
+            const instanceUrlInput = document.getElementById('instance-url');
+            const accessTokenInput = document.getElementById('access-token');
+            const connectBtn = document.getElementById('connect-btn');
+            const loginError = document.getElementById('login-error');
+            const userDisplayBtn = document.getElementById('user-display-btn');
+            const timelineDiv = document.getElementById('timeline');
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            const notificationsDropdown = document.getElementById('notifications-dropdown');
+            const notificationsBtn = document.getElementById('notifications-btn');
+            const notificationsList = document.getElementById('notifications-list');
+            const userDropdown = document.getElementById('user-dropdown');
+            const feedsDropdown = document.getElementById('feeds-dropdown');
+            const logoutBtn = document.getElementById('logout-btn');
+            const profileLink = document.getElementById('profile-link');
+            const navPostBtn = document.getElementById('nav-post-btn');
+            const composeTemplate = document.getElementById('compose-template');
+            
+            // --- App State & Icons ---
+            let instanceUrl = '', accessToken = '', currentUser = null, attachedMediaId = null;
+            const ICONS = {
+                reply: `<svg class="icon" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>`,
+                boost: `<svg class="icon" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`,
+                favorite: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+                bookmark: `<svg class="icon" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>`,
+                notification: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>`
+            };
+            notificationsBtn.innerHTML = ICONS.notification;
+
+            // --- API Helper & Modal ---
+            async function apiFetch(endpoint, options = {}) {
+                const url = `https://${instanceUrl}${endpoint}`;
+                const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
+                if (options.body instanceof FormData) {
+                    delete headers['Content-Type'];
+                }
+                const response = await fetch(url, { ...options, headers });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            }
+            function showModal(contentNode) { modalBody.innerHTML = ''; modalBody.appendChild(contentNode); modal.classList.add('visible'); }
+            function hideModal() { modal.classList.remove('visible'); }
+            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
+            // --- Rendering ---
+            function renderStatus(status) {
+                const originalPost = status.reblog || status;
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'status';
+                
+                let mediaHTML = '';
+                if(originalPost.media_attachments && originalPost.media_attachments.length > 0) {
+                    mediaHTML = originalPost.media_attachments.map(media => {
+                        if (media.type === 'image') {
+                            return `<a href="${media.url}" target="_blank" rel="noopener noreferrer"><img src="${media.preview_url}" style="max-width: 100%; border-radius: 8px; margin-top: 10px;"></a>`;
+                        }
+                        return '';
+                    }).join('');
+                }
+
+                statusDiv.innerHTML = `
+                    <div class="status-header">
+                        <img src="${originalPost.account.avatar_static}">
+                        <div><span class="display-name">${originalPost.account.display_name}</span><span class="acct">@${originalPost.account.acct}</span></div>
+                    </div>
+                    <div class="status-content">${originalPost.content}</div>
+                    <div class="status-media">${mediaHTML}</div>
+                    <div class="status-footer">
+                        <span class="status-action reply">${ICONS.reply} ${originalPost.replies_count}</span>
+                        <span class="status-action boost ${originalPost.reblogged ? 'active' : ''}">${ICONS.boost} ${originalPost.reblogs_count}</span>
+                        <span class="status-action favorite ${originalPost.favourited ? 'active' : ''}">${ICONS.favorite} ${originalPost.favourites_count}</span>
+                        <span class="status-action bookmark ${originalPost.bookmarked ? 'active' : ''}">${ICONS.bookmark}</span>
+                    </div>
+                `;
+                return statusDiv;
+            }
+            
+            async function fetchTimeline(type) {
+                timelineDiv.innerHTML = '<p>Loading...</p>';
+                try {
+                    const statuses = await apiFetch(`/api/v1/timelines/${type}`);
+                    timelineDiv.innerHTML = '';
+                    statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
+                } catch (error) { timelineDiv.innerHTML = `<p>Could not load timeline.</p>`; }
+            }
+            
+            // --- Feature Functions ---
+            function showComposeModal() {
+                const composeContent = composeTemplate.content.cloneNode(true);
+                const form = composeContent.querySelector('form');
+                const textarea = composeContent.querySelector('textarea');
+                const mediaBtn = composeContent.querySelector('#media-btn');
+                const mediaInput = composeContent.querySelector('#media-input');
+                const mediaPreview = composeContent.querySelector('#media-preview');
+                
+                mediaBtn.onclick = () => mediaInput.click();
+                mediaInput.onchange = async () => {
+                    const file = mediaInput.files[0];
+                    if (!file) return;
+                    mediaBtn.disabled = true;
+                    mediaPreview.textContent = 'Uploading...';
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const result = await apiFetch('/api/v2/media', { method: 'POST', body: formData });
+                        if (result.id) {
+                            attachedMediaId = result.id;
+                            mediaPreview.textContent = `✅ Attached`;
+                        }
+                    } catch (err) {
+                        mediaPreview.textContent = 'Upload failed!';
+                    } finally {
+                        mediaBtn.disabled = false;
+                    }
+                };
+
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    if (!textarea.value.trim() && !attachedMediaId) return;
+                    try {
+                        const body = { status: textarea.value };
+                        if (attachedMediaId) body.media_ids = [attachedMediaId];
+                        await apiFetch('/api/v1/statuses', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(body)
+                        });
+                        hideModal();
+                        attachedMediaId = null;
+                        fetchTimeline('home');
+                    } catch(err) { alert('Failed to post.'); }
+                };
+                showModal(composeContent);
+                textarea.focus();
+            }
+            async function fetchNotifications() { /* ... */ }
+
+            async function initializeApp() {
+                try {
+                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
+                    loginView.style.display = 'none';
+                    appView.style.display = 'block';
+                    userDisplayBtn.textContent = currentUser.display_name;
+                    fetchTimeline('home');
+                } catch (error) {
+                    loginError.textContent = 'Connection failed. Please check URL and token.';
+                    localStorage.clear();
+                }
+            }
+            
+            // --- Event Listeners ---
+            window.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
+                }
+            });
+            [notificationsDropdown, userDropdown, feedsDropdown].forEach(dd => {
+                if (dd) {
+                    dd.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                        dd.classList.toggle('active');
+                        if(dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                            fetchNotifications();
+                        }
+                    });
+                }
+            });
+            feedsDropdown.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    fetchTimeline(e.target.dataset.timeline);
+                });
+            });
+            navPostBtn.addEventListener('click', showComposeModal);
+            logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
+            profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view coming soon!'); });
+
+            connectBtn.addEventListener('click', () => {
+                loginError.textContent = '';
+                instanceUrl = instanceUrlInput.value.trim();
+                accessToken = accessTokenInput.value.trim();
+                if (instanceUrl && accessToken) {
+                    localStorage.setItem('fediverse-instance', instanceUrl);
+                    localStorage.setItem('fediverse-token', accessToken);
+                    initializeApp();
+                }
+            });
+
+            // --- Initial Page Load ---
+            const savedInstance = localStorage.getItem('fediverse-instance');
+            const savedToken = localStorage.getItem('fediverse-token');
+            if (savedInstance && savedToken) {
+                instanceUrl = savedInstance;
+                accessToken = savedToken;
+                initializeApp();
+            }
+        });
+    </script>
+</body>
+</html>
         .icon { width: 20px; height: 20px; fill: currentColor; }
         .comment-thread {
             max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out;
