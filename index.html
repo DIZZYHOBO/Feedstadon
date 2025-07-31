@@ -44,8 +44,6 @@
         .nav-right .dropdown-content { left: auto; right: 0; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; }
         .dropdown.active .dropdown-content { display: block; }
-
-        /* NEW: Animated Search Bar Styles */
         .search-container { display: flex; align-items: center; }
         #search-form { width: 0; opacity: 0; transition: width 0.4s ease, opacity 0.4s ease; overflow: hidden; }
         #search-form.active { width: 200px; opacity: 1; }
@@ -61,6 +59,7 @@
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
         .status-content a, .profile-bio a { color: var(--accent-color); text-decoration: none; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
+        .status-action { cursor: pointer; }
         .reblog-info { font-size: 0.8em; color: #818384; margin-bottom: 8px; font-weight: bold; }
         
         /* Modal, Profile, and Settings */
@@ -79,7 +78,22 @@
         .profile-info img { width: 80px; height: 80px; border-radius: 50%; }
         .profile-bio { margin-top: 15px; line-height: 1.5; }
         
-        /* RESTORED: Settings Styles */
+        .comment-thread {
+            max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; padding-left: 15px;
+            margin-top: 10px; border-left: 2px solid var(--border-color);
+        }
+        .comment-thread.visible { max-height: 1500px; }
+        .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
+        textarea {
+            font-family: 'Inter', sans-serif; width: 100%; padding: 10px; border-radius: 5px;
+            border: 1px solid var(--border-color); background-color: var(--primary-color); color: var(--font-color);
+            box-sizing: border-box; min-height: 80px;
+        }
+        button {
+            padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
+            color: white; font-weight: bold; cursor: pointer;
+        }
+        
         .settings-section { margin-bottom: 20px; }
         .toggle-switch { display: flex; align-items: center; justify-content: space-between; }
         .toggle-switch label { position: relative; display: inline-block; width: 50px; height: 24px; }
@@ -201,19 +215,79 @@
             function hideModal() { modal.classList.remove('visible'); }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- Rendering & Filtering ---
+            // --- CORRECTED/RESTORED: Full renderStatus function ---
             function renderStatus(status) {
                 const originalPost = status.reblog || status;
+                
                 if (settings.hideNsfw && originalPost.sensitive) return null;
                 const lowerContent = originalPost.content.toLowerCase();
                 for (const word of settings.filteredWords) {
-                    if (lowerContent.includes(word.toLowerCase())) return null;
+                    if (word && lowerContent.includes(word.toLowerCase())) return null;
                 }
+                
+                const isReblog = !!status.reblog;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
-                statusDiv.innerHTML = ``;
-                // ... (rest of renderStatus from previous correct version)
+                statusDiv.innerHTML = `
+                    ${isReblog ? `<div class="reblog-info">🔁 Boosted by ${status.account.display_name}</div>` : ''}
+                    <div class="status-header">
+                        <img src="${originalPost.account.avatar_static}">
+                        <div>
+                            <span class="display-name">${originalPost.account.display_name}</span>
+                            <span class="acct"> · @${originalPost.account.acct}</span>
+                        </div>
+                    </div>
+                    <div class="status-content">${originalPost.content}</div>
+                    <div class="status-footer">
+                        <span class="status-action reply" title="Reply">💬 ${originalPost.replies_count}</span>
+                    </div>
+                `;
+
+                statusDiv.querySelector('img').onclick = () => showProfile(originalPost.account.id);
+                statusDiv.querySelector('.display-name').onclick = () => showProfile(originalPost.account.id);
+                
+                statusDiv.querySelector('.reply').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleCommentThread(originalPost, statusDiv);
+                });
                 return statusDiv;
+            }
+
+            async function toggleCommentThread(status, statusElement) {
+                const existingThread = statusElement.querySelector('.comment-thread');
+                if (existingThread) {
+                    existingThread.remove();
+                    return;
+                }
+                const threadContainer = document.createElement('div');
+                threadContainer.className = 'comment-thread';
+                threadContainer.innerHTML = `<p>Loading replies...</p>`;
+                statusElement.appendChild(threadContainer);
+                requestAnimationFrame(() => threadContainer.classList.add('visible'));
+                
+                try {
+                    const context = await apiFetch(`/api/v1/statuses/${status.id}/context`);
+                    threadContainer.innerHTML = '';
+                    if (context.descendants && context.descendants.length > 0) {
+                        context.descendants.forEach(reply => threadContainer.appendChild(renderStatus(reply)));
+                    } else {
+                        threadContainer.innerHTML = '<p>No replies yet.</p>';
+                    }
+                    const replyForm = document.createElement('div');
+                    replyForm.className = 'comment-reply-form';
+                    replyForm.innerHTML = `<textarea placeholder="Write a comment..." style="margin-bottom: 0;"></textarea><button>Comment</button>`;
+                    const textarea = replyForm.querySelector('textarea');
+                    textarea.value = `@${status.account.acct} `;
+                    replyForm.querySelector('button').onclick = async () => {
+                        if (!textarea.value) return;
+                        await apiFetch('/api/v1/statuses', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: textarea.value, in_reply_to_id: status.id })
+                        });
+                        toggleCommentThread(status, statusElement);
+                    };
+                    threadContainer.appendChild(replyForm);
+                } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
             }
 
             async function fetchTimeline(type) {
@@ -233,13 +307,42 @@
                 } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
             }
             
-            // --- RESTORED: Settings Logic ---
+            async function showProfile(accountId) {
+                const container = document.createElement('div');
+                showModal(container);
+                container.innerHTML = `<p>Loading profile...</p>`;
+                try {
+                    const [account, statuses, relationships] = await Promise.all([
+                        apiFetch(`/api/v1/accounts/${accountId}`),
+                        apiFetch(`/api/v1/accounts/${accountId}/statuses?limit=20`),
+                        apiFetch(`/api/v1/accounts/relationships?id[]=${accountId}`)
+                    ]);
+                    const relationship = relationships[0];
+                    container.innerHTML = `<div class="profile-header"><div class="profile-info"><img src="${account.avatar_static}"><div><h2>${account.display_name}</h2><p>@${account.acct}</p></div></div><button class="nav-button" id="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button></div><div class="profile-bio">${account.note}</div><hr><h4>Posts</h4>`;
+                    const postsContainer = document.createElement('div');
+                    postsContainer.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
+                    statuses.forEach(s => {
+                        const postEl = renderStatus(s);
+                        if (postEl) postsContainer.appendChild(postEl);
+                    });
+                    container.appendChild(postsContainer);
+                    const followBtn = container.querySelector('#follow-btn');
+                    if (currentUser.id === accountId) followBtn.style.display = 'none';
+                    else {
+                        followBtn.onclick = async () => {
+                           const newRel = await apiFetch(`/api/v1/accounts/${accountId}/${followBtn.textContent === 'Unfollow' ? 'unfollow' : 'follow'}`, { method: 'POST' });
+                           followBtn.textContent = newRel.following ? 'Unfollow' : 'Follow';
+                        };
+                    }
+                } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
+            }
+
             function showSettingsModal() {
                 const settingsContent = settingsTemplate.content.cloneNode(true);
-                const nsfwToggle = settingsContent.getElementById('nsfw-toggle');
-                const filterInput = settingsContent.getElementById('word-filter-input');
-                const addFilterBtn = settingsContent.getElementById('add-filter-word-btn');
-                const filterList = settingsContent.getElementById('word-filter-list');
+                const nsfwToggle = settingsContent.querySelector('#nsfw-toggle');
+                const filterInput = settingsContent.querySelector('#word-filter-input');
+                const addFilterBtn = settingsContent.querySelector('#add-filter-word-btn');
+                const filterList = settingsContent.querySelector('#word-filter-list');
                 
                 nsfwToggle.checked = settings.hideNsfw;
                 const renderFilterList = () => {
@@ -249,6 +352,7 @@
                         li.textContent = word;
                         const removeBtn = document.createElement('button');
                         removeBtn.textContent = '×';
+                        removeBtn.style.padding = '2px 8px'; // smaller button
                         removeBtn.onclick = () => {
                             settings.filteredWords = settings.filteredWords.filter(w => w !== word);
                             saveSettings();
@@ -281,34 +385,6 @@
                 if (saved) settings = JSON.parse(saved);
             }
 
-            // Other features like showProfile, performSearch, initializeApp are here
-            // (pasting the full JS again for completeness and to avoid breaking anything)
-            async function showProfile(accountId) {
-                const container = document.createElement('div');
-                showModal(container);
-                container.innerHTML = `<p>Loading profile...</p>`;
-                try {
-                    const [account, statuses, relationships] = await Promise.all([
-                        apiFetch(`/api/v1/accounts/${accountId}`),
-                        apiFetch(`/api/v1/accounts/${accountId}/statuses?limit=20`),
-                        apiFetch(`/api/v1/accounts/relationships?id[]=${accountId}`)
-                    ]);
-                    const relationship = relationships[0];
-                    container.innerHTML = `<div class="profile-header"><div class="profile-info"><img src="${account.avatar_static}"><div><h2>${account.display_name}</h2><p>@${account.acct}</p></div></div><button class="nav-button" id="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button></div><div class="profile-bio">${account.note}</div><hr><h4>Posts</h4>`;
-                    const postsContainer = document.createElement('div');
-                    postsContainer.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
-                    statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
-                    container.appendChild(postsContainer);
-                    const followBtn = container.querySelector('#follow-btn');
-                    if (currentUser.id === accountId) followBtn.style.display = 'none';
-                    else {
-                        followBtn.onclick = async () => {
-                           const newRel = await apiFetch(`/api/v1/accounts/${accountId}/${followBtn.textContent === 'Unfollow' ? 'unfollow' : 'follow'}`, { method: 'POST' });
-                           followBtn.textContent = newRel.following ? 'Unfollow' : 'Follow';
-                        };
-                    }
-                } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
-            }
             async function performSearch(query) {
                 const container = document.createElement('div');
                 showModal(container);
@@ -319,7 +395,7 @@
                         showProfile(results.accounts[0].id);
                     } else {
                          container.innerHTML = `<h4>Search Results for "${query}"</h4>`;
-                         if(results.accounts.length === 0) container.innerHTML += '<p>No results.</p>';
+                         if (results.accounts.length === 0) container.innerHTML += '<p>No results.</p>';
                          results.accounts.forEach(acc => {
                             const accDiv = document.createElement('div');
                             accDiv.innerHTML = `<p><strong>${acc.display_name}</strong> @${acc.acct}</p>`;
@@ -347,7 +423,6 @@
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
                 }
-                // NEW: Click away to close search
                 if (!searchContainer.contains(e.target)) {
                     searchForm.classList.remove('active');
                     searchToggleBtn.style.display = 'inline-block';
@@ -359,9 +434,8 @@
             settingsLink.addEventListener('click', (e) => { e.preventDefault(); showSettingsModal(); });
             logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
             
-            // NEW: Animated search logic
             searchToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent the window click listener from firing immediately
+                e.stopPropagation();
                 searchForm.classList.add('active');
                 searchInput.focus();
                 searchToggleBtn.style.display = 'none';
