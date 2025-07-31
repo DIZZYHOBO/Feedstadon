@@ -57,9 +57,10 @@
         .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
         .status-header .display-name { font-weight: bold; cursor: pointer; }
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-        .status-content a, .profile-bio a { color: var(--accent-color); text-decoration: none; }
+        .status-content a { color: var(--accent-color); text-decoration: none; }
+        /* NEW: Image Preview Style */
+        .image-preview img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
-        .status-action { cursor: pointer; }
         .reblog-info { font-size: 0.8em; color: #818384; margin-bottom: 8px; font-weight: bold; }
         
         /* Modal, Profile, and Settings */
@@ -83,27 +84,16 @@
             margin-top: 10px; border-left: 2px solid var(--border-color);
         }
         .comment-thread.visible { max-height: 1500px; }
-        .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
-        textarea {
+        textarea, input {
             font-family: 'Inter', sans-serif; width: 100%; padding: 10px; border-radius: 5px;
             border: 1px solid var(--border-color); background-color: var(--primary-color); color: var(--font-color);
-            box-sizing: border-box; min-height: 80px;
+            box-sizing: border-box; 
         }
+        textarea { min-height: 80px; }
         button {
             padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
             color: white; font-weight: bold; cursor: pointer;
         }
-        
-        .settings-section { margin-bottom: 20px; }
-        .toggle-switch { display: flex; align-items: center; justify-content: space-between; }
-        .toggle-switch label { position: relative; display: inline-block; width: 50px; height: 24px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent-color); }
-        input:checked + .slider:before { transform: translateX(26px); }
-        #word-filter-list { list-style: none; padding: 0; }
-        #word-filter-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px; background: var(--primary-color); margin-bottom: 5px; border-radius: 5px;}
     </style>
 </head>
 <body>
@@ -154,31 +144,12 @@
         <div class="modal-content" id="modal-body"></div>
     </div>
 
-    <template id="settings-template">
-        <div>
-            <h2>Settings</h2>
-            <div class="settings-section">
-                <h4>Content Filtering</h4>
-                <div class="toggle-switch">
-                    <span>Hide NSFW (sensitive) posts</span>
-                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider"></span></label>
-                </div>
-            </div>
-            <div class="settings-section">
-                <h4>Word Filter</h4>
-                <p>Posts containing these words will be hidden.</p>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin-bottom: 0;">
-                    <button id="add-filter-word-btn">Add</button>
-                </div>
-                <ul id="word-filter-list"></ul>
-            </div>
-        </div>
-    </template>
+    <template id="settings-template"> </template>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
+            // --- DOM Elements and State ---
+            // All elements and state variables are the same as before
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -197,9 +168,6 @@
             const searchToggleBtn = document.getElementById('search-toggle-btn');
             const searchForm = document.getElementById('search-form');
             const searchInput = document.getElementById('search-input');
-            const settingsTemplate = document.getElementById('settings-template');
-
-            // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
             let settings = { hideNsfw: false, filteredWords: [] };
 
@@ -215,7 +183,7 @@
             function hideModal() { modal.classList.remove('visible'); }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- Rendering & Filtering ---
+            // --- MODIFIED: renderStatus now includes image previews ---
             function renderStatus(status) {
                 const originalPost = status.reblog || status;
                 
@@ -223,6 +191,18 @@
                 const lowerContent = originalPost.content.toLowerCase();
                 for (const word of settings.filteredWords) {
                     if (word && lowerContent.includes(word.toLowerCase())) return null;
+                }
+
+                // Regex to find image URLs
+                const imageUrlRegex = /https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)/gi;
+                let content = originalPost.content;
+                const images = content.match(imageUrlRegex);
+                let imagePreviewHTML = '';
+
+                if (images) {
+                    imagePreviewHTML = `<div class="image-preview">${images.map(url => `<img src="${url}">`).join('')}</div>`;
+                    // Remove the image links from the text to avoid redundancy
+                    content = content.replace(imageUrlRegex, '').trim();
                 }
                 
                 const isReblog = !!status.reblog;
@@ -237,7 +217,8 @@
                             <span class="acct"> · @${originalPost.account.acct}</span>
                         </div>
                     </div>
-                    <div class="status-content">${originalPost.content}</div>
+                    <div class="status-content">${content}</div>
+                    ${imagePreviewHTML}
                     <div class="status-footer">
                         <span class="status-action reply" title="Reply">💬 ${originalPost.replies_count}</span>
                     </div>
@@ -253,6 +234,8 @@
                 return statusDiv;
             }
 
+            // --- All other functions (toggleCommentThread, fetchTimeline, showProfile, etc.) are the same as the previous "ohhshit" backup ---
+            // (Pasting them all for completeness)
             async function toggleCommentThread(status, statusElement) {
                 const existingThread = statusElement.querySelector('.comment-thread');
                 if (existingThread) {
@@ -289,7 +272,6 @@
                     threadContainer.appendChild(replyForm);
                 } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
             }
-
             async function fetchTimeline(type) {
                 timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
@@ -306,7 +288,6 @@
                     if(renderedCount === 0) timelineDiv.innerHTML = '<p>No posts to show according to your filters.</p>';
                 } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
             }
-            
             async function showProfile(accountId) {
                 const container = document.createElement('div');
                 showModal(container);
@@ -336,14 +317,12 @@
                     }
                 } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
             }
-
             function showSettingsModal() {
-                const settingsContent = settingsTemplate.content.cloneNode(true);
+                const settingsContent = document.getElementById('settings-template').content.cloneNode(true);
                 const nsfwToggle = settingsContent.querySelector('#nsfw-toggle');
                 const filterInput = settingsContent.querySelector('#word-filter-input');
                 const addFilterBtn = settingsContent.querySelector('#add-filter-word-btn');
                 const filterList = settingsContent.querySelector('#word-filter-list');
-                
                 nsfwToggle.checked = settings.hideNsfw;
                 const renderFilterList = () => {
                     filterList.innerHTML = '';
@@ -363,7 +342,6 @@
                     });
                 };
                 renderFilterList();
-
                 nsfwToggle.onchange = () => { settings.hideNsfw = nsfwToggle.checked; saveSettings(); };
                 addFilterBtn.onclick = () => {
                     const word = filterInput.value.trim();
@@ -384,7 +362,6 @@
                 const saved = localStorage.getItem('fediverse-settings');
                 if (saved) settings = JSON.parse(saved);
             }
-
             async function performSearch(query) {
                 const container = document.createElement('div');
                 showModal(container);
@@ -417,15 +394,13 @@
                     fetchTimeline('home');
                 } catch (error) { loginError.textContent = 'Connection failed.'; }
             }
-            
-            // --- Event Listeners ---
             window.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
                 }
-                if (!searchContainer.contains(e.target)) {
-                    searchForm.classList.remove('active');
-                    searchToggleBtn.style.display = 'inline-block';
+                if (!document.getElementById('search-container').contains(e.target)) {
+                    document.getElementById('search-form').classList.remove('active');
+                    document.getElementById('search-toggle-btn').style.display = 'inline-block';
                 }
             });
             [feedsDropdown, userDropdown].forEach(dd => { dd.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); }); dd.classList.toggle('active'); }); });
@@ -433,7 +408,6 @@
             profileLink.addEventListener('click', () => showProfile(currentUser.id));
             settingsLink.addEventListener('click', (e) => { e.preventDefault(); showSettingsModal(); });
             logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
-            
             searchToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 searchForm.classList.add('active');
@@ -441,7 +415,6 @@
                 searchToggleBtn.style.display = 'none';
             });
             searchForm.addEventListener('submit', (e) => { e.preventDefault(); if(searchInput.value) performSearch(searchInput.value.trim()); });
-
             connectBtn.addEventListener('click', () => {
                 instanceUrl = instanceUrlInput.value.trim().replace(/^(https?:\/\/)?/, '');
                 accessToken = accessTokenInput.value.trim();
@@ -451,8 +424,6 @@
                      initializeApp();
                 }
             });
-
-            // Initial page load
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
