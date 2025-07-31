@@ -79,9 +79,9 @@
 
         <div id="login-view" class="view">
             <h2>Connect to your Instance</h2>
-            <p>This app uses the secure OAuth 2.0 flow. Your credentials are never shared with this app.</p>
+            <p>Enter the public URL of your Piefed or Mastodon instance.</p>
             <label for="instance-url">Instance URL</label>
-            <input type="text" id="instance-url" placeholder="piefed.social" value="quokka.social">
+            <input type="text" id="instance-url" placeholder="your-instance.social" value="quokk.au">
             <button id="login-btn">Login</button>
             <p id="login-error" class="error"></p>
         </div>
@@ -117,7 +117,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -134,7 +133,6 @@
             const localBtn = document.getElementById('local-timeline-btn');
             const federatedBtn = document.getElementById('federated-timeline-btn');
             
-            // --- App State & Config ---
             let instanceUrl = '';
             let accessToken = '';
             let clientId = '';
@@ -142,7 +140,6 @@
             const redirectUri = window.location.href.split('?')[0];
             const scopes = 'read write';
 
-            // --- PKCE Helper Functions ---
             function base64url(buffer) {
                 return btoa(String.fromCharCode(...new Uint8Array(buffer)))
                     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -156,7 +153,6 @@
                 return base64url(digest);
             }
 
-            // --- API Helper Function ---
             async function apiFetch(endpoint, options = {}) {
                 const url = `https://${instanceUrl}/api/v1/${endpoint}`;
                 const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
@@ -165,7 +161,6 @@
                 return await response.json();
             }
 
-            // --- Rendering Functions ---
             function renderStatus(status) {
                 const sanitizedContent = new DOMParser().parseFromString(status.content, 'text/html').body.innerHTML;
                 const statusDiv = document.createElement('div');
@@ -197,8 +192,6 @@
                 }
             }
 
-            // --- OAuth 2.0 with PKCE Flow ---
-
             async function startLogin() {
                 instanceUrl = instanceUrlInput.value.trim().replace(/^(https?:\/\/)?/, '');
                 if (!instanceUrl) {
@@ -208,8 +201,9 @@
                 loginBtn.disabled = true;
                 loginBtn.textContent = 'Connecting...';
                 
+                let appRegResponse; 
                 try {
-                    const appRegResponse = await fetch(`https://${instanceUrl}/api/v1/apps`, {
+                    appRegResponse = await fetch(`https://${instanceUrl}/api/v1/apps`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -219,8 +213,7 @@
                         })
                     });
                     if (!appRegResponse.ok) {
-                        const errorData = await appRegResponse.text();
-                        throw new Error(`Failed to register app. Server says: ${errorData}`);
+                        throw new Error(`Registration failed with status: ${appRegResponse.status}`);
                     }
                     
                     const appData = await appRegResponse.json();
@@ -234,8 +227,18 @@
                     window.location.href = authUrl;
 
                 } catch (error) {
-                    // MODIFIED: Ensure the button fully resets on error
-                    loginError.textContent = `Error: This is likely a CORS issue. Please host this file on a web server.`;
+                    let detailedError = error.message;
+                    if (error.message.includes('Failed to fetch')) {
+                        detailedError = "Cannot connect to server. Please check the instance URL and your network connection.";
+                    } else if (appRegResponse) {
+                        try {
+                            const serverError = await appRegResponse.json();
+                            if (serverError && serverError.error) {
+                                detailedError = serverError.error;
+                            }
+                        } catch (e) { /* Could not parse JSON, stick with the original error. */ }
+                    }
+                    loginError.textContent = `Error: ${detailedError}`;
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Login';
                 }
@@ -302,7 +305,6 @@
                 window.location.href = redirectUri;
             }
 
-            // --- Event Listeners ---
             loginBtn.addEventListener('click', startLogin);
             logoutBtn.addEventListener('click', logout);
             homeBtn.addEventListener('click', () => fetchTimeline('home'));
@@ -328,7 +330,6 @@
                 }
             });
 
-            // --- Main logic on page load ---
             const urlParams = new URLSearchParams(window.location.search);
             const authCode = urlParams.get('code');
             const storedToken = localStorage.getItem('piefed_access_token');
