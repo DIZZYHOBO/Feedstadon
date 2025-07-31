@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Fediverse Client</title>
+    <title>Fediverse Client</title>
     <style>
         :root {
             --bg-color: #1a1a2e;
@@ -20,72 +20,66 @@
             margin: 0;
             padding: 20px;
         }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        .view {
-            background-color: var(--card-color);
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px solid var(--primary-color);
-        }
+        .container { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .view { background-color: var(--card-color); border-radius: 8px; padding: 20px; border: 1px solid var(--primary-color); }
         #app-view { display: none; }
         input[type="text"], input[type="password"], textarea {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid var(--primary-color);
-            background-color: var(--bg-color);
-            color: var(--font-color);
-            box-sizing: border-box;
+            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--primary-color);
+            background-color: var(--bg-color); color: var(--font-color); box-sizing: border-box;
         }
-        textarea { min-height: 100px; resize: vertical; }
+        textarea { min-height: 80px; resize: vertical; }
         button {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            background-color: var(--border-color);
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
+            padding: 10px 15px; border: none; border-radius: 5px; background-color: var(--border-color);
+            color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s;
         }
         button:hover { background-color: #3e5ac4; }
         button:disabled { background-color: #555; cursor: not-allowed; }
         .nav-buttons { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         #timeline { display: flex; flex-direction: column; gap: 15px; }
-        .status { background-color: var(--primary-color); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent-color); }
+        .status {
+            background-color: var(--primary-color); padding: 15px; border-radius: 8px;
+            border-left: 4px solid var(--accent-color); transition: background-color 0.2s;
+        }
+        .status:hover { background-color: #1a3a69; cursor: pointer; }
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .status-header img { width: 48px; height: 48px; border-radius: 50%; }
         .status-header .display-name { font-weight: bold; }
         .status-header .acct { color: #aaa; }
         .status-content p { margin: 5px 0; }
-        .status-footer { font-size: 0.8em; color: #aaa; margin-top: 10px; display: flex; gap: 15px; }
+        .status-footer { font-size: 0.9em; color: #aaa; margin-top: 15px; display: flex; gap: 20px; align-items: center; }
+        .status-action { cursor: pointer; transition: color 0.2s; }
+        .status-action:hover { color: var(--font-color); }
+        .status-action.active { color: var(--accent-color); font-weight: bold; }
         .error { color: var(--accent-color); font-weight: bold; margin-top: 10px; }
         #loading { text-align: center; padding: 20px; }
         .hidden { display: none; }
         header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .header-actions { display: flex; align-items: center; gap: 20px; }
+        #notifications-btn { font-size: 1.5em; background: none; border: none; color: var(--font-color); cursor: pointer; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 700px;
+            max-height: 90vh; overflow-y: auto; position: relative;
+        }
+        .modal-close { position: absolute; top: 10px; right: 20px; font-size: 2em; cursor: pointer; border: none; background: none; color: var(--font-color); }
+        .notification { border-bottom: 1px solid var(--primary-color); padding: 10px 0; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Simple Fediverse Client</h1>
+        <h1>Fediverse Client</h1>
 
         <div id="login-view" class="view">
             <h2>Connect to your Instance</h2>
-            <p>Go to your instance's Settings -> Development to get an access token.</p>
+            <p>Go to your instance's Settings -> Development (or Applications) to get an access token.</p>
             <label for="instance-url">Instance URL</label>
             <input type="text" id="instance-url" placeholder="your-instance.social">
-            
             <label for="access-token">Access Token</label>
             <input type="password" id="access-token" placeholder="Paste your token here">
-            
             <button id="connect-btn">Connect</button>
             <p id="login-error" class="error"></p>
         </div>
@@ -93,34 +87,40 @@
         <div id="app-view" class="view">
             <header>
                 <h2 id="user-display"></h2>
-                <button id="logout-btn">Logout</button>
+                <div class="header-actions">
+                    <button id="notifications-btn" title="Notifications">🔔</button>
+                    <button id="logout-btn">Logout</button>
+                </div>
             </header>
-
             <div id="compose-view">
-                <h3>What's on your mind?</h3>
                 <form id="compose-form">
-                    <textarea id="compose-textarea" placeholder="Write your post here..."></textarea>
+                    <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
                     <button type="submit" id="post-btn">Post</button>
                 </form>
             </div>
-            
-            <hr style="margin: 20px 0; border-color: var(--primary-color);">
-
+            <hr>
             <h3>Timelines</h3>
             <div class="nav-buttons">
                 <button id="home-timeline-btn">Subscribed</button>
                 <button id="local-timeline-btn">Local</button>
                 <button id="federated-timeline-btn">All (Federated)</button>
             </div>
-            
             <div id="timeline">
                 <p id="loading" class="hidden">Loading...</p>
             </div>
         </div>
     </div>
+    
+    <div id="modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -137,31 +137,49 @@
             const homeBtn = document.getElementById('home-timeline-btn');
             const localBtn = document.getElementById('local-timeline-btn');
             const federatedBtn = document.getElementById('federated-timeline-btn');
+            const notificationsBtn = document.getElementById('notifications-btn');
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            const modalClose = document.querySelector('.modal-close');
 
+            // --- App State ---
             let instanceUrl = '';
             let accessToken = '';
+            let currentUser = null;
 
+            // --- API Helper ---
             async function apiFetch(endpoint, options = {}) {
                 const url = `https://${instanceUrl}/api/v1/${endpoint}`;
-                const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers, };
-                try {
-                    const response = await fetch(url, { ...options, headers });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                    }
-                    return await response.json();
-                } catch (error) {
-                    console.error('API Fetch Error:', error);
-                    alert(`Error: ${error.message}`);
-                    throw error;
+                const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
+                const response = await fetch(url, { ...options, headers });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+                    throw new Error(errorData.error);
                 }
+                return options.method === 'DELETE' ? response : response.json();
             }
 
-            function renderStatus(status) {
+            // --- Modal Controls ---
+            function showModal(content) {
+                modalBody.innerHTML = '';
+                modalBody.appendChild(content);
+                modal.classList.remove('hidden');
+            }
+            function hideModal() {
+                modal.classList.add('hidden');
+            }
+            modalClose.addEventListener('click', hideModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) hideModal();
+            });
+
+            // --- Rendering Functions ---
+            function renderStatus(status, isDetailed = false) {
                 const sanitizedContent = new DOMParser().parseFromString(status.content, 'text/html').body.innerHTML;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
+                statusDiv.dataset.id = status.id;
+
                 statusDiv.innerHTML = `
                     <div class="status-header">
                         <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar">
@@ -171,37 +189,161 @@
                         </div>
                     </div>
                     <div class="status-content">${sanitizedContent}</div>
-                    <div class="status-footer"><span>${new Date(status.created_at).toLocaleString()}</span></div>
+                    <div class="status-footer">
+                        <span class="status-action reply" title="Reply">↩️ ${status.replies_count}</span>
+                        <span class="status-action boost ${status.reblogged ? 'active' : ''}" title="Boost">🔁 ${status.reblogs_count}</span>
+                        <span class="status-action favorite ${status.favourited ? 'active' : ''}" title="Favorite">⭐ ${status.favourites_count}</span>
+                        ${currentUser && status.account.id === currentUser.id ? '<span class="status-action delete" title="Delete">🗑️</span>' : ''}
+                    </div>
                 `;
+
+                // --- Add Event Listeners for actions ---
+                if (!isDetailed) {
+                    statusDiv.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('status-action')) {
+                            showStatusDetail(status.id);
+                        }
+                    });
+                }
+                
+                statusDiv.querySelector('.reply').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const replyContent = prompt(`Replying to @${status.account.acct}:`, "");
+                    if (replyContent) postStatus(replyContent, status.id);
+                });
+                statusDiv.querySelector('.boost').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleBoost(status.id, e.currentTarget);
+                });
+                statusDiv.querySelector('.favorite').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(status.id, e.currentTarget);
+                });
+                if (statusDiv.querySelector('.delete')) {
+                    statusDiv.querySelector('.delete').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            deleteStatus(status.id);
+                        }
+                    });
+                }
+
                 return statusDiv;
             }
 
+            // --- Feature Functions ---
             async function fetchTimeline(type) {
                 loadingIndicator.classList.remove('hidden');
                 timelineDiv.innerHTML = '';
                 try {
                     const statuses = await apiFetch(`timelines/${type}`);
-                    if (statuses.length === 0) {
-                        timelineDiv.innerHTML = '<p>Nothing to see here yet!</p>';
-                    } else {
-                       statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
+                    statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
+                } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline. ${error.message}</p>`; }
+                finally { loadingIndicator.classList.add('hidden'); }
+            }
+
+            async function postStatus(statusText, inReplyToId = null) {
+                try {
+                    const body = { status: statusText };
+                    if (inReplyToId) body.in_reply_to_id = inReplyToId;
+                    await apiFetch('statuses', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    composeTextarea.value = '';
+                    fetchTimeline('home');
+                } catch (error) { alert(`Failed to post: ${error.message}`); }
+            }
+
+            async function deleteStatus(id) {
+                try {
+                    await apiFetch(`statuses/${id}`, { method: 'DELETE' });
+                    document.querySelector(`.status[data-id='${id}']`)?.remove();
+                    hideModal();
+                } catch (error) { alert(`Failed to delete: ${error.message}`); }
+            }
+
+            async function toggleBoost(id, button) {
+                const isBoosted = button.classList.contains('active');
+                const endpoint = `statuses/${id}/${isBoosted ? 'unreblog' : 'reblog'}`;
+                try {
+                    const updatedStatus = await apiFetch(endpoint, { method: 'POST' });
+                    button.classList.toggle('active');
+                    button.textContent = `🔁 ${updatedStatus.reblogs_count}`;
+                } catch (error) { alert(`Action failed: ${error.message}`); }
+            }
+            
+            async function toggleFavorite(id, button) {
+                const isFavorited = button.classList.contains('active');
+                const endpoint = `statuses/${id}/${isFavorited ? 'unfavourite' : 'favourite'}`;
+                try {
+                    const updatedStatus = await apiFetch(endpoint, { method: 'POST' });
+                    button.classList.toggle('active');
+                    button.textContent = `⭐ ${updatedStatus.favourites_count}`;
+                } catch (error) { alert(`Action failed: ${error.message}`); }
+            }
+
+            async function showStatusDetail(id) {
+                const detailContainer = document.createElement('div');
+                detailContainer.innerHTML = '<p>Loading post...</p>';
+                showModal(detailContainer);
+                try {
+                    const data = await apiFetch(`statuses/${id}/context`);
+                    const mainStatus = data.descendants.find(s => s.id === id) || (await apiFetch(`statuses/${id}`));
+                    detailContainer.innerHTML = '';
+                    if (data.ancestors.length > 0) {
+                        data.ancestors.forEach(s => detailContainer.appendChild(renderStatus(s)));
+                        detailContainer.innerHTML += '<hr>';
+                    }
+                    detailContainer.appendChild(renderStatus(mainStatus, true));
+                    if (data.descendants.length > 0) {
+                        detailContainer.innerHTML += '<h4>Replies</h4>';
+                        data.descendants.forEach(s => detailContainer.appendChild(renderStatus(s)));
                     }
                 } catch (error) {
-                    timelineDiv.innerHTML = '<p class="error">Could not load timeline.</p>';
-                } finally {
-                     loadingIndicator.classList.add('hidden');
+                    detailContainer.innerHTML = `<p class="error">Could not load post details. ${error.message}</p>`;
+                }
+            }
+            
+            async function showNotifications() {
+                const notificationsContainer = document.createElement('div');
+                notificationsContainer.innerHTML = '<h4>Notifications</h4><p>Loading...</p>';
+                showModal(notificationsContainer);
+                try {
+                    const notifications = await apiFetch('notifications');
+                    if (notifications.length === 0) {
+                        notificationsContainer.innerHTML = '<h4>Notifications</h4><p>You have no new notifications.</p>';
+                        return;
+                    }
+                    notificationsContainer.innerHTML = '<h4>Notifications</h4>';
+                    notifications.forEach(n => {
+                        const notifDiv = document.createElement('div');
+                        notifDiv.className = 'notification';
+                        let content = `<p><strong>${n.account.display_name}</strong> `;
+                        if (n.type === 'mention') content += `mentioned you.</p>`;
+                        else if (n.type === 'reblog') content += `boosted your post.</p>`;
+                        else if (n.type === 'favourite') content += `favorited your post.</p>`;
+                        else if (n.type === 'follow') content += `followed you.</p>`;
+                        else content += `${n.type}.</p>`;
+                        if (n.status) notifDiv.appendChild(renderStatus(n.status));
+                        notifDiv.insertAdjacentHTML('afterbegin', content);
+                        notificationsContainer.appendChild(notifDiv);
+                    });
+                } catch (error) {
+                    notificationsContainer.innerHTML = `<h4>Notifications</h4><p class="error">Could not load notifications. ${error.message}</p>`;
                 }
             }
 
+            // --- App Initialization & Event Listeners ---
             async function initializeApp() {
-                loginError.textContent = '';
                 try {
-                    const account = await apiFetch('accounts/verify_credentials');
-                    localStorage.setItem('piefed-instance', instanceUrl);
-                    localStorage.setItem('piefed-token', accessToken);
+                    currentUser = await apiFetch('accounts/verify_credentials');
+                    localStorage.setItem('fediverse-instance', instanceUrl);
+                    localStorage.setItem('fediverse-token', accessToken);
                     loginView.style.display = 'none';
                     appView.style.display = 'block';
-                    userDisplay.textContent = `Welcome, ${account.display_name}`;
+                    userDisplay.textContent = `${currentUser.display_name}`;
                     fetchTimeline('home');
                 } catch (error) {
                     loginError.textContent = 'Connection failed. Check URL and Token.';
@@ -213,10 +355,7 @@
             connectBtn.addEventListener('click', () => {
                 const url = instanceUrlInput.value.trim();
                 const token = accessTokenInput.value.trim();
-                if (!url || !token) {
-                    loginError.textContent = 'Please enter both URL and Access Token.';
-                    return;
-                }
+                if (!url || !token) { loginError.textContent = 'Please enter both URL and Access Token.'; return; }
                 connectBtn.disabled = true;
                 connectBtn.textContent = 'Connecting...';
                 instanceUrl = url.replace(/^(https?:\/\/)?/, '');
@@ -225,44 +364,29 @@
             });
 
             logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('piefed-instance');
-                localStorage.removeItem('piefed-token');
+                localStorage.clear();
                 window.location.reload();
             });
 
             homeBtn.addEventListener('click', () => fetchTimeline('home'));
             localBtn.addEventListener('click', () => fetchTimeline('public?local=true'));
             federatedBtn.addEventListener('click', () => fetchTimeline('public'));
+            notificationsBtn.addEventListener('click', showNotifications);
             
-            composeForm.addEventListener('submit', async (e) => {
+            composeForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const statusText = composeTextarea.value.trim();
-                if (!statusText) return;
-                postBtn.disabled = true;
-                try {
-                    await apiFetch('statuses', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: statusText })
-                    });
-                    composeTextarea.value = '';
-                    fetchTimeline('home');
-                } catch (error) {
-                    alert('Failed to post. Please try again.');
-                } finally {
-                    postBtn.disabled = false;
-                }
+                if (statusText) postStatus(statusText);
             });
 
-            const savedInstance = localStorage.getItem('piefed-instance');
-            const savedToken = localStorage.getItem('piefed-token');
+            const savedInstance = localStorage.getItem('fediverse-instance');
+            const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
                 instanceUrl = savedInstance;
                 accessToken = savedToken;
                 instanceUrlInput.value = instanceUrl;
                 accessTokenInput.value = savedToken;
                 connectBtn.disabled = true;
-                connectBtn.textContent = 'Connecting...';
                 initializeApp();
             }
         });
