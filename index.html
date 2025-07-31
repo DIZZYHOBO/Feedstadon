@@ -33,8 +33,15 @@
             flex-direction: column; 
             gap: 15px; 
         }
-        
-        /* Navigation & Dropdowns */
+        #login-view {
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
         .top-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
             border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
@@ -51,11 +58,9 @@
             background-color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 8px;
             min-width: 200px; z-index: 1; overflow: hidden;
         }
-        .nav-right .dropdown-content { right: 0; left: auto; } /* MODIFIED */
+        .nav-right .dropdown-content { right: 0; left: auto; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
         .dropdown.active .dropdown-content { display: block; }
-        
-        /* Main Content & Posts */
         #app-view { display: none; }
         #timeline { display: flex; flex-direction: column; gap: 15px; }
         .status { 
@@ -66,12 +71,15 @@
         }
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; }
-        /* MODIFIED: Centered but left-aligned text */
         .status-content-wrapper { display: flex; justify-content: center; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; text-align: left; max-width: 90%; }
-        /* MODIFIED: Centered media */
         .status-media { display: flex; justify-content: center; }
         .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-overlay.visible { display: flex; }
     </style>
 </head>
 <body>
@@ -81,7 +89,11 @@
 
     <div class="container">
         <div id="login-view">
-            </div>
+            <h2>Feedstadon</h2>
+            <input type="text" id="instance-url" placeholder="your-instance.social">
+            <input type="password" id="access-token" placeholder="Paste your access token">
+            <button id="connect-btn">Connect</button>
+        </div>
         <div id="app-view">
             <div id="timeline"></div>
         </div>
@@ -93,16 +105,45 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- All JS logic is the same as the previous correct version ---
-            // The only change is in the renderStatus function's innerHTML
-            
+            // --- DOM Elements ---
+            const loginView = document.getElementById('login-view');
+            const appView = document.getElementById('app-view');
+            const instanceUrlInput = document.getElementById('instance-url');
+            const accessTokenInput = document.getElementById('access-token');
+            const connectBtn = document.getElementById('connect-btn');
+            const timelineDiv = document.getElementById('timeline');
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+
+            // --- App State ---
+            let instanceUrl = '', accessToken = '', currentUser = null;
+
+            // --- API Helper & Modal ---
+            async function apiFetch(endpoint, options = {}) {
+                const url = `https://${instanceUrl}${endpoint}`;
+                const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
+                const response = await fetch(url, { ...options, headers });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            }
+            function showModal(contentNode) {
+                modalBody.innerHTML = '';
+                modalBody.appendChild(contentNode);
+                modal.classList.add('visible');
+            }
+            function hideModal() {
+                modal.classList.remove('visible');
+            }
+            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
+            // --- Rendering ---
             function renderStatus(status) {
                 const originalPost = status.reblog || status;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
 
                 let mediaHTML = '';
-                if(originalPost.media_attachments && originalPost.media_attachments.length > 0) {
+                if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
                     mediaHTML = originalPost.media_attachments.map(media => {
                         if (media.type === 'image') return `<a href="${media.url}" target="_blank" rel="noopener noreferrer"><img src="${media.preview_url}"></a>`;
                         if (media.type === 'video') return `<video src="${media.url}" controls></video>`;
@@ -115,7 +156,6 @@
                         <img src="${originalPost.account.avatar_static}">
                         <div>
                             <span class="display-name">${originalPost.account.display_name}</span>
-                            <span class="acct">@${originalPost.account.acct}</span>
                         </div>
                     </div>
                     <div class="status-content-wrapper">
@@ -126,8 +166,53 @@
                 return statusDiv;
             }
 
-            // --- All other functions (initializeApp, fetchTimeline, etc.) are restored here ---
-            // (Full JS omitted for brevity, but it is the complete version from the last correct response)
+            // --- Feature Functions ---
+            async function fetchTimeline(type) {
+                timelineDiv.innerHTML = '<p>Loading...</p>';
+                try {
+                    const statuses = await apiFetch(`/api/v1/timelines/${type}`);
+                    timelineDiv.innerHTML = '';
+                    statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
+                } catch (error) {
+                    timelineDiv.innerHTML = `<p>Could not load timeline.</p>`;
+                }
+            }
+            
+            async function initializeApp() {
+                try {
+                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
+                    loginView.style.display = 'none';
+                    appView.style.display = 'block';
+                    document.querySelector('.top-nav').style.display = 'flex'; // Make sure nav is visible
+                    fetchTimeline('home');
+                } catch (error) {
+                    alert('Connection failed. Please check URL and token.');
+                    localStorage.clear(); // Clear bad credentials
+                    window.location.reload();
+                }
+            }
+            
+            // --- Event Listeners ---
+            connectBtn.addEventListener('click', () => {
+                instanceUrl = instanceUrlInput.value.trim();
+                accessToken = accessTokenInput.value.trim();
+                if (instanceUrl && accessToken) {
+                    localStorage.setItem('fediverse-instance', instanceUrl);
+                    localStorage.setItem('fediverse-token', accessToken);
+                    initializeApp();
+                }
+            });
+
+            // --- Initial Page Load ---
+            const savedInstance = localStorage.getItem('fediverse-instance');
+            const savedToken = localStorage.getItem('fediverse-token');
+            if (savedInstance && savedToken) {
+                instanceUrlInput.value = savedInstance;
+                accessTokenInput.value = savedToken;
+                instanceUrl = savedInstance;
+                accessToken = savedToken;
+                initializeApp();
+            }
         });
     </script>
 </body>
