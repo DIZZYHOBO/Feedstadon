@@ -45,13 +45,6 @@
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; }
         .dropdown.active .dropdown-content { display: block; }
         
-        /* Search Bar */
-        .search-container { display: flex; align-items: center; }
-        #search-form { width: 0; opacity: 0; transition: width 0.4s ease, opacity 0.4s ease; overflow: hidden; }
-        #search-form.active { width: 200px; opacity: 1; }
-        #search-input { margin-bottom: 0; }
-        
-        /* Main Content & Posts */
         #app-view { display: none; }
         #timeline { display: flex; flex-direction: column; gap: 12px; }
         .status { background-color: var(--card-color); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
@@ -59,10 +52,9 @@
         .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
         .status-header .display-name { font-weight: bold; cursor: pointer; }
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-        .status-content a { color: var(--accent-color); text-decoration: none; }
+        .status-content a.hashtag { color: var(--accent-color); text-decoration: none; font-weight: bold; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
         
-        /* Modal, Profile, etc. */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: flex-start;
@@ -74,12 +66,11 @@
             max-height: 85vh; overflow-y: auto;
         }
         
-        /* NEW: Hashtag Autocomplete Styles */
         #autocomplete-container { position: relative; }
         #autocomplete-list {
             display: none;
             position: absolute;
-            bottom: 100%; /* Position it above the compose box */
+            bottom: 100%;
             left: 0;
             width: calc(100% - 20px);
             background-color: var(--primary-color);
@@ -98,11 +89,38 @@
 <body>
 
     <nav class="top-nav">
-        </nav>
+        <div class="nav-left">
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home">Subscribed</a>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                </div>
+            </div>
+        </div>
+        <div class="nav-right">
+             <form id="search-form" style="margin-bottom: 0;">
+                <input type="search" id="search-input" placeholder="Search Mastodon...">
+            </form>
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn"></button>
+                <div class="dropdown-content">
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="logout-btn">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
     <div class="container">
         <div id="login-view">
-            </div>
+            <h2>Connect to your Instance</h2>
+            <input type="text" id="instance-url" placeholder="your-instance.social">
+            <input type="password" id="access-token" placeholder="Paste your token here">
+            <button id="connect-btn">Connect</button>
+            <p id="login-error" class="error"></p>
+        </div>
         <div id="app-view">
             <div id="compose-view">
                 <form id="compose-form">
@@ -130,15 +148,26 @@
             // --- DOM Elements ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
+            const instanceUrlInput = document.getElementById('instance-url');
+            const accessTokenInput = document.getElementById('access-token');
+            const connectBtn = document.getElementById('connect-btn');
+            const loginError = document.getElementById('login-error');
+            const userDisplayBtn = document.getElementById('user-display-btn');
+            const logoutBtn = document.getElementById('logout-btn');
             const timelineDiv = document.getElementById('timeline');
             const modal = document.getElementById('modal');
             const modalBody = document.getElementById('modal-body');
+            const feedsDropdown = document.getElementById('feeds-dropdown');
+            const userDropdown = document.getElementById('user-dropdown');
+            const profileLink = document.getElementById('profile-link');
+            const searchForm = document.getElementById('search-form');
+            const searchInput = document.getElementById('search-input');
             const composeForm = document.getElementById('compose-form');
             const composeTextarea = document.getElementById('compose-textarea');
             const trendingTagsBtn = document.getElementById('trending-tags-btn');
             const autocompleteList = document.getElementById('autocomplete-list');
-            
-            // Other element selectors as before...
+
+            // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
 
             // --- API Helper & Modal ---
@@ -149,16 +178,21 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             }
-            function showModal(contentNode) { /* ... */ }
-            function hideModal() { /* ... */ }
+            function showModal(contentNode) {
+                modalBody.innerHTML = '';
+                modalBody.appendChild(contentNode);
+                modal.classList.add('visible');
+            }
+            function hideModal() {
+                modal.classList.remove('visible');
+            }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- MODIFIED: renderStatus now makes hashtags clickable ---
+            // --- Rendering Functions ---
             function renderStatus(status) {
                 const originalPost = status.reblog || status;
                 const isReblog = !!status.reblog;
                 
-                // Regex to find hashtags and wrap them
                 let content = originalPost.content.replace(/#(\w+)/g, `<a href="#" class="hashtag">#$1</a>`);
 
                 const statusDiv = document.createElement('div');
@@ -175,24 +209,22 @@
                     <div class="status-content">${content}</div>
                 `;
                 
-                // Add click listeners to the new hashtag links
                 statusDiv.querySelectorAll('.hashtag').forEach(tagEl => {
                     tagEl.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        const tagName = e.target.textContent.substring(1); // Remove #
+                        const tagName = e.target.textContent.substring(1);
                         showHashtagFeed(tagName);
                     });
                 });
                 
-                // Other listeners for profile, etc.
                 statusDiv.querySelector('img').onclick = () => showProfile(originalPost.account.id);
                 statusDiv.querySelector('.display-name').onclick = () => showProfile(originalPost.account.id);
 
                 return statusDiv;
             }
 
-            // --- NEW: Hashtag Feed & Autocomplete Logic ---
+            // --- Feature Functions ---
             async function showHashtagFeed(tagName) {
                 const container = document.createElement('div');
                 container.innerHTML = `<h2>#${tagName}</h2><p>Loading...</p>`;
@@ -206,7 +238,7 @@
                     } else {
                         postsContainer.innerHTML = '<p>No posts found for this hashtag.</p>';
                     }
-                    container.querySelector('p').remove(); // remove loading
+                    container.querySelector('p').remove();
                     container.appendChild(postsContainer);
                 } catch(error) { container.innerHTML = `<p class="error">Could not load hashtag feed.</p>`; }
             }
@@ -233,17 +265,90 @@
                 }
             }
 
-            // Hide autocomplete when clicking away
+            async function fetchTimeline(type) {
+                timelineDiv.innerHTML = '<p>Loading...</p>';
+                try {
+                    const statuses = await apiFetch(`/api/v1/timelines/${type}`);
+                    timelineDiv.innerHTML = '';
+                    statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
+                } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
+            }
+            
+            async function showProfile(accountId) {
+                const container = document.createElement('div');
+                showModal(container);
+                container.innerHTML = `<p>Loading profile...</p>`;
+                try {
+                    const [account, statuses] = await Promise.all([
+                        apiFetch(`/api/v1/accounts/${accountId}`),
+                        apiFetch(`/api/v1/accounts/${accountId}/statuses?limit=20`)
+                    ]);
+                    container.innerHTML = `<div class="profile-header"><div class="profile-info"><img src="${account.avatar_static}"><div><h2>${account.display_name}</h2><p>@${account.acct}</p></div></div></div><div class="profile-bio">${account.note}</div><hr><h4>Posts</h4>`;
+                    const postsContainer = document.createElement('div');
+                    postsContainer.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
+                    statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
+                    container.appendChild(postsContainer);
+                } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
+            }
+            
+            async function performSearch(query) {
+                const container = document.createElement('div');
+                showModal(container);
+                container.innerHTML = `<p>Searching...</p>`;
+                try {
+                    const results = await apiFetch(`/api/v2/search?q=${encodeURIComponent(query)}&resolve=true`);
+                    container.innerHTML = `<h4>Search Results for "${query}"</h4>`;
+                    if (results.accounts.length === 0) container.innerHTML += '<p>No accounts found.</p>';
+                    results.accounts.forEach(acc => {
+                        const accDiv = document.createElement('div');
+                        accDiv.innerHTML = `<p><strong>${acc.display_name}</strong> @${acc.acct}</p>`;
+                        accDiv.style.cursor = 'pointer';
+                        accDiv.onclick = () => showProfile(acc.id);
+                        container.appendChild(accDiv);
+                    });
+                } catch(error) { container.innerHTML = `<p class="error">Search failed.</p>`; }
+            }
+
+            async function initializeApp() {
+                try {
+                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
+                    loginView.style.display = 'none';
+                    appView.style.display = 'block';
+                    document.querySelector('.top-nav').style.display = 'flex';
+                    userDisplayBtn.textContent = currentUser.display_name;
+                    fetchTimeline('home');
+                } catch (error) {
+                    loginError.textContent = 'Connection failed. Check URL and Token.';
+                    localStorage.clear();
+                }
+            }
+            
+            // --- Event Listeners ---
             document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
+                }
                 if (!e.target.closest('#autocomplete-container') && !e.target.closest('#trending-tags-btn')) {
                     autocompleteList.classList.remove('visible');
                 }
             });
 
-            // --- Other Feature Functions (fetchTimeline, showProfile, etc.) as before ---
+            [feedsDropdown, userDropdown].forEach(dd => {
+                dd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                    dd.classList.toggle('active');
+                });
+            });
+
+            feedsDropdown.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', (e) => fetchTimeline(e.target.dataset.timeline));
+            });
+
+            profileLink.addEventListener('click', () => showProfile(currentUser.id));
+            logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
+            searchForm.addEventListener('submit', (e) => { e.preventDefault(); if(searchInput.value) performSearch(searchInput.value.trim()); });
             
-            // --- App Initialization & Event Listeners ---
-            async function initializeApp() { /* as before */ }
             trendingTagsBtn.addEventListener('click', showTrendingTags);
             composeForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -258,29 +363,28 @@
                     fetchTimeline('home');
                 } catch (error) { alert('Failed to post.'); }
             });
-            // Rest of the event listeners and init logic...
-            
-            // Dummy functions and logic for brevity
-            function showProfile(id) { alert(`Showing profile for ID ${id}`); }
-            async function fetchTimeline(type) {
-                timelineDiv.innerHTML = `<p>Loading ${type} timeline...</p>`;
-            }
-            // A simplified init for demonstration
-            const loginForm = document.getElementById('login-view');
-            const topNav = document.querySelector('.top-nav');
-            function initializeApp() {
-                loginForm.style.display = 'none';
-                appView.style.display = 'block';
-                topNav.style.display = 'flex';
-                fetchTimeline('home');
-            }
-            // Check for saved login to bypass
-            if(false) { // replace with actual localStorage check
+
+            connectBtn.addEventListener('click', () => {
+                instanceUrl = instanceUrlInput.value.trim().replace(/^(https?:\/\/)?/, '');
+                accessToken = accessTokenInput.value.trim();
+                if (instanceUrl && accessToken) {
+                     localStorage.setItem('fediverse-instance', instanceUrl);
+                     localStorage.setItem('fediverse-token', accessToken);
+                     initializeApp();
+                }
+            });
+
+            // --- Initial Page Load ---
+            const savedInstance = localStorage.getItem('fediverse-instance');
+            const savedToken = localStorage.getItem('fediverse-token');
+            if (savedInstance && savedToken) {
+                instanceUrl = savedInstance;
+                accessToken = savedToken;
                 initializeApp();
             } else {
-                topNav.style.display = 'none';
+                document.querySelector('.top-nav').style.display = 'none';
                 appView.style.display = 'none';
-                loginForm.style.display = 'block';
+                loginView.style.display = 'block';
             }
         });
     </script>
