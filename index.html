@@ -6,6 +6,7 @@
     <title>Fediverse Client</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
         :root {
             --bg-color: #161617;
             --card-color: #1D1E1F;
@@ -39,8 +40,12 @@
         }
         .nav-left, .nav-right { display: flex; align-items: center; gap: 10px; }
         .nav-button {
-            background: none; border: none; color: var(--font-color); padding: 8px 12px;
-            font-weight: bold; cursor: pointer; font-size: 1.5em; display: flex; align-items: center;
+            background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
+            border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap;
+        }
+        .icon-button {
+            font-size: 1.5em;
+            border: none;
         }
         .dropdown { position: relative; }
         .dropdown-content {
@@ -77,6 +82,15 @@
             display: none; justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-overlay.visible { display: flex; }
+        textarea {
+            font-family: 'Inter', sans-serif; width: 100%; padding: 10px; border-radius: 8px;
+            border: 1px solid var(--border-color); background-color: var(--primary-color); color: var(--font-color);
+            box-sizing: border-box; min-height: 120px; margin-bottom: 10px;
+        }
+        button {
+             background-color: var(--accent-color); color: white; border: none;
+             border-radius: 18px; font-weight: bold; cursor: pointer; padding: 10px 15px;
+        }
     </style>
 </head>
 <body>
@@ -84,21 +98,22 @@
     <nav class="top-nav">
         <div class="nav-left">
             <div class="dropdown" id="feeds-dropdown">
-                <button class="nav-button" style="font-size: 1rem; border: 1px solid var(--border-color); border-radius: 20px;">Feeds</button>
+                <button class="nav-button">Feeds</button>
                 <div class="dropdown-content">
                     <a href="#" data-timeline="home">Subscribed</a>
                     <a href="#" data-timeline="public?local=true">Local</a>
                     <a href="#" data-timeline="public">All</a>
                 </div>
             </div>
+            <button class="nav-button" id="nav-post-btn">Post</button>
         </div>
         <div class="nav-right">
             <div class="dropdown" id="notifications-dropdown">
-                <button class="nav-button">🔔</button>
+                <button class="nav-button icon-button">🔔</button>
                 <div class="dropdown-content" id="notifications-list"></div>
             </div>
             <div class="dropdown" id="user-dropdown">
-                <button class="nav-button" id="user-display-btn" style="font-size: 1rem; border: 1px solid var(--border-color); border-radius: 20px;"></button>
+                <button class="nav-button" id="user-display-btn"></button>
                 <div class="dropdown-content">
                     <a href="#" id="profile-link">Profile</a>
                     <a href="#" id="logout-btn">Logout</a>
@@ -110,8 +125,8 @@
     <div class="container">
         <div id="login-view">
             <h2>Connect to your Instance</h2>
-            <input type="text" id="instance-url" placeholder="your-instance.social" style="border-radius: 8px; min-height: 30px;">
-            <input type="password" id="access-token" placeholder="Paste your token here" style="border-radius: 8px; min-height: 30px;">
+            <input type="text" id="instance-url" placeholder="your-instance.social" style="border-radius: 8px; min-height: 30px; margin-bottom: 10px;">
+            <input type="password" id="access-token" placeholder="Paste your token here" style="border-radius: 8px; min-height: 30px; margin-bottom: 10px;">
             <button id="connect-btn" style="width: 100%; margin-top: 10px;">Connect</button>
             <p id="login-error" style="color: var(--accent-color); text-align: center;"></p>
         </div>
@@ -123,6 +138,16 @@
     <div id="modal" class="modal-overlay">
         <div class="modal-content" id="modal-body"></div>
     </div>
+
+    <template id="compose-template">
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea placeholder="What's on your mind?"></textarea>
+            <div style="text-align: right;">
+                <button type="submit">Post</button>
+            </div>
+        </form>
+    </template>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -140,9 +165,11 @@
             const notificationsDropdown = document.getElementById('notifications-dropdown');
             const notificationsList = document.getElementById('notifications-list');
             const userDropdown = document.getElementById('user-dropdown');
-            const feedsDropdown = document.getElementById('feeds-dropdown'); // RESTORED
+            const feedsDropdown = document.getElementById('feeds-dropdown');
             const logoutBtn = document.getElementById('logout-btn');
             const profileLink = document.getElementById('profile-link');
+            const navPostBtn = document.getElementById('nav-post-btn');
+            const composeTemplate = document.getElementById('compose-template');
             
             // --- App State & Icons ---
             let instanceUrl = '', accessToken = '', currentUser = null;
@@ -187,7 +214,7 @@
                 return statusDiv;
             }
 
-            // --- All other feature functions are restored here ---
+            // --- Feature Functions ---
             async function toggleCommentThread(status, statusElement, startOpen = false) { /* as before */ }
             async function fetchNotifications() { /* as before */ }
             function showNotificationDetail(status) { /* as before */ }
@@ -200,7 +227,26 @@
                 } catch (error) { timelineDiv.innerHTML = `<p>Could not load timeline.</p>`; }
             }
             
-            // --- CORRECTED: initializeApp now shows an error message ---
+            function showComposeModal() {
+                const composeContent = composeTemplate.content.cloneNode(true);
+                const form = composeContent.querySelector('form');
+                const textarea = composeContent.querySelector('textarea');
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    if (!textarea.value.trim()) return;
+                    try {
+                        await apiFetch('/api/v1/statuses', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ status: textarea.value })
+                        });
+                        hideModal();
+                        fetchTimeline('home');
+                    } catch(err) { alert('Failed to post.'); }
+                };
+                showModal(composeContent);
+                textarea.focus();
+            }
+
             async function initializeApp() {
                 try {
                     currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
@@ -214,7 +260,7 @@
                 }
             }
             
-            // --- Event Listeners RESTORED ---
+            // --- Event Listeners ---
             window.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
@@ -232,19 +278,18 @@
                     });
                 }
             });
-            
             feedsDropdown.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     fetchTimeline(e.target.dataset.timeline);
                 });
             });
-
+            navPostBtn.addEventListener('click', showComposeModal);
             logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
-            profileLink.addEventListener('click', (e) => { e.preventDefault(); /* showProfile(currentUser.id); */ alert('Profile view coming soon!'); });
+            profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view coming soon!'); });
 
             connectBtn.addEventListener('click', () => {
-                loginError.textContent = ''; // Clear previous errors
+                loginError.textContent = '';
                 instanceUrl = instanceUrlInput.value.trim();
                 accessToken = accessTokenInput.value.trim();
                 if (instanceUrl && accessToken) {
