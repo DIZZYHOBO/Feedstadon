@@ -24,7 +24,7 @@
         }
         .container { max-width: 700px; margin: 0 auto; padding: 20px 10px; display: flex; flex-direction: column; gap: 15px; }
         
-        /* Styles as before */
+        /* Styles as before... */
         .top-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
             border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
@@ -54,7 +54,23 @@
         .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
         .status-content a, .profile-bio a { color: var(--accent-color); text-decoration: none; }
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; align-items: center; font-weight: bold; }
+        .status-action { cursor: pointer; }
         .reblog-info { font-size: 0.8em; color: #818384; margin-bottom: 8px; font-weight: bold; }
+        .comment-thread {
+            max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; padding-left: 15px;
+            margin-top: 10px; border-left: 2px solid var(--border-color);
+        }
+        .comment-thread.visible { max-height: 1500px; }
+        .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
+        textarea {
+            font-family: 'Inter', sans-serif; width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px;
+            border: 1px solid var(--border-color); background-color: var(--primary-color); color: var(--font-color);
+            box-sizing: border-box; min-height: 80px;
+        }
+        button {
+            padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
+            color: white; font-weight: bold; cursor: pointer;
+        }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: flex-start;
@@ -117,7 +133,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements and State as before ---
+            // --- DOM Elements and State ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -151,9 +167,9 @@
             function hideModal() { /* as before */ modal.classList.remove('visible'); }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- MODIFIED: renderStatus now handles reblogs for Lemmy posts ---
+            // --- CORRECTED: renderStatus now includes reblog logic AND the comment button ---
             function renderStatus(status) {
-                const originalPost = status.reblog || status; // Use the reblog object if it exists, otherwise use the status itself.
+                const originalPost = status.reblog || status;
                 const isReblog = !!status.reblog;
 
                 const statusDiv = document.createElement('div');
@@ -168,10 +184,57 @@
                         </div>
                     </div>
                     <div class="status-content">${originalPost.content}</div>
+                    <div class="status-footer">
+                        <span class="status-action reply" title="Reply">💬 ${originalPost.replies_count}</span>
+                    </div>
                 `;
+
                 statusDiv.querySelector('img').onclick = () => showProfile(originalPost.account.id);
                 statusDiv.querySelector('.display-name').onclick = () => showProfile(originalPost.account.id);
+                
+                statusDiv.querySelector('.reply').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleCommentThread(originalPost, statusDiv);
+                });
                 return statusDiv;
+            }
+            
+            async function toggleCommentThread(status, statusElement) {
+                const existingThread = statusElement.querySelector('.comment-thread');
+                if (existingThread) {
+                    existingThread.remove();
+                    return;
+                }
+                const threadContainer = document.createElement('div');
+                threadContainer.className = 'comment-thread';
+                threadContainer.innerHTML = `<p>Loading replies...</p>`;
+                statusElement.appendChild(threadContainer);
+                requestAnimationFrame(() => threadContainer.classList.add('visible'));
+                
+                try {
+                    const context = await apiFetch(`/api/v1/statuses/${status.id}/context`);
+                    threadContainer.innerHTML = '';
+                    if (context.descendants && context.descendants.length > 0) {
+                        context.descendants.forEach(reply => threadContainer.appendChild(renderStatus(reply)));
+                    } else {
+                        threadContainer.innerHTML = '<p>No replies yet.</p>';
+                    }
+                     // Add the main reply form
+                    const replyForm = document.createElement('div');
+                    replyForm.className = 'comment-reply-form';
+                    replyForm.innerHTML = `<textarea placeholder="Write a comment..."></textarea><button>Comment</button>`;
+                    const textarea = replyForm.querySelector('textarea');
+                    textarea.value = `@${status.account.acct} `; // Pre-fill with post author
+                    replyForm.querySelector('button').onclick = async () => {
+                        if (!textarea.value) return;
+                        await apiFetch('/api/v1/statuses', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: textarea.value, in_reply_to_id: status.id })
+                        });
+                        toggleCommentThread(status, statusElement); // Refresh thread
+                    };
+                    threadContainer.appendChild(replyForm);
+                } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
             }
 
             async function fetchTimeline(type) { /* as before */ 
