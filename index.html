@@ -43,11 +43,11 @@
             min-width: 200px; z-index: 1; overflow: hidden;
         }
         .nav-right .dropdown-content { left: auto; right: 0; }
-        .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; }
+        .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
         .dropdown.active .dropdown-content { display: block; }
         .notification-item { font-size: 0.9em; cursor: pointer; }
         
-        /* MODIFIED: Large Card Layout */
+        /* Main Content & Posts */
         #app-view { display: none; }
         #timeline { display: flex; flex-direction: column; gap: 15px; }
         .status { 
@@ -73,8 +73,14 @@
         }
         .comment-thread.visible { max-height: 1500px; }
         .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
-        textarea { /* Textarea styles */ }
-        button { /* Button styles */ }
+        textarea {
+            font-family: 'Inter', sans-serif; flex-grow: 1; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--primary-color); color: var(--font-color); padding: 10px;
+        }
+        button {
+             background-color: var(--accent-color); color: white; border: none;
+             border-radius: 18px; font-weight: bold; cursor: pointer; padding: 10px 15px;
+        }
         
         /* Modal */
         .modal-overlay {
@@ -93,17 +99,16 @@
     <nav class="top-nav">
         <div class="nav-left">
              <form id="search-form" style="margin-bottom: 0;">
-                <input type="search" id="search-input" placeholder="Search...">
+                <input type="search" id="search-input" placeholder="Search..." style="border-radius: 20px; padding: 8px 12px;">
             </form>
         </div>
         <div class="nav-right">
             <div class="dropdown" id="notifications-dropdown">
                 <button class="nav-button">🔔</button>
-                <div class="dropdown-content" id="notifications-list">
-                    </div>
+                <div class="dropdown-content" id="notifications-list"></div>
             </div>
             <div class="dropdown" id="user-dropdown">
-                <button class="nav-button" id="user-display-btn"></button>
+                <button class="nav-button" id="user-display-btn" style="font-size: 1rem; border: 1px solid var(--border-color);"></button>
                 <div class="dropdown-content">
                     <a href="#" id="profile-link">Profile</a>
                     <a href="#" id="logout-btn">Logout</a>
@@ -114,7 +119,7 @@
 
     <div class="container">
         <div id="login-view">
-             <h2>Connect to your Instance</h2>
+            <h2>Connect to your Instance</h2>
             <input type="text" id="instance-url" placeholder="your-instance.social">
             <input type="password" id="access-token" placeholder="Paste your token here">
             <button id="connect-btn">Connect</button>
@@ -142,6 +147,9 @@
             const modalBody = document.getElementById('modal-body');
             const notificationsDropdown = document.getElementById('notifications-dropdown');
             const notificationsList = document.getElementById('notifications-list');
+            const userDropdown = document.getElementById('user-dropdown');
+            const logoutBtn = document.getElementById('logout-btn');
+            const profileLink = document.getElementById('profile-link');
             
             // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
@@ -152,18 +160,18 @@
                 const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
                 const response = await fetch(url, { ...options, headers });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return response.json();
+                return options.method === 'DELETE' || options.method === 'POST' ? response.json() : response.json();
             }
             function showModal(contentNode) { modalBody.innerHTML = ''; modalBody.appendChild(contentNode); modal.classList.add('visible'); }
             function hideModal() { modal.classList.remove('visible'); }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- RESTORED: Full renderStatus with all features ---
+            // --- Rendering Functions ---
             function renderStatus(status) {
                 const originalPost = status.reblog || status;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
-                statusDiv.dataset.id = originalPost.id; // Use original post ID
+                statusDiv.dataset.id = originalPost.id;
 
                 statusDiv.innerHTML = `
                     <div class="status-header">
@@ -181,37 +189,26 @@
                         <span class="status-action bookmark ${originalPost.bookmarked ? 'active' : ''}" title="Bookmark">🔖</span>
                     </div>
                 `;
-
-                // Add all action listeners
                 statusDiv.querySelector('.reply').onclick = (e) => { e.stopPropagation(); toggleCommentThread(originalPost, statusDiv); };
-                // ... (listeners for boost, favorite, bookmark would go here)
-                
+                // Add other action listeners here if needed...
                 return statusDiv;
             }
 
-            // --- RESTORED: Comment Thread Logic ---
             async function toggleCommentThread(status, statusElement, startOpen = false) {
                 const existingThread = statusElement.querySelector('.comment-thread');
-                if (existingThread && !startOpen) {
-                    existingThread.remove();
-                    return;
-                }
-                if(existingThread && startOpen) return;
+                if (existingThread && !startOpen) { existingThread.remove(); return; }
+                if (existingThread && startOpen) return;
 
                 const threadContainer = document.createElement('div');
                 threadContainer.className = 'comment-thread';
-                threadContainer.innerHTML = `<p>Loading replies...</p>`;
                 statusElement.appendChild(threadContainer);
                 
-                if(startOpen) {
-                    threadContainer.classList.add('visible');
-                } else {
-                    requestAnimationFrame(() => threadContainer.classList.add('visible'));
-                }
+                if (startOpen) threadContainer.classList.add('visible');
+                else requestAnimationFrame(() => threadContainer.classList.add('visible'));
                 
                 try {
                     const context = await apiFetch(`/api/v1/statuses/${status.id}/context`);
-                    threadContainer.innerHTML = ''; // Clear loading
+                    threadContainer.innerHTML = '';
                     if (context.descendants && context.descendants.length > 0) {
                         context.descendants.forEach(reply => threadContainer.appendChild(renderStatus(reply)));
                     }
@@ -220,11 +217,14 @@
                     replyForm.innerHTML = `<textarea placeholder="Write a comment..."></textarea><button>Reply</button>`;
                     const textarea = replyForm.querySelector('textarea');
                     textarea.value = `@${status.account.acct} `;
+                    replyForm.querySelector('button').onclick = async () => {
+                        // Reply logic here...
+                    };
                     threadContainer.appendChild(replyForm);
-                } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
+                } catch (error) { threadContainer.innerHTML = `<p>Could not load replies.</p>`; }
             }
 
-            // --- RESTORED: Notification Feature ---
+            // --- Feature Functions ---
             async function fetchNotifications() {
                 try {
                     const notifications = await apiFetch('/api/v1/notifications?limit=5');
@@ -237,12 +237,12 @@
                         const notifLink = document.createElement('a');
                         notifLink.href = '#';
                         notifLink.className = 'notification-item';
-                        let text = '';
+                        let text = n.type;
                         if (n.type === 'mention') text = `mentioned you`;
                         else if (n.type === 'reblog') text = `boosted your post`;
                         else if (n.type === 'favourite') text = `favorited your post`;
                         else if (n.type === 'follow') text = `followed you`;
-                        else return; // Skip other types
+                        else return;
 
                         notifLink.innerHTML = `<strong>${n.account.display_name}</strong> ${text}`;
 
@@ -255,17 +255,14 @@
                         }
                         notificationsList.appendChild(notifLink);
                     });
-                } catch (error) {
-                    notificationsList.innerHTML = '<a href="#">Error loading</a>';
-                }
+                } catch (error) { notificationsList.innerHTML = '<a href="#">Error loading</a>'; }
             }
-            
+
             function showNotificationDetail(status) {
                 const container = document.createElement('div');
                 const statusEl = renderStatus(status);
                 container.appendChild(statusEl);
                 showModal(container);
-                // Automatically open the comment thread
                 toggleCommentThread(status, statusEl, true);
             }
 
@@ -275,7 +272,7 @@
                     const statuses = await apiFetch(`/api/v1/timelines/${type}`);
                     timelineDiv.innerHTML = '';
                     statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
-                } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
+                } catch (error) { timelineDiv.innerHTML = `<p>Could not load timeline.</p>`; }
             }
             
             async function initializeApp() {
@@ -285,22 +282,40 @@
                     appView.style.display = 'block';
                     userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
-                    fetchNotifications(); // Fetch notifications on login
-                } catch (error) { /* Handle error */ }
+                } catch (error) {
+                    localStorage.clear();
+                    window.location.reload();
+                }
             }
             
             // --- Event Listeners ---
-            notificationsDropdown.addEventListener('click', (e) => {
-                e.stopPropagation();
-                userDropdown.classList.remove('active');
-                notificationsDropdown.classList.toggle('active');
-                if (notificationsDropdown.classList.contains('active')) {
-                    fetchNotifications();
+            window.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
                 }
             });
+            [notificationsDropdown, userDropdown].forEach(dd => {
+                dd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                    dd.classList.toggle('active');
+                    if(dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                        fetchNotifications();
+                    }
+                });
+            });
             
-            // Other listeners for dropdowns, login, etc.
-            
+            logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
+            connectBtn.addEventListener('click', () => {
+                instanceUrl = instanceUrlInput.value.trim();
+                accessToken = accessTokenInput.value.trim();
+                if (instanceUrl && accessToken) {
+                    localStorage.setItem('fediverse-instance', instanceUrl);
+                    localStorage.setItem('fediverse-token', accessToken);
+                    initializeApp();
+                }
+            });
+
             // --- Initial Page Load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
