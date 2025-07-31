@@ -6,7 +6,6 @@
     <title>Feedstadon</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
         :root {
             --bg-color: #161617;
             --card-color: #1D1E1F;
@@ -15,6 +14,7 @@
             --font-color: #DEDEDE;
             --font-color-muted: #8E8F90;
             --border-color: #333435;
+            --link-color: #88C0D0;
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -52,6 +52,7 @@
             background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
             border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap;
         }
+        .icon-button { border: none; font-size: 1.5em; }
         .dropdown { position: relative; }
         .dropdown-content {
             display: none; position: absolute; top: 100%;
@@ -85,7 +86,26 @@
 <body>
 
     <nav class="top-nav">
-        </nav>
+        <div class="nav-left">
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home">Subscribed</a>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                </div>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn"></button>
+                <div class="dropdown-content">
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="logout-btn">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
     <div class="container">
         <div id="login-view">
@@ -111,10 +131,15 @@
             const instanceUrlInput = document.getElementById('instance-url');
             const accessTokenInput = document.getElementById('access-token');
             const connectBtn = document.getElementById('connect-btn');
+            const userDisplayBtn = document.getElementById('user-display-btn');
             const timelineDiv = document.getElementById('timeline');
             const modal = document.getElementById('modal');
             const modalBody = document.getElementById('modal-body');
-
+            const userDropdown = document.getElementById('user-dropdown');
+            const feedsDropdown = document.getElementById('feeds-dropdown');
+            const logoutBtn = document.getElementById('logout-btn');
+            const profileLink = document.getElementById('profile-link');
+            
             // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
 
@@ -183,11 +208,12 @@
                     currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
                     loginView.style.display = 'none';
                     appView.style.display = 'block';
-                    document.querySelector('.top-nav').style.display = 'flex'; // Make sure nav is visible
+                    document.querySelector('.top-nav').style.display = 'flex';
+                    userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
                 } catch (error) {
                     alert('Connection failed. Please check URL and token.');
-                    localStorage.clear(); // Clear bad credentials
+                    localStorage.clear();
                     window.location.reload();
                 }
             }
@@ -202,6 +228,27 @@
                     initializeApp();
                 }
             });
+            
+            window.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
+                }
+            });
+            [userDropdown, feedsDropdown].forEach(dd => {
+                dd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                    dd.classList.toggle('active');
+                });
+            });
+            feedsDropdown.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    fetchTimeline(e.target.dataset.timeline);
+                });
+            });
+            logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
+            profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view coming soon!'); });
 
             // --- Initial Page Load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
@@ -212,6 +259,8 @@
                 instanceUrl = savedInstance;
                 accessToken = savedToken;
                 initializeApp();
+            } else {
+                 document.querySelector('.top-nav').style.display = 'none';
             }
         });
     </script>
