@@ -172,7 +172,7 @@
                 statusDiv.className = 'status';
                 statusDiv.innerHTML = `
                     <div class="status-header">
-                        <img src="${status.account.avatar}" alt="${status.account.display_name} avatar">
+                        <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar">
                         <div>
                             <div class="display-name">${status.account.display_name}</div>
                             <div class="acct">@${status.account.acct}</div>
@@ -216,11 +216,15 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             client_name: appName,
+                            // CORRECTED: The API expects 'redirect_uris', a space-separated string.
                             redirect_uris: redirectUri,
                             scopes: scopes
                         })
                     });
-                    if (!appRegResponse.ok) throw new Error('Failed to register app with instance.');
+                    if (!appRegResponse.ok) {
+                        const errorData = await appRegResponse.text();
+                        throw new Error(`Failed to register app. Server says: ${errorData}`);
+                    }
                     
                     const appData = await appRegResponse.json();
                     clientId = appData.client_id;
@@ -235,7 +239,7 @@
                     window.location.href = authUrl;
 
                 } catch (error) {
-                    loginError.textContent = `Error: ${error.message}`;
+                    loginError.textContent = `Error: ${error.message}. This is likely a CORS issue. Please host this file on a web server.`;
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Login';
                 }
@@ -326,33 +330,3 @@
                     });
                     composeTextarea.value = '';
                     fetchTimeline('home');
-                } catch (error) {
-                    alert(`Failed to post: ${error.message}`);
-                } finally {
-                    postBtn.disabled = false;
-                }
-            });
-
-            // --- Main logic on page load ---
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
-            const storedToken = localStorage.getItem('piefed_access_token');
-            const storedInstance = localStorage.getItem('piefed_instance_url');
-            
-            if (authCode) {
-                // We are returning from the OAuth server
-                handleOAuthCallback(authCode);
-            } else if (storedToken && storedInstance) {
-                // We have a token, let's try to log in
-                accessToken = storedToken;
-                instanceUrl = storedInstance;
-                initializeApp();
-            } else {
-                // We need to show the login form
-                loginView.style.display = 'block';
-                appView.style.display = 'none';
-            }
-        });
-    </script>
-</body>
-</html>
