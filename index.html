@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedstadon</title>
+    <title>Fediverse Client</title>
     <style>
         :root {
             --bg-color: #1a1a2e;
@@ -168,9 +168,11 @@
             function hideModal() {
                 modal.classList.add('hidden');
             }
-            modalClose.addEventListener('click', hideModal);
+            // CORRECTED: A more robust way to handle closing the modal
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) hideModal();
+                if (e.target === modal || e.target.classList.contains('modal-close')) {
+                    hideModal();
+                }
             });
 
             // --- Rendering Functions ---
@@ -200,7 +202,7 @@
                 // --- Add Event Listeners for actions ---
                 if (!isDetailed) {
                     statusDiv.addEventListener('click', (e) => {
-                        if (!e.target.classList.contains('status-action')) {
+                        if (!e.target.closest('.status-action')) {
                             showStatusDetail(status.id);
                         }
                     });
@@ -290,6 +292,7 @@
                 showModal(detailContainer);
                 try {
                     const data = await apiFetch(`statuses/${id}/context`);
+                    // The main status might not be in the descendants, so fetch it separately if needed
                     const mainStatus = data.descendants.find(s => s.id === id) || (await apiFetch(`statuses/${id}`));
                     detailContainer.innerHTML = '';
                     if (data.ancestors.length > 0) {
