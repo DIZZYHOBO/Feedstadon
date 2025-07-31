@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fediverse Client</title>
     <style>
-        /* NEW: Import the Inter font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
         :root {
@@ -17,36 +16,24 @@
             --border-color: #343536;
         }
         body {
-            /* NEW: Apply the Inter font and improve base styling */
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--font-color);
             margin: 0;
             padding-top: 50px;
         }
-        .container { max-width: 700px; margin: 0 auto; padding: 10px; }
+        .container { max-width: 700px; margin: 0 auto; padding: 20px 10px; display: flex; flex-direction: column; gap: 15px; }
         
-        /* Top Navigation Bar */
         .top-nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 50px;
-            background-color: var(--card-color);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-            z-index: 2000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
+            border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
+            align-items: center; padding: 0 10px; z-index: 2000;
         }
         .nav-left, .nav-right { display: flex; align-items: center; gap: 10px; }
         .nav-button {
             background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
             border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap;
         }
-        .nav-button:hover { background-color: var(--primary-color); }
         .dropdown { position: relative; }
         .dropdown-content {
             display: none; position: absolute; top: 100%; left: 0; margin-top: 10px;
@@ -55,81 +42,32 @@
         }
         .nav-right .dropdown-content { left: auto; right: 0; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; }
-        .dropdown-content a:hover { background-color: var(--accent-color); }
         .dropdown.active .dropdown-content { display: block; }
         
-        /* Main Content & Posts */
         #app-view { display: none; }
-        #timeline { display: flex; flex-direction: column; gap: 10px; }
-        .status {
-            background-color: var(--card-color); padding: 12px; border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
+        #timeline { display: flex; flex-direction: column; gap: 12px; }
+        .status { background-color: var(--card-color); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.9em; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
         .status-header .display-name { font-weight: bold; cursor: pointer; }
         .status-header .acct { color: #818384; }
+        .status-content { font-size: 1em; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+        .status-content a { color: var(--accent-color); text-decoration: none; }
         
-        /* NEW: Improved text rendering for posts */
-        .status-content {
-            font-size: 1em;
-            line-height: 1.5; /* Increased line spacing for readability */
-            white-space: pre-wrap; /* Respects line breaks and spacing */
-            word-wrap: break-word; /* Prevents long words from overflowing */
-        }
-        /* Style links within posts */
-        .status-content a {
-            color: var(--accent-color);
-            text-decoration: none;
-        }
-        .status-content a:hover {
-            text-decoration: underline;
-        }
-
-        .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; gap: 20px; align-items: center; font-weight: bold; }
-        .status-action { cursor: pointer; }
-        
-        /* Responsive Design */
-        @media (max-width: 600px) {
-            body { padding-top: 50px; }
-            .container { padding: 5px; }
-            .top-nav { padding: 0 5px; }
-            .nav-left, .nav-right { gap: 5px; }
-            .nav-button { padding: 6px 10px; font-size: 0.9em; }
-            .status-header { font-size: 0.8em; }
-        }
-
-        /* Modal & Comment Styles */
-        .comment-thread {
-            max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; padding-left: 15px;
-            margin-top: 10px; border-left: 2px solid var(--border-color);
-        }
-        .comment-thread.visible { max-height: 1500px; }
-        .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
-        textarea {
-            font-family: 'Inter', sans-serif; /* NEW: Ensure textarea uses the same font */
-            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color);
-            background-color: var(--primary-color); color: var(--font-color); box-sizing: border-box; min-height: 80px;
-        }
-        button {
-            padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
-            color: white; font-weight: bold; cursor: pointer;
-        }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
-            display: none; justify-content: center; align-items: center; z-index: 1000;
+            display: none; justify-content: center; align-items: flex-start;
+            padding-top: 5vh; z-index: 1000;
         }
         .modal-overlay.visible { display: flex; }
         .modal-content {
             background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 600px;
-            max-height: 90vh; overflow-y: auto;
+            max-height: 85vh; overflow-y: auto;
         }
-        
-        /* Profile View Styles */
         .profile-header { display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
         .profile-header img { width: 80px; height: 80px; border-radius: 50%; }
         .profile-bio { margin-top: 15px; line-height: 1.5; }
-
+        
     </style>
 </head>
 <body>
@@ -144,14 +82,15 @@
                     <a href="#" data-timeline="public">All</a>
                 </div>
             </div>
-            <button class="nav-button" id="nav-post-btn">Post</button>
+             <form id="search-form" style="margin-bottom: 0;">
+                <input type="search" id="search-input" placeholder="Search or paste a URL...">
+            </form>
         </div>
         <div class="nav-right">
             <div class="dropdown" id="user-dropdown">
                 <button class="nav-button" id="user-display-btn"></button>
                 <div class="dropdown-content">
                     <a href="#" id="profile-link">Profile</a>
-                    <a href="#">Settings (WIP)</a>
                     <a href="#" id="logout-btn">Logout</a>
                 </div>
             </div>
@@ -161,7 +100,6 @@
     <div class="container">
         <div id="login-view">
             <h2>Connect to your Instance</h2>
-            <p>Go to your instance's Settings -> Development to get an access token.</p>
             <input type="text" id="instance-url" placeholder="your-instance.social">
             <input type="password" id="access-token" placeholder="Paste your token here">
             <button id="connect-btn">Connect</button>
@@ -176,19 +114,8 @@
         <div class="modal-content" id="modal-body"></div>
     </div>
 
-    <template id="compose-template">
-        <form id="compose-form">
-            <h3>New Post</h3>
-            <textarea placeholder="What's on your mind?"></textarea>
-            <div style="text-align: right;">
-                <button type="submit">Post</button>
-            </div>
-        </form>
-    </template>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -202,216 +129,166 @@
             const modalBody = document.getElementById('modal-body');
             const feedsDropdown = document.getElementById('feeds-dropdown');
             const userDropdown = document.getElementById('user-dropdown');
-            const navPostBtn = document.getElementById('nav-post-btn');
             const profileLink = document.getElementById('profile-link');
-            const composeTemplate = document.getElementById('compose-template');
+            const searchForm = document.getElementById('search-form');
+            const searchInput = document.getElementById('search-input');
 
-            // --- App State ---
-            let instanceUrl = '';
-            let accessToken = '';
-            let currentUser = null;
+            let instanceUrl = '', accessToken = '', currentUser = null;
 
-            // --- API Helper ---
             async function apiFetch(endpoint, options = {}) {
-                const url = `https://${instanceUrl}/api/v1/${endpoint}`;
+                const url = `https://${instanceUrl}${endpoint}`;
                 const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
                 const response = await fetch(url, { ...options, headers });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-                    throw new Error(errorData.error);
-                }
-                return options.method === 'DELETE' ? response : response.json();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
             }
 
-            // --- Modal Controls ---
             function showModal(contentNode) {
                 modalBody.innerHTML = '';
                 modalBody.appendChild(contentNode);
                 modal.classList.add('visible');
             }
-            function hideModal() {
-                modal.classList.remove('visible');
-            }
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) hideModal();
-            });
+            function hideModal() { modal.classList.remove('visible'); }
+            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
-            // --- Rendering Functions ---
             function renderStatus(status) {
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
-                // MODIFIED: Use innerHTML for the content to render links from the API
                 statusDiv.innerHTML = `
                     <div class="status-header">
-                        <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar">
+                        <img src="${status.account.avatar_static}">
                         <div>
                             <span class="display-name">${status.account.display_name}</span>
-                            <span class="acct">· @${status.account.acct}</span>
+                            <span class="acct"> · @${status.account.acct}</span>
                         </div>
                     </div>
                     <div class="status-content">${status.content}</div>
-                    <div class="status-footer">
-                        <span class="status-action reply" title="Reply">💬 ${status.replies_count}</span>
-                    </div>
                 `;
                 statusDiv.querySelector('img').onclick = () => showProfile(status.account.id);
                 statusDiv.querySelector('.display-name').onclick = () => showProfile(status.account.id);
-                
-                statusDiv.querySelector('.reply').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleCommentThread(status, statusDiv);
-                });
                 return statusDiv;
-            }
-            
-            async function toggleCommentThread(status, statusElement) {
-                const existingThread = statusElement.querySelector('.comment-thread');
-                if (existingThread) {
-                    existingThread.remove();
-                    return;
-                }
-                const threadContainer = document.createElement('div');
-                threadContainer.className = 'comment-thread';
-                threadContainer.innerHTML = `<p>Loading replies...</p>`;
-                statusElement.appendChild(threadContainer);
-                requestAnimationFrame(() => threadContainer.classList.add('visible'));
-                
-                try {
-                    const context = await apiFetch(`statuses/${status.id}/context`);
-                    threadContainer.innerHTML = '';
-                    if (context.descendants && context.descendants.length > 0) {
-                        context.descendants.forEach(reply => threadContainer.appendChild(renderStatus(reply)));
-                    } else {
-                        threadContainer.innerHTML = '<p>No replies yet.</p>';
-                    }
-                    const replyForm = document.createElement('div');
-                    replyForm.className = 'comment-reply-form';
-                    replyForm.innerHTML = `<textarea placeholder="Write a comment..."></textarea><button>Comment</button>`;
-                    replyForm.querySelector('textarea').value = `@${status.account.acct} `;
-                    replyForm.querySelector('button').onclick = async () => {
-                        const textarea = replyForm.querySelector('textarea');
-                        if (!textarea.value) return;
-                        await apiFetch('statuses', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ status: textarea.value, in_reply_to_id: status.id })
-                        });
-                        toggleCommentThread(status, statusElement); // Refresh thread
-                    };
-                    threadContainer.appendChild(replyForm);
-                } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
             }
 
             async function fetchTimeline(type) {
                 timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
-                    const statuses = await apiFetch(`timelines/${type}`);
+                    const statuses = await apiFetch(`/api/v1/timelines/${type}`);
                     timelineDiv.innerHTML = '';
                     statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
                 } catch (error) { timelineDiv.innerHTML = `<p class="error">Could not load timeline.</p>`; }
             }
             
-            function showComposeModal() {
-                const composeContent = composeTemplate.content.cloneNode(true);
-                const form = composeContent.querySelector('form');
-                form.onsubmit = async (e) => {
-                    e.preventDefault();
-                    const textarea = form.querySelector('textarea');
-                    if (!textarea.value) return;
-                    await apiFetch('statuses', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: textarea.value })
-                    });
-                    hideModal();
-                    fetchTimeline('home');
-                };
-                showModal(composeContent);
-            }
-            
             async function showProfile(accountId) {
                 const container = document.createElement('div');
-                container.innerHTML = `<p>Loading profile...</p>`;
                 showModal(container);
+                container.innerHTML = `<p>Loading profile...</p>`;
                 try {
                     const [account, statuses] = await Promise.all([
-                        apiFetch(`accounts/${accountId}`),
-                        apiFetch(`accounts/${accountId}/statuses?limit=20`)
+                        apiFetch(`/api/v1/accounts/${accountId}`),
+                        apiFetch(`/api/v1/accounts/${accountId}/statuses?limit=20`)
                     ]);
-                    // MODIFIED: Use innerHTML for the bio to render links
                     container.innerHTML = `
                        <div class="profile-header">
-                           <img src="${account.avatar_static}" alt="${account.display_name} avatar">
-                           <div>
-                               <h2>${account.display_name}</h2>
-                               <p>@${account.acct}</p>
-                           </div>
+                           <img src="${account.avatar_static}">
+                           <div><h2>${account.display_name}</h2><p>@${account.acct}</p></div>
                        </div>
-                       <div class="profile-bio">${account.note}</div>
-                       <hr><h4>Posts</h4>
+                       <div class="profile-bio">${account.note}</div><hr><h4>Posts</h4>
                     `;
                     const postsContainer = document.createElement('div');
-                    postsContainer.style.display = 'flex';
-                    postsContainer.style.flexDirection = 'column';
-                    postsContainer.style.gap = '10px';
+                    postsContainer.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
                     statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
                     container.appendChild(postsContainer);
                 } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
             }
 
+            // --- MODIFIED: Search function now handles URLs ---
+            async function performSearch(query) {
+                const container = document.createElement('div');
+                container.innerHTML = `<p>Searching for "${query}"...</p>`;
+                showModal(container);
+
+                try {
+                    // Check if the query is a URL
+                    if (query.startsWith('http')) {
+                        const results = await apiFetch(`/api/v2/search?q=${encodeURIComponent(query)}&resolve=true`);
+                        if (results.accounts.length > 0) {
+                            // If it resolves to an account, show that profile directly
+                            showProfile(results.accounts[0].id);
+                        } else {
+                            container.innerHTML = `<p>Could not find an account at that URL.</p>`;
+                        }
+                    } else {
+                        // Otherwise, perform a normal keyword search
+                         const results = await apiFetch(`/api/v2/search?q=${encodeURIComponent(query)}`);
+                         container.innerHTML = `<h4>Search Results for "${query}"</h4>`;
+                         if (results.accounts.length > 0) {
+                            container.innerHTML += '<h5>Accounts</h5>';
+                            results.accounts.forEach(acc => {
+                                const accDiv = document.createElement('div');
+                                accDiv.innerHTML = `<p><strong>${acc.display_name}</strong> @${acc.acct}</p>`;
+                                accDiv.style.cursor = 'pointer';
+                                accDiv.onclick = () => showProfile(acc.id);
+                                container.appendChild(accDiv);
+                            });
+                         }
+                         if (results.hashtags.length > 0) {
+                            container.innerHTML += '<h5>Hashtags</h5>';
+                            results.hashtags.forEach(tag => container.innerHTML += `<p>#${tag.name}</p>`);
+                         }
+                         if (results.accounts.length === 0 && results.hashtags.length === 0) {
+                            container.innerHTML += '<p>No results found.</p>';
+                         }
+                    }
+                } catch(error) { container.innerHTML = `<p class="error">Search failed.</p>`; }
+            }
+
             async function initializeApp() {
                 try {
-                    currentUser = await apiFetch('accounts/verify_credentials');
-                    localStorage.setItem('fediverse-instance', instanceUrl);
-                    localStorage.setItem('fediverse-token', accessToken);
+                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
                     loginView.style.display = 'none';
                     appView.style.display = 'block';
                     document.querySelector('.top-nav').style.display = 'flex';
                     userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
-                } catch (error) { loginError.textContent = 'Connection failed. Check URL and Token.'; }
+                } catch (error) { loginError.textContent = 'Connection failed.'; }
             }
             
-            // --- Event Listeners ---
             window.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
                 }
             });
-            feedsDropdown.addEventListener('click', (e) => {
-                e.stopPropagation();
-                userDropdown.classList.remove('active');
-                feedsDropdown.classList.toggle('active');
-            });
-            userDropdown.addEventListener('click', (e) => {
-                e.stopPropagation();
-                feedsDropdown.classList.remove('active');
-                userDropdown.classList.toggle('active');
-            });
-            feedsDropdown.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    fetchTimeline(e.target.dataset.timeline);
+            [feedsDropdown, userDropdown].forEach(dd => {
+                dd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                    dd.classList.toggle('active');
                 });
             });
-
-            navPostBtn.addEventListener('click', showComposeModal);
-            profileLink.addEventListener('click', (e) => { e.preventDefault(); showProfile(currentUser.id); });
+            feedsDropdown.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', (e) => fetchTimeline(e.target.dataset.timeline));
+            });
+            profileLink.addEventListener('click', () => showProfile(currentUser.id));
             logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if(searchInput.value) performSearch(searchInput.value.trim());
+            });
             
             connectBtn.addEventListener('click', () => {
-                const url = instanceUrlInput.value.trim();
-                const token = accessTokenInput.value.trim();
-                if (!url || !token) return;
-                instanceUrl = url.replace(/^(https?:\/\/)?/, '');
-                accessToken = token;
-                initializeApp();
+                instanceUrl = instanceUrlInput.value.trim().replace(/^(https?:\/\/)?/, '');
+                accessToken = accessTokenInput.value.trim();
+                if (instanceUrl && accessToken) {
+                     localStorage.setItem('fediverse-instance', instanceUrl);
+                     localStorage.setItem('fediverse-token', accessToken);
+                     initializeApp();
+                }
             });
 
-            // --- Initial check on page load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
-                instanceUrl = savedInstance;
-                accessToken = savedToken;
+                instanceUrl = savedInstance; accessToken = savedToken;
                 initializeApp();
             } else {
                 document.querySelector('.top-nav').style.display = 'none';
