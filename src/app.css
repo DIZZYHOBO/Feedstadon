@@ -1,0 +1,8 @@
+/* All of your UI design styles go here */
+:root {  
+    --font-sans: 'Inter', sans-serif;
+}
+[data-theme="afsfeed"] { --bg-primary: #DAE0E6; --bg-secondary: #FFFFFF; --text-primary: #1c1c1c; --text-secondary: #878A8C; --border-color: #CCCCCC; --accent-color: #0079D3; --header-bg: #FFFFFF; --header-text: #1c1c1c; --button-bg: #0079D3; --button-text: #FFFFFF; --favorite-color: #FF4500; --boost-color: #26c485; --danger-bg: #cc0000; --danger-text: #ffffff; --bg-overlay: rgba(218, 224, 230, 0.8); }
+[data-theme="vampire"] { --bg-primary: #1a1a1b; --bg-secondary: #272729; --text-primary: #d7dadc; --text-secondary: #818384; --border-color: #343536; --accent-color: #4f86f7; --header-bg: #1a1a1b; --header-text: #d7dadc; --button-bg: #d93a00; --button-text: #FFFFFF; --favorite-color: #d93a00; --boost-color: #26c485; --danger-bg: #d93a00; --danger-text: #ffffff; --bg-overlay: rgba(26, 26, 27, 0.8); }
+
+/* ... and the rest of your styles from the previous answer ... */
