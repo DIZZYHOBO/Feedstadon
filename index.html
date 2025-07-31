@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fediverse Client</title>
     <style>
+        /* NEW: Import the Inter font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
         :root {
             --bg-color: #030303;
             --card-color: #1A1A1B;
@@ -14,15 +17,16 @@
             --border-color: #343536;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            /* NEW: Apply the Inter font and improve base styling */
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--font-color);
             margin: 0;
-            padding-top: 70px; /* NEW: Space for the fixed nav bar */
+            padding-top: 50px;
         }
-        .container { max-width: 700px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .container { max-width: 700px; margin: 0 auto; padding: 10px; }
         
-        /* NEW: Top Navigation Bar */
+        /* Top Navigation Bar */
         .top-nav {
             position: fixed;
             top: 0;
@@ -34,13 +38,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 10px;
             z-index: 2000;
         }
-        .nav-left, .nav-right { display: flex; align-items: center; gap: 15px; }
+        .nav-left, .nav-right { display: flex; align-items: center; gap: 10px; }
         .nav-button {
             background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
-            border-radius: 20px; font-weight: bold; cursor: pointer;
+            border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap;
         }
         .nav-button:hover { background-color: var(--primary-color); }
         .dropdown { position: relative; }
@@ -49,50 +53,68 @@
             background-color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 8px;
             min-width: 160px; z-index: 1; overflow: hidden;
         }
-        .dropdown-content a {
-            color: var(--font-color); padding: 12px 16px; text-decoration: none;
-            display: block;
-        }
+        .nav-right .dropdown-content { left: auto; right: 0; }
+        .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; }
         .dropdown-content a:hover { background-color: var(--accent-color); }
         .dropdown.active .dropdown-content { display: block; }
         
-        /* General Styles */
+        /* Main Content & Posts */
         #app-view { display: none; }
-        input[type="text"], input[type="password"], textarea {
-            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color);
-            background-color: var(--primary-color); color: var(--font-color); box-sizing: border-box;
-        }
-        textarea { min-height: 80px; resize: vertical; }
-        button {
-            padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
-            color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s;
-        }
-        button:hover { filter: brightness(0.9); }
         #timeline { display: flex; flex-direction: column; gap: 10px; }
         .status {
             background-color: var(--card-color); padding: 12px; border-radius: 8px;
             border: 1px solid var(--border-color);
         }
-        .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.8em; }
-        .status-header img { width: 36px; height: 36px; border-radius: 50%; }
+        .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.9em; }
+        .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
+        .status-header .display-name { font-weight: bold; cursor: pointer; }
+        .status-header .acct { color: #818384; }
+        
+        /* NEW: Improved text rendering for posts */
+        .status-content {
+            font-size: 1em;
+            line-height: 1.5; /* Increased line spacing for readability */
+            white-space: pre-wrap; /* Respects line breaks and spacing */
+            word-wrap: break-word; /* Prevents long words from overflowing */
+        }
+        /* Style links within posts */
+        .status-content a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+        .status-content a:hover {
+            text-decoration: underline;
+        }
+
         .status-footer { font-size: 0.8em; color: #818384; margin-top: 15px; display: flex; gap: 20px; align-items: center; font-weight: bold; }
         .status-action { cursor: pointer; }
-        .status-action.active { color: var(--accent-color); font-weight: bold; }
         
-        /* NEW: Comment Thread Styles */
-        .comment-thread {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-out;
-            padding-left: 20px;
-            margin-top: 10px;
-            border-left: 2px solid var(--border-color);
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            body { padding-top: 50px; }
+            .container { padding: 5px; }
+            .top-nav { padding: 0 5px; }
+            .nav-left, .nav-right { gap: 5px; }
+            .nav-button { padding: 6px 10px; font-size: 0.9em; }
+            .status-header { font-size: 0.8em; }
         }
-        .comment-thread.visible { max-height: 1500px; /* Large value */ }
+
+        /* Modal & Comment Styles */
+        .comment-thread {
+            max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; padding-left: 15px;
+            margin-top: 10px; border-left: 2px solid var(--border-color);
+        }
+        .comment-thread.visible { max-height: 1500px; }
         .comment-reply-form { display: flex; gap: 10px; margin-top: 10px; }
-        .comment-reply-form textarea { flex-grow: 1; }
-        .comment-reply-form button { flex-shrink: 0; }
-        
+        textarea {
+            font-family: 'Inter', sans-serif; /* NEW: Ensure textarea uses the same font */
+            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color);
+            background-color: var(--primary-color); color: var(--font-color); box-sizing: border-box; min-height: 80px;
+        }
+        button {
+            padding: 10px 15px; border: none; border-radius: 18px; background-color: var(--accent-color);
+            color: white; font-weight: bold; cursor: pointer;
+        }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: center; z-index: 1000;
@@ -102,6 +124,12 @@
             background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 600px;
             max-height: 90vh; overflow-y: auto;
         }
+        
+        /* Profile View Styles */
+        .profile-header { display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .profile-header img { width: 80px; height: 80px; border-radius: 50%; }
+        .profile-bio { margin-top: 15px; line-height: 1.5; }
+
     </style>
 </head>
 <body>
@@ -132,30 +160,28 @@
 
     <div class="container">
         <div id="login-view">
-             <h2>Connect to your Instance</h2>
-            <p>Go to your instance's Settings -> Development (or Applications) to get an access token.</p>
+            <h2>Connect to your Instance</h2>
+            <p>Go to your instance's Settings -> Development to get an access token.</p>
             <input type="text" id="instance-url" placeholder="your-instance.social">
             <input type="password" id="access-token" placeholder="Paste your token here">
             <button id="connect-btn">Connect</button>
             <p id="login-error" class="error"></p>
         </div>
-
         <div id="app-view">
             <div id="timeline"></div>
         </div>
     </div>
     
     <div id="modal" class="modal-overlay">
-        <div class="modal-content" id="modal-body">
-            </div>
+        <div class="modal-content" id="modal-body"></div>
     </div>
 
     <template id="compose-template">
         <form id="compose-form">
             <h3>New Post</h3>
-            <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+            <textarea placeholder="What's on your mind?"></textarea>
             <div style="text-align: right;">
-                 <button type="submit" id="post-btn">Post</button>
+                <button type="submit">Post</button>
             </div>
         </form>
     </template>
@@ -212,11 +238,9 @@
 
             // --- Rendering Functions ---
             function renderStatus(status) {
-                const sanitizedContent = new DOMParser().parseFromString(status.content, 'text/html').body.innerHTML;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
-                statusDiv.dataset.id = status.id;
-
+                // MODIFIED: Use innerHTML for the content to render links from the API
                 statusDiv.innerHTML = `
                     <div class="status-header">
                         <img src="${status.account.avatar_static}" alt="${status.account.display_name} avatar">
@@ -225,98 +249,58 @@
                             <span class="acct">· @${status.account.acct}</span>
                         </div>
                     </div>
-                    <div class="status-content">${sanitizedContent}</div>
+                    <div class="status-content">${status.content}</div>
                     <div class="status-footer">
                         <span class="status-action reply" title="Reply">💬 ${status.replies_count}</span>
-                        <span class="status-action boost ${status.reblogged ? 'active' : ''}" title="Boost">🔁 ${status.reblogs_count}</span>
-                        <span class="status-action favorite ${status.favourited ? 'active' : ''}" title="Favorite">⭐ ${status.favourites_count}</span>
-                        ${currentUser && status.account.id === currentUser.id ? '<span class="status-action delete" title="Delete">🗑️</span>' : ''}
                     </div>
                 `;
-
-                // Event Listeners for actions
+                statusDiv.querySelector('img').onclick = () => showProfile(status.account.id);
+                statusDiv.querySelector('.display-name').onclick = () => showProfile(status.account.id);
+                
                 statusDiv.querySelector('.reply').addEventListener('click', (e) => {
                     e.stopPropagation();
                     toggleCommentThread(status, statusDiv);
                 });
-                // ... other action listeners like boost, favorite, delete ...
-
                 return statusDiv;
             }
             
-            // --- NEW: Comment Thread Logic ---
             async function toggleCommentThread(status, statusElement) {
                 const existingThread = statusElement.querySelector('.comment-thread');
                 if (existingThread) {
                     existingThread.remove();
                     return;
                 }
-
                 const threadContainer = document.createElement('div');
                 threadContainer.className = 'comment-thread';
                 threadContainer.innerHTML = `<p>Loading replies...</p>`;
                 statusElement.appendChild(threadContainer);
-
-                // Make it visible for the slide-down animation
-                requestAnimationFrame(() => {
-                    threadContainer.classList.add('visible');
-                });
+                requestAnimationFrame(() => threadContainer.classList.add('visible'));
                 
                 try {
                     const context = await apiFetch(`statuses/${status.id}/context`);
-                    threadContainer.innerHTML = ''; // Clear loading message
-
+                    threadContainer.innerHTML = '';
                     if (context.descendants && context.descendants.length > 0) {
-                        context.descendants.forEach(reply => {
-                            const replyEl = renderStatus(reply);
-                            // Add reply button to each comment
-                            const replyBtn = document.createElement('button');
-                            replyBtn.textContent = 'Reply to this comment';
-                            replyBtn.className = 'nav-button';
-                            replyBtn.style.fontSize = '0.8em';
-                            replyBtn.style.padding = '4px 8px';
-                            replyBtn.onclick = () => {
-                                replyFormTextarea.value = `@${reply.account.acct} `;
-                                replyFormTextarea.focus();
-                            };
-                            replyEl.querySelector('.status-footer').appendChild(replyBtn);
-                            threadContainer.appendChild(replyEl);
-                        });
+                        context.descendants.forEach(reply => threadContainer.appendChild(renderStatus(reply)));
                     } else {
                         threadContainer.innerHTML = '<p>No replies yet.</p>';
                     }
-                    
-                    // Add the main reply form at the bottom
                     const replyForm = document.createElement('div');
                     replyForm.className = 'comment-reply-form';
-                    const replyFormTextarea = document.createElement('textarea');
-                    replyFormTextarea.placeholder = 'Write a comment...';
-                    replyFormTextarea.value = `@${status.account.acct} `; // Pre-fill with post author
-                    const replyFormButton = document.createElement('button');
-                    replyFormButton.textContent = 'Comment';
-                    
-                    replyFormButton.onclick = async () => {
-                        if (!replyFormTextarea.value) return;
-                        try {
-                            await apiFetch('statuses', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ status: replyFormTextarea.value, in_reply_to_id: status.id })
-                            });
-                            toggleCommentThread(status, statusElement); // Refresh the thread
-                        } catch (err) { alert('Failed to post comment: ' + err.message); }
+                    replyForm.innerHTML = `<textarea placeholder="Write a comment..."></textarea><button>Comment</button>`;
+                    replyForm.querySelector('textarea').value = `@${status.account.acct} `;
+                    replyForm.querySelector('button').onclick = async () => {
+                        const textarea = replyForm.querySelector('textarea');
+                        if (!textarea.value) return;
+                        await apiFetch('statuses', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: textarea.value, in_reply_to_id: status.id })
+                        });
+                        toggleCommentThread(status, statusElement); // Refresh thread
                     };
-
-                    replyForm.append(replyFormTextarea, replyFormButton);
                     threadContainer.appendChild(replyForm);
-
-                } catch (error) {
-                    threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`;
-                }
+                } catch (error) { threadContainer.innerHTML = `<p class="error">Could not load replies.</p>`; }
             }
 
-
-            // --- Feature Functions ---
             async function fetchTimeline(type) {
                 timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
@@ -328,25 +312,51 @@
             
             function showComposeModal() {
                 const composeContent = composeTemplate.content.cloneNode(true);
-                const form = composeContent.querySelector('#compose-form');
+                const form = composeContent.querySelector('form');
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    const textarea = form.querySelector('#compose-textarea');
+                    const textarea = form.querySelector('textarea');
                     if (!textarea.value) return;
-                    try {
-                        await apiFetch('statuses', {
-                           method: 'POST',
-                           headers: { 'Content-Type': 'application/json' },
-                           body: JSON.stringify({ status: textarea.value })
-                        });
-                        hideModal();
-                        fetchTimeline('home');
-                    } catch(err) { alert('Post failed: ' + err.message); }
+                    await apiFetch('statuses', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: textarea.value })
+                    });
+                    hideModal();
+                    fetchTimeline('home');
                 };
                 showModal(composeContent);
             }
+            
+            async function showProfile(accountId) {
+                const container = document.createElement('div');
+                container.innerHTML = `<p>Loading profile...</p>`;
+                showModal(container);
+                try {
+                    const [account, statuses] = await Promise.all([
+                        apiFetch(`accounts/${accountId}`),
+                        apiFetch(`accounts/${accountId}/statuses?limit=20`)
+                    ]);
+                    // MODIFIED: Use innerHTML for the bio to render links
+                    container.innerHTML = `
+                       <div class="profile-header">
+                           <img src="${account.avatar_static}" alt="${account.display_name} avatar">
+                           <div>
+                               <h2>${account.display_name}</h2>
+                               <p>@${account.acct}</p>
+                           </div>
+                       </div>
+                       <div class="profile-bio">${account.note}</div>
+                       <hr><h4>Posts</h4>
+                    `;
+                    const postsContainer = document.createElement('div');
+                    postsContainer.style.display = 'flex';
+                    postsContainer.style.flexDirection = 'column';
+                    postsContainer.style.gap = '10px';
+                    statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
+                    container.appendChild(postsContainer);
+                } catch(error) { container.innerHTML = `<p class="error">Could not load profile.</p>`; }
+            }
 
-            // --- App Initialization & Event Listeners ---
             async function initializeApp() {
                 try {
                     currentUser = await apiFetch('accounts/verify_credentials');
@@ -357,12 +367,10 @@
                     document.querySelector('.top-nav').style.display = 'flex';
                     userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
-                } catch (error) {
-                    loginError.textContent = 'Connection failed. Check URL and Token.';
-                }
+                } catch (error) { loginError.textContent = 'Connection failed. Check URL and Token.'; }
             }
             
-            // Dropdown logic
+            // --- Event Listeners ---
             window.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
@@ -378,19 +386,17 @@
                 feedsDropdown.classList.remove('active');
                 userDropdown.classList.toggle('active');
             });
-            feedsDropdown.querySelectorAll('.dropdown-content a').forEach(link => {
+            feedsDropdown.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     fetchTimeline(e.target.dataset.timeline);
                 });
             });
 
-            // Other nav buttons
             navPostBtn.addEventListener('click', showComposeModal);
-            profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view not implemented yet.'); });
+            profileLink.addEventListener('click', (e) => { e.preventDefault(); showProfile(currentUser.id); });
             logoutBtn.addEventListener('click', () => { localStorage.clear(); window.location.reload(); });
             
-            // Login logic
             connectBtn.addEventListener('click', () => {
                 const url = instanceUrlInput.value.trim();
                 const token = accessTokenInput.value.trim();
@@ -400,7 +406,7 @@
                 initializeApp();
             });
 
-            // Initial check
+            // --- Initial check on page load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
