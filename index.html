@@ -80,8 +80,8 @@
         <div id="login-view" class="view">
             <h2>Connect to your Instance</h2>
             <p>This app uses the secure OAuth 2.0 flow. Your credentials are never shared with this app.</p>
-            <label for="instance-url">Instance URL (e.g., piefed.social)</label>
-            <input type="text" id="instance-url" placeholder="piefed.social">
+            <label for="instance-url">Instance URL</label>
+            <input type="text" id="instance-url" placeholder="piefed.social" value="quokka.social">
             <button id="login-btn">Login</button>
             <p id="login-error" class="error"></p>
         </div>
@@ -165,7 +165,7 @@
                 return await response.json();
             }
 
-            // --- Rendering Functions (same as before) ---
+            // --- Rendering Functions ---
             function renderStatus(status) {
                 const sanitizedContent = new DOMParser().parseFromString(status.content, 'text/html').body.innerHTML;
                 const statusDiv = document.createElement('div');
@@ -199,7 +199,6 @@
 
             // --- OAuth 2.0 with PKCE Flow ---
 
-            // 1. App Registration & Redirect
             async function startLogin() {
                 instanceUrl = instanceUrlInput.value.trim().replace(/^(https?:\/\/)?/, '');
                 if (!instanceUrl) {
@@ -210,13 +209,11 @@
                 loginBtn.textContent = 'Connecting...';
                 
                 try {
-                    // Register our app with the instance
                     const appRegResponse = await fetch(`https://${instanceUrl}/api/v1/apps`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             client_name: appName,
-                            // CORRECTED: The API expects 'redirect_uris', a space-separated string.
                             redirect_uris: redirectUri,
                             scopes: scopes
                         })
@@ -229,23 +226,21 @@
                     const appData = await appRegResponse.json();
                     clientId = appData.client_id;
                     
-                    // Store details for when we return
                     localStorage.setItem('auth_instance', instanceUrl);
                     localStorage.setItem('auth_client_id', clientId);
 
-                    // Create PKCE challenge and redirect user for authorization
                     const challenge = await generatePkceChallenge();
                     const authUrl = `https://${instanceUrl}/oauth/authorize?response_type=code&client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${challenge}&code_challenge_method=S256`;
                     window.location.href = authUrl;
 
                 } catch (error) {
-                    loginError.textContent = `Error: ${error.message}. This is likely a CORS issue. Please host this file on a web server.`;
+                    // MODIFIED: Ensure the button fully resets on error
+                    loginError.textContent = `Error: This is likely a CORS issue. Please host this file on a web server.`;
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Login';
                 }
             }
             
-            // 2. Handle the callback from the instance
             async function handleOAuthCallback(code) {
                 loginView.innerHTML = '<h2>Authenticating... Please wait.</h2>';
                 instanceUrl = localStorage.getItem('auth_instance');
@@ -275,14 +270,12 @@
                     const tokenData = await tokenResponse.json();
                     accessToken = tokenData.access_token;
 
-                    // Save token and clean up auth storage
                     localStorage.setItem('piefed_access_token', accessToken);
                     localStorage.setItem('piefed_instance_url', instanceUrl);
                     localStorage.removeItem('auth_instance');
                     localStorage.removeItem('auth_client_id');
                     sessionStorage.removeItem('pkce_verifier');
 
-                    // Clean the URL and initialize the app
                     history.replaceState(null, '', redirectUri);
                     await initializeApp();
 
@@ -291,7 +284,6 @@
                 }
             }
             
-            // 3. Initialize the main application view
             async function initializeApp() {
                 try {
                     const account = await apiFetch('accounts/verify_credentials');
@@ -300,7 +292,6 @@
                     userDisplay.textContent = `Welcome, ${account.display_name}`;
                     fetchTimeline('home');
                 } catch (error) {
-                    // If token is invalid, force logout
                     logout();
                 }
             }
@@ -330,3 +321,30 @@
                     });
                     composeTextarea.value = '';
                     fetchTimeline('home');
+                } catch (error) {
+                    alert(`Failed to post: ${error.message}`);
+                } finally {
+                    postBtn.disabled = false;
+                }
+            });
+
+            // --- Main logic on page load ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const authCode = urlParams.get('code');
+            const storedToken = localStorage.getItem('piefed_access_token');
+            const storedInstance = localStorage.getItem('piefed_instance_url');
+            
+            if (authCode) {
+                handleOAuthCallback(authCode);
+            } else if (storedToken && storedInstance) {
+                accessToken = storedToken;
+                instanceUrl = storedInstance;
+                initializeApp();
+            } else {
+                loginView.style.display = 'block';
+                appView.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
