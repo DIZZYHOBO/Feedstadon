@@ -4,6 +4,7 @@ import { renderStatus } from './components/Post.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
+import { fetchNotifications } from './components/Notifications.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
@@ -155,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (action === 'boost' && state.currentTimeline === 'home') {
                 fetchTimeline('home');
             } 
-            // MODIFIED: This block is corrected to handle all cases without breaking the button
             else if (action === 'boost' || action === 'favorite') {
                 const count = response[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
@@ -255,6 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (d !== dd) d.classList.remove('active');
                 });
                 dd.classList.toggle('active');
+                
+                // MODIFIED: This now calls the fetchNotifications function when clicked
+                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                    fetchNotifications(state);
+                }
             });
         }
     });
