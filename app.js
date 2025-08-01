@@ -1,6 +1,7 @@
 import { apiFetch } from './components/api.js';
 import { ICONS } from './components/icons.js';
 import { renderStatus } from './components/Post.js';
+import { renderProfilePage } from './components/Profile.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
@@ -11,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const appView = document.getElementById('app-view');
     const userDisplayBtn = document.getElementById('user-display-btn');
     const timelineDiv = document.getElementById('timeline');
+    const profilePageView = document.getElementById('profile-page-view');
+    const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     
     // --- App State ---
@@ -18,15 +21,31 @@ document.addEventListener('DOMContentLoaded', () => {
         instanceUrl: '',
         accessToken: '',
         currentUser: null,
-        settings: {}, // Simplified for now
+        settings: {},
         actions: {}
     };
 
     // --- Core Actions ---
-    state.actions.showProfile = (id) => console.log("Show profile action for:", id); // Placeholder
+    state.actions.showProfile = (id) => {
+        renderProfilePage(state, id);
+        switchView('profile');
+    };
     state.actions.toggleAction = (action, id, button) => toggleAction(action, id, button);
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
 
+
+    // --- View Management ---
+    function switchView(viewName) {
+        if (viewName === 'timeline') {
+            profilePageView.style.display = 'none';
+            timelineDiv.style.display = 'flex';
+            backBtn.style.display = 'none';
+        } else if (viewName === 'profile') {
+            timelineDiv.style.display = 'none';
+            profilePageView.style.display = 'block';
+            backBtn.style.display = 'block';
+        }
+    }
 
     // --- Main App Logic ---
     async function initializeApp() {
@@ -169,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.clear(); 
         window.location.reload(); 
     });
+    
+    backBtn.addEventListener('click', () => switchView('timeline'));
 
     // --- Initial Load ---
     function initLoginOnLoad() {
