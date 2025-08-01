@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -73,9 +72,8 @@
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
+        .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
         
-        /* MODIFIED: Responsive Styles */
-        /* Phone */
         @media (max-width: 600px) {
             .container { padding: 10px 5px; }
             .top-nav { padding: 0 5px; }
@@ -83,14 +81,8 @@
             .nav-button { padding: 6px 10px; font-size: 0.8em; }
             #user-display-btn { max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
         }
-        /* Tablet */
-        @media (min-width: 601px) and (max-width: 900px) {
-            .container { max-width: 80%; }
-        }
-        /* Desktop */
-        @media (min-width: 901px) {
-            .container { max-width: 700px; }
-        }
+        @media (min-width: 601px) and (max-width: 900px) { .container { max-width: 80%; } }
+        @media (min-width: 901px) { .container { max-width: 700px; } }
     </style>
 </head>
 <body>
@@ -134,10 +126,17 @@
         <div class="modal-content" id="modal-body"></div>
     </div>
 
+    <template id="compose-template">
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea placeholder="What's on your mind?"></textarea>
+            <div style="text-align: right;"><button type="submit">Post</button></div>
+        </form>
+    </template>
+
     <script>
-        // All JavaScript is the same as the last correct version.
-        // It is complete and fully functional.
         document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
             const instanceUrlInput = document.getElementById('instance-url');
@@ -152,9 +151,12 @@
             const logoutBtn = document.getElementById('logout-btn');
             const profileLink = document.getElementById('profile-link');
             const navPostBtn = document.getElementById('nav-post-btn');
+            const composeTemplate = document.getElementById('compose-template');
             
+            // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
 
+            // --- API Helper & Modal ---
             async function apiFetch(endpoint, options = {}) {
                 const url = `https://${instanceUrl}${endpoint}`;
                 const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
@@ -172,10 +174,20 @@
             }
             modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
+            // --- Rendering ---
             function renderStatus(status) {
                 const originalPost = status.reblog || status;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
+
+                let mediaHTML = '';
+                if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
+                    mediaHTML = originalPost.media_attachments.map(media => {
+                        if (media.type === 'image') return `<a href="${media.url}" target="_blank" rel="noopener noreferrer"><img src="${media.preview_url}"></a>`;
+                        if (media.type === 'video') return `<video src="${media.url}" controls></video>`;
+                        return '';
+                    }).join('');
+                }
 
                 statusDiv.innerHTML = `
                     <div class="status-header">
@@ -185,10 +197,12 @@
                         </div>
                     </div>
                     <div class="status-content">${originalPost.content}</div>
+                    <div class="status-media">${mediaHTML}</div>
                 `;
                 return statusDiv;
             }
 
+            // --- Feature Functions ---
             async function fetchTimeline(type) {
                 timelineDiv.innerHTML = '<p>Loading...</p>';
                 try {
@@ -201,15 +215,8 @@
             }
 
             function showComposeModal() {
-                const form = document.createElement('form');
-                form.innerHTML = `
-                    <h3>New Post</h3>
-                    <textarea placeholder="What's on your mind?" style="width: 100%; min-height: 120px;"></textarea>
-                    <div style="text-align: right; margin-top: 10px;">
-                        <button type="submit">Post</button>
-                    </div>
-                `;
-                form.onsubmit = async (e) => {
+                const form = composeTemplate.content.cloneNode(true);
+                form.querySelector('form').onsubmit = async (e) => {
                     e.preventDefault();
                     const textarea = form.querySelector('textarea');
                     if(!textarea.value.trim()) return;
@@ -243,6 +250,7 @@
                 }
             }
             
+            // --- Event Listeners ---
             connectBtn.addEventListener('click', () => {
                 instanceUrl = instanceUrlInput.value.trim();
                 accessToken = accessTokenInput.value.trim();
@@ -275,6 +283,7 @@
             logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
             profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view coming soon!'); });
 
+            // --- Initial Page Load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
