@@ -18,3 +18,4 @@ export function hideModal() {
     modal.classList.remove('visible');
 }
 modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
