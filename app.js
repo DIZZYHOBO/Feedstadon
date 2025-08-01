@@ -2,6 +2,8 @@ import { apiFetch } from './components/api.js';
 import { ICONS } from './components/icons.js';
 import { renderStatus } from './components/Post.js';
 import { renderProfilePage } from './components/Profile.js';
+import { renderSearchResults } from './components/Search.js';
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
@@ -13,8 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const userDisplayBtn = document.getElementById('user-display-btn');
     const timelineDiv = document.getElementById('timeline');
     const profilePageView = document.getElementById('profile-page-view');
+    const searchResultsView = document.getElementById('search-results-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
+    const feedsDropdown = document.getElementById('feeds-dropdown');
+    const searchToggleBtn = document.getElementById('search-toggle-btn');
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const navPostBtn = document.getElementById('nav-post-btn');
+    const profileLink = document.getElementById('profile-link');
     
     // --- App State ---
     const state = {
@@ -36,13 +45,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- View Management ---
     function switchView(viewName) {
+        // Hide all main views
+        timelineDiv.style.display = 'none';
+        profilePageView.style.display = 'none';
+        searchResultsView.style.display = 'none';
+
+        // Set default nav state
+        backBtn.style.display = 'none';
+        feedsDropdown.style.display = 'none';
+        
         if (viewName === 'timeline') {
-            profilePageView.style.display = 'none';
             timelineDiv.style.display = 'flex';
-            backBtn.style.display = 'none';
+            feedsDropdown.style.display = 'block';
         } else if (viewName === 'profile') {
-            timelineDiv.style.display = 'none';
             profilePageView.style.display = 'block';
+            backBtn.style.display = 'block';
+        } else if (viewName === 'search') {
+            searchResultsView.style.display = 'flex';
             backBtn.style.display = 'block';
         }
     }
@@ -190,6 +209,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     backBtn.addEventListener('click', () => switchView('timeline'));
+    
+    profileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        state.actions.showProfile(state.currentUser.id);
+    });
+
+    feedsDropdown.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            fetchTimeline(link.dataset.timeline); // Need to fix fetchTimeline to accept a type
+        });
+    });
+
+    searchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchForm.style.display = 'block';
+        searchInput.focus();
+        searchToggleBtn.style.display = 'none';
+        navPostBtn.style.display = 'none';
+    });
+    
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+    
+        renderSearchResults(state, query);
+        switchView('search');
+    });
 
     // --- Initial Load ---
     function initLoginOnLoad() {
