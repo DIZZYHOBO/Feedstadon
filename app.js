@@ -1,6 +1,6 @@
 import { apiFetch } from './components/api.js';
-// MODIFIED: Import initUI in addition to other ui functions
 import { showModal, hideModal, initUI } from './components/ui.js';
+import { ICONS } from './components/icons.js';
 import { renderStatus } from './components/Post.js';
 import { fetchTimeline } from './components/Timeline.js';
 import { showComposeModal } from './components/Compose.js';
@@ -11,7 +11,6 @@ import { fetchNotifications } from './components/Notifications.js';
 import { initLogin, showLogin } from './components/Login.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // MODIFIED: Call the UI initializer first
     initUI();
 
     // --- DOM Elements ---
@@ -40,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         instanceUrl: '',
         accessToken: '',
         currentUser: null,
-        attachedMediaId: null,
         settings: { hideNsfw: false, filters: [] },
         currentTimeline: 'home',
         lastPostId: null,
@@ -56,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('profile');
     };
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
+    // MODIFIED: Connect the action to the function below
     state.actions.toggleAction = (action, id, button) => toggleAction(action, id, button);
 
     function switchView(viewName) {
@@ -63,11 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
         profilePageView.style.display = 'none';
         searchResultsView.style.display = 'none';
         scrollLoader.style.display = 'none';
-        
         feedsDropdown.style.display = 'none';
         backBtn.style.display = 'none';
-        
-        // Restore nav buttons to their default state
         searchToggleBtn.style.display = 'block';
         navPostBtn.style.display = 'block';
         searchForm.style.display = 'none';
@@ -87,12 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             state.settings = await loadSettings(state);
             state.currentUser = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
-            
             document.getElementById('login-view').style.display = 'none';
             appView.style.display = 'block';
             document.querySelector('.top-nav').style.display = 'flex';
             userDisplayBtn.textContent = state.currentUser.display_name;
-            
             fetchTimeline(state, 'home');
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -108,8 +102,45 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
 
-    async function toggleCommentThread(status, statusElement) { /* ... unchanged ... */ }
-    async function toggleAction(action, id, button) { /* ... unchanged ... */ }
+    // MODIFIED: Full implementation of the toggleAction function
+    async function toggleAction(action, id, button) {
+        if (action === 'reply') {
+            alert('Reply functionality coming soon!');
+            return;
+        }
+
+        const isActive = button.classList.contains('active');
+        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' :
+                               (action === 'boost' && !isActive) ? 'reblog' :
+                               (action === 'favorite' && isActive) ? 'unfavourite' :
+                               (action === 'favorite' && !isActive) ? 'favourite' :
+                               (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
+        
+        const endpoint = `/api/v1/statuses/${id}/${endpointAction}`;
+
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+            
+            button.classList.toggle('active');
+            
+            if (action === 'favorite' || action === 'boost') {
+                const countSpan = button.textContent;
+                let count = parseInt(countSpan) || 0;
+                count = isActive ? count - 1 : count + 1;
+                
+                const icon = ICONS[action];
+                button.innerHTML = `${icon} ${count > 0 ? count : ''}`;
+            }
+
+        } catch (error) {
+            console.error(`Failed to ${action} post:`, error);
+            alert(`Could not ${action} post.`);
+        }
+    }
+    
+    async function toggleCommentThread(status, statusElement) {
+        alert('Comment thread functionality coming soon!');
+    }
 
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore || !state.currentUser || timelineDiv.style.display === 'none') return;
@@ -122,14 +153,16 @@ document.addEventListener('DOMContentLoaded', () => {
     backBtn.addEventListener('click', () => switchView('timeline'));
 
     [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
-        dd.addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
-            dd.classList.toggle('active');
-            if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
-                fetchNotifications(state);
-            }
-        });
+        if (dd) {
+            dd.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                dd.classList.toggle('active');
+                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                    fetchNotifications(state);
+                }
+            });
+        }
     });
 
     feedsDropdown.querySelectorAll('a').forEach(link => {
@@ -158,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const query = searchInput.value.trim();
         if (!query) return;
-    
         renderSearchResults(state, query);
         switchView('search');
     });
