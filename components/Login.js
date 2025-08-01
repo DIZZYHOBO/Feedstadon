@@ -11,6 +11,9 @@ export function initLogin(onLoginSuccess) {
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
             onLoginSuccess(instanceUrl, accessToken);
+        } else {
+            // ADDED: Provide feedback if fields are missing
+            alert('Please provide both an instance URL and an access token.');
         }
     });
 
