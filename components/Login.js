@@ -16,7 +16,6 @@ export function initLogin(onLoginSuccess) {
         if (instanceUrl && accessToken) {
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
-            // Call the callback provided by app.js
             onLoginSuccess(instanceUrl, accessToken);
         }
     });
@@ -27,10 +26,8 @@ export function initLogin(onLoginSuccess) {
     if (savedInstance && savedToken) {
         instanceUrlInput.value = savedInstance;
         accessTokenInput.value = savedToken;
-        // If we have saved data, call the callback immediately
         onLoginSuccess(savedInstance, savedToken);
     } else {
-        // Otherwise, show the login form
         document.querySelector('.top-nav').style.display = 'none';
         loginView.style.display = 'block';
     }
