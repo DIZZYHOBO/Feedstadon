@@ -1,97 +1,61 @@
+import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 
-export function renderStatus(status, state, actions) {
-    const originalPost = status.reblog || status;
+export async function fetchNotifications(state) {
+    const container = document.getElementById('notifications-list');
+    container.innerHTML = '<div class="notification-item">Loading...</div>';
 
-    if (state.settings.hideNsfw && originalPost.sensitive) {
-        return null;
-    }
-    
-    const statusDiv = document.createElement('div');
-    statusDiv.className = 'status';
-    statusDiv.dataset.id = originalPost.id;
+    try {
+        const notifications = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+        container.innerHTML = ''; // Clear loading message
 
-    const boosterInfo = status.reblog ? `<div class="booster-info">Boosted by ${status.account.display_name}</div>` : '';
+        if (notifications.length === 0) {
+            container.innerHTML = '<div class="notification-item">You have no new notifications.</div>';
+            return;
+        }
 
-    let optionsMenuHTML = '';
-    if (state.currentUser && originalPost.account.id === state.currentUser.id) {
-        optionsMenuHTML = `
-            <button class="post-options-btn">${ICONS.more}</button>
-            <div class="post-options-menu">
-                <button data-action="edit">Edit</button>
-                <button data-action="delete">Delete</button>
-            </div>
-        `;
-    }
+        notifications.forEach(notification => {
+            const item = document.createElement('a');
+            item.className = 'notification-item';
+            let icon = '';
+            let content = '';
 
-    let mediaHTML = '';
-    if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
-        mediaHTML += '<div class="status-media">';
-        originalPost.media_attachments.forEach(attachment => {
-            if (attachment.type === 'image') {
-                mediaHTML += `<img src="${attachment.url}" alt="${attachment.description || 'Post image'}" loading="lazy">`;
-            } else if (attachment.type === 'video' || attachment.type === 'gifv') {
-                mediaHTML += `<video src="${attachment.url}" controls loop muted playsinline></video>`;
+            switch (notification.type) {
+                case 'favourite':
+                    icon = ICONS.favorite;
+                    content = `<strong>${notification.account.display_name}</strong> favorited your post.`;
+                    item.href = notification.status.url;
+                    break;
+                case 'reblog':
+                    icon = ICONS.boost;
+                    content = `<strong>${notification.account.display_name}</strong> boosted your post.`;
+                    item.href = notification.status.url;
+                    break;
+                case 'mention':
+                    icon = ICONS.reply;
+                    content = `<strong>${notification.account.display_name}</strong> mentioned you.`;
+                    item.href = notification.status.url;
+                    break;
+                case 'follow':
+                    icon = '👤'; // Using an emoji for follow as we don't have an icon
+                    content = `<strong>${notification.account.display_name}</strong> followed you.`;
+                    item.href = notification.account.url;
+                    break;
+                default:
+                    return; // Skip unknown notification types
             }
+            
+            item.innerHTML = `
+                <div class="notification-icon">${icon}</div>
+                <img class="notification-avatar" src="${notification.account.avatar_static}" alt="${notification.account.display_name}">
+                <div class="notification-content">${content}</div>
+            `;
+            item.target = '_blank'; // Open notification context in a new tab
+            container.appendChild(item);
         });
-        mediaHTML += '</div>';
+
+    } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+        container.innerHTML = '<div class="notification-item">Could not load notifications.</div>';
     }
-
-    statusDiv.innerHTML = `
-        <div class="status-header">
-            <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
-            <div>
-                <span class="display-name">${originalPost.account.display_name}</span>
-                <span class="acct">@${originalPost.account.acct}</span>
-            </div>
-            ${optionsMenuHTML}
-        </div>
-        <div class="status-content">${originalPost.content}</div>
-        ${mediaHTML}
-        <div class="status-footer">
-            <button class="status-action" data-action="reply">${ICONS.reply} ${originalPost.replies_count}</button>
-            <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost} ${originalPost.reblogs_count}</button>
-            <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${originalPost.favourites_count}</button>
-            <button class="status-action ${originalPost.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
-        </div>
-    `;
-
-    const avatar = statusDiv.querySelector('.avatar');
-    const displayName = statusDiv.querySelector('.display-name');
-    if (avatar) avatar.onclick = () => actions.showProfile(originalPost.account.id);
-    if (displayName) displayName.onclick = () => actions.showProfile(originalPost.account.id);
-
-    statusDiv.querySelectorAll('.status-action').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = button.dataset.action;
-            actions.toggleAction(action, originalPost.id, button);
-        });
-    });
-
-    const optionsBtn = statusDiv.querySelector('.post-options-btn');
-    if (optionsBtn) {
-        const menu = statusDiv.querySelector('.post-options-menu');
-        optionsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.querySelectorAll('.post-options-menu').forEach(m => {
-                if (m !== menu) m.style.display = 'none';
-            });
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-
-        menu.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = 'none';
-            actions.showEditModal(originalPost);
-        });
-
-        menu.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = 'none';
-            actions.showDeleteModal(originalPost.id);
-        });
-    }
-
-    return statusDiv;
 }
