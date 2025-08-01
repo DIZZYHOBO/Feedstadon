@@ -23,5 +23,3 @@ export async function performSearch(state, query) {
         state.searchResults.style.display = 'none';
     }
 }
-
-
