@@ -78,9 +78,9 @@
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
-        .status-content a { color: var(--link-color); text-decoration: none; font-weight: bold; }
+        .status-content a { color: var(--link-color); }
         .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
-        .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; }
+        .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
         .status-action { cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
         .icon { width: 20px; height: 20px; fill: currentColor; }
         
@@ -118,6 +118,8 @@
         .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--accent-color); }
         input:checked + .slider:before { transform: translateX(26px); }
+        #word-filter-list { list-style: none; padding: 0; }
+        #word-filter-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px; background: var(--primary-color); margin-bottom: 5px; border-radius: 5px;}
     </style>
 </head>
 <body>
@@ -199,6 +201,14 @@
                     <span>Hide NSFW (sensitive) posts</span>
                     <label><input type="checkbox" id="nsfw-toggle"><span class="slider"></span></label>
                 </div>
+            </div>
+            <div class="settings-section">
+                <h4>Word Filter</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin: 0;">
+                    <button id="add-filter-word-btn">Add</button>
+                </div>
+                <ul id="word-filter-list"></ul>
             </div>
         </div>
     </template>
