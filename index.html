@@ -15,6 +15,7 @@
             --font-color: #DEDEDE;
             --font-color-muted: #8E8F90;
             --border-color: #333435;
+            --link-color: #88C0D0; /* Softer link color */
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -32,15 +33,6 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-        }
-        #login-view {
-            background-color: var(--card-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
         }
         .top-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
@@ -72,7 +64,14 @@
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
+        .status-content a { color: var(--link-color); text-decoration: none; }
+        .status-content a:hover { text-decoration: underline; }
         .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
+        .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; }
+        .status-action { cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+        .status-action:hover { background-color: var(--primary-color); }
+        .status-action.active { color: var(--accent-color); }
+        .icon { width: 20px; height: 20px; fill: currentColor; }
         
         @media (max-width: 600px) {
             .container { padding: 10px 5px; }
@@ -81,42 +80,16 @@
             .nav-button { padding: 6px 10px; font-size: 0.8em; }
             #user-display-btn { max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
         }
-        @media (min-width: 601px) and (max-width: 900px) { .container { max-width: 80%; } }
-        @media (min-width: 901px) { .container { max-width: 700px; } }
     </style>
 </head>
 <body>
 
     <nav class="top-nav">
-        <div class="nav-left">
-            <div class="dropdown" id="feeds-dropdown">
-                <button class="nav-button">Feeds</button>
-                <div class="dropdown-content">
-                    <a href="#" data-timeline="home">Subscribed</a>
-                    <a href="#" data-timeline="public?local=true">Local</a>
-                    <a href="#" data-timeline="public">All</a>
-                </div>
-            </div>
-            <button class="nav-button" id="nav-post-btn">Post</button>
-        </div>
-        <div class="nav-right">
-            <div class="dropdown" id="user-dropdown">
-                <button class="nav-button" id="user-display-btn"></button>
-                <div class="dropdown-content">
-                    <a href="#" id="profile-link">Profile</a>
-                    <a href="#" id="logout-btn">Logout</a>
-                </div>
-            </div>
-        </div>
-    </nav>
+        </nav>
 
     <div class="container">
         <div id="login-view">
-            <h2>Feedstadon</h2>
-            <input type="text" id="instance-url" placeholder="your-instance.social">
-            <input type="password" id="access-token" placeholder="Paste your access token">
-            <button id="connect-btn">Connect</button>
-        </div>
+            </div>
         <div id="app-view">
             <div id="timeline"></div>
         </div>
@@ -126,53 +99,28 @@
         <div class="modal-content" id="modal-body"></div>
     </div>
 
-    <template id="compose-template">
-        <form id="compose-form">
-            <h3>New Post</h3>
-            <textarea placeholder="What's on your mind?"></textarea>
-            <div style="text-align: right;"><button type="submit">Post</button></div>
-        </form>
-    </template>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
-            const loginView = document.getElementById('login-view');
-            const appView = document.getElementById('app-view');
-            const instanceUrlInput = document.getElementById('instance-url');
-            const accessTokenInput = document.getElementById('access-token');
-            const connectBtn = document.getElementById('connect-btn');
-            const userDisplayBtn = document.getElementById('user-display-btn');
+            // --- DOM Elements & State ---
             const timelineDiv = document.getElementById('timeline');
-            const modal = document.getElementById('modal');
-            const modalBody = document.getElementById('modal-body');
-            const userDropdown = document.getElementById('user-dropdown');
-            const feedsDropdown = document.getElementById('feeds-dropdown');
-            const logoutBtn = document.getElementById('logout-btn');
-            const profileLink = document.getElementById('profile-link');
-            const navPostBtn = document.getElementById('nav-post-btn');
-            const composeTemplate = document.getElementById('compose-template');
+            let instanceUrl = '', accessToken = '';
             
-            // --- App State ---
-            let instanceUrl = '', accessToken = '', currentUser = null;
+            // SVG Icons
+            const ICONS = {
+                reply: `<svg class="icon" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>`,
+                boost: `<svg class="icon" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`,
+                favorite: `<svg class="icon" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+                bookmark: `<svg class="icon" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>`
+            };
 
             // --- API Helper & Modal ---
-            async function apiFetch(endpoint, options = {}) {
+            async function apiFetch(endpoint) {
                 const url = `https://${instanceUrl}${endpoint}`;
-                const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
-                const response = await fetch(url, { ...options, headers });
+                const headers = { 'Authorization': `Bearer ${accessToken}` };
+                const response = await fetch(url, { headers });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             }
-            function showModal(contentNode) {
-                modalBody.innerHTML = '';
-                modalBody.appendChild(contentNode);
-                modal.classList.add('visible');
-            }
-            function hideModal() {
-                modal.classList.remove('visible');
-            }
-            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
             // --- Rendering ---
             function renderStatus(status) {
@@ -198,6 +146,12 @@
                     </div>
                     <div class="status-content">${originalPost.content}</div>
                     <div class="status-media">${mediaHTML}</div>
+                    <div class="status-footer">
+                        <span class="status-action reply">${ICONS.reply} ${originalPost.replies_count}</span>
+                        <span class="status-action boost ${originalPost.reblogged ? 'active' : ''}">${ICONS.boost} ${originalPost.reblogs_count}</span>
+                        <span class="status-action favorite ${originalPost.favourited ? 'active' : ''}">${ICONS.favorite} ${originalPost.favourites_count}</span>
+                        <span class="status-action bookmark ${originalPost.bookmarked ? 'active' : ''}">${ICONS.bookmark}</span>
+                    </div>
                 `;
                 return statusDiv;
             }
@@ -213,35 +167,13 @@
                     timelineDiv.innerHTML = `<p>Could not load timeline.</p>`;
                 }
             }
-
-            function showComposeModal() {
-                const form = composeTemplate.content.cloneNode(true);
-                form.querySelector('form').onsubmit = async (e) => {
-                    e.preventDefault();
-                    const textarea = form.querySelector('textarea');
-                    if(!textarea.value.trim()) return;
-                    try {
-                        await apiFetch('/api/v1/statuses', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({status: textarea.value})
-                        });
-                        hideModal();
-                        fetchTimeline('home');
-                    } catch(err) {
-                        alert('Failed to post.');
-                    }
-                };
-                showModal(form);
-            }
             
             async function initializeApp() {
                 try {
-                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
-                    loginView.style.display = 'none';
-                    appView.style.display = 'block';
+                    await apiFetch('/api/v1/accounts/verify_credentials');
+                    document.getElementById('login-view').style.display = 'none';
+                    document.getElementById('app-view').style.display = 'block';
                     document.querySelector('.top-nav').style.display = 'flex';
-                    userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
                 } catch (error) {
                     alert('Connection failed. Please check URL and token.');
@@ -250,45 +182,22 @@
                 }
             }
             
-            // --- Event Listeners ---
-            connectBtn.addEventListener('click', () => {
-                instanceUrl = instanceUrlInput.value.trim();
-                accessToken = accessTokenInput.value.trim();
+            // --- Event Listeners & Initial Page Load ---
+            document.getElementById('connect-btn').addEventListener('click', () => {
+                instanceUrl = document.getElementById('instance-url').value.trim();
+                accessToken = document.getElementById('access-token').value.trim();
                 if (instanceUrl && accessToken) {
                     localStorage.setItem('fediverse-instance', instanceUrl);
                     localStorage.setItem('fediverse-token', accessToken);
                     initializeApp();
                 }
             });
-            
-            window.addEventListener('click', (e) => {
-                if (!e.target.closest('.dropdown')) {
-                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
-                }
-            });
-            [userDropdown, feedsDropdown].forEach(dd => {
-                dd.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
-                    dd.classList.toggle('active');
-                });
-            });
-            feedsDropdown.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    fetchTimeline(e.target.dataset.timeline);
-                });
-            });
-            navPostBtn.addEventListener('click', showComposeModal);
-            logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
-            profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile view coming soon!'); });
 
-            // --- Initial Page Load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
-                instanceUrlInput.value = savedInstance;
-                accessTokenInput.value = savedToken;
+                document.getElementById('instance-url').value = savedInstance;
+                document.getElementById('access-token').value = savedToken;
                 instanceUrl = savedInstance;
                 accessToken = savedToken;
                 initializeApp();
