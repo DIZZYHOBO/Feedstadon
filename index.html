@@ -9,39 +9,7 @@
 <body>
 
     <nav class="top-nav">
-        <div class="nav-left">
-            <div class="dropdown" id="feeds-dropdown">
-                <button class="nav-button">Feeds</button>
-                <div class="dropdown-content">
-                    <a href="#" data-timeline="home">Subscribed</a>
-                    <a href="#" data-timeline="public?local=true">Local</a>
-                    <a href="#" data-timeline="public">All</a>
-                </div>
-            </div>
-            <button class="nav-button" id="nav-post-btn">Post</button>
-        </div>
-        <div class="nav-right">
-            <div class="search-container" id="search-container">
-                <button class="nav-button" id="search-toggle-btn">Search</button>
-                <form id="search-form">
-                    <input type="search" id="search-input" placeholder="Search...">
-                    <div class="dropdown-content" id="search-results"></div>
-                </form>
-            </div>
-            <div class="dropdown" id="notifications-dropdown">
-                <button class="nav-button icon-button" id="notifications-btn"></button>
-                <div class="dropdown-content" id="notifications-list"></div>
-            </div>
-            <div class="dropdown" id="user-dropdown">
-                <button class="nav-button" id="user-display-btn"></button>
-                <div class="dropdown-content">
-                    <a href="#" id="profile-link">Profile</a>
-                    <a href="#" id="settings-link">Settings</a>
-                    <a href="#" id="logout-btn">Logout</a>
-                </div>
-            </div>
-        </div>
-    </nav>
+        </nav>
 
     <div class="container">
         <div id="login-view">
@@ -59,43 +27,6 @@
     <div id="modal" class="modal-overlay">
         <div class="modal-content" id="modal-body"></div>
     </div>
-
-    <template id="compose-template">
-        <form id="compose-form">
-            <h3>New Post</h3>
-            <textarea placeholder="What's on your mind?"></textarea>
-            <div class="compose-actions">
-                <div>
-                    <input type="file" id="media-input" accept="image/*,video/*" style="display: none;">
-                    <button type="button" id="media-btn" style="font-size: 0.8rem; padding: 8px 12px;">Add Media</button>
-                    <span id="media-preview"></span>
-                </div>
-                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em;"><input type="checkbox" id="nsfw-checkbox">NSFW</label>
-                <button type="submit">Post</button>
-            </div>
-        </form>
-    </template>
-    
-    <template id="settings-template">
-        <div>
-            <h2>Settings</h2>
-            <div class="settings-section">
-                <h4>Content Filtering</h4>
-                <div class="toggle-switch">
-                    <span>Hide NSFW (sensitive) posts</span>
-                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider"></span></label>
-                </div>
-            </div>
-            <div class="settings-section">
-                <h4>Word Filter</h4>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin: 0;">
-                    <button id="add-filter-word-btn">Add</button>
-                </div>
-                <ul id="word-filter-list"></ul>
-            </div>
-        </div>
-    </template>
 
     <script type="module" src="app.js"></script>
 </body>
