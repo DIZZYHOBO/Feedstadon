@@ -6,7 +6,7 @@ import { showComposeModal } from './components/Compose.js';
 import { showSettingsModal, loadSettings } from './components/Settings.js';
 // MODIFIED: This now correctly imports 'renderProfilePage'.
 import { renderProfilePage } from './components/Profile.js';
-import { performSearch } from './components/Search.js';
+import { renderSearchResults } from './components/Search.js';
 import { fetchNotifications } from './components/Notifications.js';
 import { initLogin, showLogin } from './components/Login.js';
 
