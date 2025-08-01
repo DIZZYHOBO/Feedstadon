@@ -1,48 +1,62 @@
-import { apiFetch } from './api.js';
-import { showModal, hideModal } from './ui.js';
-import { fetchTimeline } from './Timeline.js';
+import { showModal } from './ui.js';
 
-export function showComposeModal(state) {
-    const composeContent = document.getElementById('compose-template').content.cloneNode(true);
-    const form = composeContent.querySelector('form');
-    const textarea = composeContent.querySelector('textarea');
-    const mediaBtn = composeContent.querySelector('#media-btn');
-    const mediaInput = composeContent.querySelector('#media-input');
-    const mediaPreview = composeContent.querySelector('#media-preview');
-    const nsfwCheckbox = composeContent.querySelector('#nsfw-checkbox');
+function saveSettings(settings) {
+    localStorage.setItem('feedstadon-settings', JSON.stringify(settings));
+}
+
+function renderWordList(listElement, state) {
+    listElement.innerHTML = '';
+    state.settings.filteredWords.forEach(word => {
+        const li = document.createElement('li');
+        li.textContent = word;
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.style.cssText = `background: #d9534f; font-size: 0.8em; padding: 4px 8px;`;
+        removeBtn.onclick = () => {
+            state.settings.filteredWords = state.settings.filteredWords.filter(w => w !== word);
+            saveSettings(state.settings);
+            renderWordList(listElement, state);
+        };
+        li.appendChild(removeBtn);
+        listElement.appendChild(li);
+    });
+}
+
+export function loadSettings() {
+    const saved = localStorage.getItem('feedstadon-settings');
+    const defaults = {
+        hideNsfw: false,
+        filteredWords: []
+    };
+    return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+}
+
+export function showSettingsModal(state) {
+    const settingsContent = document.getElementById('settings-template').content.cloneNode(true);
+    const nsfwToggle = settingsContent.querySelector('#nsfw-toggle');
+    const wordFilterInput = settingsContent.querySelector('#word-filter-input');
+    const addWordBtn = settingsContent.querySelector('#add-filter-word-btn');
+    const wordList = settingsContent.querySelector('#word-filter-list');
+
+    // Set initial values from state
+    nsfwToggle.checked = state.settings.hideNsfw;
+    renderWordList(wordList, state);
+
+    // Add event listeners
+    nsfwToggle.onchange = () => {
+        state.settings.hideNsfw = nsfwToggle.checked;
+        saveSettings(state.settings);
+    };
+
+    addWordBtn.onclick = () => {
+        const newWord = wordFilterInput.value.trim().toLowerCase();
+        if (newWord && !state.settings.filteredWords.includes(newWord)) {
+            state.settings.filteredWords.push(newWord);
+            saveSettings(state.settings);
+            renderWordList(wordList, state);
+            wordFilterInput.value = '';
+        }
+    };
     
-    mediaBtn.onclick = () => mediaInput.click();
-    mediaInput.onchange = async () => {
-        const file = mediaInput.files[0];
-        if (!file) return;
-        mediaPreview.textContent = 'Uploading...';
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const result = await apiFetch(state.instanceUrl, state.accessToken, '/api/v2/media', { method: 'POST', body: formData });
-            state.attachedMediaId = result.id;
-            mediaPreview.textContent = `✅ Attached`;
-        } catch (err) { mediaPreview.textContent = 'Upload failed!'; }
-    };
-
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        if (!textarea.value.trim() && !state.attachedMediaId) return;
-        try {
-            const body = { 
-                status: textarea.value,
-                sensitive: nsfwCheckbox.checked 
-            };
-            if (state.attachedMediaId) body.media_ids = [state.attachedMediaId];
-            await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(body)
-            });
-            hideModal();
-            state.attachedMediaId = null;
-            fetchTimeline(state, 'home');
-        } catch(err) { alert('Failed to post.'); }
-    };
-    showModal(composeContent);
-    textarea.focus();
+    showModal(settingsContent);
 }
