@@ -11,7 +11,6 @@
     --link-color: #88C0D0;
 }
 
-/* ADDED: Universal box-sizing for better layout control */
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -96,7 +95,20 @@ textarea:focus {
     align-items: center; padding: 0 10px; z-index: 2000;
 }
 
-.nav-left, .nav-right { display: flex; align-items: center; gap: 10px; }
+.nav-left, .nav-right { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    flex-shrink: 0; /* Prevent left/right from shrinking */
+}
+
+/* ADDED: Center section styling */
+.nav-center {
+    flex-grow: 1; /* Allow this to take up all available space */
+    display: flex;
+    justify-content: center;
+    padding: 0 20px;
+}
 
 .nav-button {
     background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
@@ -126,6 +138,11 @@ textarea:focus {
 .dropdown.active .dropdown-content { display: block; }
 
 /* --- Search Bar --- */
+#search-form {
+    width: 100%;
+    max-width: 500px;
+}
+
 #search-input {
     font-family: 'Inter', sans-serif;
     font-size: 0.9rem;
@@ -134,7 +151,7 @@ textarea:focus {
     border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 8px 12px;
-    width: 150px;
+    width: 100%; /* Fill the center container */
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -145,7 +162,6 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-
 #timeline, .profile-feed { display: flex; flex-direction: column; gap: 15px; }
 
 /* --- Status / Post --- */
@@ -165,10 +181,9 @@ textarea:focus {
 .status-content { 
     margin-bottom: 15px; 
     line-height: 1.5; 
-    word-wrap: break-word; /* MODIFIED: Old property for compatibility */
-    overflow-wrap: break-word; /* MODIFIED: Prevents long text from overflowing */
+    overflow-wrap: break-word;
 }
-.status-content a { color: var(--link-color); word-break: break-all; } /* MODIFIED: Helps break long links */
+.status-content a { color: var(--link-color); word-break: break-all; }
 
 .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
 
@@ -192,7 +207,7 @@ textarea:focus {
     border-color: var(--accent-color);
     color: var(--accent-color);
 }
-.icon { width: 22px; height: 22px; flex-shrink: 0; } /* ADDED: Prevents icon from shrinking */
+.icon { width: 22px; height: 22px; flex-shrink: 0; }
 
 .status-action.active {
     color: var(--accent-color);
@@ -298,10 +313,9 @@ textarea:focus {
 .profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
 .profile-info .note { 
     line-height: 1.5; 
-    word-wrap: break-word; /* MODIFIED: Old property for compatibility */
-    overflow-wrap: break-word; /* MODIFIED: Prevents long text from overflowing */
+    overflow-wrap: break-word;
 }
-.profile-info .note a { word-break: break-all; } /* MODIFIED: Helps break long links */
+.profile-info .note a { word-break: break-all; }
 
 
 /* --- Search Results Page --- */
@@ -388,14 +402,14 @@ textarea:focus {
     color: white;
 }
 
-/* ADDED: Media query for mobile responsiveness */
+/* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
     .container {
-        padding: 10px 5px; /* Reduce side padding on small screens */
+        padding: 10px 5px;
     }
 
     .status-footer {
-        flex-wrap: wrap; /* Allow buttons to wrap if needed */
+        flex-wrap: wrap;
         justify-content: space-between;
     }
 
