@@ -1,107 +1,86 @@
-import { apiFetch } from './api.js';
-import { showModal } from './ui.js';
+import { apiFetch, apiUpdateCredentials } from './api.js';
 
-// --- MODIFIED: This function now renders the list from server objects ---
-function renderWordList(listElement, state) {
-    listElement.innerHTML = '';
-    state.settings.filters.forEach(filter => {
-        const li = document.createElement('li');
-        li.textContent = filter.phrase;
-        const removeBtn = document.createElement('button');
-        removeBtn.textContent = 'Remove';
-        removeBtn.style.cssText = `background: #d9534f; font-size: 0.8em; padding: 4px 8px;`;
-        
-        // MODIFIED: Onclick now sends a DELETE request to the server
-        removeBtn.onclick = async () => {
-            try {
-                // Optimistically remove from UI
-                li.remove(); 
-                // Remove from local state
-                state.settings.filters = state.settings.filters.filter(f => f.id !== filter.id);
-                // Send delete request
-                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/filters/${filter.id}`, { method: 'DELETE' });
-            } catch (err) {
-                alert('Failed to remove filter.');
-                // If it failed, re-render the list to add it back
-                renderWordList(listElement, state);
-            }
-        };
-        li.appendChild(removeBtn);
-        listElement.appendChild(li);
-    });
-}
+export async function renderSettingsPage(state) {
+    const container = document.getElementById('settings-view');
+    container.innerHTML = '<p>Loading settings...</p>';
 
-// --- MODIFIED: This function now fetches filters from the server ---
-export async function loadSettings(state) {
-    const savedClientSettings = localStorage.getItem('feedstadon-settings');
-    const hideNsfw = savedClientSettings ? JSON.parse(savedClientSettings).hideNsfw : false;
-    
     try {
-        const filters = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters');
-        return { hideNsfw, filters };
-    } catch (err) {
-        console.error("Could not load server filters", err);
-        alert("Could not load your server-side filters. The filter feature will be limited.");
-        return { hideNsfw, filters: [] };
-    }
-}
+        const account = state.currentUser; // We already have this from login
 
-// --- MODIFIED: The modal now interacts with the Mastodon API ---
-export function showSettingsModal(state) {
-    const settingsContent = document.getElementById('settings-template').content.cloneNode(true);
-    const nsfwToggle = settingsContent.querySelector('#nsfw-toggle');
-    const wordFilterInput = settingsContent.querySelector('#word-filter-input');
-    const addWordBtn = settingsContent.querySelector('#add-filter-word-btn');
-    const wordList = settingsContent.querySelector('#word-filter-list');
-
-    nsfwToggle.checked = state.settings.hideNsfw;
-    renderWordList(wordList, state);
-
-    nsfwToggle.onchange = () => {
-        state.settings.hideNsfw = nsfwToggle.checked;
-        // The only setting we save locally now is the NSFW toggle
-        localStorage.setItem('feedstadon-settings', JSON.stringify({ hideNsfw: state.settings.hideNsfw }));
-    };
-
-    addWordBtn.onclick = async () => {
-        const newWord = wordFilterInput.value.trim().toLowerCase();
-        if (newWord && !state.settings.filters.some(f => f.phrase === newWord)) {
-            const tempId = `temp_${Date.now()}`;
-            
-            // Optimistically add to UI
-            const newFilterData = { id: tempId, phrase: newWord };
-            state.settings.filters.push(newFilterData);
-            renderWordList(wordList, state);
-            wordFilterInput.value = '';
+        container.innerHTML = `
+            <div class="settings-container">
+                <form id="settings-form">
+                    <div class="settings-section">
+                        <h3>Profile</h3>
+                        <div class="form-group">
+                            <label for="display-name-input">Display Name</label>
+                            <input type="text" id="display-name-input" value="${account.display_name}">
+                        </div>
+                        <div class="form-group">
+                            <label for="bio-textarea">Bio / Note</label>
+                            <textarea id="bio-textarea" rows="4"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="avatar-input">Avatar (Profile Picture)</label>
+                            <input type="file" id="avatar-input" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label for="header-input">Header (Banner Image)</label>
+                            <input type="file" id="header-input" accept="image/*">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="settings-save-button">Save Settings</button>
+                </form>
+            </div>
+        `;
+        
+        // Convert bio HTML to plain text for textarea
+        const bioTextarea = container.querySelector('#bio-textarea');
+        const plainTextBio = account.note.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<[^>]*>/g, "").trim();
+        bioTextarea.value = plainTextBio;
+        
+        // Add form submission listener
+        const settingsForm = container.querySelector('#settings-form');
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const saveButton = settingsForm.querySelector('.settings-save-button');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
 
             try {
-                const body = {
-                    phrase: newWord,
-                    context: ['home', 'notifications', 'public'], // Apply filter widely
-                    irreversible: false,
-                    whole_word: false
-                };
-                // Send POST request to server
-                const createdFilter = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
+                const formData = new FormData();
+                formData.append('display_name', document.getElementById('display-name-input').value);
+                formData.append('note', document.getElementById('bio-textarea').value);
                 
-                // Replace temp data with real data from server
-                const optimisticFilter = state.settings.filters.find(f => f.id === tempId);
-                if(optimisticFilter) {
-                    optimisticFilter.id = createdFilter.id;
+                const avatarFile = document.getElementById('avatar-input').files[0];
+                if (avatarFile) {
+                    formData.append('avatar', avatarFile);
+                }
+                
+                const headerFile = document.getElementById('header-input').files[0];
+                if (headerFile) {
+                    formData.append('header', headerFile);
                 }
 
-            } catch (err) {
-                alert('Failed to add filter.');
-                // If it failed, remove the optimistic add
-                state.settings.filters = state.settings.filters.filter(f => f.id !== tempId);
-                renderWordList(wordList, state);
+                const updatedAccount = await apiUpdateCredentials(state, formData);
+                state.currentUser = updatedAccount; // Update state with new user info
+                
+                alert('Settings saved successfully!');
+                // Update the user display name in the nav bar
+                document.getElementById('user-display-btn').textContent = updatedAccount.display_name;
+
+            } catch (error) {
+                console.error('Failed to save settings:', error);
+                alert('Could not save settings.');
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Settings';
             }
-        }
-    };
-    
-    showModal(settingsContent);
+        });
+
+    } catch (error) {
+        console.error('Failed to render settings page:', error);
+        container.innerHTML = '<p>Could not load settings.</p>';
+    }
 }
