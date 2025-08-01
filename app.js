@@ -8,12 +8,17 @@ import { showSettingsModal, loadSettings } from './components/Settings.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { fetchNotifications } from './components/Notifications.js';
-import { initLogin, showLogin } from './components/Login.js';
+// We are removing the import for Login.js as the logic will be handled directly here.
 
 document.addEventListener('DOMContentLoaded', () => {
     initUI();
 
     // --- DOM Elements ---
+    const loginView = document.getElementById('login-view');
+    const instanceUrlInput = document.getElementById('instance-url');
+    const accessTokenInput = document.getElementById('access-token');
+    const connectBtn = document.getElementById('connect-btn');
+
     const appView = document.getElementById('app-view');
     const userDisplayBtn = document.getElementById('user-display-btn');
     const timelineDiv = document.getElementById('timeline');
@@ -69,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.toggleAction = (action, id, button) => toggleAction(action, id, button);
     state.actions.showEditModal = (post) => {
         postToEdit = post;
-        editPostTextarea.value = post.content.replace(/<br\s*\/?>/gi, "\n"); // Convert <br> to newlines
+        editPostTextarea.value = post.content.replace(/<br\s*\/?>/gi, "\n");
         editPostModal.classList.add('visible');
     };
     state.actions.showDeleteModal = (postId) => {
@@ -101,13 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeApp() {
         try {
-            // MODIFIED: Verify user credentials FIRST to ensure the token is valid.
             state.currentUser = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
-            
-            // MODIFIED: Load settings AFTER successful verification.
             state.settings = await loadSettings(state);
             
-            document.getElementById('login-view').style.display = 'none';
+            loginView.style.display = 'none';
             appView.style.display = 'block';
             document.querySelector('.top-nav').style.display = 'flex';
             userDisplayBtn.textContent = state.currentUser.display_name;
@@ -116,7 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Initialization failed:', error);
             alert('Connection failed. Please check your URL and token.');
             localStorage.clear();
-            showLogin();
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
         }
     }
 
@@ -305,5 +309,36 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
 
     // --- Initialize App ---
-    initLogin(onLoginSuccess);
+    
+    // MODIFIED: This function now handles the initial login from localStorage
+    function initLoginOnLoad() {
+        const instance = localStorage.getItem('instanceUrl');
+        const token = localStorage.getItem('accessToken');
+        if (instance && token) {
+            onLoginSuccess(instance, token);
+        } else {
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+    
+    // ADDED: Event listener for the connect button
+    connectBtn.addEventListener('click', () => {
+        const instance = instanceUrlInput.value.trim();
+        const token = accessTokenInput.value.trim();
+
+        if (!instance || !token) {
+            alert('Please provide both an instance URL and an access token.');
+            return;
+        }
+
+        localStorage.setItem('instanceUrl', instance);
+        localStorage.setItem('accessToken', token);
+
+        onLoginSuccess(instance, token);
+    });
+    
+    // Run the initial login check when the page loads
+    initLoginOnLoad();
 });
