@@ -60,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
     state.actions.showEditModal = (post) => {
         postToEdit = post;
-        editPostTextarea.value = post.content.replace(/<br\s*\/?>/gi, "\n");
+        const plainText = post.content.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<[^>]*>/g, "").trim();
+        editPostTextarea.value = plainText;
         editPostModal.classList.add('visible');
     };
     state.actions.showDeleteModal = (postId) => {
@@ -255,8 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (d !== dd) d.classList.remove('active');
                 });
                 dd.classList.toggle('active');
-                
-                // MODIFIED: This now calls the fetchNotifications function when clicked
                 if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
                     fetchNotifications(state);
                 }
@@ -265,10 +264,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.dropdown')) {
+        // MODIFIED: This now also handles hiding the search bar on click-away
+        const isClickInsideDropdown = e.target.closest('.dropdown');
+        const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
+
+        if (!isClickInsideDropdown) {
             document.querySelectorAll('.dropdown.active').forEach(d => {
                 d.classList.remove('active');
             });
+        }
+        
+        if (!isClickInsideSearch) {
+            searchInput.value = '';
+            searchForm.style.display = 'none';
+            searchToggleBtn.style.display = 'block';
         }
     });
 
@@ -280,12 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // MODIFIED: Removed the line that was hiding the Post button
     searchToggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         searchForm.style.display = 'block';
         searchInput.focus();
         searchToggleBtn.style.display = 'none';
-        navPostBtn.style.display = 'none';
     });
     
     searchForm.addEventListener('submit', (e) => {
