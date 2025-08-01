@@ -1,4 +1,5 @@
 import { ICONS } from './icons.js';
+import { formatTimestamp } from './utils.js';
 
 export function renderStatus(status, state, actions) {
     const originalPost = status.reblog || status;
@@ -37,12 +38,15 @@ export function renderStatus(status, state, actions) {
         mediaHTML += '</div>';
     }
 
+    const timestamp = formatTimestamp(originalPost.created_at);
+
     statusDiv.innerHTML = `
         <div class="status-header">
             <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
             <div>
                 <span class="display-name">${originalPost.account.display_name}</span>
                 <span class="acct">@${originalPost.account.acct}</span>
+                <span class="timestamp">· ${timestamp}</span>
             </div>
             ${optionsMenuHTML}
         </div>
