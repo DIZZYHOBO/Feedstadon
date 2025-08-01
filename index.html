@@ -62,9 +62,49 @@
         </div>
     </div>
     
-    <div id="compose-modal" class="modal-overlay"></div>
-    <div id="edit-post-modal" class="modal-overlay"></div>
-    <div id="delete-post-modal" class="modal-overlay"></div>
+    <div id="compose-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>New Post</h3>
+            <form id="compose-form">
+                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+                <div class="modal-actions">
+                    <div class="compose-options">
+                        <input type="file" id="media-attachment-input" accept="image/*, video/*" style="display: none;">
+                        <button type="button" id="add-media-btn" class="button-secondary">Add Media</button>
+                        <span id="media-filename-preview"></span>
+                    </div>
+                    <div>
+                        <button type="button" class="button-secondary cancel-compose">Cancel</button>
+                        <button type="submit">Post</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="edit-post-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Edit Post</h3>
+            <form id="edit-post-form">
+                <textarea id="edit-post-textarea"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="button-secondary cancel-edit">Cancel</button>
+                    <button type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-post-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Delete Post</h3>
+            <p>Are you sure you want to permanently delete this post?</p>
+            <div class="modal-actions">
+                <button type="button" class="button-secondary cancel-delete">Cancel</button>
+                <button type="submit" id="confirm-delete-btn" class="button-danger">Delete</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
