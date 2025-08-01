@@ -1,0 +1,6 @@
+export const ICONS = {
+    reply: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10,9V5L3,12L10,19V14.9C15,14.9 18.5,16.5 21,20C20,15 17,10 10,9Z" /></svg>`,
+    boost: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7,7H17V2L22,9L17,16V11H9V13L7,11V7M17,17H7V22L2,15L7,8V13H15V11L17,13V17Z" /></svg>`,
+    favorite: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" /></svg>`,
+    bookmark: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17,3H7A2,2 0 0,0 5,5V21L12,18L19,21V5C19,3.89 18.1,3 17,3Z" /></svg>`
+};
