@@ -26,10 +26,17 @@
             </form>
             <button class="nav-button" id="search-toggle-btn">Search</button>
             <button class="nav-button" id="nav-post-btn">Post</button>
+            
+            <div class="dropdown" id="notifications-dropdown">
+                <button class="nav-button icon-button" id="notifications-btn">🔔</button>
+                <div class="dropdown-content" id="notifications-list"></div>
+            </div>
+
             <div class="dropdown" id="user-dropdown">
                 <button class="nav-button" id="user-display-btn"></button>
                 <div class="dropdown-content">
                     <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="settings-link">Settings</a>
                     <a href="#" id="logout-btn">Logout</a>
                 </div>
             </div>
@@ -51,6 +58,10 @@
         </div>
     </div>
     
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content" id="modal-body"></div>
+    </div>
+
     <script type="module" src="app.js"></script>
 </body>
 </html>
