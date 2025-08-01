@@ -3,6 +3,9 @@ import { showModal, hideModal } from './ui.js';
 import { fetchTimeline } from './Timeline.js';
 
 export function showComposeModal(state) {
+    // Clear any previously attached media ID to prevent accidental attachments
+    state.attachedMediaId = null;
+
     const composeContent = document.getElementById('compose-template').content.cloneNode(true);
     const form = composeContent.querySelector('form');
     const textarea = composeContent.querySelector('textarea');
@@ -39,7 +42,8 @@ export function showComposeModal(state) {
                 body: JSON.stringify(body)
             });
             hideModal();
-            state.attachedMediaId = null;
+            // This is already correctly clearing the ID after a SUCCESSFUL post.
+            state.attachedMediaId = null; 
             fetchTimeline(state, 'home');
         } catch(err) { alert('Failed to post.'); }
     };
