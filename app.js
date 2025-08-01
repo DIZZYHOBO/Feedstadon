@@ -8,7 +8,6 @@ import { showSettingsModal, loadSettings } from './components/Settings.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { fetchNotifications } from './components/Notifications.js';
-// We are removing the import for Login.js as the logic will be handled directly here.
 
 document.addEventListener('DOMContentLoaded', () => {
     initUI();
@@ -310,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialize App ---
     
-    // MODIFIED: This function now handles the initial login from localStorage
     function initLoginOnLoad() {
         const instance = localStorage.getItem('instanceUrl');
         const token = localStorage.getItem('accessToken');
@@ -323,7 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // ADDED: Event listener for the connect button
     connectBtn.addEventListener('click', () => {
         const instance = instanceUrlInput.value.trim();
         const token = accessTokenInput.value.trim();
@@ -339,6 +336,5 @@ document.addEventListener('DOMContentLoaded', () => {
         onLoginSuccess(instance, token);
     });
     
-    // Run the initial login check when the page loads
     initLoginOnLoad();
 });
