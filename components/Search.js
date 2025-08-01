@@ -1,20 +1,13 @@
 import { apiFetch } from './api.js';
 
-/**
- * Fetches and renders search results into the search view.
- * @param {object} state - The global app state.
- * @param {string} query - The search query.
- */
 export async function renderSearchResults(state, query) {
     const container = document.getElementById('search-results-view');
     container.innerHTML = `<p>Searching for "${query}"...</p>`;
 
     try {
-        // Use the Mastodon API v2 search endpoint. It's simpler.
-        // We'll search for accounts and resolve results (to follow them from your instance).
         const results = await apiFetch(state.instanceUrl, state.accessToken, `/api/v2/search?q=${query}&type=accounts&resolve=true`);
         
-        container.innerHTML = ''; // Clear the "Searching..." message
+        container.innerHTML = '';
 
         if (results.accounts.length === 0) {
             container.innerHTML = `<p>No accounts found for "${query}".</p>`;
@@ -33,7 +26,6 @@ export async function renderSearchResults(state, query) {
                 </div>
             `;
             
-            // Add click listener to show the user's profile
             resultDiv.addEventListener('click', () => {
                 state.actions.showProfile(account.id);
             });
