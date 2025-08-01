@@ -40,10 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
         lastPostId: null,
         isLoadingMore: false,
         searchDebounce: null,
+        // Pass DOM elements into state for components to use
         timelineDiv,
         scrollLoader,
         searchResults,
         notificationsList,
+        // Pass action functions into state for components to use
         actions: {}
     };
 
