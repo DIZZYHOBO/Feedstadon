@@ -37,3 +37,4 @@ export function renderStatus(status, settings, actions) {
     
     return statusDiv;
 }
+
