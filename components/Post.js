@@ -49,9 +49,9 @@ export function renderStatus(status, state, actions) {
         <div class="status-content">${originalPost.content}</div>
         ${mediaHTML}
         <div class="status-footer">
-            <button class="status-action" data-action="reply">${ICONS.reply}</button>
-            <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost}</button>
-            <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite}</button>
+            <button class="status-action" data-action="reply">${ICONS.reply} ${originalPost.replies_count}</button>
+            <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost} ${originalPost.reblogs_count}</button>
+            <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${originalPost.favourites_count}</button>
             <button class="status-action ${originalPost.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
         </div>
     `;
