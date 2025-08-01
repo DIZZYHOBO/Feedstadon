@@ -176,6 +176,7 @@ textarea:focus {
 .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
 .status-header .display-name { font-weight: bold; cursor: pointer; }
 .status-header .acct { color: var(--font-color-muted); }
+.status-header .timestamp { color: var(--font-color-muted); font-size: 0.9em; } /* ADDED */
 
 .status-content { 
     margin-bottom: 15px; 
@@ -335,7 +336,7 @@ textarea:focus {
     font-size: 0.9em;
     border-bottom: 1px solid var(--border-color);
 }
-#notifications-list a:last-child {
+#notifications-list a:last-child, #notifications-list div:last-child {
     border-bottom: none;
 }
 .notification-icon {
