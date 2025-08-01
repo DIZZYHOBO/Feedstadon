@@ -6,6 +6,7 @@
     <title>Feedstadon</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
         :root {
             --bg-color: #161617;
             --card-color: #1D1E1F;
@@ -60,10 +61,12 @@
         .nav-right .dropdown-content { right: 0; left: auto; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
         .dropdown.active .dropdown-content { display: block; }
+        
         .search-container { position: relative; }
         #search-form { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); width: 0; opacity: 0; transition: width 0.4s ease, opacity 0.4s ease; overflow: hidden; }
         #search-form.active { width: 200px; opacity: 1; }
         #search-input { margin-bottom: 0; }
+        
         #app-view { display: none; }
         #timeline { display: flex; flex-direction: column; gap: 15px; }
         .status { 
@@ -75,16 +78,18 @@
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-header img { width: 40px; height: 40px; border-radius: 50%; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
-        .status-content a { color: var(--link-color); }
+        .status-content a { color: var(--link-color); text-decoration: none; font-weight: bold; }
         .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
         .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; }
         .status-action { cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
         .icon { width: 20px; height: 20px; fill: currentColor; }
+        
         .comment-thread {
             max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out;
             margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);
         }
         .comment-thread.visible { max-height: 1500px; }
+        
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: center; z-index: 1000;
@@ -104,8 +109,15 @@
              border-radius: 18px; font-weight: bold; cursor: pointer; padding: 10px 15px;
         }
         .compose-actions { display: flex; justify-content: space-between; align-items: center; }
+        
         .settings-section { margin-bottom: 20px; }
         .toggle-switch { display: flex; align-items: center; justify-content: space-between; }
+        .toggle-switch label { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
     </style>
 </head>
 <body>
@@ -185,20 +197,12 @@
                 <h4>Content Filtering</h4>
                 <div class="toggle-switch">
                     <span>Hide NSFW (sensitive) posts</span>
-                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider" style="background-color: var(--primary-color);"></span></label>
+                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider"></span></label>
                 </div>
-            </div>
-            <div class="settings-section">
-                <h4>Word Filter</h4>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin: 0;">
-                    <button id="add-filter-word-btn">Add</button>
-                </div>
-                <ul id="word-filter-list"></ul>
             </div>
         </div>
     </template>
 
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 </body>
 </html>
