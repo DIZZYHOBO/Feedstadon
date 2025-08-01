@@ -77,3 +77,4 @@ export async function renderProfilePage(state, accountId) {
         container.innerHTML = '<p>Could not load profile.</p>';
     }
 }
+
