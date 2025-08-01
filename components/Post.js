@@ -4,6 +4,14 @@ export function renderStatus(status, settings, actions) {
     const originalPost = status.reblog || status;
     if (settings.hideNsfw && originalPost.sensitive) return null;
     
+    // Filter posts based on words in content
+    if (settings.filteredWords && settings.filteredWords.length > 0) {
+        const content_lower = originalPost.content.toLowerCase();
+        if (settings.filteredWords.some(word => content_lower.includes(word))) {
+            return null;
+        }
+    }
+
     let mediaHTML = '';
     if(originalPost.media_attachments && originalPost.media_attachments.length > 0) {
         mediaHTML = originalPost.media_attachments.map(media => {
@@ -18,7 +26,10 @@ export function renderStatus(status, settings, actions) {
     statusDiv.innerHTML = `
         <div class="status-header">
             <img src="${originalPost.account.avatar_static}">
-            <div><span class="display-name">${originalPost.account.display_name}</span></div>
+            <div style="display: flex; flex-direction: column;">
+                <span class="display-name">${originalPost.account.display_name}</span>
+                <span class="acct" style="color: var(--font-color-muted);">@${originalPost.account.acct}</span>
+            </div>
         </div>
         <div class="status-content">${originalPost.content}</div>
         <div class="status-media">${mediaHTML}</div>
@@ -37,4 +48,3 @@ export function renderStatus(status, settings, actions) {
     
     return statusDiv;
 }
-
