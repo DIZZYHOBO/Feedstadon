@@ -22,24 +22,22 @@ document.addEventListener('DOMContentLoaded', () => {
         actions: {}
     };
 
-    // --- Core Action ---
-    // We pass the entire state object now to simplify dependencies
+    // --- Core Actions ---
     state.actions.showProfile = (id) => console.log("Show profile action for:", id); // Placeholder
     state.actions.toggleAction = (action, id, button) => toggleAction(action, id, button);
+    state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
+
 
     // --- Main App Logic ---
     async function initializeApp() {
         try {
-            // Step 1: Verify the credentials. This is the call that was failing.
             state.currentUser = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
             
-            // If successful, hide login and show the app
             loginView.style.display = 'none';
             appView.style.display = 'block';
             document.querySelector('.top-nav').style.display = 'flex';
             userDisplayBtn.textContent = state.currentUser.display_name;
             
-            // Step 2: Fetch the home timeline
             fetchTimeline();
 
         } catch (error) {
@@ -75,8 +73,80 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function toggleAction(action, id, button) {
-        // We can add this logic back later. For now, just log it.
-        console.log(`Action: ${action} on post ID: ${id}`);
+        if (action === 'reply') {
+            const postElement = button.closest('.status');
+            toggleCommentThread({ id: id }, postElement);
+            return;
+        }
+
+        const isActive = button.classList.contains('active');
+        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' :
+                               (action === 'boost' && !isActive) ? 'reblog' :
+                               (action === 'favorite' && isActive) ? 'unfavourite' :
+                               (action === 'favorite' && !isActive) ? 'favourite' :
+                               (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
+        
+        const endpoint = `/api/v1/statuses/${id}/${endpointAction}`;
+
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+            button.classList.toggle('active');
+        } catch (error) {
+            console.error(`Failed to ${action} post:`, error);
+            alert(`Could not ${action} post.`);
+        }
+    }
+
+    async function toggleCommentThread(status, statusElement) {
+        const existingThread = statusElement.querySelector('.comment-thread');
+        if (existingThread) {
+            existingThread.remove();
+            return;
+        }
+
+        const threadContainer = document.createElement('div');
+        threadContainer.className = 'comment-thread';
+        threadContainer.innerHTML = `<p>Loading replies...</p>`;
+        statusElement.appendChild(threadContainer);
+
+        try {
+            const context = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/context`);
+            threadContainer.innerHTML = '';
+
+            if (context.descendants && context.descendants.length > 0) {
+                context.descendants.forEach(reply => {
+                    const replyElement = renderStatus(reply, state, state.actions);
+                    if (replyElement) threadContainer.appendChild(replyElement);
+                });
+            } else {
+                threadContainer.innerHTML = '<p>No replies yet.</p>';
+            }
+
+            const replyForm = document.createElement('form');
+            replyForm.className = 'comment-reply-form';
+            replyForm.innerHTML = `<textarea placeholder="Write a reply..."></textarea><button type="submit">Reply</button>`;
+            threadContainer.appendChild(replyForm);
+
+            replyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const textarea = replyForm.querySelector('textarea');
+                const content = textarea.value.trim();
+                if (!content) return;
+
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: content, in_reply_to_id: status.id })
+                });
+
+                toggleCommentThread(status, statusElement);
+                setTimeout(() => toggleCommentThread(status, statusElement), 100);
+            });
+
+        } catch (error) {
+            console.error('Could not load comment thread:', error);
+            threadContainer.innerHTML = '<p>Failed to load replies.</p>';
+        }
     }
 
     // --- Event Listeners ---
