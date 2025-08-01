@@ -264,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (e) => {
-        // MODIFIED: This now also handles hiding the search bar on click-away
         const isClickInsideDropdown = e.target.closest('.dropdown');
         const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
 
@@ -288,8 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchTimeline(link.dataset.timeline);
         });
     });
-
-    // MODIFIED: Removed the line that was hiding the Post button
+    
     searchToggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         searchForm.style.display = 'block';
