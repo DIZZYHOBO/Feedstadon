@@ -397,6 +397,3 @@ document.addEventListener('DOMContentLoaded', () => {
          document.querySelector('.top-nav').style.display = 'none';
     }
 });
-</script>
-</body>
-</html>
