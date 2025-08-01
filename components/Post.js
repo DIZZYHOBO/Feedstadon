@@ -3,6 +3,7 @@ import { ICONS } from './icons.js';
 export function renderStatus(status, state, actions) {
     const originalPost = status.reblog || status;
 
+    // Use a simplified settings check for now
     if (state.settings.hideNsfw && originalPost.sensitive) {
         return null;
     }
@@ -11,16 +12,7 @@ export function renderStatus(status, state, actions) {
     statusDiv.className = 'status';
     statusDiv.dataset.id = originalPost.id;
 
-    let optionsMenuHTML = '';
-    if (state.currentUser && originalPost.account.id === state.currentUser.id) {
-        optionsMenuHTML = `
-            <button class="post-options-btn">${ICONS.more}</button>
-            <div class="post-options-menu">
-                <button data-action="edit">Edit</button>
-                <button data-action="delete">Delete</button>
-            </div>
-        `;
-    }
+    const boosterInfo = status.reblog ? `<div class="booster-info">Boosted by ${status.account.display_name}</div>` : '';
 
     let mediaHTML = '';
     if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
@@ -42,7 +34,6 @@ export function renderStatus(status, state, actions) {
                 <span class="display-name">${originalPost.account.display_name}</span>
                 <span class="acct">@${originalPost.account.acct}</span>
             </div>
-            ${optionsMenuHTML}
         </div>
         <div class="status-content">${originalPost.content}</div>
         ${mediaHTML}
@@ -54,11 +45,13 @@ export function renderStatus(status, state, actions) {
         </div>
     `;
 
+    // Add click listeners for profile (currently a placeholder)
     const avatar = statusDiv.querySelector('.avatar');
     const displayName = statusDiv.querySelector('.display-name');
     if (avatar) avatar.onclick = () => actions.showProfile(originalPost.account.id);
     if (displayName) displayName.onclick = () => actions.showProfile(originalPost.account.id);
 
+    // Add listeners for the action buttons
     statusDiv.querySelectorAll('.status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -66,31 +59,6 @@ export function renderStatus(status, state, actions) {
             actions.toggleAction(action, originalPost.id, button);
         });
     });
-
-    const optionsBtn = statusDiv.querySelector('.post-options-btn');
-    if (optionsBtn) {
-        const menu = statusDiv.querySelector('.post-options-menu');
-        optionsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Close other menus
-            document.querySelectorAll('.post-options-menu').forEach(m => {
-                if (m !== menu) m.style.display = 'none';
-            });
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-
-        menu.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = 'none';
-            actions.showEditModal(originalPost);
-        });
-
-        menu.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = 'none';
-            actions.showDeleteModal(originalPost.id);
-        });
-    }
 
     return statusDiv;
 }
