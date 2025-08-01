@@ -101,8 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeApp() {
         try {
-            state.settings = await loadSettings(state);
+            // MODIFIED: Verify user credentials FIRST to ensure the token is valid.
             state.currentUser = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
+            
+            // MODIFIED: Load settings AFTER successful verification.
+            state.settings = await loadSettings(state);
+            
             document.getElementById('login-view').style.display = 'none';
             appView.style.display = 'block';
             document.querySelector('.top-nav').style.display = 'flex';
