@@ -11,7 +11,6 @@
     --link-color: #88C0D0;
 }
 
-/* --- ADDED: A subtle fade-in animation for the login card --- */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -36,22 +35,20 @@ body {
     gap: 15px; 
 }
 
-/* --- MODIFIED: Login UI Enhancements --- */
 #login-view {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
-    border-radius: 12px; /* Softer radius */
-    padding: 40px; /* More breathing room */
-    max-width: 400px; /* Constrain width for a cleaner look */
-    margin: 40px auto; /* Center the card horizontally */
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 400px;
+    margin: 40px auto;
     display: flex;
     flex-direction: column;
-    gap: 20px; /* Consistent spacing between elements */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); /* Add depth */
-    animation: fadeIn 0.5s ease-in-out; /* Apply the fade-in animation */
+    gap: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.5s ease-in-out;
 }
 
-/* --- ADDED: Styling for the login header --- */
 #login-view h2 {
     text-align: center;
     color: var(--font-color);
@@ -59,7 +56,6 @@ body {
     font-size: 1.8rem;
 }
 
-/* --- ADDED: Modernized Input Fields --- */
 #login-view input[type="text"],
 #login-view input[type="password"] {
     font-family: 'Inter', sans-serif;
@@ -83,7 +79,7 @@ body {
 #login-view input[type="password"]:focus {
     outline: none;
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2); /* Glow effect on focus */
+    box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2);
 }
 
 .top-nav {
@@ -126,7 +122,7 @@ body {
 
 #app-view { display: none; }
 
-#timeline { display: flex; flex-direction: column; gap: 15px; }
+#timeline, .profile-feed { display: flex; flex-direction: column; gap: 15px; }
 
 .status { 
     background-color: var(--card-color); 
@@ -181,25 +177,23 @@ button {
      border-radius: 18px; font-weight: bold; cursor: pointer; padding: 10px 15px;
 }
 
-/* --- ADDED: Enhanced Login Button Style --- */
 #login-view button {
-    padding: 15px; /* Match input padding */
-    border-radius: 8px; /* Match input radius */
+    padding: 15px;
+    border-radius: 8px;
     font-size: 1rem;
-    text-transform: uppercase; /* Stylistic choice */
+    text-transform: uppercase;
     letter-spacing: 1px;
-    margin-top: 10px; /* Add space above the button */
+    margin-top: 10px;
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 #login-view button:hover {
-    background-color: #4a80d1; /* A slightly lighter, more vibrant blue */
+    background-color: #4a80d1;
 }
 
 #login-view button:active {
-    transform: translateY(1px); /* Gives a 'press' effect */
+    transform: translateY(1px);
 }
-
 
 .compose-actions { display: flex; justify-content: space-between; align-items: center; }
 
@@ -222,3 +216,69 @@ input:checked + .slider:before { transform: translateX(26px); }
 #word-filter-list { list-style: none; padding: 0; }
 
 #word-filter-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px; background: var(--primary-color); margin-bottom: 5px; border-radius: 5px;}
+
+/* --- ADDED: Styles for the new Profile Page --- */
+.profile-card {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden; /* Important for border-radius on children */
+}
+
+.profile-header {
+    position: relative;
+    height: 200px;
+}
+
+.profile-header .banner {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-header .avatar {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    bottom: -60px; /* Overlap effect */
+    left: 20px;
+    border: 4px solid var(--card-color);
+}
+
+.profile-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 15px;
+}
+
+.profile-actions .follow-btn {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.profile-actions .block-btn {
+    background-color: #d9534f; /* A red for block */
+    color: white;
+}
+
+.profile-info {
+    padding: 75px 20px 20px 20px; /* Top padding to clear the avatar */
+}
+
+.profile-info .display-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.profile-info .acct {
+    color: var(--font-color-muted);
+    margin-bottom: 15px;
+}
+
+.profile-info .note {
+    line-height: 1.5;
+}
