@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Feedstadon</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1D1E1F">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -108,5 +112,19 @@
     </div>
 
     <script type="module" src="app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration);
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed:', err);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
