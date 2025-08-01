@@ -1,24 +1,27 @@
 import { ICONS } from './icons.js';
 
-/**
- * Renders a single status (post) into a DOM element.
- * @param {object} status - The status object from the Mastodon API.
- * @param {object} settings - The user's settings object.
- * @param {object} actions - The global actions object.
- * @returns {HTMLElement} The rendered status element.
- */
-export function renderStatus(status, settings, actions) {
+export function renderStatus(status, state, actions) {
     const originalPost = status.reblog || status;
 
-    if (settings.hideNsfw && originalPost.sensitive) return null;
+    if (state.settings.hideNsfw && originalPost.sensitive) {
+        return null;
+    }
     
     const statusDiv = document.createElement('div');
     statusDiv.className = 'status';
     statusDiv.dataset.id = originalPost.id;
 
-    const boosterInfo = status.reblog ? `<div class="booster-info">Boosted by ${status.account.display_name}</div>` : '';
+    let optionsMenuHTML = '';
+    if (state.currentUser && originalPost.account.id === state.currentUser.id) {
+        optionsMenuHTML = `
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="edit">Edit</button>
+                <button data-action="delete">Delete</button>
+            </div>
+        `;
+    }
 
-    // --- ADDED: Logic to render media ---
     let mediaHTML = '';
     if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
         mediaHTML += '<div class="status-media">';
@@ -31,17 +34,15 @@ export function renderStatus(status, settings, actions) {
         });
         mediaHTML += '</div>';
     }
-    // --- End of added logic ---
 
-    // MODIFIED: Added the mediaHTML variable to the template
     statusDiv.innerHTML = `
-        ${boosterInfo}
         <div class="status-header">
             <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
             <div>
                 <span class="display-name">${originalPost.account.display_name}</span>
                 <span class="acct">@${originalPost.account.acct}</span>
             </div>
+            ${optionsMenuHTML}
         </div>
         <div class="status-content">${originalPost.content}</div>
         ${mediaHTML}
@@ -53,13 +54,11 @@ export function renderStatus(status, settings, actions) {
         </div>
     `;
 
-    // Add click listeners
     const avatar = statusDiv.querySelector('.avatar');
     const displayName = statusDiv.querySelector('.display-name');
     if (avatar) avatar.onclick = () => actions.showProfile(originalPost.account.id);
     if (displayName) displayName.onclick = () => actions.showProfile(originalPost.account.id);
 
-    // Add listeners for the action buttons
     statusDiv.querySelectorAll('.status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -67,6 +66,31 @@ export function renderStatus(status, settings, actions) {
             actions.toggleAction(action, originalPost.id, button);
         });
     });
+
+    const optionsBtn = statusDiv.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = statusDiv.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Close other menus
+            document.querySelectorAll('.post-options-menu').forEach(m => {
+                if (m !== menu) m.style.display = 'none';
+            });
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        menu.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = 'none';
+            actions.showEditModal(originalPost);
+        });
+
+        menu.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = 'none';
+            actions.showDeleteModal(originalPost.id);
+        });
+    }
 
     return statusDiv;
 }
