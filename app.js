@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedsDropdown = document.getElementById('feeds-dropdown');
     const userDropdown = document.getElementById('user-dropdown');
     const notificationsDropdown = document.getElementById('notifications-dropdown');
+    const notificationsList = document.getElementById('notifications-list'); // Added for completeness
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
@@ -45,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser: null,
         settings: {},
         currentTimeline: 'home',
+        notificationsList, // ADDED: The missing reference
         actions: {}
     };
 
@@ -246,6 +248,11 @@ document.addEventListener('DOMContentLoaded', () => {
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
         state.actions.showProfile(state.currentUser.id);
+    });
+
+    settingsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        alert('Settings will be implemented soon!');
     });
     
     [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
