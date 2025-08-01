@@ -54,3 +54,4 @@ export function loadSettings() {
     if (saved) return JSON.parse(saved);
     return { hideNsfw: false, filteredWords: [] };
 }
+
