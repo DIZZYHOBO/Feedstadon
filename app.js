@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         accessToken: '',
         currentUser: null,
         settings: {},
-        currentTimeline: 'home', // Track the current timeline view
+        currentTimeline: 'home',
         actions: {}
     };
 
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchTimeline(type = 'home', isNewPost = false) {
-        state.currentTimeline = type.split('?')[0]; // Store the base timeline type
+        state.currentTimeline = type.split('?')[0];
         if (!isNewPost) {
             timelineDiv.innerHTML = '<p>Loading timeline...</p>';
         }
@@ -152,14 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             button.classList.toggle('active');
 
-            // If the action was a boost/unboost and we're on the home timeline, refresh it
             if (action === 'boost' && state.currentTimeline === 'home') {
                 fetchTimeline('home');
-            } else {
-                // Update counts visually for favorite/boost
+            } 
+            // MODIFIED: This block is corrected to handle all cases without breaking the button
+            else if (action === 'boost' || action === 'favorite') {
                 const count = response[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
-                const icon = button.querySelector('.icon');
-                button.innerHTML = `${icon.outerHTML} ${count}`;
+                button.innerHTML = `${ICONS[action]} ${count}`;
             }
 
         } catch (error) {
