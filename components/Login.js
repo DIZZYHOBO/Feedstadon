@@ -31,4 +31,3 @@ export function showLogin() {
     document.getElementById('app-view').style.display = 'none';
     loginView.style.display = 'block';
 }
-
