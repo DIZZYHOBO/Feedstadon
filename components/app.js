@@ -45,4 +45,4 @@ function onLoginSuccess(instance, token) {
 // --- Start the App ---
 initLogin(onLoginSuccess);
 
-});
+
