@@ -166,3 +166,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initLogin(onLoginSuccess);
 });
+
