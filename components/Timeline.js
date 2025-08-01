@@ -45,3 +45,4 @@ export async function fetchTimeline(state, type, loadMore = false) {
         if (loadMore) state.scrollLoader.style.display = 'none';
     }
 }
+
