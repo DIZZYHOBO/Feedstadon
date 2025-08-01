@@ -60,10 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStatus(status) {
         const originalPost = status.reblog || status;
         if (settings.hideNsfw && originalPost.sensitive) return null;
-        const lowerContent = originalPost.content.toLowerCase();
-        for (const word of settings.filteredWords) {
-            if (word && lowerContent.includes(word.toLowerCase())) return null;
-        }
         
         let mediaHTML = '';
         if(originalPost.media_attachments && originalPost.media_attachments.length > 0) {
@@ -141,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const updatedStatus = await apiFetch(endpoint, { method: 'POST' });
             button.classList.toggle('active');
-            // This part is tricky without a full framework, but we can update counts if needed
         } catch(err) { alert('Action failed.'); }
     }
 
@@ -286,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const saved = localStorage.getItem('fediverse-settings');
         if (saved) settings = JSON.parse(saved);
     }
-
     async function performSearch(query) {
         if (!query || query.length < 2) {
             searchResults.style.display = 'none';
@@ -309,6 +303,16 @@ document.addEventListener('DOMContentLoaded', () => {
             searchResults.style.display = 'none';
         }
     }
+    async function showProfile(accountId) {
+        const container = document.createElement('div');
+        showModal(container);
+        container.innerHTML = `<p>Loading profile...</p>`;
+        try {
+            const account = await apiFetch(`/api/v1/accounts/${accountId}`);
+            container.innerHTML = `<h2>${account.display_name}</h2><p>@${account.acct}</p><div>${account.note}</div>`;
+        } catch(err) { container.innerHTML = '<p>Could not load profile.</p>'; }
+    }
+
 
     async function initializeApp() {
         try {
@@ -358,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     navPostBtn.addEventListener('click', showComposeModal);
     logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
-    profileLink.addEventListener('click', (e) => { e.preventDefault(); alert('Profile coming soon'); });
+    profileLink.addEventListener('click', (e) => { e.preventDefault(); showProfile(currentUser.id); });
     settingsLink.addEventListener('click', (e) => { e.preventDefault(); showSettingsModal(); });
 
     searchToggleBtn.addEventListener('click', (e) => {
