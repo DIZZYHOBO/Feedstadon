@@ -113,3 +113,4 @@ input:checked + .slider { background-color: var(--accent-color); }
 input:checked + .slider:before { transform: translateX(26px); }
 #word-filter-list { list-style: none; padding: 0; }
 #word-filter-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px; background: var(--primary-color); margin-bottom: 5px; border-radius: 5px;}
+
