@@ -1,0 +1,21 @@
+{
+  "name": "Feedstadon",
+  "short_name": "Feedstadon",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#161617",
+  "theme_color": "#1D1E1F",
+  "description": "A simple client for Mastodon.",
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
