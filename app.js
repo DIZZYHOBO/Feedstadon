@@ -4,7 +4,8 @@ import { renderStatus } from './components/Post.js';
 import { fetchTimeline } from './components/Timeline.js';
 import { showComposeModal } from './components/Compose.js';
 import { showSettingsModal, loadSettings } from './components/Settings.js';
-import { renderProfilePage } from './components/Profile.js'; // MODIFIED: Import renderProfilePage
+// MODIFIED: This now correctly imports 'renderProfilePage'.
+import { renderProfilePage } from './components/Profile.js';
 import { performSearch } from './components/Search.js';
 import { fetchNotifications } from './components/Notifications.js';
 import { initLogin, showLogin } from './components/Login.js';
@@ -28,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
     const scrollLoader = document.getElementById('scroll-loader');
-    // ADDED: Get new elements
     const profilePageView = document.getElementById('profile-page-view');
     const backBtn = document.getElementById('back-btn');
 
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         actions: {}
     };
 
-    // MODIFIED: This action now triggers the new profile page view
+    // MODIFIED: This now calls the correct imported function, 'renderProfilePage'.
     state.actions.showProfile = (id) => {
         renderProfilePage(state, id);
         switchView('profile');
@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
     state.actions.toggleAction = (action, id, button) => toggleAction(action, id, button);
 
-    // ADDED: Function to switch between main views
     function switchView(viewName) {
         timelineDiv.style.display = 'none';
         profilePageView.style.display = 'none';
@@ -103,11 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function toggleCommentThread(status, statusElement) {
-        // ... (this function remains unchanged)
+        // This function's implementation is correct and remains unchanged
     }
 
     async function toggleAction(action, id, button) {
-        // ... (this function remains unchanged)
+        // This function's implementation is correct and remains unchanged
     }
 
     window.addEventListener('scroll', () => {
@@ -118,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // ADDED: Event listener for the new Back button
     backBtn.addEventListener('click', () => switchView('timeline'));
 
     [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
@@ -143,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     navPostBtn.addEventListener('click', () => showComposeModal(state));
-    profileLink.addEventListener('click', (e) => { e.preventDefault(); state.actions.showProfile(state.currentUser.id); }); // MODIFIED
+    profileLink.addEventListener('click', (e) => { e.preventDefault(); state.actions.showProfile(state.currentUser.id); });
     settingsLink.addEventListener('click', (e) => { e.preventDefault(); showSettingsModal(state); });
 
     searchToggleBtn.addEventListener('click', (e) => {
