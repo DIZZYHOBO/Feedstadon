@@ -1,16 +1,19 @@
 import { apiFetch } from './components/api.js';
-import { showModal, hideModal } from './components/ui.js';
+// MODIFIED: Import initUI in addition to other ui functions
+import { showModal, hideModal, initUI } from './components/ui.js';
 import { renderStatus } from './components/Post.js';
 import { fetchTimeline } from './components/Timeline.js';
 import { showComposeModal } from './components/Compose.js';
 import { showSettingsModal, loadSettings } from './components/Settings.js';
-// MODIFIED: This now correctly imports 'renderProfilePage'.
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { fetchNotifications } from './components/Notifications.js';
 import { initLogin, showLogin } from './components/Login.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // MODIFIED: Call the UI initializer first
+    initUI();
+
     // --- DOM Elements ---
     const appView = document.getElementById('app-view');
     const userDisplayBtn = document.getElementById('user-display-btn');
@@ -27,9 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
-    const searchResults = document.getElementById('search-results');
     const scrollLoader = document.getElementById('scroll-loader');
     const profilePageView = document.getElementById('profile-page-view');
+    const searchResultsView = document.getElementById('search-results-view');
     const backBtn = document.getElementById('back-btn');
 
     // --- App State ---
@@ -42,15 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTimeline: 'home',
         lastPostId: null,
         isLoadingMore: false,
-        searchDebounce: null,
         timelineDiv,
         scrollLoader,
-        searchResults,
         notificationsList,
         actions: {}
     };
 
-    // MODIFIED: This now calls the correct imported function, 'renderProfilePage'.
     state.actions.showProfile = (id) => {
         renderProfilePage(state, id);
         switchView('profile');
@@ -61,17 +61,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function switchView(viewName) {
         timelineDiv.style.display = 'none';
         profilePageView.style.display = 'none';
+        searchResultsView.style.display = 'none';
         scrollLoader.style.display = 'none';
         
         feedsDropdown.style.display = 'none';
         backBtn.style.display = 'none';
+        
+        // Restore nav buttons to their default state
+        searchToggleBtn.style.display = 'block';
+        navPostBtn.style.display = 'block';
+        searchForm.style.display = 'none';
 
         if (viewName === 'timeline') {
             timelineDiv.style.display = 'flex';
             scrollLoader.style.display = 'block';
             feedsDropdown.style.display = 'block';
-        } else if (viewName === 'profile') {
-            profilePageView.style.display = 'block';
+        } else if (viewName === 'profile' || viewName === 'search') {
+            if (viewName === 'profile') profilePageView.style.display = 'block';
+            if (viewName === 'search') searchResultsView.style.display = 'flex';
             backBtn.style.display = 'block';
         }
     }
@@ -101,13 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
 
-    async function toggleCommentThread(status, statusElement) {
-        // This function's implementation is correct and remains unchanged
-    }
-
-    async function toggleAction(action, id, button) {
-        // This function's implementation is correct and remains unchanged
-    }
+    async function toggleCommentThread(status, statusElement) { /* ... unchanged ... */ }
+    async function toggleAction(action, id, button) { /* ... unchanged ... */ }
 
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore || !state.currentUser || timelineDiv.style.display === 'none') return;
@@ -146,14 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchToggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        searchForm.classList.add('active');
+        searchForm.style.display = 'block';
         searchInput.focus();
         searchToggleBtn.style.display = 'none';
+        navPostBtn.style.display = 'none';
     });
-
-    searchInput.addEventListener('input', () => {
-        clearTimeout(state.searchDebounce);
-        state.searchDebounce = setTimeout(() => performSearch(state, searchInput.value.trim()), 300);
+    
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+    
+        renderSearchResults(state, query);
+        switchView('search');
     });
 
     initLogin(onLoginSuccess);
