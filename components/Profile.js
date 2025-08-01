@@ -1,7 +1,6 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 
-// --- REWRITTEN: This function now builds a full profile page ---
 export async function renderProfilePage(state, accountId) {
     const container = document.getElementById('profile-page-view');
     container.innerHTML = `<p>Loading profile...</p>`;
@@ -16,7 +15,6 @@ export async function renderProfilePage(state, accountId) {
 
         const relationship = relationships[0];
         
-        // Build the Profile Page HTML
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
@@ -36,18 +34,17 @@ export async function renderProfilePage(state, accountId) {
             <div class="profile-feed"></div>
         `;
 
-        // Render the user's posts into the feed container
         const feedContainer = container.querySelector('.profile-feed');
         if (statuses.length > 0) {
             statuses.forEach(status => {
-                const statusEl = renderStatus(status, state.settings, state.actions);
+                const statusEl = renderStatus(status, state, state.actions);
                 if (statusEl) feedContainer.appendChild(statusEl);
             });
         } else {
             feedContainer.innerHTML = '<p>This user has not posted anything yet.</p>';
         }
 
-        // Add event listeners for the new buttons
+        // Add event listeners for the follow/block buttons
         const followBtn = container.querySelector('.follow-btn');
         followBtn.addEventListener('click', async () => {
             const isFollowing = followBtn.textContent === 'Unfollow';
