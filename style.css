@@ -11,6 +11,11 @@
     --link-color: #88C0D0;
 }
 
+/* ADDED: Universal box-sizing for better layout control */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -68,7 +73,6 @@ textarea {
     border-radius: 8px;
     padding: 15px;
     width: 100%;
-    box-sizing: border-box;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -90,7 +94,6 @@ textarea:focus {
     position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
     border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
     align-items: center; padding: 0 10px; z-index: 2000;
-    box-sizing: border-box;
 }
 
 .nav-left, .nav-right { display: flex; align-items: center; gap: 10px; }
@@ -132,7 +135,6 @@ textarea:focus {
     border-radius: 20px;
     padding: 8px 12px;
     width: 150px;
-    box-sizing: border-box;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -160,8 +162,13 @@ textarea:focus {
 .status-header .display-name { font-weight: bold; cursor: pointer; }
 .status-header .acct { color: var(--font-color-muted); }
 
-.status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
-.status-content a { color: var(--link-color); }
+.status-content { 
+    margin-bottom: 15px; 
+    line-height: 1.5; 
+    word-wrap: break-word; /* MODIFIED: Old property for compatibility */
+    overflow-wrap: break-word; /* MODIFIED: Prevents long text from overflowing */
+}
+.status-content a { color: var(--link-color); word-break: break-all; } /* MODIFIED: Helps break long links */
 
 .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
 
@@ -185,7 +192,7 @@ textarea:focus {
     border-color: var(--accent-color);
     color: var(--accent-color);
 }
-.icon { width: 22px; height: 22px; }
+.icon { width: 22px; height: 22px; flex-shrink: 0; } /* ADDED: Prevents icon from shrinking */
 
 .status-action.active {
     color: var(--accent-color);
@@ -289,7 +296,13 @@ textarea:focus {
 .profile-info { padding: 75px 20px 20px 20px; }
 .profile-info .display-name { font-size: 1.5rem; font-weight: bold; margin: 0; }
 .profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
-.profile-info .note { line-height: 1.5; }
+.profile-info .note { 
+    line-height: 1.5; 
+    word-wrap: break-word; /* MODIFIED: Old property for compatibility */
+    overflow-wrap: break-word; /* MODIFIED: Prevents long text from overflowing */
+}
+.profile-info .note a { word-break: break-all; } /* MODIFIED: Helps break long links */
+
 
 /* --- Search Results Page --- */
 #search-results-view { display: flex; flex-direction: column; gap: 10px; }
@@ -333,7 +346,7 @@ textarea:focus {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
-    display: none; /* This is the key rule that hides them */
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 1000;
@@ -373,4 +386,26 @@ textarea:focus {
 .button-danger {
     background-color: #d9534f;
     color: white;
+}
+
+/* ADDED: Media query for mobile responsiveness */
+@media (max-width: 600px) {
+    .container {
+        padding: 10px 5px; /* Reduce side padding on small screens */
+    }
+
+    .status-footer {
+        flex-wrap: wrap; /* Allow buttons to wrap if needed */
+        justify-content: space-between;
+    }
+
+    .status-action {
+        padding: 6px 12px;
+        font-size: 0.8em;
+    }
+
+    .nav-button {
+        font-size: 0.8em;
+        padding: 6px 8px;
+    }
 }
