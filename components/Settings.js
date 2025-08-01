@@ -1,102 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Feedstadon</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+import { apiFetch } from './api.js';
+import { showModal, hideModal } from './ui.js';
+import { fetchTimeline } from './Timeline.js';
 
-    <nav class="top-nav">
-        <div class="nav-left">
-            <div class="dropdown" id="feeds-dropdown">
-                <button class="nav-button">Feeds</button>
-                <div class="dropdown-content">
-                    <a href="#" data-timeline="home">Subscribed</a>
-                    <a href="#" data-timeline="public?local=true">Local</a>
-                    <a href="#" data-timeline="public">All</a>
-                </div>
-            </div>
-            <button class="nav-button" id="nav-post-btn">Post</button>
-        </div>
-        <div class="nav-right">
-            <div class="search-container" id="search-container">
-                <button class="nav-button" id="search-toggle-btn">Search</button>
-                <form id="search-form">
-                    <input type="search" id="search-input" placeholder="Search...">
-                    <div class="dropdown-content" id="search-results"></div>
-                </form>
-            </div>
-            <div class="dropdown" id="notifications-dropdown">
-                <button class="nav-button icon-button" id="notifications-btn"></button>
-                <div class="dropdown-content" id="notifications-list"></div>
-            </div>
-            <div class="dropdown" id="user-dropdown">
-                <button class="nav-button" id="user-display-btn"></button>
-                <div class="dropdown-content">
-                    <a href="#" id="profile-link">Profile</a>
-                    <a href="#" id="settings-link">Settings</a>
-                    <a href="#" id="logout-btn">Logout</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div id="login-view">
-            <h2>Feedstadon</h2>
-            <input type="text" id="instance-url" placeholder="your-instance.social">
-            <input type="password" id="access-token" placeholder="Paste your access token">
-            <button id="connect-btn">Connect</button>
-        </div>
-        <div id="app-view">
-            <div id="timeline"></div>
-            <div id="scroll-loader"><p>Loading more...</p></div>
-        </div>
-    </div>
+export function showComposeModal(state) {
+    const composeContent = document.getElementById('compose-template').content.cloneNode(true);
+    const form = composeContent.querySelector('form');
+    const textarea = composeContent.querySelector('textarea');
+    const mediaBtn = composeContent.querySelector('#media-btn');
+    const mediaInput = composeContent.querySelector('#media-input');
+    const mediaPreview = composeContent.querySelector('#media-preview');
+    const nsfwCheckbox = composeContent.querySelector('#nsfw-checkbox');
     
-    <div id="modal" class="modal-overlay">
-        <div class="modal-content" id="modal-body"></div>
-    </div>
+    mediaBtn.onclick = () => mediaInput.click();
+    mediaInput.onchange = async () => {
+        const file = mediaInput.files[0];
+        if (!file) return;
+        mediaPreview.textContent = 'Uploading...';
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const result = await apiFetch(state.instanceUrl, state.accessToken, '/api/v2/media', { method: 'POST', body: formData });
+            state.attachedMediaId = result.id;
+            mediaPreview.textContent = `✅ Attached`;
+        } catch (err) { mediaPreview.textContent = 'Upload failed!'; }
+    };
 
-    <template id="compose-template">
-        <form id="compose-form">
-            <h3>New Post</h3>
-            <textarea placeholder="What's on your mind?"></textarea>
-            <div class="compose-actions">
-                <div>
-                    <input type="file" id="media-input" accept="image/*,video/*" style="display: none;">
-                    <button type="button" id="media-btn" style="font-size: 0.8rem; padding: 8px 12px;">Add Media</button>
-                    <span id="media-preview"></span>
-                </div>
-                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em;"><input type="checkbox" id="nsfw-checkbox">NSFW</label>
-                <button type="submit">Post</button>
-            </div>
-        </form>
-    </template>
-    
-    <template id="settings-template">
-        <div>
-            <h2>Settings</h2>
-            <div class="settings-section">
-                <h4>Content Filtering</h4>
-                <div class="toggle-switch">
-                    <span>Hide NSFW (sensitive) posts</span>
-                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider"></span></label>
-                </div>
-            </div>
-            <div class="settings-section">
-                <h4>Word Filter</h4>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin: 0;">
-                    <button id="add-filter-word-btn">Add</button>
-                </div>
-                <ul id="word-filter-list"></ul>
-            </div>
-        </div>
-    </template>
-
-    <script type="module" src="app.js"></script>
-</body>
-</html>
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        if (!textarea.value.trim() && !state.attachedMediaId) return;
+        try {
+            const body = { 
+                status: textarea.value,
+                sensitive: nsfwCheckbox.checked 
+            };
+            if (state.attachedMediaId) body.media_ids = [state.attachedMediaId];
+            await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            hideModal();
+            state.attachedMediaId = null;
+            fetchTimeline(state, 'home');
+        } catch(err) { alert('Failed to post.'); }
+    };
+    showModal(composeContent);
+    textarea.focus();
+}
