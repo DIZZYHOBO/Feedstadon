@@ -25,8 +25,7 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {})
 
 
 /**
- * A helper function to upload media files.
- * @returns {Promise<object>} The JSON response containing the media ID.
+ * A helper function to upload media files for posts.
  */
 export async function apiUploadMedia(state, file) {
     const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -41,6 +40,31 @@ export async function apiUploadMedia(state, file) {
 
     const response = await fetch(url, {
         method: 'POST',
+        body: formData,
+        headers: headers
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
+}
+
+
+/**
+ * A helper function to update user profile credentials.
+ */
+export async function apiUpdateCredentials(state, formData) {
+    const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const url = `https://${cleanInstanceUrl}/api/v1/accounts/update_credentials`;
+
+    const headers = {
+        'Authorization': `Bearer ${state.accessToken}`
+    };
+
+    const response = await fetch(url, {
+        method: 'PATCH',
         body: formData,
         headers: headers
     });
