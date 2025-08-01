@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         accessToken: '',
         currentUser: null,
         settings: {},
+        currentTimeline: 'home', // Track the current timeline view
         actions: {}
     };
 
@@ -58,15 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
     state.actions.showEditModal = (post) => {
         postToEdit = post;
-
-        // MODIFIED: Convert post HTML to plain text for the textarea
-        const plainText = post.content
-            .replace(/<br\s*\/?>/gi, "\n")      // Replace <br> tags with newlines
-            .replace(/<\/p>/gi, "\n\n")         // Replace closing <p> tags with double newlines
-            .replace(/<[^>]*>/g, "")            // Strip any remaining HTML tags
-            .trim();                            // Clean up whitespace
-
-        editPostTextarea.value = plainText;
+        editPostTextarea.value = post.content.replace(/<br\s*\/?>/gi, "\n");
         editPostModal.classList.add('visible');
     };
     state.actions.showDeleteModal = (postId) => {
@@ -116,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchTimeline(type = 'home', isNewPost = false) {
+        state.currentTimeline = type.split('?')[0]; // Store the base timeline type
         if (!isNewPost) {
             timelineDiv.innerHTML = '<p>Loading timeline...</p>';
         }
@@ -155,8 +149,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const endpoint = `/api/v1/statuses/${id}/${endpointAction}`;
 
         try {
-            await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             button.classList.toggle('active');
+
+            // If the action was a boost/unboost and we're on the home timeline, refresh it
+            if (action === 'boost' && state.currentTimeline === 'home') {
+                fetchTimeline('home');
+            } else {
+                // Update counts visually for favorite/boost
+                const count = response[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
+                const icon = button.querySelector('.icon');
+                button.innerHTML = `${icon.outerHTML} ${count}`;
+            }
+
         } catch (error) {
             console.error(`Failed to ${action} post:`, error);
             alert(`Could not ${action} post.`);
@@ -266,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     feedsDropdown.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
+            switchView('timeline');
             fetchTimeline(link.dataset.timeline);
         });
     });
