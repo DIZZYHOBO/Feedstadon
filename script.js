@@ -60,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStatus(status) {
         const originalPost = status.reblog || status;
         if (settings.hideNsfw && originalPost.sensitive) return null;
+        const lowerContent = originalPost.content.toLowerCase();
+        for (const word of settings.filteredWords) {
+            if (word && lowerContent.includes(word.toLowerCase())) return null;
+        }
         
         let mediaHTML = '';
         if(originalPost.media_attachments && originalPost.media_attachments.length > 0) {
@@ -281,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const saved = localStorage.getItem('fediverse-settings');
         if (saved) settings = JSON.parse(saved);
     }
+
     async function performSearch(query) {
         if (!query || query.length < 2) {
             searchResults.style.display = 'none';
