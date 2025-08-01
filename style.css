@@ -1,27 +1,53 @@
-/* Add these styles to your full style.css file */
+/**
+ * A helper function to make authenticated JSON API requests.
+ */
+export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}) {
+    const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const url = `https://${cleanInstanceUrl}${endpoint}`;
+    
+    const headers = {
+        'Authorization': `Bearer ${accessToken}`,
+        ...options.headers
+    };
 
-/* In the .modal-actions rule, change justify-content */
-.modal-actions {
-    display: flex;
-    justify-content: space-between; /* MODIFIED */
-    align-items: center;
-    gap: 10px;
-    margin-top: 20px;
+    const response = await fetch(url, { ...options, headers });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    if (response.status === 204 || response.status === 202) {
+        return {};
+    }
+
+    return response.json();
 }
 
-/* ADDED: New styles for compose options */
-.compose-options {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
 
-#media-filename-preview {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    /* Truncate long filenames */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
+/**
+ * A helper function to upload media files.
+ * @returns {Promise<object>} The JSON response containing the media ID.
+ */
+export async function apiUploadMedia(state, file) {
+    const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const url = `https://${cleanInstanceUrl}/api/v2/media`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const headers = {
+        'Authorization': `Bearer ${state.accessToken}`
+    };
+
+    const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: headers
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
 }
