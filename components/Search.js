@@ -1,5 +1,5 @@
 import { apiFetch } from './api.js';
-import { showProfile } from './Profile.js';
+import { renderProfilePage } from './Profile.js';
 
 export async function performSearch(state, query) {
     if (!query || query.length < 2) {
