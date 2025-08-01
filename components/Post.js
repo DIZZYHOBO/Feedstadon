@@ -4,10 +4,11 @@ export function renderStatus(status, settings, actions) {
     const originalPost = status.reblog || status;
     if (settings.hideNsfw && originalPost.sensitive) return null;
     
-    // Filter posts based on words in content
-    if (settings.filteredWords && settings.filteredWords.length > 0) {
+    // --- MODIFIED: Filtering logic now uses the server-synced list ---
+    if (settings.filters && settings.filters.length > 0) {
         const content_lower = originalPost.content.toLowerCase();
-        if (settings.filteredWords.some(word => content_lower.includes(word))) {
+        // Check if the post content includes any of the filtered phrases
+        if (settings.filters.some(filter => content_lower.includes(filter.phrase))) {
             return null;
         }
     }
