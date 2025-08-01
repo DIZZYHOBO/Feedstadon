@@ -432,18 +432,18 @@ textarea:focus {
 
 .settings-section h3 {
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
+    padding-bottom: 15px;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: bold;
     font-size: 0.9em;
     color: var(--font-color-muted);
@@ -451,15 +451,64 @@ textarea:focus {
 
 .form-group input[type="text"],
 .form-group textarea {
-    width: 100%;
+    padding: 12px;
+}
+
+.form-group input[type="file"] {
+    font-size: 0.9em;
 }
 
 .settings-save-button {
+    background-color: var(--accent-color);
+    color: white;
     display: block;
     width: 100%;
     padding: 15px;
     font-size: 1.1em;
     border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+.settings-save-button:disabled {
+    background-color: var(--primary-color);
+    cursor: not-allowed;
+}
+
+/* Filter styles */
+.filter-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-input-group input {
+    flex-grow: 1;
+}
+
+#filter-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+.filter-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--primary-color);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.filter-item button {
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    cursor: pointer;
+    font-size: 1.2em;
+}
+.filter-item button:hover {
+    color: #d9534f;
 }
 
 /* --- Mobile Responsiveness --- */
