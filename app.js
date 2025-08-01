@@ -5,7 +5,6 @@ import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
 
-
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const loginView = document.getElementById('login-view');
@@ -92,9 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.top-nav').style.display = 'flex';
             userDisplayBtn.textContent = state.currentUser.display_name;
             
-            initComposeModal(state, () => fetchTimeline());
-            
-            fetchTimeline();
+            initComposeModal(state, () => fetchTimeline('home', true));
+            fetchTimeline('home');
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -106,9 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function fetchTimeline() {
+    async function fetchTimeline(type = 'home', isNewPost = false) {
+        if (!isNewPost) {
+            timelineDiv.innerHTML = '<p>Loading timeline...</p>';
+        }
         try {
-            const statuses = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home');
+            const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
             timelineDiv.innerHTML = '';
             statuses.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
@@ -126,16 +127,134 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
     
-    async function toggleAction(action, id, button) { /* ... unchanged ... */ }
-    async function toggleCommentThread(status, statusElement) { /* ... unchanged ... */ }
+    async function toggleAction(action, id, button) {
+        if (action === 'reply') {
+            const postElement = button.closest('.status');
+            toggleCommentThread({ id: id }, postElement);
+            return;
+        }
+
+        const isActive = button.classList.contains('active');
+        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' :
+                               (action === 'boost' && !isActive) ? 'reblog' :
+                               (action === 'favorite' && isActive) ? 'unfavourite' :
+                               (action === 'favorite' && !isActive) ? 'favourite' :
+                               (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
+        
+        const endpoint = `/api/v1/statuses/${id}/${endpointAction}`;
+
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+            button.classList.toggle('active');
+        } catch (error) {
+            console.error(`Failed to ${action} post:`, error);
+            alert(`Could not ${action} post.`);
+        }
+    }
+
+    async function toggleCommentThread(status, statusElement) {
+        const existingThread = statusElement.querySelector('.comment-thread');
+        if (existingThread) {
+            existingThread.remove();
+            return;
+        }
+
+        const threadContainer = document.createElement('div');
+        threadContainer.className = 'comment-thread';
+        threadContainer.innerHTML = `<p>Loading replies...</p>`;
+        statusElement.appendChild(threadContainer);
+
+        try {
+            const context = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/context`);
+            threadContainer.innerHTML = '';
+
+            if (context.descendants && context.descendants.length > 0) {
+                context.descendants.forEach(reply => {
+                    const replyElement = renderStatus(reply, state, state.actions);
+                    if (replyElement) threadContainer.appendChild(replyElement);
+                });
+            } else {
+                threadContainer.innerHTML = '<p>No replies yet.</p>';
+            }
+
+            const replyForm = document.createElement('form');
+            replyForm.className = 'comment-reply-form';
+            replyForm.innerHTML = `<textarea placeholder="Write a reply..."></textarea><button type="submit">Reply</button>`;
+            threadContainer.appendChild(replyForm);
+
+            replyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const textarea = replyForm.querySelector('textarea');
+                const content = textarea.value.trim();
+                if (!content) return;
+
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: content, in_reply_to_id: status.id })
+                });
+
+                toggleCommentThread(status, statusElement);
+                setTimeout(() => toggleCommentThread(status, statusElement), 100);
+            });
+
+        } catch (error) {
+            console.error('Could not load comment thread:', error);
+            threadContainer.innerHTML = '<p>Failed to load replies.</p>';
+        }
+    }
 
     // --- Event Listeners ---
-    connectBtn.addEventListener('click', () => { /* ... unchanged ... */ });
-    logoutBtn.addEventListener('click', (e) => { /* ... unchanged ... */ });
+    connectBtn.addEventListener('click', () => {
+        const instance = instanceUrlInput.value.trim();
+        const token = accessTokenInput.value.trim();
+
+        if (!instance || !token) {
+            alert('Please provide both an instance URL and an access token.');
+            return;
+        }
+
+        localStorage.setItem('instanceUrl', instance);
+        localStorage.setItem('accessToken', token);
+        onLoginSuccess(instance, token);
+    });
+
+    logoutBtn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        localStorage.clear(); 
+        window.location.reload(); 
+    });
+    
     backBtn.addEventListener('click', () => switchView('timeline'));
-    profileLink.addEventListener('click', (e) => state.actions.showProfile(state.currentUser.id));
-    searchToggleBtn.addEventListener('click', (e) => { /* ... unchanged ... */ });
-    searchForm.addEventListener('submit', (e) => { /* ... unchanged ... */ });
+    
+    profileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        state.actions.showProfile(state.currentUser.id);
+    });
+
+    feedsDropdown.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            fetchTimeline(link.dataset.timeline);
+        });
+    });
+
+    searchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchForm.style.display = 'block';
+        searchInput.focus();
+        searchToggleBtn.style.display = 'none';
+        navPostBtn.style.display = 'none';
+    });
+    
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+    
+        renderSearchResults(state, query);
+        switchView('search');
+    });
     
     navPostBtn.addEventListener('click', () => showComposeModal(state));
     
@@ -183,6 +302,17 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
 
     // --- Initial Load ---
-    function initLoginOnLoad() { /* ... unchanged ... */ }
+    function initLoginOnLoad() {
+        const instance = localStorage.getItem('instanceUrl');
+        const token = localStorage.getItem('accessToken');
+        if (instance && token) {
+            onLoginSuccess(instance, token);
+        } else {
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+    
     initLoginOnLoad();
 });
