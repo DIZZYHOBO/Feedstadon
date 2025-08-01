@@ -96,9 +96,12 @@ body {
 .nav-button {
     background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
     border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap; font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.icon-button { border: none; font-size: 1.5em; }
+.icon-button { border: 1px solid var(--border-color); font-size: 1.5em; padding: 6px; }
 
 .dropdown { position: relative; }
 
@@ -144,26 +147,48 @@ body {
     border-radius: 8px; 
     border: 1px solid var(--border-color); 
     padding: 15px;
+    transition: all 0.3s ease;
 }
 
 .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-
 .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
-
 .status-header .display-name { font-weight: bold; cursor: pointer; }
 .status-header .acct { color: var(--font-color-muted); }
 
 .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
-
 .status-content a { color: var(--link-color); }
 
 .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
 
-.status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
+.status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.9em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
 
-.status-action { cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+/* MODIFIED: Updated button styles */
+.status-action { 
+    background-color: var(--primary-color); 
+    border: 1px solid var(--border-color);
+    color: var(--font-color-muted); 
+    cursor: pointer; 
+    padding: 8px; 
+    border-radius: 50%;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-size: inherit; 
+    font-family: inherit; 
+    transition: all 0.2s ease;
+}
+.status-action:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+.icon { width: 22px; height: 22px; }
 
-.icon { width: 20px; height: 20px; fill: currentColor; }
+.status-action.active {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
 
 /* --- Profile Page --- */
 .profile-card {
@@ -174,97 +199,59 @@ body {
     overflow: hidden;
 }
 
-.profile-header {
-    position: relative;
-    height: 200px;
-}
+.profile-header { position: relative; height: 200px; }
+.profile-header .banner { width: 100%; height: 100%; object-fit: cover; }
+.profile-header .avatar { position: absolute; width: 120px; height: 120px; border-radius: 50%; bottom: -60px; left: 20px; border: 4px solid var(--card-color); }
 
-.profile-header .banner {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+.profile-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; }
+.profile-actions button { border-radius: 20px; }
+.profile-actions .follow-btn { background-color: var(--accent-color); color: white; }
+.profile-actions .block-btn { background-color: #d9534f; color: white; }
 
-.profile-header .avatar {
-    position: absolute;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    bottom: -60px;
-    left: 20px;
-    border: 4px solid var(--card-color);
-}
-
-.profile-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 15px;
-}
-
-.profile-actions .follow-btn {
-    background-color: var(--accent-color);
-    color: white;
-}
-
-.profile-actions .block-btn {
-    background-color: #d9534f;
-    color: white;
-}
-
-.profile-info {
-    padding: 75px 20px 20px 20px;
-}
-
-.profile-info .display-name {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 0;
-}
-
-.profile-info .acct {
-    color: var(--font-color-muted);
-    margin-bottom: 15px;
-}
-
-.profile-info .note {
-    line-height: 1.5;
-}
+.profile-info { padding: 75px 20px 20px 20px; }
+.profile-info .display-name { font-size: 1.5rem; font-weight: bold; margin: 0; }
+.profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
+.profile-info .note { line-height: 1.5; }
 
 /* --- Search Results Page --- */
-#search-results-view {
+#search-results-view { display: flex; flex-direction: column; gap: 10px; }
+.search-result-item { display: flex; align-items: center; gap: 15px; padding: 10px; background-color: var(--card-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
+.search-result-item:hover { background-color: var(--primary-color); }
+.search-result-item img { width: 50px; height: 50px; border-radius: 50%; }
+.search-result-item .display-name { font-weight: bold; font-size: 1.1em; }
+.search-result-item .acct { color: var(--font-color-muted); }
+
+/* ADDED: Styles for comment thread */
+.comment-thread {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    animation: fadeIn 0.5s;
+}
+.comment-reply-form {
     display: flex;
-    flex-direction: column;
     gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
 }
-
-.search-result-item {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 10px;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.search-result-item:hover {
+.comment-reply-form textarea {
+    flex-grow: 1;
+    min-height: 40px;
     background-color: var(--primary-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 1em;
+    resize: vertical;
 }
-
-.search-result-item img {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-}
-
-.search-result-item .display-name {
+.comment-reply-form button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 20px;
     font-weight: bold;
-    font-size: 1.1em;
-}
-
-.search-result-item .acct {
-    color: var(--font-color-muted);
+    cursor: pointer;
+    padding: 0 20px;
 }
