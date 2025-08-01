@@ -23,3 +23,4 @@ export async function fetchNotifications(state) {
         state.notificationsList.innerHTML = '<a href="#">Error loading notifications</a>';
     }
 }
+
