@@ -5,6 +5,7 @@ import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
 import { fetchNotifications } from './components/Notifications.js';
+import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const profilePageView = document.getElementById('profile-page-view');
     const searchResultsView = document.getElementById('search-results-view');
     const statusDetailView = document.getElementById('status-detail-view');
+    const settingsView = document.getElementById('settings-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -79,16 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
         profilePageView.style.display = 'none';
         searchResultsView.style.display = 'none';
         statusDetailView.style.display = 'none';
+        settingsView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         
         if (viewName === 'timeline') {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
-        } else if (viewName === 'profile' || viewName === 'search' || viewName === 'statusDetail') {
+        } else if (viewName === 'profile' || viewName === 'search' || viewName === 'statusDetail' || viewName === 'settings') {
             if (viewName === 'profile') profilePageView.style.display = 'block';
             if (viewName === 'search') searchResultsView.style.display = 'flex';
             if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
+            if (viewName === 'settings') settingsView.style.display = 'block';
             backBtn.style.display = 'block';
         }
     }
@@ -133,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (context.descendants && context.descendants.length > 0) {
                 const repliesContainer = document.createElement('div');
                 repliesContainer.className = 'comment-thread';
-                repliesContainer.style.marginTop = '0'; // Adjust style for this view
+                repliesContainer.style.marginTop = '0';
                 context.descendants.forEach(reply => {
                     repliesContainer.appendChild(renderStatus(reply, state, state.actions));
                 });
@@ -286,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     settingsLink.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Settings will be implemented soon!');
+        renderSettingsPage(state);
+        switchView('settings');
     });
     
     [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
