@@ -1,57 +1,102 @@
-import { showModal } from './ui.js';
-import { fetchTimeline } from './Timeline.js';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Feedstadon</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-export function showSettingsModal(state) {
-    const settingsContent = document.getElementById('settings-template').content.cloneNode(true);
-    const nsfwToggle = settingsContent.querySelector('#nsfw-toggle');
-    const filterInput = settingsContent.querySelector('#word-filter-input');
-    const addFilterBtn = settingsContent.querySelector('#add-filter-word-btn');
-    const filterList = settingsContent.querySelector('#word-filter-list');
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home">Subscribed</a>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                </div>
+            </div>
+            <button class="nav-button" id="nav-post-btn">Post</button>
+        </div>
+        <div class="nav-right">
+            <div class="search-container" id="search-container">
+                <button class="nav-button" id="search-toggle-btn">Search</button>
+                <form id="search-form">
+                    <input type="search" id="search-input" placeholder="Search...">
+                    <div class="dropdown-content" id="search-results"></div>
+                </form>
+            </div>
+            <div class="dropdown" id="notifications-dropdown">
+                <button class="nav-button icon-button" id="notifications-btn"></button>
+                <div class="dropdown-content" id="notifications-list"></div>
+            </div>
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn"></button>
+                <div class="dropdown-content">
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="settings-link">Settings</a>
+                    <a href="#" id="logout-btn">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="login-view">
+            <h2>Feedstadon</h2>
+            <input type="text" id="instance-url" placeholder="your-instance.social">
+            <input type="password" id="access-token" placeholder="Paste your access token">
+            <button id="connect-btn">Connect</button>
+        </div>
+        <div id="app-view">
+            <div id="timeline"></div>
+            <div id="scroll-loader"><p>Loading more...</p></div>
+        </div>
+    </div>
     
-    nsfwToggle.checked = state.settings.hideNsfw;
-    const renderFilterList = () => {
-        filterList.innerHTML = '';
-        state.settings.filteredWords.forEach(word => {
-            const li = document.createElement('li');
-            li.textContent = word;
-            const removeBtn = document.createElement('button');
-            removeBtn.textContent = '×';
-            removeBtn.style.padding = '2px 8px';
-            removeBtn.onclick = () => {
-                state.settings.filteredWords = state.settings.filteredWords.filter(w => w !== word);
-                saveSettings(state);
-                renderFilterList();
-            };
-            li.appendChild(removeBtn);
-            filterList.appendChild(li);
-        });
-    };
-    renderFilterList();
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content" id="modal-body"></div>
+    </div>
 
-    nsfwToggle.onchange = () => {
-        state.settings.hideNsfw = nsfwToggle.checked;
-        saveSettings(state);
-    };
-    addFilterBtn.onclick = () => {
-        const word = filterInput.value.trim();
-        if (word && !state.settings.filteredWords.includes(word)) {
-            state.settings.filteredWords.push(word);
-            filterInput.value = '';
-            saveSettings(state);
-            renderFilterList();
-        }
-    };
-    showModal(settingsContent);
-}
+    <template id="compose-template">
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea placeholder="What's on your mind?"></textarea>
+            <div class="compose-actions">
+                <div>
+                    <input type="file" id="media-input" accept="image/*,video/*" style="display: none;">
+                    <button type="button" id="media-btn" style="font-size: 0.8rem; padding: 8px 12px;">Add Media</button>
+                    <span id="media-preview"></span>
+                </div>
+                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em;"><input type="checkbox" id="nsfw-checkbox">NSFW</label>
+                <button type="submit">Post</button>
+            </div>
+        </form>
+    </template>
+    
+    <template id="settings-template">
+        <div>
+            <h2>Settings</h2>
+            <div class="settings-section">
+                <h4>Content Filtering</h4>
+                <div class="toggle-switch">
+                    <span>Hide NSFW (sensitive) posts</span>
+                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h4>Word Filter</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin: 0;">
+                    <button id="add-filter-word-btn">Add</button>
+                </div>
+                <ul id="word-filter-list"></ul>
+            </div>
+        </div>
+    </template>
 
-function saveSettings(state) {
-    localStorage.setItem('fediverse-settings', JSON.stringify(state.settings));
-    fetchTimeline(state, state.currentTimeline);
-}
-
-export function loadSettings() {
-    const saved = localStorage.getItem('fediverse-settings');
-    if (saved) return JSON.parse(saved);
-    return { hideNsfw: false, filteredWords: [] };
-}
-
+    <script type="module" src="app.js"></script>
+</body>
+</html>
