@@ -19,11 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
+    const userDropdown = document.getElementById('user-dropdown');
+    const notificationsDropdown = document.getElementById('notifications-dropdown');
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
     const navPostBtn = document.getElementById('nav-post-btn');
     const profileLink = document.getElementById('profile-link');
+    const settingsLink = document.getElementById('settings-link');
 
     const editPostModal = document.getElementById('edit-post-modal');
     const editPostForm = document.getElementById('edit-post-form');
@@ -55,7 +58,15 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
     state.actions.showEditModal = (post) => {
         postToEdit = post;
-        editPostTextarea.value = post.content.replace(/<br\s*\/?>/gi, "\n");
+
+        // MODIFIED: Convert post HTML to plain text for the textarea
+        const plainText = post.content
+            .replace(/<br\s*\/?>/gi, "\n")      // Replace <br> tags with newlines
+            .replace(/<\/p>/gi, "\n\n")         // Replace closing <p> tags with double newlines
+            .replace(/<[^>]*>/g, "")            // Strip any remaining HTML tags
+            .trim();                            // Clean up whitespace
+
+        editPostTextarea.value = plainText;
         editPostModal.classList.add('visible');
     };
     state.actions.showDeleteModal = (postId) => {
@@ -230,6 +241,26 @@ document.addEventListener('DOMContentLoaded', () => {
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
         state.actions.showProfile(state.currentUser.id);
+    });
+    
+    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
+        if (dd) {
+            dd.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    if (d !== dd) d.classList.remove('active');
+                });
+                dd.classList.toggle('active');
+            });
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown.active').forEach(d => {
+                d.classList.remove('active');
+            });
+        }
     });
 
     feedsDropdown.querySelectorAll('a').forEach(link => {
