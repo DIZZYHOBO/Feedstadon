@@ -6,7 +6,6 @@
     <title>Feedstadon</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
         :root {
             --bg-color: #161617;
             --card-color: #1D1E1F;
@@ -61,12 +60,10 @@
         .nav-right .dropdown-content { right: 0; left: auto; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
         .dropdown.active .dropdown-content { display: block; }
-        
         .search-container { position: relative; }
         #search-form { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); width: 0; opacity: 0; transition: width 0.4s ease, opacity 0.4s ease; overflow: hidden; }
         #search-form.active { width: 200px; opacity: 1; }
         #search-input { margin-bottom: 0; }
-        
         #app-view { display: none; }
         #timeline { display: flex; flex-direction: column; gap: 15px; }
         .status { 
@@ -76,15 +73,18 @@
             padding: 15px;
         }
         .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
-        .status-header .display-name { font-weight: bold; cursor: pointer; }
+        .status-header img { width: 40px; height: 40px; border-radius: 50%; }
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
         .status-content a { color: var(--link-color); }
         .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
         .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.8em; }
         .status-action { cursor: pointer; padding: 5px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
         .icon { width: 20px; height: 20px; fill: currentColor; }
-        
+        .comment-thread {
+            max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out;
+            margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);
+        }
+        .comment-thread.visible { max-height: 1500px; }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; justify-content: center; align-items: center; z-index: 1000;
@@ -94,10 +94,18 @@
             background: var(--card-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 600px;
             max-height: 85vh; overflow-y: auto;
         }
-        .profile-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
-        .profile-info { display: flex; gap: 20px; align-items: center; }
-        .profile-info img { width: 80px; height: 80px; border-radius: 50%; }
-        .profile-bio { margin-top: 15px; line-height: 1.5; }
+        textarea {
+            font-family: 'Inter', sans-serif; width: 100%; padding: 10px; border-radius: 8px;
+            border: 1px solid var(--border-color); background-color: var(--primary-color); color: var(--font-color);
+            box-sizing: border-box; min-height: 120px; margin-bottom: 10px;
+        }
+        button {
+             background-color: var(--accent-color); color: white; border: none;
+             border-radius: 18px; font-weight: bold; cursor: pointer; padding: 10px 15px;
+        }
+        .compose-actions { display: flex; justify-content: space-between; align-items: center; }
+        .settings-section { margin-bottom: 20px; }
+        .toggle-switch { display: flex; align-items: center; justify-content: space-between; }
     </style>
 </head>
 <body>
@@ -122,10 +130,15 @@
                     <div class="dropdown-content" id="search-results"></div>
                 </form>
             </div>
+            <div class="dropdown" id="notifications-dropdown">
+                <button class="nav-button icon-button" id="notifications-btn"></button>
+                <div class="dropdown-content" id="notifications-list"></div>
+            </div>
             <div class="dropdown" id="user-dropdown">
                 <button class="nav-button" id="user-display-btn"></button>
                 <div class="dropdown-content">
                     <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="settings-link">Settings</a>
                     <a href="#" id="logout-btn">Logout</a>
                 </div>
             </div>
@@ -150,283 +163,42 @@
     </div>
 
     <template id="compose-template">
-        </template>
+        <form id="compose-form">
+            <h3>New Post</h3>
+            <textarea placeholder="What's on your mind?"></textarea>
+            <div class="compose-actions">
+                <div>
+                    <input type="file" id="media-input" accept="image/*,video/*" style="display: none;">
+                    <button type="button" id="media-btn" style="font-size: 0.8rem; padding: 8px 12px;">Add Media</button>
+                    <span id="media-preview"></span>
+                </div>
+                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em;"><input type="checkbox" id="nsfw-checkbox">NSFW</label>
+                <button type="submit">Post</button>
+            </div>
+        </form>
+    </template>
+    
+    <template id="settings-template">
+        <div>
+            <h2>Settings</h2>
+            <div class="settings-section">
+                <h4>Content Filtering</h4>
+                <div class="toggle-switch">
+                    <span>Hide NSFW (sensitive) posts</span>
+                    <label><input type="checkbox" id="nsfw-toggle"><span class="slider" style="background-color: var(--primary-color);"></span></label>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h4>Word Filter</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="word-filter-input" placeholder="Add a word..." style="margin: 0;">
+                    <button id="add-filter-word-btn">Add</button>
+                </div>
+                <ul id="word-filter-list"></ul>
+            </div>
+        </div>
+    </template>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
-            const loginView = document.getElementById('login-view');
-            const appView = document.getElementById('app-view');
-            const instanceUrlInput = document.getElementById('instance-url');
-            const accessTokenInput = document.getElementById('access-token');
-            const connectBtn = document.getElementById('connect-btn');
-            const userDisplayBtn = document.getElementById('user-display-btn');
-            const timelineDiv = document.getElementById('timeline');
-            const modal = document.getElementById('modal');
-            const modalBody = document.getElementById('modal-body');
-            const feedsDropdown = document.getElementById('feeds-dropdown');
-            const userDropdown = document.getElementById('user-dropdown');
-            const profileLink = document.getElementById('profile-link');
-            const logoutBtn = document.getElementById('logout-btn');
-            const navPostBtn = document.getElementById('nav-post-btn');
-            const searchContainer = document.getElementById('search-container');
-            const searchToggleBtn = document.getElementById('search-toggle-btn');
-            const searchForm = document.getElementById('search-form');
-            const searchInput = document.getElementById('search-input');
-            const searchResults = document.getElementById('search-results');
-            const scrollLoader = document.getElementById('scroll-loader');
-            
-            // --- App State ---
-            let instanceUrl = '', accessToken = '', currentUser = null;
-            let currentTimeline = 'home', lastPostId = null, isLoadingMore = false;
-            let searchDebounce = null;
-
-            // --- API Helper & Modal ---
-            async function apiFetch(endpoint, options = {}) {
-                const url = `https://${instanceUrl}${endpoint}`;
-                const headers = { 'Authorization': `Bearer ${accessToken}`, ...options.headers };
-                const response = await fetch(url, { ...options, headers });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return response.json();
-            }
-            function showModal(contentNode) { modalBody.innerHTML = ''; modalBody.appendChild(contentNode); modal.classList.add('visible'); }
-            function hideModal() { modal.classList.remove('visible'); }
-            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
-
-            // --- Rendering ---
-            function renderStatus(status) {
-                const originalPost = status.reblog || status;
-                const statusDiv = document.createElement('div');
-                statusDiv.className = 'status';
-
-                let mediaHTML = '';
-                if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
-                    mediaHTML = originalPost.media_attachments.map(media => {
-                        if (media.type === 'image') return `<a href="${media.url}" target="_blank" rel="noopener noreferrer"><img src="${media.preview_url}"></a>`;
-                        if (media.type === 'video') return `<video src="${media.url}" controls></video>`;
-                        return '';
-                    }).join('');
-                }
-
-                statusDiv.innerHTML = `
-                    <div class="status-header">
-                        <img src="${originalPost.account.avatar_static}">
-                        <div><span class="display-name">${originalPost.account.display_name}</span></div>
-                    </div>
-                    <div class="status-content">${originalPost.content}</div>
-                    <div class="status-media">${mediaHTML}</div>
-                `;
-                
-                statusDiv.querySelector('.display-name').onclick = () => showProfile(originalPost.account.id);
-                statusDiv.querySelector('img').onclick = () => showProfile(originalPost.account.id);
-                
-                return statusDiv;
-            }
-
-            // --- Feature Functions ---
-            async function fetchTimeline(type, loadMore = false) {
-                if (isLoadingMore) return;
-                if (!loadMore) {
-                    timelineDiv.innerHTML = '<p>Loading...</p>';
-                    currentTimeline = type; lastPostId = null; window.scrollTo(0, 0);
-                }
-                isLoadingMore = true;
-                if (loadMore) scrollLoader.style.display = 'block';
-
-                try {
-                    let endpoint = `/api/v1/timelines/`;
-                    const params = new URLSearchParams();
-                    if (type.includes('?')) {
-                        const [path, query] = type.split('?');
-                        endpoint += path;
-                        new URLSearchParams(query).forEach((val, key) => params.append(key, val));
-                    } else { endpoint += type; }
-                    if (loadMore && lastPostId) params.append('max_id', lastPostId);
-                    const queryString = params.toString();
-                    if (queryString) endpoint += `?${queryString}`;
-
-                    const statuses = await apiFetch(endpoint);
-                    if (!loadMore) timelineDiv.innerHTML = '';
-                    if (statuses.length > 0) {
-                        statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
-                        lastPostId = statuses[statuses.length - 1].id;
-                    } else {
-                        if (loadMore) scrollLoader.innerHTML = '<p>No more posts.</p>';
-                        else timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
-                    }
-                } catch (error) {
-                    if (!loadMore) timelineDiv.innerHTML = `<p>Could not load timeline.</p>`;
-                } finally {
-                    isLoadingMore = false;
-                    if (loadMore) scrollLoader.style.display = 'none';
-                }
-            }
-
-            async function showProfile(accountId) {
-                const container = document.createElement('div');
-                showModal(container);
-                container.innerHTML = `<p>Loading profile...</p>`;
-                try {
-                    const [account, statuses, relationships] = await Promise.all([
-                        apiFetch(`/api/v1/accounts/${accountId}`),
-                        apiFetch(`/api/v1/accounts/${accountId}/statuses?limit=10`),
-                        apiFetch(`/api/v1/accounts/relationships?id[]=${accountId}`)
-                    ]);
-                    const relationship = relationships[0];
-                    container.innerHTML = `
-                        <div class="profile-header">
-                            <div class="profile-info">
-                                <img src="${account.avatar_static}" style="width:80px;height:80px;border-radius:50%;">
-                                <div><h2>${account.display_name}</h2><p>@${account.acct}</p></div>
-                            </div>
-                            <button class="nav-button" id="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
-                        </div>
-                        <div class="profile-bio">${account.note}</div><hr><h4>Posts</h4>
-                    `;
-                    const postsContainer = document.createElement('div');
-                    postsContainer.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
-                    statuses.forEach(s => postsContainer.appendChild(renderStatus(s)));
-                    container.appendChild(postsContainer);
-                    
-                    const followBtn = container.querySelector('#follow-btn');
-                    if(currentUser.id === accountId) {
-                        followBtn.style.display = 'none';
-                    } else {
-                        followBtn.onclick = async () => {
-                            const endpoint = `/api/v1/accounts/${accountId}/${relationship.following ? 'unfollow' : 'follow'}`;
-                            const newRel = await apiFetch(endpoint, { method: 'POST' });
-                            relationship.following = newRel.following;
-                            followBtn.textContent = newRel.following ? 'Unfollow' : 'Follow';
-                        };
-                    }
-                } catch(err) {
-                    container.innerHTML = '<p>Could not load profile.</p>';
-                }
-            }
-
-            async function performSearch(query) {
-                if (!query || query.length < 2) {
-                    searchResults.style.display = 'none';
-                    return;
-                }
-                try {
-                    const results = await apiFetch(`/api/v2/search?q=${encodeURIComponent(query)}&resolve=false&limit=10`);
-                    searchResults.innerHTML = '';
-                    if (results.accounts.length > 0) {
-                        results.accounts.slice(0, 4).forEach(acc => {
-                            const item = document.createElement('a');
-                            item.href = '#';
-                            item.innerHTML = `<strong>${acc.display_name}</strong><br><small>@${acc.acct}</small>`;
-                            item.onclick = (e) => { e.preventDefault(); showProfile(acc.id); };
-                            searchResults.appendChild(item);
-                        });
-                    }
-                    if (results.hashtags.length > 0) {
-                        results.hashtags.slice(0, 4).forEach(tag => {
-                            const item = document.createElement('a');
-                            item.href = '#';
-                            item.textContent = `#${tag.name}`;
-                            searchResults.appendChild(item);
-                        });
-                    }
-                    if (results.accounts.length === 0 && results.hashtags.length === 0) {
-                        searchResults.innerHTML = '<a href="#">No results found</a>';
-                    }
-                    searchResults.style.display = 'block';
-                } catch(err) {
-                    searchResults.style.display = 'none';
-                }
-            }
-
-            async function initializeApp() {
-                try {
-                    currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
-                    loginView.style.display = 'none';
-                    appView.style.display = 'block';
-                    document.querySelector('.top-nav').style.display = 'flex';
-                    userDisplayBtn.textContent = currentUser.display_name;
-                    fetchTimeline('home');
-                } catch (error) {
-                    alert('Connection failed. Please check URL and token.');
-                    localStorage.clear();
-                    window.location.reload();
-                }
-            }
-            
-            // --- Event Listeners ---
-            connectBtn.addEventListener('click', () => {
-                instanceUrl = instanceUrlInput.value.trim();
-                accessToken = accessTokenInput.value.trim();
-                if (instanceUrl && accessToken) {
-                    localStorage.setItem('fediverse-instance', instanceUrl);
-                    localStorage.setItem('fediverse-token', accessToken);
-                    initializeApp();
-                }
-            });
-
-            searchToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                searchForm.classList.toggle('active');
-                searchToggleBtn.style.display = searchForm.classList.contains('active') ? 'none' : 'inline-block';
-                if (searchForm.classList.contains('active')) searchInput.focus();
-            });
-
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchDebounce);
-                searchDebounce = setTimeout(() => performSearch(searchInput.value.trim()), 300);
-            });
-            
-            window.addEventListener('click', (e) => {
-                if (!e.target.closest('.dropdown')) {
-                    document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
-                }
-                if (!searchContainer.contains(e.target)) {
-                    searchForm.classList.remove('active');
-                    searchResults.style.display = 'none';
-                    searchToggleBtn.style.display = 'inline-block';
-                }
-            });
-
-            [userDropdown, feedsDropdown].forEach(dd => {
-                dd.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
-                    dd.classList.toggle('active');
-                });
-            });
-
-            feedsDropdown.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    fetchTimeline(e.target.dataset.timeline);
-                });
-            });
-
-            navPostBtn.addEventListener('click', () => alert('Post modal coming soon!'));
-            logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
-            profileLink.addEventListener('click', (e) => { e.preventDefault(); showProfile(currentUser.id); });
-            
-            window.addEventListener('scroll', () => {
-                if (isLoadingMore || !currentUser) return;
-                const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-                if (scrollTop + clientHeight >= scrollHeight - 400) {
-                    fetchTimeline(currentTimeline, true);
-                }
-            });
-
-            // --- Initial Page Load ---
-            const savedInstance = localStorage.getItem('fediverse-instance');
-            const savedToken = localStorage.getItem('fediverse-token');
-            if (savedInstance && savedToken) {
-                instanceUrlInput.value = savedInstance;
-                accessTokenInput.value = savedToken;
-                instanceUrl = savedInstance;
-                accessToken = savedToken;
-                initializeApp();
-            } else {
-                 document.querySelector('.top-nav').style.display = 'none';
-            }
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
