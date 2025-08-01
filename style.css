@@ -299,6 +299,35 @@ textarea:focus {
 .search-result-item .acct { color: var(--font-color-muted); }
 
 /* --- Modals --- */
+/* ADDED: Generic modal overlay styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none; /* Hidden by default */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* ADDED: Class to show any modal */
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--card-color);
+    padding: 25px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
 .modal-actions {
     display: flex;
     justify-content: flex-end;
