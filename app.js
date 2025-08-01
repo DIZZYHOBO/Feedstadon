@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         accessToken: '',
         currentUser: null,
         attachedMediaId: null,
-        settings: { hideNsfw: false, filteredWords: [] },
+        // MODIFIED: 'filteredWords' is now 'filters' to hold the full server objects
+        settings: { hideNsfw: false, filters: [] },
         currentTimeline: 'home',
         lastPostId: null,
         isLoadingMore: false,
@@ -53,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeApp() {
         try {
-            state.settings = loadSettings();
+            // MODIFIED: Settings load is now an async network request
+            state.settings = await loadSettings(state);
             state.currentUser = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
             
             document.getElementById('login-view').style.display = 'none';
@@ -63,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             fetchTimeline(state, 'home');
         } catch (error) {
+            console.error('Initialization failed:', error);
             alert('Connection failed. Please check your URL and token.');
             localStorage.clear();
             showLogin();
@@ -109,20 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function toggleAction(action, id, button) {
-        // --- MODIFICATION START: Logic to update the count ---
-        // Find the text node that holds the count number
         let countNode = null;
         for (const node of button.childNodes) {
-            // Node type 3 is a text node
             if (node.nodeType === 3 && node.nodeValue.trim() !== '') {
                 countNode = node;
                 break;
             }
         }
         
-        // If there's no count (like on the bookmark button), do nothing with it
         const currentCount = countNode ? parseInt(countNode.nodeValue.trim(), 10) : 0;
-        // --- MODIFICATION END ---
         
         const actionMap = { boost: 'reblog', favorite: 'favourite', bookmark: 'bookmark' };
         const verb = actionMap[action];
@@ -133,13 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             button.classList.toggle('active');
             
-            // --- MODIFICATION START: Update the count in the UI ---
             if (countNode) {
-                // If we were un-doing the action, decrement. Otherwise, increment.
                 const newCount = isDone ? currentCount - 1 : currentCount + 1;
-                countNode.nodeValue = ` ${newCount}`; // Set the new value
+                countNode.nodeValue = ` ${newCount}`;
             }
-            // --- MODIFICATION END ---
 
         } catch(err) { alert('Action failed.'); }
     }
