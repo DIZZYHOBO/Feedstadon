@@ -39,9 +39,6 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 25px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
         }
         .top-nav {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
@@ -54,7 +51,6 @@
             background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
             border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap; font-size: 0.9em;
         }
-        .icon-button { border: none; font-size: 1.5em; }
         .dropdown { position: relative; }
         .dropdown-content {
             display: none; position: absolute; top: 100%;
@@ -63,6 +59,7 @@
         }
         .nav-right .dropdown-content { right: 0; left: auto; }
         .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
+        .dropdown-content a:hover { background-color: var(--accent-color); }
         .dropdown.active .dropdown-content { display: block; }
         
         .search-container { position: relative; }
@@ -81,13 +78,6 @@
         .status-content { margin-bottom: 15px; line-height: 1.5; word-wrap: break-word; }
         .status-content a { color: var(--link-color); text-decoration: none; font-weight: bold; }
         .status-content a:hover { text-decoration: underline; }
-        .status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
-        
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
-            display: none; justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal-overlay.visible { display: flex; }
     </style>
 </head>
 <body>
@@ -102,7 +92,6 @@
                     <a href="#" data-timeline="public">All</a>
                 </div>
             </div>
-            <button class="nav-button" id="nav-post-btn">Post</button>
         </div>
         <div class="nav-right">
             <div class="search-container" id="search-container">
@@ -111,10 +100,6 @@
                     <input type="search" id="search-input" placeholder="Search...">
                     <div class="dropdown-content" id="search-results"></div>
                 </form>
-            </div>
-            <div class="dropdown" id="notifications-dropdown">
-                <button class="nav-button icon-button" id="notifications-btn"></button>
-                <div class="dropdown-content" id="notifications-list"></div>
             </div>
             <div class="dropdown" id="user-dropdown">
                 <button class="nav-button" id="user-display-btn"></button>
@@ -142,9 +127,6 @@
         <div class="modal-content" id="modal-body"></div>
     </div>
 
-    <template id="compose-template">
-        </template>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM Elements ---
@@ -156,14 +138,18 @@
             const userDisplayBtn = document.getElementById('user-display-btn');
             const timelineDiv = document.getElementById('timeline');
             const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            const feedsDropdown = document.getElementById('feeds-dropdown');
+            const userDropdown = document.getElementById('user-dropdown');
+            const profileLink = document.getElementById('profile-link');
+            const logoutBtn = document.getElementById('logout-btn');
             const searchContainer = document.getElementById('search-container');
             const searchToggleBtn = document.getElementById('search-toggle-btn');
             const searchForm = document.getElementById('search-form');
             const searchInput = document.getElementById('search-input');
             const searchResults = document.getElementById('search-results');
-            // other element selectors...
-            
-            // --- App State & Icons ---
+
+            // --- App State ---
             let instanceUrl = '', accessToken = '', currentUser = null;
             let searchDebounce = null;
 
@@ -175,42 +161,59 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             }
-            function showModal(contentNode) { /* ... */ }
-            function hideModal() { /* ... */ }
-            // ... (other UI functions)
+            function showModal(contentNode) {
+                modalBody.innerHTML = '';
+                modalBody.appendChild(contentNode);
+                modal.classList.add('visible');
+            }
+            function hideModal() {
+                modal.classList.remove('visible');
+            }
+            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
 
             // --- Rendering ---
             function renderStatus(status) {
-                // This function is complete and includes media rendering logic
                 const originalPost = status.reblog || status;
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'status';
-
-                let mediaHTML = '';
-                if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
-                    mediaHTML = originalPost.media_attachments.map(media => {
-                        if (media.type === 'image') return `<a href="${media.url}" target="_blank" rel="noopener noreferrer"><img src="${media.preview_url}"></a>`;
-                        if (media.type === 'video') return `<video src="${media.url}" controls></video>`;
-                        return '';
-                    }).join('');
-                }
-
                 statusDiv.innerHTML = `
                     <div class="status-header">
-                        <img src="${originalPost.account.avatar_static}">
-                        <div><span class="display-name">${originalPost.account.display_name}</span></div>
+                         <img src="${originalPost.account.avatar_static}" style="width:40px; height:40px; border-radius:50%;">
+                         <div><strong>${originalPost.account.display_name}</strong></div>
                     </div>
                     <div class="status-content">${originalPost.content}</div>
-                    <div class="status-media">${mediaHTML}</div>
                 `;
                 return statusDiv;
             }
 
             // --- Feature Functions ---
-            async function fetchTimeline(type) { /* as before */ }
-            async function showProfile(accountId) { /* as before */ }
-
-            // MODIFIED: Fully functional search
+            async function fetchTimeline(type) {
+                timelineDiv.innerHTML = '<p>Loading...</p>';
+                try {
+                    const statuses = await apiFetch(`/api/v1/timelines/${type}`);
+                    timelineDiv.innerHTML = '';
+                    statuses.forEach(status => timelineDiv.appendChild(renderStatus(status)));
+                } catch (error) {
+                    timelineDiv.innerHTML = `<p>Could not load timeline.</p>`;
+                }
+            }
+            
+            async function showProfile(accountId) {
+                const container = document.createElement('div');
+                showModal(container);
+                container.innerHTML = `<p>Loading profile...</p>`;
+                try {
+                    const account = await apiFetch(`/api/v1/accounts/${accountId}`);
+                    container.innerHTML = `
+                        <h2>${account.display_name}</h2>
+                        <p>@${account.acct}</p>
+                        <div>${account.note}</div>
+                    `;
+                } catch(error) {
+                    container.innerHTML = `<p>Could not load profile.</p>`;
+                }
+            }
+            
             async function performSearch(query) {
                 if (!query || query.length < 2) {
                     searchResults.style.display = 'none';
@@ -233,7 +236,6 @@
                             const item = document.createElement('a');
                             item.href = '#';
                             item.textContent = `#${tag.name}`;
-                            // item.onclick = (e) => { e.preventDefault(); showHashtagFeed(tag.name); }; // showHashtagFeed would be needed
                             searchResults.appendChild(item);
                         });
                     }
@@ -242,33 +244,33 @@
                     searchResults.style.display = 'none';
                 }
             }
-
+            
             async function initializeApp() {
                 try {
                     currentUser = await apiFetch('/api/v1/accounts/verify_credentials');
-                    document.getElementById('login-view').style.display = 'none';
+                    loginView.style.display = 'none';
                     appView.style.display = 'block';
                     document.querySelector('.top-nav').style.display = 'flex';
                     userDisplayBtn.textContent = currentUser.display_name;
                     fetchTimeline('home');
                 } catch (error) {
-                    alert('Connection failed.');
+                    alert('Connection failed. Please check URL and token.');
                     localStorage.clear();
                     window.location.reload();
                 }
             }
             
             // --- Event Listeners ---
-            document.getElementById('connect-btn').addEventListener('click', () => {
-                instanceUrl = document.getElementById('instance-url').value.trim();
-                accessToken = document.getElementById('access-token').value.trim();
+            connectBtn.addEventListener('click', () => {
+                instanceUrl = instanceUrlInput.value.trim();
+                accessToken = accessTokenInput.value.trim();
                 if (instanceUrl && accessToken) {
                     localStorage.setItem('fediverse-instance', instanceUrl);
                     localStorage.setItem('fediverse-token', accessToken);
                     initializeApp();
                 }
             });
-            
+
             searchToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 searchForm.classList.toggle('active');
@@ -282,7 +284,6 @@
             });
             
             window.addEventListener('click', (e) => {
-                // Hide dropdowns and search bar when clicking away
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown.active').forEach(d => d.classList.remove('active'));
                 }
@@ -293,12 +294,28 @@
                 }
             });
 
+            [userDropdown, feedsDropdown].forEach(dd => {
+                dd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.dropdown').forEach(d => { if(d !== dd) d.classList.remove('active'); });
+                    dd.classList.toggle('active');
+                });
+            });
+            feedsDropdown.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    fetchTimeline(e.target.dataset.timeline);
+                });
+            });
+            logoutBtn.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.reload(); });
+            profileLink.addEventListener('click', (e) => { e.preventDefault(); showProfile(currentUser.id); });
+
             // --- Initial Page Load ---
             const savedInstance = localStorage.getItem('fediverse-instance');
             const savedToken = localStorage.getItem('fediverse-token');
             if (savedInstance && savedToken) {
-                document.getElementById('instance-url').value = savedInstance;
-                document.getElementById('access-token').value = savedToken;
+                instanceUrlInput.value = savedInstance;
+                accessTokenInput.value = savedToken;
                 instanceUrl = savedInstance;
                 accessToken = savedToken;
                 initializeApp();
