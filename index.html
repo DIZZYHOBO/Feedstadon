@@ -12,6 +12,7 @@
 
     <nav class="top-nav">
         <div class="nav-left">
+            <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
             <button class="nav-button" id="back-btn" style="display: none;">Back</button>
             <div class="dropdown" id="feeds-dropdown">
                 <button class="nav-button">Feeds</button>
@@ -71,7 +72,6 @@
             <h3>New Post</h3>
             <form id="compose-form">
                 <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-
                 <div id="poll-creator-container" style="display: none;">
                     <div id="poll-options-container">
                         <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
@@ -96,7 +96,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="modal-actions">
                     <div class="compose-options">
                         <input type="file" id="media-attachment-input" accept="image/*, video/*" style="display: none;">
