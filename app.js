@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageUrl: null
     };
     
-    // ADDED: This is the important debugging line
+    // DEBUGGING: Make state accessible in the console
     window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
@@ -280,6 +280,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadMoreContent() {
+        // ADDED: New console log for debugging
+        console.log("Scroll detected, trying to load more...");
+
         if (!state.nextPageUrl || state.isLoadingMore) return;
 
         state.isLoadingMore = true;
@@ -532,6 +535,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     fetchNotifications(state);
                 }
             });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+            loadMoreContent();
         }
     });
 
