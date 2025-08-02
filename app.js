@@ -9,6 +9,7 @@ import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
+    const debugOverlay = document.getElementById('debug-overlay');
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
     const accessTokenInput = document.getElementById('access-token');
@@ -377,6 +378,24 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
     
+    async function voteOnPoll(pollId, choices, statusElement) {
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/polls/${pollId}/votes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ choices })
+            });
+            const updatedPoll = response.data;
+            const pollContainer = statusElement.querySelector('.poll-container');
+            if (pollContainer) {
+                pollContainer.outerHTML = renderPollHTML(updatedPoll);
+            }
+        } catch (error) {
+            console.error('Failed to vote on poll:', error);
+            alert('Could not cast vote.');
+        }
+    }
+    
     async function toggleAction(action, post, button) {
         if (action === 'reply') {
             const postElement = button.closest('.status');
@@ -566,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('scroll', () => {
-        // MODIFIED: Increased the trigger threshold to 1000px
         if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 1000) {
             loadMoreContent();
         }
