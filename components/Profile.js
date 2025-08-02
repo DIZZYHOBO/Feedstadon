@@ -15,6 +15,17 @@ export async function renderProfilePage(state, accountId) {
         const relationship = relationshipsResponse.data[0];
         const statuses = statusesResponse.data;
         
+        const isOwnProfile = state.currentUser && accountId === state.currentUser.id;
+        
+        let actionsHTML = '';
+        if (!isOwnProfile) {
+            actionsHTML = `
+                <button class="mute-btn button-secondary">${relationship.muting ? 'Unmute' : 'Mute'}</button>
+                <button class="block-btn">${relationship.blocking ? 'Unblock' : 'Block'}</button>
+                <button class="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
+            `;
+        }
+
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
@@ -22,9 +33,7 @@ export async function renderProfilePage(state, accountId) {
                     <img class="avatar" src="${account.avatar_static}" alt="${account.display_name} avatar">
                 </div>
                 <div class="profile-actions">
-                    <button class="mute-btn button-secondary">${relationship.muting ? 'Unmute' : 'Mute'}</button>
-                    <button class="block-btn">${relationship.blocking ? 'Unblock' : 'Block'}</button>
-                    <button class="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
+                    ${actionsHTML}
                 </div>
                 <div class="profile-info">
                     <h2 class="display-name">${account.display_name}</h2>
@@ -48,38 +57,37 @@ export async function renderProfilePage(state, accountId) {
             state.setNextPageUrl(null);
         }
 
-        // --- Event Listeners for Profile Buttons ---
-
-        const followBtn = container.querySelector('.follow-btn');
-        followBtn.addEventListener('click', async () => {
-            const isFollowing = followBtn.textContent === 'Unfollow';
-            const endpoint = `/api/v1/accounts/${accountId}/${isFollowing ? 'unfollow' : 'follow'}`;
-            try {
-                await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
-                followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
-            } catch (err) { alert('Action failed.'); }
-        });
-        
-        const blockBtn = container.querySelector('.block-btn');
-        blockBtn.addEventListener('click', async () => {
-            const isBlocking = blockBtn.textContent === 'Unblock';
-            const endpoint = `/api/v1/accounts/${accountId}/${isBlocking ? 'unblock' : 'block'}`;
-            try {
-                await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
-                blockBtn.textContent = isBlocking ? 'Block' : 'Unblock';
-            } catch (err) { alert('Action failed.'); }
-        });
-        
-        const muteBtn = container.querySelector('.mute-btn');
-        muteBtn.addEventListener('click', async () => {
-            const isMuting = muteBtn.textContent === 'Mute';
-            const endpoint = `/api/v1/accounts/${accountId}/${isMuting ? 'mute' : 'unmute'}`;
-            try {
-                await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
-                muteBtn.textContent = isMuting ? 'Unmute' : 'Mute';
-            } catch (err) { alert('Action failed.'); }
-        });
-
+        if (!isOwnProfile) {
+            const followBtn = container.querySelector('.follow-btn');
+            followBtn.addEventListener('click', async () => {
+                const isFollowing = followBtn.textContent === 'Unfollow';
+                const endpoint = `/api/v1/accounts/${accountId}/${isFollowing ? 'unfollow' : 'follow'}`;
+                try {
+                    await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+                    followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
+                } catch (err) { alert('Action failed.'); }
+            });
+            
+            const blockBtn = container.querySelector('.block-btn');
+            blockBtn.addEventListener('click', async () => {
+                const isBlocking = blockBtn.textContent === 'Unblock';
+                const endpoint = `/api/v1/accounts/${accountId}/${isBlocking ? 'unblock' : 'block'}`;
+                try {
+                    await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+                    blockBtn.textContent = isBlocking ? 'Block' : 'Unblock';
+                } catch (err) { alert('Action failed.'); }
+            });
+            
+            const muteBtn = container.querySelector('.mute-btn');
+            muteBtn.addEventListener('click', async () => {
+                const isMuting = muteBtn.textContent === 'Mute';
+                const endpoint = `/api/v1/accounts/${accountId}/${isMuting ? 'mute' : 'unmute'}`;
+                try {
+                    await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+                    muteBtn.textContent = isMuting ? 'Unmute' : 'Mute';
+                } catch (err) { alert('Action failed.'); }
+            });
+        }
 
     } catch(err) {
         console.error('Could not load profile:', err);
