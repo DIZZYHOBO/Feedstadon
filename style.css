@@ -210,7 +210,6 @@ textarea {
     text-align: center;
     padding: 20px;
     height: 60px;
-    display: none;
 }
 #scroll-loader p {
     color: var(--font-color-muted);
