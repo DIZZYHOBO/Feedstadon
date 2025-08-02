@@ -57,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageUrl: null
     };
     
-    // DEBUGGING: Make state accessible in the console
     window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
@@ -247,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             state.setNextPageUrl(response.linkHeader);
+            checkAndLoadMore(); // ADDED: Check if more content needs to be loaded
 
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
@@ -273,14 +273,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            checkAndLoadMore(); // ADDED: Check if more content needs to be loaded
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
 
+    // ADDED: New function to automatically load more content if the screen isn't full
+    function checkAndLoadMore() {
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        // Check if the document's scroll height is less than or equal to the window's inner height
+        if (document.body.scrollHeight <= window.innerHeight) {
+            console.log("Content doesn't fill screen, loading more automatically...");
+            loadMoreContent();
+        }
+    }
+
     async function loadMoreContent() {
-        // ADDED: New console log for debugging
         console.log("Scroll detected, trying to load more...");
 
         if (!state.nextPageUrl || state.isLoadingMore) return;
@@ -311,6 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
+            // ADDED: Check again in case the newly added content STILL doesn't fill the screen
+            setTimeout(checkAndLoadMore, 500);
         }
     }
     
