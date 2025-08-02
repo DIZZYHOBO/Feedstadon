@@ -1,15 +1,13 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 
-function renderNotification(notification, state) {
+// MODIFIED: Added the 'export' keyword here
+export function renderNotification(notification, state) {
     const item = document.createElement('div');
     item.className = 'notification-item';
     let icon = '';
     let content = '';
 
-    // This function assumes `notification` and `state` are valid.
-    // It returns the created DOM element.
-    
     switch (notification.type) {
         case 'favourite':
         case 'reblog':
@@ -28,7 +26,7 @@ function renderNotification(notification, state) {
             });
             break;
         default:
-            return null; // Skip unknown notification types
+            return null;
     }
     
     item.innerHTML = `
@@ -47,7 +45,7 @@ export async function fetchNotifications(state) {
     try {
         const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
         const notifications = response.data;
-        container.innerHTML = ''; // Clear loading message
+        container.innerHTML = '';
 
         if (notifications.length === 0) {
             container.innerHTML = '<div class="notification-item">You have no new notifications.</div>';
