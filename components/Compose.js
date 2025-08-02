@@ -118,16 +118,21 @@ export function initComposeModal(state, onPostSuccess) {
                     return;
                 }
 
+                // ADDED: Check for duplicate poll options
+                const uniqueOptions = new Set(pollOptions);
+                if (uniqueOptions.size !== pollOptions.length) {
+                    alert('Poll options must be unique.');
+                    postButton.disabled = false;
+                    postButton.textContent = 'Post';
+                    return;
+                }
+
                 postBody.poll = {
                     options: pollOptions,
                     expires_in: parseInt(document.getElementById('poll-duration-select').value, 10),
                     multiple: document.getElementById('poll-multiple-choice-check').checked
                 };
             }
-
-            // DEBUGGING: Log the exact data being sent and pause execution
-            console.log("Data being sent to server:", JSON.stringify(postBody, null, 2));
-            debugger;
 
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
