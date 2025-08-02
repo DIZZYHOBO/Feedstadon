@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     state.actions.showStatusDetail = (id) => showStatusDetail(id);
     state.actions.showHashtagTimeline = (tagName) => fetchHashtagTimeline(tagName);
-    state.actions.toggleAction = (action, post, button) => toggleAction(action, post, button); // MODIFIED
-    state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
+    state.actions.toggleAction = (action, post, button) => toggleAction(action, post, button);
+    state.actions.toggleCommentThread = (status, element, replyToAcct) => toggleCommentThread(status, element, replyToAcct);
     state.actions.showEditModal = (post) => {
         postToEdit = post;
         const plainText = post.content.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<[^>]*>/g, "").trim();
@@ -205,11 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
     
-    // MODIFIED: Function signature changed to accept the full post object
     async function toggleAction(action, post, button) {
         if (action === 'reply') {
             const postElement = button.closest('.status');
-            // MODIFIED: Pass the author's account handle to tag them
             toggleCommentThread(post, postElement, post.account.acct);
             return;
         }
@@ -241,11 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // MODIFIED: Function signature changed to accept a username to reply to
     async function toggleCommentThread(status, statusElement, replyToAcct = null) {
         const existingThread = statusElement.querySelector('.comment-thread');
         
-        // If the thread is already open, just focus the textarea and add the tag
         if (existingThread) {
             const textarea = existingThread.querySelector('textarea');
             if (textarea && replyToAcct) {
@@ -295,8 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ status: content, in_reply_to_id: status.id })
                 });
 
-                toggleCommentThread(status, statusElement); // Close it
-                setTimeout(() => toggleCommentThread(status, statusElement), 100); // Re-open it to refresh
+                toggleCommentThread(status, statusElement);
+                setTimeout(() => toggleCommentThread(status, statusElement), 100);
             });
 
         } catch (error) {
@@ -306,24 +302,152 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners ---
-    // All event listeners remain unchanged
-    connectBtn.addEventListener('click', () => { /* ... */ });
-    logoutBtn.addEventListener('click', (e) => { /* ... */ });
+    connectBtn.addEventListener('click', () => {
+        const instance = instanceUrlInput.value.trim();
+        const token = accessTokenInput.value.trim();
+
+        if (!instance || !token) {
+            alert('Please provide both an instance URL and an access token.');
+            return;
+        }
+
+        localStorage.setItem('instanceUrl', instance);
+        localStorage.setItem('accessToken', token);
+        onLoginSuccess(instance, token);
+    });
+
+    logoutBtn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        localStorage.clear(); 
+        window.location.reload(); 
+    });
+    
     backBtn.addEventListener('click', () => switchView('timeline'));
-    profileLink.addEventListener('click', (e) => { /* ... */ });
-    settingsLink.addEventListener('click', (e) => { /* ... */ });
-    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => { /* ... */ });
-    document.addEventListener('click', (e) => { /* ... */ });
-    feedsDropdown.querySelectorAll('a').forEach(link => { /* ... */ });
-    searchToggleBtn.addEventListener('click', (e) => { /* ... */ });
-    searchForm.addEventListener('submit', (e) => { /* ... */ });
+    
+    profileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        state.actions.showProfile(state.currentUser.id);
+    });
+
+    settingsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderSettingsPage(state);
+        switchView('settings');
+    });
+    
+    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
+        if (dd) {
+            dd.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    if (d !== dd) d.classList.remove('active');
+                });
+                dd.classList.toggle('active');
+                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                    fetchNotifications(state);
+                }
+            });
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        const isClickInsideDropdown = e.target.closest('.dropdown');
+        const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
+
+        if (!isClickInsideDropdown) {
+            document.querySelectorAll('.dropdown.active').forEach(d => {
+                d.classList.remove('active');
+            });
+        }
+        
+        if (!isClickInsideSearch) {
+            searchInput.value = '';
+            searchForm.style.display = 'none';
+            searchToggleBtn.style.display = 'block';
+        }
+    });
+
+    feedsDropdown.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('timeline');
+            fetchTimeline(link.dataset.timeline);
+        });
+    });
+    
+    searchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchForm.style.display = 'block';
+        searchInput.focus();
+        searchToggleBtn.style.display = 'none';
+    });
+    
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+    
+        renderSearchResults(state, query);
+        switchView('search');
+    });
+    
     navPostBtn.addEventListener('click', () => showComposeModal(state));
-    editPostForm.addEventListener('submit', async (e) => { /* ... */ });
+    
+    editPostForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newContent = editPostTextarea.value;
+        if (!postToEdit || newContent.trim() === '') return;
+
+        try {
+            const updatedPost = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToEdit.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newContent })
+            });
+
+            const oldPostElement = document.querySelector(`.status[data-id='${postToEdit.id}']`);
+            if (oldPostElement) {
+                const newPostElement = renderStatus(updatedPost, state, state.actions);
+                oldPostElement.replaceWith(newPostElement);
+            }
+            editPostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to edit post:', error);
+            alert('Error editing post.');
+        }
+    });
+
     cancelEditBtn.addEventListener('click', () => editPostModal.classList.remove('visible'));
-    confirmDeleteBtn.addEventListener('click', async () => { /* ... */ });
+
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if (!postToDeleteId) return;
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
+            
+            const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
+            if (postElement) postElement.remove();
+            
+            deletePostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to delete post:', error);
+            alert('Error deleting post.');
+        }
+    });
+
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
 
     // --- Initial Load ---
-    function initLoginOnLoad() { /* ... */ }
+    function initLoginOnLoad() {
+        const instance = localStorage.getItem('instanceUrl');
+        const token = localStorage.getItem('accessToken');
+        if (instance && token) {
+            onLoginSuccess(instance, token);
+        } else {
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+    
     initLoginOnLoad();
 });
