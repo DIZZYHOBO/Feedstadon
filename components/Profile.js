@@ -5,13 +5,15 @@ export async function renderProfilePage(state, accountId) {
     const container = document.getElementById('profile-page-view');
     
     try {
-        const [account, relationships, statuses] = await Promise.all([
+        const [accountResponse, relationshipsResponse, statusesResponse] = await Promise.all([
             apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`),
             apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/relationships?id[]=${accountId}`),
             apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses?limit=20`)
         ]);
 
-        const relationship = relationships[0];
+        const account = accountResponse.data;
+        const relationship = relationshipsResponse.data[0];
+        const statuses = statusesResponse.data;
         
         container.innerHTML = `
             <div class="profile-card">
@@ -38,8 +40,10 @@ export async function renderProfilePage(state, accountId) {
                 const statusEl = renderStatus(status, state, state.actions);
                 if (statusEl) feedContainer.appendChild(statusEl);
             });
+            state.setNextPageUrl(statusesResponse.linkHeader);
         } else {
             feedContainer.innerHTML = '<p>This user has not posted anything yet.</p>';
+            state.setNextPageUrl(null);
         }
 
         const followBtn = container.querySelector('.follow-btn');
