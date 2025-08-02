@@ -52,7 +52,7 @@
 
     <div class="container">
         <div id="login-view">
-            <h2>Feedstodon</h2>
+            <img src="./images/logo.png" alt="Feedstodon Logo" class="login-logo">
             <input type="text" id="instance-url" placeholder="your-instance.social">
             <input type="password" id="access-token" placeholder="Paste your access token">
             <button id="connect-btn">Connect</button>
@@ -100,7 +100,9 @@
                 <div class="modal-actions">
                     <div class="compose-options">
                         <input type="file" id="media-attachment-input" accept="image/*, video/*" style="display: none;">
-                        <button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media">📷</button>
+                        <button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media">
+                            <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z" /></svg>
+                        </button>
                         <button type="button" id="add-poll-btn" class="button-secondary icon-button" title="Add Poll"></button>
                         <span id="media-filename-preview"></span>
                     </div>
