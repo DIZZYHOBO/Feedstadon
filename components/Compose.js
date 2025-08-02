@@ -1,24 +1,13 @@
 import { apiFetch, apiUploadMedia } from './api.js';
 
-let inReplyToId = null; // Module-level variable to hold the ID of the post we're replying to
-
-export function showComposeModal(state, options = {}) {
+export function showComposeModal(state) {
     const composeModal = document.getElementById('compose-modal');
     const composeTextarea = document.getElementById('compose-textarea');
-    const mediaPreview = document.getElementById('media-filename-preview');
-
+    
     // Reset fields from any previous use
     composeTextarea.value = '';
-    mediaPreview.textContent = '';
+    document.getElementById('media-filename-preview').textContent = '';
     document.getElementById('media-attachment-input').value = '';
-
-    // Check if we are in reply mode
-    if (options.inReplyToId && options.replyToAcct) {
-        inReplyToId = options.inReplyToId;
-        composeTextarea.value = `@${options.replyToAcct} `;
-    } else {
-        inReplyToId = null;
-    }
 
     composeModal.classList.add('visible');
     composeTextarea.focus();
@@ -73,23 +62,17 @@ export function initComposeModal(state, onPostSuccess) {
                 media_ids: mediaIds
             };
             
-            // Add the reply ID if it exists
-            if (inReplyToId) {
-                postBody.in_reply_to_id = inReplyToId;
-            }
-
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(postBody)
             });
 
-            // Reset form and state
+            // Reset form
             composeTextarea.value = '';
             mediaInput.value = '';
             attachedFile = null;
             mediaPreview.textContent = '';
-            inReplyToId = null; // Clear reply ID after posting
             postButton.disabled = false;
             postButton.textContent = 'Post';
 
