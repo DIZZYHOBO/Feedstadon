@@ -6,19 +6,25 @@ export function showComposeModal(state) {
     const composeTextarea = document.getElementById('compose-textarea');
     const mediaPreview = document.getElementById('media-filename-preview');
     const pollCreator = document.getElementById('poll-creator-container');
+    const addMediaBtn = document.getElementById('add-media-btn');
+    const addPollBtn = document.getElementById('add-poll-btn');
 
     // Reset fields from any previous use
     composeTextarea.value = '';
     mediaPreview.textContent = '';
     document.getElementById('media-attachment-input').value = '';
-    pollCreator.style.display = 'none'; // Hide poll creator by default
+    pollCreator.style.display = 'none';
     
-    // Reset poll options
+    // Re-enable buttons
+    addMediaBtn.disabled = false;
+    addPollBtn.disabled = false;
+    
     const pollOptionsContainer = document.getElementById('poll-options-container');
     pollOptionsContainer.innerHTML = `
         <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
         <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
     `;
+    document.getElementById('add-poll-option-btn').style.display = 'block';
 
     composeModal.classList.add('visible');
     composeTextarea.focus();
@@ -34,7 +40,6 @@ export function initComposeModal(state, onPostSuccess) {
     const addMediaBtn = document.getElementById('add-media-btn');
     const mediaPreview = document.getElementById('media-filename-preview');
     
-    // Poll elements
     const addPollBtn = document.getElementById('add-poll-btn');
     addPollBtn.innerHTML = ICONS.poll;
     const pollCreator = document.getElementById('poll-creator-container');
@@ -50,15 +55,18 @@ export function initComposeModal(state, onPostSuccess) {
         if (mediaInput.files.length > 0) {
             attachedFile = mediaInput.files[0];
             mediaPreview.textContent = attachedFile.name;
+            addPollBtn.disabled = true; // Disable poll button if media is attached
         } else {
             attachedFile = null;
             mediaPreview.textContent = '';
+            addPollBtn.disabled = false; // Re-enable poll button if media is removed
         }
     });
     
     addPollBtn.addEventListener('click', () => {
         isPollActive = !isPollActive;
         pollCreator.style.display = isPollActive ? 'block' : 'none';
+        addMediaBtn.disabled = isPollActive; // Disable media button if poll is active
     });
     
     addPollOptionBtn.addEventListener('click', () => {
@@ -71,7 +79,7 @@ export function initComposeModal(state, onPostSuccess) {
             newInput.maxLength = 25;
             pollOptionsContainer.appendChild(newInput);
         }
-        if (pollOptionsContainer.querySelectorAll('.poll-option-input').length === 4) {
+        if (pollOptionsContainer.querySelectorAll('.poll-option-input').length >= 4) {
             addPollOptionBtn.style.display = 'none';
         }
     });
@@ -129,6 +137,7 @@ export function initComposeModal(state, onPostSuccess) {
             mediaInput.value = '';
             attachedFile = null;
             mediaPreview.textContent = '';
+            isPollActive = false;
             postButton.disabled = false;
             postButton.textContent = 'Post';
 
