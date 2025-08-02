@@ -21,7 +21,6 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ADDED: Animation for posts being removed */
 @keyframes fadeOut {
     from { opacity: 1; }
     to { opacity: 0; }
@@ -183,7 +182,6 @@ textarea:focus {
     animation: fadeIn 0.5s ease-out;
 }
 
-/* ADDED: Style for fading out deleted posts */
 .status.fading-out {
     animation: fadeOut 0.5s ease-out forwards;
 }
@@ -302,6 +300,53 @@ textarea:focus {
     font-weight: bold;
     cursor: pointer;
     padding: 0 20px;
+}
+
+/* --- Polls --- */
+.poll-container {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.poll-option, .poll-result {
+    background-color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.poll-option:hover {
+    background-color: var(--accent-color);
+}
+.poll-result {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+}
+.poll-result-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: var(--accent-color);
+    opacity: 0.4;
+}
+.poll-result-label, .poll-result-percent {
+    position: relative;
+    z-index: 1;
+}
+.poll-result.voted {
+    border-color: var(--accent-color);
+    font-weight: bold;
+}
+.poll-info {
+    font-size: 0.8em;
+    color: var(--font-color-muted);
+    margin-top: 10px;
 }
 
 /* --- Profile Page --- */
