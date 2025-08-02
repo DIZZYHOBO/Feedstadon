@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let postToEdit = null;
     let postToDeleteId = null;
+    let publicSocket = null; // MODIFIED: To manage the public/local socket connection
 
     // --- Core Actions ---
     state.actions.showProfile = (id) => {
@@ -88,6 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         
+        // MODIFIED: Close any open public stream when leaving a timeline view
+        if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
+            publicSocket.close();
+            console.log('Public WebSocket connection closed.');
+        }
+
         if (viewName === 'timeline') {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
@@ -113,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
-            initWebSocket();
+            initUserStreamSocket(); // MODIFIED: Renamed for clarity
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -125,18 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function initWebSocket() {
+    // MODIFIED: Renamed to be specific to the user stream
+    function initUserStreamSocket() {
         const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=user&access_token=${state.accessToken}`;
         const socket = new WebSocket(socketUrl);
 
-        socket.onopen = () => {
-            console.log('WebSocket connection established.');
-        };
-
+        socket.onopen = () => console.log('User WebSocket connection established.');
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            
             if (data.event === 'update' && state.currentTimeline === 'home') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
@@ -145,31 +149,57 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
-
             if (data.event === 'notification') {
                 console.log('New notification received:', JSON.parse(data.payload));
             }
         };
-
         socket.onclose = () => {
-            console.log('WebSocket connection closed. Attempting to reconnect in 5 seconds...');
-            setTimeout(initWebSocket, 5000);
+            console.log('User WebSocket connection closed. Reconnecting in 5s...');
+            setTimeout(initUserStreamSocket, 5000);
         };
+        socket.onerror = (error) => console.error('User WebSocket error:', error);
+    }
 
-        socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
+    // ADDED: New function to handle public/local streams
+    function initPublicStreamSocket(type) {
+        const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
+        let streamType = '';
+        if (type === 'public?local=true') {
+            streamType = 'public:local';
+        } else if (type === 'public') {
+            streamType = 'public';
+        } else {
+            return; // Don't connect for other types
+        }
+
+        const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=${streamType}`;
+        publicSocket = new WebSocket(socketUrl);
+
+        publicSocket.onopen = () => console.log(`Public WebSocket (${streamType}) connection established.`);
+        publicSocket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.event === 'update' && (state.currentTimeline === 'public' || state.currentTimeline === 'local')) {
+                const post = JSON.parse(data.payload);
+                const postElement = renderStatus(post, state, state.actions);
+                if (postElement) {
+                    postElement.classList.add('newly-added');
+                    timelineDiv.prepend(postElement);
+                }
+            }
         };
+        publicSocket.onclose = () => console.log(`Public WebSocket (${streamType}) connection closed.`);
+        publicSocket.onerror = (error) => console.error(`Public WebSocket (${streamType}) error:`, error);
     }
     
     async function showStatusDetail(statusId) {
         const container = document.getElementById('status-detail-view');
-        switchView('statusDetail'); // Switch view first
+        switchView('statusDetail');
 
         try {
             const mainStatus = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
             const context = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
             
-            container.innerHTML = ''; // Clear content *after* fetching
+            container.innerHTML = '';
             
             const mainPostElement = renderStatus(mainStatus, state, state.actions);
             container.appendChild(mainPostElement);
@@ -193,15 +223,25 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchTimeline(type = 'home', isNewPost = false) {
         state.currentTimeline = type.split('?')[0];
         
-        // REMOVED the "Loading..." message from here
-        
+        // MODIFIED: Close any existing public stream before fetching a new timeline
+        if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
+            publicSocket.close();
+            console.log('Switching timelines, closing old public socket.');
+        }
+
         try {
             const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
-            timelineDiv.innerHTML = ''; // Clear content *after* fetching
+            timelineDiv.innerHTML = '';
             statuses.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
+
+            // MODIFIED: After fetching, open a new public stream if needed
+            if (type.startsWith('public')) {
+                initPublicStreamSocket(type);
+            }
+
         } catch (error) {
             console.error('Failed to fetch timeline:', error);
             timelineDiv.innerHTML = '<p>Could not load timeline.</p>';
@@ -210,19 +250,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function fetchHashtagTimeline(tagName) {
         switchView('hashtag');
-        // REMOVED the "Loading..." message from here
-
         try {
             const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
-            
-            // Clear content *after* fetching, but keep the header
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div>`;
-
             if (statuses.length === 0) {
                 hashtagTimelineView.innerHTML += '<p>No posts found for this hashtag.</p>';
                 return;
             }
-
             statuses.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
