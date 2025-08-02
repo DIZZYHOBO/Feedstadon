@@ -206,11 +206,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function toggleAction(action, post, button) {
+        // MODIFIED: This is the core change, reverting to the old reply behavior
         if (action === 'reply') {
-            showComposeModal(state, {
-                inReplyToId: post.id,
-                replyToAcct: post.account.acct
-            });
+            const postElement = button.closest('.status');
+            toggleCommentThread(post, postElement, post.account.acct);
             return;
         }
 
