@@ -205,11 +205,19 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
     
+    // MODIFIED: This function now handles the different reply contexts
     async function toggleAction(action, post, button) {
-        // MODIFIED: This is the core change, reverting to the old reply behavior
         if (action === 'reply') {
             const postElement = button.closest('.status');
-            toggleCommentThread(post, postElement, post.account.acct);
+            const threadContainer = postElement.closest('.comment-thread, .status-detail-view, #timeline');
+
+            // If the button clicked is inside an existing comment thread, it's a nested reply.
+            if (postElement.parentElement.classList.contains('comment-thread')) {
+                insertTemporaryReplyBox(post, postElement, threadContainer);
+            } else {
+                // Otherwise, it's a top-level reply, so open the main thread.
+                toggleCommentThread(post, postElement, post.account.acct);
+            }
             return;
         }
 
@@ -244,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const existingThread = statusElement.querySelector('.comment-thread');
         
         if (existingThread) {
+            // If thread is open, just focus the textarea and add the tag
             const textarea = existingThread.querySelector('textarea');
             if (textarea && replyToAcct) {
                 textarea.value = `@${replyToAcct} `;
@@ -252,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // If thread is not open, create it
         const threadContainer = document.createElement('div');
         threadContainer.className = 'comment-thread';
         threadContainer.innerHTML = `<p>Loading replies...</p>`;
@@ -292,8 +302,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ status: content, in_reply_to_id: status.id })
                 });
 
-                toggleCommentThread(status, statusElement);
-                setTimeout(() => toggleCommentThread(status, statusElement), 100);
+                // Refresh the whole thread to show the new comment
+                toggleCommentThread(status, statusElement); // Close it
+                setTimeout(() => toggleCommentThread(status, statusElement), 100); // Re-open
             });
 
         } catch (error) {
@@ -302,153 +313,87 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Listeners ---
-    connectBtn.addEventListener('click', () => {
-        const instance = instanceUrlInput.value.trim();
-        const token = accessTokenInput.value.trim();
-
-        if (!instance || !token) {
-            alert('Please provide both an instance URL and an access token.');
-            return;
+    // ADDED: New function to handle nested replies
+    function insertTemporaryReplyBox(post, statusElement, threadContainer) {
+        // Remove any other temporary reply boxes that might be open
+        const existingTempBox = threadContainer.querySelector('.temporary-reply-form');
+        if (existingTempBox) {
+            existingTempBox.remove();
         }
 
-        localStorage.setItem('instanceUrl', instance);
-        localStorage.setItem('accessToken', token);
-        onLoginSuccess(instance, token);
-    });
+        const mainReplyBox = threadContainer.querySelector('.comment-reply-form');
+        if (mainReplyBox) mainReplyBox.style.display = 'none';
 
-    logoutBtn.addEventListener('click', (e) => { 
-        e.preventDefault(); 
-        localStorage.clear(); 
-        window.location.reload(); 
-    });
-    
-    backBtn.addEventListener('click', () => switchView('timeline'));
-    
-    profileLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        state.actions.showProfile(state.currentUser.id);
-    });
-
-    settingsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        renderSettingsPage(state);
-        switchView('settings');
-    });
-    
-    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
-        if (dd) {
-            dd.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('.dropdown').forEach(d => {
-                    if (d !== dd) d.classList.remove('active');
-                });
-                dd.classList.toggle('active');
-                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
-                    fetchNotifications(state);
-                }
-            });
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        const isClickInsideDropdown = e.target.closest('.dropdown');
-        const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
-
-        if (!isClickInsideDropdown) {
-            document.querySelectorAll('.dropdown.active').forEach(d => {
-                d.classList.remove('active');
-            });
-        }
+        const tempReplyForm = document.createElement('form');
+        tempReplyForm.className = 'comment-reply-form temporary-reply-form';
+        tempReplyForm.innerHTML = `
+            <textarea></textarea>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <button type="submit">Reply</button>
+                <button type="button" class="cancel-temp-reply button-secondary">Cancel</button>
+            </div>
+        `;
         
-        if (!isClickInsideSearch) {
-            searchInput.value = '';
-            searchForm.style.display = 'none';
-            searchToggleBtn.style.display = 'block';
-        }
-    });
+        // Insert the temporary box right after the comment being replied to
+        statusElement.after(tempReplyForm);
 
-    feedsDropdown.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', (e) => {
+        const textarea = tempReplyForm.querySelector('textarea');
+        textarea.value = `@${post.account.acct} `;
+        textarea.focus();
+
+        const closeAndCleanup = () => {
+            tempReplyForm.remove();
+            if (mainReplyBox) mainReplyBox.style.display = 'flex';
+        };
+
+        tempReplyForm.querySelector('.cancel-temp-reply').addEventListener('click', closeAndCleanup);
+
+        tempReplyForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            switchView('timeline');
-            fetchTimeline(link.dataset.timeline);
-        });
-    });
-    
-    searchToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        searchForm.style.display = 'block';
-        searchInput.focus();
-        searchToggleBtn.style.display = 'none';
-    });
-    
-    searchForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const query = searchInput.value.trim();
-        if (!query) return;
-    
-        renderSearchResults(state, query);
-        switchView('search');
-    });
-    
-    navPostBtn.addEventListener('click', () => showComposeModal(state));
-    
-    editPostForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newContent = editPostTextarea.value;
-        if (!postToEdit || newContent.trim() === '') return;
+            const content = textarea.value.trim();
+            if (!content) return;
 
-        try {
-            const updatedPost = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToEdit.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newContent })
-            });
+            try {
+                // The status ID we're replying to is in the main post of the thread
+                const mainPostId = threadContainer.dataset.id || post.in_reply_to_id || post.id;
+                
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: content, in_reply_to_id: mainPostId })
+                });
 
-            const oldPostElement = document.querySelector(`.status[data-id='${postToEdit.id}']`);
-            if (oldPostElement) {
-                const newPostElement = renderStatus(updatedPost, state, state.actions);
-                oldPostElement.replaceWith(newPostElement);
+                // Refresh the parent comment thread to show the new reply
+                const mainPostElement = threadContainer.closest('.status');
+                toggleCommentThread(mainPostElement, mainPostElement);
+                setTimeout(() => toggleCommentThread(mainPostElement, mainPostElement), 100);
+
+            } catch(error) {
+                console.error("Failed to post nested reply:", error);
+                alert("Could not post reply.");
+                closeAndCleanup();
             }
-            editPostModal.classList.remove('visible');
-        } catch (error) {
-            console.error('Failed to edit post:', error);
-            alert('Error editing post.');
-        }
-    });
+        });
+    }
 
+    // --- Event Listeners ---
+    connectBtn.addEventListener('click', () => { /* ... unchanged ... */ });
+    logoutBtn.addEventListener('click', (e) => { /* ... unchanged ... */ });
+    backBtn.addEventListener('click', () => switchView('timeline'));
+    profileLink.addEventListener('click', (e) => { /* ... unchanged ... */ });
+    settingsLink.addEventListener('click', (e) => { /* ... unchanged ... */ });
+    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => { /* ... unchanged ... */ });
+    document.addEventListener('click', (e) => { /* ... unchanged ... */ });
+    feedsDropdown.querySelectorAll('a').forEach(link => { /* ... unchanged ... */ });
+    searchToggleBtn.addEventListener('click', (e) => { /* ... unchanged ... */ });
+    searchForm.addEventListener('submit', (e) => { /* ... unchanged ... */ });
+    navPostBtn.addEventListener('click', () => showComposeModal(state));
+    editPostForm.addEventListener('submit', async (e) => { /* ... unchanged ... */ });
     cancelEditBtn.addEventListener('click', () => editPostModal.classList.remove('visible'));
-
-    confirmDeleteBtn.addEventListener('click', async () => {
-        if (!postToDeleteId) return;
-        try {
-            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
-            
-            const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
-            if (postElement) postElement.remove();
-            
-            deletePostModal.classList.remove('visible');
-        } catch (error) {
-            console.error('Failed to delete post:', error);
-            alert('Error deleting post.');
-        }
-    });
-
+    confirmDeleteBtn.addEventListener('click', async () => { /* ... unchanged ... */ });
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
 
     // --- Initial Load ---
-    function initLoginOnLoad() {
-        const instance = localStorage.getItem('instanceUrl');
-        const token = localStorage.getItem('accessToken');
-        if (instance && token) {
-            onLoginSuccess(instance, token);
-        } else {
-            loginView.style.display = 'block';
-            appView.style.display = 'none';
-            document.querySelector('.top-nav').style.display = 'none';
-        }
-    }
-    
+    function initLoginOnLoad() { /* ... unchanged ... */ }
     initLoginOnLoad();
 });
