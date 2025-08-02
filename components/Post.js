@@ -43,10 +43,9 @@ export function renderStatus(status, state, actions) {
     statusDiv.className = 'status';
     statusDiv.dataset.id = originalPost.id;
 
-    const boosterInfo = status.reblog ? `<div class="booster-info">Boosted by ${status.account.display_name}</div>` : '';
+    const boosterInfo = status.reblog ? `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>` : '';
 
     let optionsMenuHTML = '';
-    // MODIFIED: Added a Mute button to the options menu
     if (state.currentUser && originalPost.account.id !== state.currentUser.id) {
         optionsMenuHTML = `
             <button class="post-options-btn">${ICONS.more}</button>
@@ -85,23 +84,26 @@ export function renderStatus(status, state, actions) {
     const timestamp = formatTimestamp(originalPost.created_at);
 
     statusDiv.innerHTML = `
-        <div class="status-header">
-            <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
-            <div>
-                <span class="display-name">${originalPost.account.display_name}</span>
-                <span class="acct">@${originalPost.account.acct}</span>
-                <span class="timestamp">· ${timestamp}</span>
+        ${boosterInfo}
+        <div class="status-body-content">
+            <div class="status-header">
+                <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
+                <div>
+                    <span class="display-name">${originalPost.account.display_name}</span>
+                    <span class="acct">@${originalPost.account.acct}</span>
+                    <span class="timestamp">· ${timestamp}</span>
+                </div>
+                ${optionsMenuHTML}
             </div>
-            ${optionsMenuHTML}
-        </div>
-        <div class="status-content">${originalPost.content}</div>
-        ${pollHTML}
-        ${mediaHTML}
-        <div class="status-footer">
-            <button class="status-action" data-action="reply">${ICONS.reply} ${originalPost.replies_count}</button>
-            <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost} ${originalPost.reblogs_count}</button>
-            <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${originalPost.favourites_count}</button>
-            <button class="status-action ${originalPost.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+            <div class="status-content">${originalPost.content}</div>
+            ${pollHTML}
+            ${mediaHTML}
+            <div class="status-footer">
+                <button class="status-action" data-action="reply">${ICONS.reply} ${originalPost.replies_count}</button>
+                <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost} ${originalPost.reblogs_count}</button>
+                <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${originalPost.favourites_count}</button>
+                <button class="status-action ${originalPost.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+            </div>
         </div>
     `;
 
@@ -150,7 +152,6 @@ export function renderStatus(status, state, actions) {
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
         
-        // MODIFIED: Add listener for the mute button if it exists
         const muteBtn = menu.querySelector('[data-action="mute"]');
         if (muteBtn) {
             muteBtn.addEventListener('click', (e) => {
