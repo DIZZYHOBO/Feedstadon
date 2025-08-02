@@ -91,6 +91,63 @@ body {
 }
 
 /* --- Login --- */
+#login-view {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 400px;
+    margin: 40px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.5s ease-in-out;
+    align-items: center;
+}
+
+.login-logo {
+    width: 250px;
+    margin-bottom: 10px;
+}
+
+#login-view input[type="text"],
+#login-view input[type="password"] {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    color: var(--font-color);
+    background-color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    width: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#connect-btn {
+    background-color: transparent;
+    background-image: url('./images/login.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
+    width: 100%;
+    height: 50px;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+    padding: 0;
+}
+
+#connect-btn:hover {
+    opacity: 0.9;
+}
+
+#connect-btn:active {
+    transform: scale(0.98);
+}
+
+
 textarea {
     font-family: 'Inter', sans-serif;
     font-size: 1rem;
