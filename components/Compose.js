@@ -1,7 +1,7 @@
 import { apiFetch, apiUploadMedia } from './api.js';
 import { ICONS } from './icons.js';
 
-let isPollActive = false; // Moved to module scope to be managed properly
+let isPollActive = false;
 let attachedFile = null;
 
 export function showComposeModal(state) {
@@ -12,11 +12,9 @@ export function showComposeModal(state) {
     const addMediaBtn = document.getElementById('add-media-btn');
     const addPollBtn = document.getElementById('add-poll-btn');
 
-    // Reset state variables
     isPollActive = false;
     attachedFile = null;
 
-    // Reset form fields
     composeTextarea.value = '';
     mediaPreview.textContent = '';
     document.getElementById('media-attachment-input').value = '';
@@ -126,6 +124,10 @@ export function initComposeModal(state, onPostSuccess) {
                     multiple: document.getElementById('poll-multiple-choice-check').checked
                 };
             }
+
+            // DEBUGGING: Log the exact data being sent and pause execution
+            console.log("Data being sent to server:", JSON.stringify(postBody, null, 2));
+            debugger;
 
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
