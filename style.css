@@ -326,6 +326,7 @@ textarea:focus {
     justify-content: space-between;
     align-items: center;
     overflow: hidden;
+    cursor: default;
 }
 .poll-result-bar {
     position: absolute;
@@ -334,6 +335,7 @@ textarea:focus {
     height: 100%;
     background-color: var(--accent-color);
     opacity: 0.4;
+    transition: width 0.5s ease-in-out;
 }
 .poll-result-label, .poll-result-percent {
     position: relative;
