@@ -480,11 +480,6 @@ textarea:focus {
     gap: 10px;
 }
 
-.compose-options .icon-button {
-    padding: 8px;
-    font-size: 1.2em;
-}
-
 #media-filename-preview {
     font-size: 0.8em;
     color: var(--font-color-muted);
@@ -492,56 +487,6 @@ textarea:focus {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 150px;
-}
-
-#poll-creator-container {
-    border-top: 1px solid var(--border-color);
-    margin-top: 15px;
-    padding-top: 15px;
-}
-
-#poll-options-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.poll-option-input {
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    padding: 10px;
-    border-radius: 5px;
-}
-
-#add-poll-option-btn {
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-.poll-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-.poll-settings .form-group {
-    margin: 0;
-}
-.poll-settings label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: normal;
-}
-.poll-settings select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 5px;
 }
 
 /* --- Settings Page --- */
@@ -654,6 +599,21 @@ textarea:focus {
     margin-bottom: 15px;
     font-size: 1.2em;
     font-weight: bold;
+}
+
+/* --- Debugging --- */
+#debug-overlay {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 9999;
+    pointer-events: none;
 }
 
 /* --- Mobile Responsiveness --- */
