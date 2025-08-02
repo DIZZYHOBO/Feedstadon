@@ -1,13 +1,24 @@
 import { apiFetch, apiUploadMedia } from './api.js';
+import { ICONS } from './icons.js';
 
 export function showComposeModal(state) {
     const composeModal = document.getElementById('compose-modal');
     const composeTextarea = document.getElementById('compose-textarea');
-    
+    const mediaPreview = document.getElementById('media-filename-preview');
+    const pollCreator = document.getElementById('poll-creator-container');
+
     // Reset fields from any previous use
     composeTextarea.value = '';
-    document.getElementById('media-filename-preview').textContent = '';
+    mediaPreview.textContent = '';
     document.getElementById('media-attachment-input').value = '';
+    pollCreator.style.display = 'none'; // Hide poll creator by default
+    
+    // Reset poll options
+    const pollOptionsContainer = document.getElementById('poll-options-container');
+    pollOptionsContainer.innerHTML = `
+        <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
+        <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
+    `;
 
     composeModal.classList.add('visible');
     composeTextarea.focus();
@@ -23,11 +34,17 @@ export function initComposeModal(state, onPostSuccess) {
     const addMediaBtn = document.getElementById('add-media-btn');
     const mediaPreview = document.getElementById('media-filename-preview');
     
+    // Poll elements
+    const addPollBtn = document.getElementById('add-poll-btn');
+    addPollBtn.innerHTML = ICONS.poll;
+    const pollCreator = document.getElementById('poll-creator-container');
+    const pollOptionsContainer = document.getElementById('poll-options-container');
+    const addPollOptionBtn = document.getElementById('add-poll-option-btn');
+    
     let attachedFile = null;
+    let isPollActive = false;
 
-    addMediaBtn.addEventListener('click', () => {
-        mediaInput.click();
-    });
+    addMediaBtn.addEventListener('click', () => mediaInput.click());
 
     mediaInput.addEventListener('change', () => {
         if (mediaInput.files.length > 0) {
@@ -36,6 +53,26 @@ export function initComposeModal(state, onPostSuccess) {
         } else {
             attachedFile = null;
             mediaPreview.textContent = '';
+        }
+    });
+    
+    addPollBtn.addEventListener('click', () => {
+        isPollActive = !isPollActive;
+        pollCreator.style.display = isPollActive ? 'block' : 'none';
+    });
+    
+    addPollOptionBtn.addEventListener('click', () => {
+        const optionInputs = pollOptionsContainer.querySelectorAll('.poll-option-input');
+        if (optionInputs.length < 4) {
+            const newInput = document.createElement('input');
+            newInput.type = 'text';
+            newInput.className = 'poll-option-input';
+            newInput.placeholder = `Choice ${optionInputs.length + 1}`;
+            newInput.maxLength = 25;
+            pollOptionsContainer.appendChild(newInput);
+        }
+        if (pollOptionsContainer.querySelectorAll('.poll-option-input').length === 4) {
+            addPollOptionBtn.style.display = 'none';
         }
     });
 
@@ -62,6 +99,25 @@ export function initComposeModal(state, onPostSuccess) {
                 media_ids: mediaIds
             };
             
+            if (isPollActive) {
+                const pollOptions = Array.from(pollOptionsContainer.querySelectorAll('.poll-option-input'))
+                                         .map(input => input.value.trim())
+                                         .filter(option => option !== '');
+                
+                if (pollOptions.length < 2) {
+                    alert('Polls must have at least 2 choices.');
+                    postButton.disabled = false;
+                    postButton.textContent = 'Post';
+                    return;
+                }
+
+                postBody.poll = {
+                    options: pollOptions,
+                    expires_in: parseInt(document.getElementById('poll-duration-select').value, 10),
+                    multiple: document.getElementById('poll-multiple-choice-check').checked
+                };
+            }
+
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -77,7 +133,7 @@ export function initComposeModal(state, onPostSuccess) {
             postButton.textContent = 'Post';
 
             composeModal.classList.remove('visible');
-            onPostSuccess(); // Refresh the timeline
+            onPostSuccess();
         } catch (error) {
             console.error('Failed to post:', error);
             alert('Could not create post.');
