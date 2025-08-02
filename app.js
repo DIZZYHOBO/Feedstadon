@@ -8,6 +8,10 @@ import { fetchNotifications } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- App Initialization ---
+    const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+    document.documentElement.dataset.theme = savedTheme;
+
     // --- DOM Elements ---
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
@@ -74,6 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollLoader.style.display = 'none';
     };
     
+    state.checkAndLoadMore = () => checkAndLoadMore();
+    
     let postToEdit = null;
     let postToDeleteId = null;
     let publicSocket = null;
@@ -101,11 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.muteAccount = (accountId) => muteAccount(accountId);
 
     // --- View Management ---
-    // MODIFIED: This function now updates the browser history
-    function switchView(viewName, pushHistory = true) {
+    function switchView(viewName) {
         state.currentView = viewName;
-        state.nextPageUrl = null; // Reset pagination when switching views
-        
         timelineDiv.style.display = 'none';
         profilePageView.style.display = 'none';
         searchResultsView.style.display = 'none';
@@ -132,10 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
             backBtn.style.display = 'block';
         }
-
-        if (pushHistory) {
-            history.pushState({ view: viewName }, '', `#${viewName}`);
-        }
     }
 
     // --- Main App Logic ---
@@ -153,9 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchTimeline('home');
             initUserStreamSocket();
             initInfiniteScroll();
-
-            // MODIFIED: Set the initial history state
-            history.replaceState({ view: 'timeline' }, '', '#timeline');
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -347,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            state.checkAndLoadMore();
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
@@ -371,12 +368,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            state.checkAndLoadMore();
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
-    
+
+    function checkAndLoadMore() {
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (document.documentElement.scrollHeight <= window.innerHeight) {
+            loadMoreContent();
+        }
+    }
+
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
@@ -600,7 +605,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload(); 
     });
     
-    // MODIFIED: The UI Back button now uses the History API
     backBtn.addEventListener('click', () => history.back());
     
     profileLink.addEventListener('click', (e) => {
@@ -739,12 +743,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
     
-    // ADDED: New listener for the browser's back/forward buttons
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.view) {
-            // Call switchView without pushing a new state to history
             switchView(event.state.view, false);
-            // We need to re-fetch the content for that view
             if (event.state.view === 'timeline') {
                 fetchTimeline(state.currentTimeline);
             }
