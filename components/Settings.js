@@ -2,7 +2,7 @@ import { apiFetch, apiUpdateCredentials } from './api.js';
 
 function renderFilterList(container, filters) {
     const list = container.querySelector('#filter-list');
-    list.innerHTML = ''; // Clear current list
+    list.innerHTML = '';
 
     if (filters.length === 0) {
         list.innerHTML = '<p>No filters set.</p>';
@@ -25,10 +25,9 @@ export async function renderSettingsPage(state) {
     container.innerHTML = '<p>Loading settings...</p>';
 
     try {
-        const [account, filters] = await Promise.all([
-            state.currentUser,
-            apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters')
-        ]);
+        const filtersResponse = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters');
+        const account = state.currentUser;
+        const filters = filtersResponse.data; // MODIFIED: Get data from response object
 
         container.innerHTML = `
             <div class="settings-container">
@@ -144,14 +143,14 @@ export async function renderSettingsPage(state) {
             if (!phrase) return;
 
             try {
-                const newFilter = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters', {
+                const newFilter = (await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         phrase: phrase,
                         context: ['home', 'public']
                     })
-                });
+                })).data; // MODIFIED
                 input.value = '';
                 currentFilters.push(newFilter);
                 renderFilterList(container, currentFilters);
