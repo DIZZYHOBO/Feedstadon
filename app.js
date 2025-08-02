@@ -9,7 +9,6 @@ import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const refreshBtn = document.getElementById('refresh-btn');
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
     const accessTokenInput = document.getElementById('access-token');
@@ -35,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPostBtn = document.getElementById('nav-post-btn');
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const scrollLoader = document.getElementById('scroll-loader');
 
     const editPostModal = document.getElementById('edit-post-modal');
     const editPostForm = document.getElementById('edit-post-form');
@@ -112,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hashtagTimelineView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
+        refreshBtn.style.display = 'none';
         
         if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
             publicSocket.close();
@@ -121,16 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
             refreshBtn.style.display = 'flex';
-        } else {
-            refreshBtn.style.display = 'none';
-            if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
-                if (viewName === 'profile') profilePageView.style.display = 'block';
-                if (viewName === 'search') searchResultsView.style.display = 'flex';
-                if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
-                if (viewName === 'settings') settingsView.style.display = 'block';
-                if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
-                backBtn.style.display = 'block';
-            }
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
+            if (viewName === 'profile') profilePageView.style.display = 'block';
+            if (viewName === 'search') searchResultsView.style.display = 'flex';
+            if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
+            if (viewName === 'settings') settingsView.style.display = 'block';
+            if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
+            backBtn.style.display = 'block';
         }
     }
 
@@ -148,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
             initUserStreamSocket();
+            initInfiniteScroll();
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -381,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
+        scrollLoader.style.display = 'block';
         const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
@@ -402,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
-            setTimeout(checkAndLoadMore, 500);
+            scrollLoader.style.display = 'none';
         }
     }
     
@@ -630,12 +631,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    window.addEventListener('scroll', () => {
-        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 1000) {
-            loadMoreContent();
-        }
-    });
-
+    function initInfiniteScroll() {
+        const options = { root: null, rootMargin: '0px', threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadMoreContent();
+                }
+            });
+        }, options);
+        observer.observe(scrollLoader);
+    }
+    
     document.addEventListener('click', (e) => {
         const isClickInsideDropdown = e.target.closest('.dropdown');
         const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
@@ -667,7 +674,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     refreshBtn.addEventListener('click', () => {
         if (state.currentView === 'timeline') {
-            fetchTimeline(state.currentTimeline);
+            const currentTimelineType = state.currentTimeline === 'home' ? 'home' : state.currentTimeline === 'local' ? 'public?local=true' : 'public';
+            fetchTimeline(currentTimelineType);
         }
     });
     
