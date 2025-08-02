@@ -1,6 +1,9 @@
 import { apiFetch, apiUploadMedia } from './api.js';
 import { ICONS } from './icons.js';
 
+let isPollActive = false; // Moved to module scope to be managed properly
+let attachedFile = null;
+
 export function showComposeModal(state) {
     const composeModal = document.getElementById('compose-modal');
     const composeTextarea = document.getElementById('compose-textarea');
@@ -9,7 +12,11 @@ export function showComposeModal(state) {
     const addMediaBtn = document.getElementById('add-media-btn');
     const addPollBtn = document.getElementById('add-poll-btn');
 
-    // Reset fields from any previous use
+    // Reset state variables
+    isPollActive = false;
+    attachedFile = null;
+
+    // Reset form fields
     composeTextarea.value = '';
     mediaPreview.textContent = '';
     document.getElementById('media-attachment-input').value = '';
@@ -45,9 +52,6 @@ export function initComposeModal(state, onPostSuccess) {
     const pollOptionsContainer = document.getElementById('poll-options-container');
     const addPollOptionBtn = document.getElementById('add-poll-option-btn');
     
-    let attachedFile = null;
-    let isPollActive = false;
-
     addMediaBtn.addEventListener('click', () => mediaInput.click());
 
     mediaInput.addEventListener('change', () => {
@@ -129,12 +133,6 @@ export function initComposeModal(state, onPostSuccess) {
                 body: JSON.stringify(postBody)
             });
 
-            // Reset form
-            composeTextarea.value = '';
-            mediaInput.value = '';
-            attachedFile = null;
-            mediaPreview.textContent = '';
-            isPollActive = false;
             postButton.disabled = false;
             postButton.textContent = 'Post';
 
