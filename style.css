@@ -200,9 +200,16 @@ textarea:focus {
 #scroll-loader {
     text-align: center;
     padding: 20px;
-    color: var(--font-color-muted);
-    display: none;
+    height: 60px; /* Give it a fixed height */
 }
+#scroll-loader p {
+    color: var(--font-color-muted);
+    visibility: hidden; /* Hide the text by default */
+}
+#scroll-loader.visible p {
+    visibility: visible; /* Show text when loading */
+}
+
 
 /* --- Status / Post --- */
 .status { 
