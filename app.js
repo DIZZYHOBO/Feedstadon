@@ -8,8 +8,11 @@ import { fetchNotifications } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- App Initialization ---
+    const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+    document.documentElement.dataset.theme = savedTheme;
+
     // --- DOM Elements ---
-    const scrollLoader = document.getElementById('scroll-loader');
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
     const accessTokenInput = document.getElementById('access-token');
@@ -36,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
     const refreshBtn = document.getElementById('refresh-btn');
+    const scrollLoader = document.getElementById('scroll-loader');
 
     const editPostModal = document.getElementById('edit-post-modal');
     const editPostForm = document.getElementById('edit-post-form');
@@ -60,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageUrl: null,
         hasUnreadNotifications: false
     };
+    
+    window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
         if (linkHeader) {
@@ -73,6 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
         state.nextPageUrl = null;
         scrollLoader.style.display = 'none';
     };
+    
+    state.checkAndLoadMore = () => checkAndLoadMore();
     
     let postToEdit = null;
     let postToDeleteId = null;
@@ -337,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            state.checkAndLoadMore();
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
@@ -361,12 +370,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            state.checkAndLoadMore();
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
-    
+
+    function checkAndLoadMore() {
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (document.documentElement.scrollHeight <= window.innerHeight) {
+            loadMoreContent();
+        }
+    }
+
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
@@ -622,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initInfiniteScroll() {
         const options = {
-            root: null, 
+            root: null,
             rootMargin: '400px 0px',
             threshold: 0
         };
