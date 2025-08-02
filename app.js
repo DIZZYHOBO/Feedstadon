@@ -4,7 +4,7 @@ import { renderStatus, renderPollHTML } from './components/Post.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
-import { fetchNotifications } from './components/Notifications.js';
+import { fetchNotifications, renderNotification } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -189,34 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const notifications = response.data;
             if (notifications.length === 0) {
                 notificationsView.innerHTML += '<p>No notifications found.</p>';
+                state.setNextPageUrl(null);
                 return;
             }
             notifications.forEach(notification => {
-                const item = document.createElement('div');
-                item.className = 'notification-item';
-                let icon = '';
-                let content = '';
-
-                switch (notification.type) {
-                    case 'favourite': case 'reblog': case 'mention':
-                        icon = ICONS[notification.type === 'favourite' ? 'favorite' : notification.type === 'reblog' ? 'boost' : 'reply'];
-                        content = `<strong>${notification.account.display_name}</strong> ${notification.type}d your post.`;
-                        item.addEventListener('click', () => state.actions.showStatusDetail(notification.status.id));
-                        break;
-                    case 'follow':
-                        icon = '👤';
-                        content = `<strong>${notification.account.display_name}</strong> followed you.`;
-                        item.addEventListener('click', () => state.actions.showProfile(notification.account.id));
-                        break;
-                    default: return;
-                }
-                
-                item.innerHTML = `
-                    <div class="notification-icon">${icon}</div>
-                    <img class="notification-avatar" src="${notification.account.avatar_static}" alt="${notification.account.display_name}">
-                    <div class="notification-content">${content}</div>
-                `;
-                notificationsView.appendChild(item);
+                const item = renderNotification(notification, state);
+                if(item) notificationsView.appendChild(item);
             });
             state.setNextPageUrl(response.linkHeader);
         } catch (error) {
@@ -454,11 +432,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (container) {
                 response.data.forEach(item => {
-                    // This assumes all "load more" content are statuses, which is not true for notifications.
-                    // For now, we'll assume only timelines and profiles are infinitely scrolled.
-                    if(item.content) { // A rough check for a status object
-                        container.appendChild(renderStatus(item, state, state.actions));
+                    let element;
+                    if (state.currentView === 'notifications') {
+                        element = renderNotification(item, state);
+                    } else {
+                        element = renderStatus(item, state, state.actions);
                     }
+                    if (element) container.appendChild(element);
                 });
             }
             state.setNextPageUrl(response.linkHeader);
