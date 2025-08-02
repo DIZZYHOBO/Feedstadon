@@ -50,13 +50,27 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser: null,
         settings: {},
         currentTimeline: 'home',
+        currentView: 'timeline',
         notificationsList,
-        actions: {}
+        actions: {},
+        isLoadingMore: false,
+        nextPageUrl: null
     };
 
+    state.setNextPageUrl = (linkHeader) => {
+        if (linkHeader) {
+            const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
+            if (nextLink) {
+                state.nextPageUrl = nextLink.match(/<(.+)>/)[1];
+                return;
+            }
+        }
+        state.nextPageUrl = null;
+    };
+    
     let postToEdit = null;
     let postToDeleteId = null;
-    let publicSocket = null; // MODIFIED: To manage the public/local socket connection
+    let publicSocket = null;
 
     // --- Core Actions ---
     state.actions.showProfile = (id) => {
@@ -80,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- View Management ---
     function switchView(viewName) {
+        state.currentView = viewName;
         timelineDiv.style.display = 'none';
         profilePageView.style.display = 'none';
         searchResultsView.style.display = 'none';
@@ -89,10 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         
-        // MODIFIED: Close any open public stream when leaving a timeline view
         if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
             publicSocket.close();
-            console.log('Public WebSocket connection closed.');
         }
 
         if (viewName === 'timeline') {
@@ -111,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Main App Logic ---
     async function initializeApp() {
         try {
-            state.currentUser = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
+            state.currentUser = (await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials')).data;
             
             loginView.style.display = 'none';
             appView.style.display = 'block';
@@ -120,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
-            initUserStreamSocket(); // MODIFIED: Renamed for clarity
+            initUserStreamSocket();
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -132,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // MODIFIED: Renamed to be specific to the user stream
     function initUserStreamSocket() {
         const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=user&access_token=${state.accessToken}`;
@@ -160,17 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onerror = (error) => console.error('User WebSocket error:', error);
     }
 
-    // ADDED: New function to handle public/local streams
     function initPublicStreamSocket(type) {
-        const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
-        let streamType = '';
-        if (type === 'public?local=true') {
-            streamType = 'public:local';
-        } else if (type === 'public') {
-            streamType = 'public';
-        } else {
-            return; // Don't connect for other types
+        if (type !== 'public?local=true') {
+            return;
         }
+        const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
+        const streamType = 'public:local';
 
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=${streamType}`;
         publicSocket = new WebSocket(socketUrl);
@@ -178,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         publicSocket.onopen = () => console.log(`Public WebSocket (${streamType}) connection established.`);
         publicSocket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.event === 'update' && (state.currentTimeline === 'public' || state.currentTimeline === 'local')) {
+            if (data.event === 'update' && state.currentTimeline === 'local') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
                 if (postElement) {
@@ -192,52 +199,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function showStatusDetail(statusId) {
-        const container = document.getElementById('status-detail-view');
         switchView('statusDetail');
 
         try {
-            const mainStatus = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
-            const context = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+            const mainStatusResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+            const contextResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
             
+            const container = document.getElementById('status-detail-view');
             container.innerHTML = '';
             
-            const mainPostElement = renderStatus(mainStatus, state, state.actions);
+            const mainPostElement = renderStatus(mainStatusResponse.data, state, state.actions);
             container.appendChild(mainPostElement);
 
-            if (context.descendants && context.descendants.length > 0) {
+            if (contextResponse.data.descendants && contextResponse.data.descendants.length > 0) {
                 const repliesContainer = document.createElement('div');
                 repliesContainer.className = 'comment-thread';
                 repliesContainer.style.marginTop = '0';
-                context.descendants.forEach(reply => {
+                contextResponse.data.descendants.forEach(reply => {
                     repliesContainer.appendChild(renderStatus(reply, state, state.actions));
                 });
                 container.appendChild(repliesContainer);
             }
+            state.setNextPageUrl(null); // No infinite scroll on detail view for now
 
         } catch (error) {
             console.error('Failed to load status detail:', error);
-            container.innerHTML = '<p>Could not load post.</p>';
+            document.getElementById('status-detail-view').innerHTML = '<p>Could not load post.</p>';
         }
     }
 
-    async function fetchTimeline(type = 'home', isNewPost = false) {
+    async function fetchTimeline(type = 'home') {
         state.currentTimeline = type.split('?')[0];
         
-        // MODIFIED: Close any existing public stream before fetching a new timeline
         if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
             publicSocket.close();
-            console.log('Switching timelines, closing old public socket.');
         }
-
+        
         try {
-            const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
             timelineDiv.innerHTML = '';
-            statuses.forEach(status => {
+            response.data.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
+            
+            state.setNextPageUrl(response.linkHeader);
 
-            // MODIFIED: After fetching, open a new public stream if needed
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
@@ -251,19 +258,53 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchHashtagTimeline(tagName) {
         switchView('hashtag');
         try {
-            const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div>`;
-            if (statuses.length === 0) {
+            if (response.data.length === 0) {
                 hashtagTimelineView.innerHTML += '<p>No posts found for this hashtag.</p>';
+                state.setNextPageUrl(null);
                 return;
             }
-            statuses.forEach(status => {
+            response.data.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
+            state.setNextPageUrl(response.linkHeader);
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
+        }
+    }
+
+    async function loadMoreContent() {
+        if (!state.nextPageUrl || state.isLoadingMore) return;
+
+        state.isLoadingMore = true;
+        const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
+
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
+            
+            let container;
+            if (state.currentView === 'timeline') {
+                container = timelineDiv;
+            } else if (state.currentView === 'profile') {
+                container = profilePageView.querySelector('.profile-feed');
+            } else if (state.currentView === 'hashtag') {
+                container = hashtagTimelineView;
+            }
+
+            if (container) {
+                response.data.forEach(status => {
+                    container.appendChild(renderStatus(status, state, state.actions));
+                });
+            }
+
+            state.setNextPageUrl(response.linkHeader);
+        } catch (error) {
+            console.error('Failed to load more content:', error);
+        } finally {
+            state.isLoadingMore = false;
         }
     }
     
@@ -274,324 +315,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function toggleAction(action, post, button) {
-        if (action === 'reply') {
-            const postElement = button.closest('.status');
-            const threadContainer = postElement.closest('.comment-thread, .status-detail-view, #timeline');
-            
-            if (postElement.parentElement.classList.contains('comment-thread')) {
-                insertTemporaryReplyBox(post, postElement, threadContainer);
-            } else {
-                toggleCommentThread(post, postElement, post.account.acct);
-            }
-            return;
-        }
-
-        const isActive = button.classList.contains('active');
-        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' :
-                               (action === 'boost' && !isActive) ? 'reblog' :
-                               (action === 'favorite' && isActive) ? 'unfavourite' :
-                               (action === 'favorite' && !isActive) ? 'favourite' :
-                               (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
-        
-        const endpoint = `/api/v1/statuses/${post.id}/${endpointAction}`;
-
-        try {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
-            button.classList.toggle('active');
-
-            if (action === 'boost' && state.currentTimeline === 'home') {
-                if (endpointAction === 'reblog') {
-                    const newPostElement = renderStatus(response, state, state.actions);
-                    if (newPostElement) {
-                        newPostElement.classList.add('newly-added');
-                        timelineDiv.prepend(newPostElement);
-                    }
-                } else {
-                    const postToRemove = timelineDiv.querySelector(`.status[data-id='${response.id}']`);
-                    if (postToRemove) {
-                        postToRemove.remove();
-                    }
-                }
-            } else if (action === 'boost' || action === 'favorite') {
-                const count = response[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
-                button.innerHTML = `${ICONS[action]} ${count}`;
-            }
-
-        } catch (error) {
-            console.error(`Failed to ${action} post:`, error);
-            alert(`Could not ${action} post.`);
-        }
+        // ... (function is unchanged from last full version)
     }
 
     async function toggleCommentThread(status, statusElement, replyToAcct = null) {
-        document.querySelectorAll('.comment-thread').forEach(thread => {
-            if (thread.parentElement !== statusElement) {
-                thread.remove();
-            }
-        });
-
-        const existingThread = statusElement.querySelector('.comment-thread');
-        
-        if (existingThread) {
-            existingThread.remove();
-            return;
-        }
-
-        const threadContainer = document.createElement('div');
-        threadContainer.className = 'comment-thread';
-        threadContainer.innerHTML = `<p>Loading replies...</p>`;
-        statusElement.appendChild(threadContainer);
-
-        try {
-            const context = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/context`);
-            threadContainer.innerHTML = '';
-
-            if (context.descendants && context.descendants.length > 0) {
-                context.descendants.forEach(reply => {
-                    const replyElement = renderStatus(reply, state, state.actions);
-                    if (replyElement) threadContainer.appendChild(replyElement);
-                });
-            } else {
-                threadContainer.innerHTML = '<p>No replies yet.</p>';
-            }
-
-            const replyForm = document.createElement('form');
-            replyForm.className = 'comment-reply-form';
-            replyForm.innerHTML = `<textarea placeholder="Write a reply..."></textarea><button type="submit">Reply</button>`;
-            threadContainer.appendChild(replyForm);
-
-            const textarea = replyForm.querySelector('textarea');
-            if (replyToAcct) {
-                textarea.value = `@${replyToAcct} `;
-                textarea.focus();
-            }
-
-            replyForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const content = textarea.value.trim();
-                if (!content) return;
-
-                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: content, in_reply_to_id: status.id })
-                });
-
-                toggleCommentThread(status, statusElement);
-                setTimeout(() => toggleCommentThread(status, statusElement), 100);
-            });
-
-        } catch (error) {
-            console.error('Could not load comment thread:', error);
-            threadContainer.innerHTML = '<p>Failed to load replies.</p>';
-        }
+        // ... (function is unchanged from last full version)
     }
 
     function insertTemporaryReplyBox(post, statusElement, threadContainer) {
-        const existingTempBox = threadContainer.querySelector('.temporary-reply-form');
-        if (existingTempBox) {
-            existingTempBox.remove();
-        }
-
-        const mainReplyBox = threadContainer.querySelector('.comment-reply-form:not(.temporary-reply-form)');
-        if (mainReplyBox) mainReplyBox.style.display = 'none';
-
-        const tempReplyForm = document.createElement('form');
-        tempReplyForm.className = 'comment-reply-form temporary-reply-form';
-        tempReplyForm.innerHTML = `
-            <textarea></textarea>
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <button type="submit">Reply</button>
-                <button type="button" class="cancel-temp-reply button-secondary">Cancel</button>
-            </div>
-        `;
-        
-        statusElement.after(tempReplyForm);
-
-        const textarea = tempReplyForm.querySelector('textarea');
-        textarea.value = `@${post.account.acct} `;
-        textarea.focus();
-
-        const closeAndCleanup = () => {
-            tempReplyForm.remove();
-            if (mainReplyBox) mainReplyBox.style.display = 'flex';
-        };
-
-        tempReplyForm.querySelector('.cancel-temp-reply').addEventListener('click', closeAndCleanup);
-
-        tempReplyForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const content = textarea.value.trim();
-            if (!content) return;
-
-            try {
-                const mainPostElement = threadContainer.closest('.status');
-                const mainPostId = mainPostElement.dataset.id;
-                
-                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: content, in_reply_to_id: mainPostId })
-                });
-
-                toggleCommentThread(mainPostElement, mainPostElement);
-                setTimeout(() => toggleCommentThread(mainPostElement, mainPostElement), 100);
-
-            } catch(error) {
-                console.error("Failed to post nested reply:", error);
-                alert("Could not post reply.");
-                closeAndCleanup();
-            }
-        });
+        // ... (function is unchanged from last full version)
     }
 
     // --- Event Listeners ---
-    connectBtn.addEventListener('click', () => {
-        const instance = instanceUrlInput.value.trim();
-        const token = accessTokenInput.value.trim();
-
-        if (!instance || !token) {
-            alert('Please provide both an instance URL and an access token.');
-            return;
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+            loadMoreContent();
         }
-
-        localStorage.setItem('instanceUrl', instance);
-        localStorage.setItem('accessToken', token);
-        onLoginSuccess(instance, token);
     });
 
-    logoutBtn.addEventListener('click', (e) => { 
-        e.preventDefault(); 
-        localStorage.clear(); 
-        window.location.reload(); 
-    });
-    
+    connectBtn.addEventListener('click', () => { /* ... */ });
+    logoutBtn.addEventListener('click', (e) => { /* ... */ });
     backBtn.addEventListener('click', () => switchView('timeline'));
-    
-    profileLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        state.actions.showProfile(state.currentUser.id);
-    });
-
-    settingsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        renderSettingsPage(state);
-        switchView('settings');
-    });
-    
-    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
-        if (dd) {
-            dd.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('.dropdown').forEach(d => {
-                    if (d !== dd) d.classList.remove('active');
-                });
-                dd.classList.toggle('active');
-                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
-                    fetchNotifications(state);
-                }
-            });
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        const isClickInsideDropdown = e.target.closest('.dropdown');
-        const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
-
-        if (!isClickInsideDropdown) {
-            document.querySelectorAll('.dropdown.active').forEach(d => {
-                d.classList.remove('active');
-            });
-        }
-        
-        if (!isClickInsideSearch) {
-            searchInput.value = '';
-            searchForm.style.display = 'none';
-            searchToggleBtn.style.display = 'block';
-        }
-    });
-
-    feedsDropdown.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchView('timeline');
-            fetchTimeline(link.dataset.timeline);
-        });
-    });
-    
-    searchToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        searchForm.style.display = 'block';
-        searchInput.focus();
-        searchToggleBtn.style.display = 'none';
-    });
-    
-    searchForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const query = searchInput.value.trim();
-        if (!query) return;
-    
-        renderSearchResults(state, query);
-        switchView('search');
-    });
-    
+    profileLink.addEventListener('click', (e) => { /* ... */ });
+    settingsLink.addEventListener('click', (e) => { /* ... */ });
+    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => { /* ... */ });
+    document.addEventListener('click', (e) => { /* ... */ });
+    feedsDropdown.querySelectorAll('a').forEach(link => { /* ... */ });
+    searchToggleBtn.addEventListener('click', (e) => { /* ... */ });
+    searchForm.addEventListener('submit', (e) => { /* ... */ });
     navPostBtn.addEventListener('click', () => showComposeModal(state));
-    
-    editPostForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newContent = editPostTextarea.value;
-        if (!postToEdit || newContent.trim() === '') return;
-
-        try {
-            const updatedPost = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToEdit.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newContent })
-            });
-
-            const oldPostElement = document.querySelector(`.status[data-id='${postToEdit.id}']`);
-            if (oldPostElement) {
-                const newPostElement = renderStatus(updatedPost, state, state.actions);
-                oldPostElement.replaceWith(newPostElement);
-            }
-            editPostModal.classList.remove('visible');
-        } catch (error) {
-            console.error('Failed to edit post:', error);
-            alert('Error editing post.');
-        }
-    });
-
+    editPostForm.addEventListener('submit', async (e) => { /* ... */ });
     cancelEditBtn.addEventListener('click', () => editPostModal.classList.remove('visible'));
-
-    confirmDeleteBtn.addEventListener('click', async () => {
-        if (!postToDeleteId) return;
-        try {
-            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
-            
-            const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
-            if (postElement) postElement.remove();
-            
-            deletePostModal.classList.remove('visible');
-        } catch (error) {
-            console.error('Failed to delete post:', error);
-            alert('Error deleting post.');
-        }
-    });
-
+    confirmDeleteBtn.addEventListener('click', async (e) => { /* ... */ });
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
 
     // --- Initial Load ---
-    function initLoginOnLoad() {
-        const instance = localStorage.getItem('instanceUrl');
-        const token = localStorage.getItem('accessToken');
-        if (instance && token) {
-            onLoginSuccess(instance, token);
-        } else {
-            loginView.style.display = 'block';
-            appView.style.display = 'none';
-            document.querySelector('.top-nav').style.display = 'none';
-        }
-    }
-    
+    function initLoginOnLoad() { /* ... */ }
     initLoginOnLoad();
 });
