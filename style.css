@@ -20,12 +20,6 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ADDED: Animation for new posts sliding in */
-@keyframes slideInFromTop {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
@@ -178,9 +172,9 @@ textarea:focus {
     transition: all 0.3s ease;
 }
 
-/* ADDED: Apply the animation to new posts in the timeline */
-#timeline > .status {
-    animation: slideInFromTop 0.5s ease-out;
+/* MODIFIED: This animation now only applies to posts with the .newly-added class */
+.status.newly-added {
+    animation: fadeIn 0.5s ease-out;
 }
 
 .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; position: relative; }
