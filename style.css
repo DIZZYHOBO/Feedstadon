@@ -199,7 +199,7 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view { 
+#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view { 
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
