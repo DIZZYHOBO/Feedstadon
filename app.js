@@ -1,776 +1,752 @@
-import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-:root {
-    --bg-color: #161617;
-    --card-color: #1D1E1F;
-    --primary-color: #2A2C2E;
-    --accent-color: #5A94F1;
-    --font-color: #DEDEDE;
-    --font-color-muted: #8E8F90;
-    --border-color: #333435;
-    --link-color: #88C0D0;
-    --notification-dot-color: #ff3d3d;
-}
-
-*, *::before, *::after {
-    box-sizing: border-box;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
-
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--bg-color);
-    color: var(--font-color);
-    margin: 0;
-    padding-top: 50px;
-    display: flex;
-    justify-content: center;
-}
-
-.container { 
-    width: 100%;
-    max-width: 700px; 
-    padding: 20px 10px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 15px; 
-}
-
-/* --- Login --- */
-#login-view {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 40px;
-    max-width: 400px;
-    margin: 40px auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    animation: fadeIn 0.5s ease-in-out;
-}
-
-#login-view h2 {
-    text-align: center;
-    color: var(--font-color);
-    margin: 0 0 10px 0;
-    font-size: 1.8rem;
-}
-
-#login-view input[type="text"],
-#login-view input[type="password"],
-textarea {
-    font-family: 'Inter', sans-serif;
-    font-size: 1rem;
-    color: var(--font-color);
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px;
-    width: 100%;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-#login-view input[type="text"]::placeholder,
-#login-view input[type="password"]::placeholder {
-    color: var(--font-color-muted);
-}
-
-#login-view input[type="text"]:focus,
-#login-view input[type="password"]:focus,
-textarea:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2);
-}
-
-/* --- Navigation --- */
-.top-nav {
-    position: fixed; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--card-color);
-    border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;
-    align-items: center; padding: 0 10px; z-index: 2000;
-}
-
-.nav-left, .nav-right { 
-    display: flex; 
-    align-items: center; 
-    gap: 15px; 
-    flex-shrink: 0;
-}
-
-.nav-center {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    padding: 0 20px;
-}
-
-.nav-button {
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-.nav-button:hover {
-    background-color: var(--primary-color);
-}
-
-
-.icon-button {
-    border: none;
-    font-size: 1.5em;
-    padding: 6px;
-}
-
-.dropdown { position: relative; }
-
-.dropdown-content {
-    display: none; position: absolute; top: 100%;
-    background-color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 8px;
-    min-width: 200px;
-    max-width: 350px;
-    z-index: 1; overflow: hidden; margin-top: 10px;
-}
-
-.nav-left .dropdown-content { left: 0; right: auto; }
-.nav-right .dropdown-content { right: 0; left: auto; }
-
-.dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
-.dropdown-content a:hover { background-color: var(--accent-color); }
-.dropdown.active .dropdown-content { display: block; }
-
-/* --- Search Bar --- */
-#search-form {
-    width: 100%;
-    max-width: 500px;
-}
-
-#search-input {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.9rem;
-    color: var(--font-color);
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 8px 12px;
-    width: 100%;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-#search-input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-}
-
-/* --- Main App Views --- */
-#app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 15px; 
-}
-#status-detail-view .status {
-    border-left: 2px solid var(--border-color);
-    border-radius: 0;
-}
-#status-detail-view .status.main-thread-post {
-    border-left-color: var(--accent-color);
-}
-
-/* --- Scroll Loader --- */
-#scroll-loader {
-    text-align: center;
-    padding: 20px;
-    height: 60px; /* Give it a fixed height */
-}
-#scroll-loader p {
-    color: var(--font-color-muted);
-    visibility: hidden; /* Hide the text by default */
-}
-#scroll-loader.visible p {
-    visibility: visible; /* Show text when loading */
-}
-
-
-/* --- Status / Post --- */
-.status { 
-    background-color: var(--card-color); 
-    border-radius: 8px; 
-    border: 1px solid var(--border-color); 
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.booster-info, .reply-info {
-    padding: 8px 15px;
-    background-color: var(--primary-color);
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.reply-info {
-    cursor: pointer;
-}
-.reply-info:hover {
-    background-color: #3e4042;
-}
-.booster-info .icon, .reply-info .icon {
-    width: 16px;
-    height: 16px;
-}
-.status-body-content {
-    padding: 15px;
-}
-
-.status.newly-added {
-    animation: fadeIn 0.5s ease-out;
-}
-
-.status.fading-out {
-    animation: fadeOut 0.5s ease-out forwards;
-}
-
-.status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; position: relative; }
-.status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
-.status-header .display-name { font-weight: bold; cursor: pointer; }
-.status-header .acct { color: var(--font-color-muted); }
-.status-header .timestamp { color: var(--font-color-muted); font-size: 0.9em; }
-
-.status-content { 
-    margin-bottom: 15px; 
-    line-height: 1.5; 
-    overflow-wrap: break-word;
-}
-.status-content a { color: var(--link-color); word-break: break-all; }
-
-.status-media img, .status-media video { max-width: 100%; border-radius: 8px; margin-top: 10px; }
-
-.status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.9em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
-
-.status-action { 
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    cursor: pointer;
-    padding: 5px 8px;
-    border-radius: 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: inherit;
-    font-family: inherit;
-    transition: color 0.2s ease;
-}
-.status-action:hover {
-    color: var(--accent-color);
-}
-.icon { width: 22px; height: 22px; flex-shrink: 0; }
-
-.status-action.active {
-    color: var(--accent-color);
-}
-
-/* --- Post Options Menu --- */
-.post-options-btn {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 50%;
-}
-.post-options-btn:hover {
-    background-color: var(--primary-color);
-}
-.post-options-menu {
-    display: none;
-    position: absolute;
-    top: 30px;
-    right: 0;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    min-width: 120px;
-    z-index: 10;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-.post-options-menu button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 12px 16px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-.post-options-menu button:hover {
-    background-color: var(--accent-color);
-}
-
-/* --- Comment Thread --- */
-.comment-thread {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
-    animation: fadeIn 0.5s;
-}
-.comment-reply-form {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
-}
-.comment-reply-form textarea {
-    flex-grow: 1;
-    min-height: 40px;
-    border-radius: 20px;
-    padding: 10px 15px;
-    font-size: 1em;
-    resize: vertical;
-    margin-bottom: 0;
-}
-.comment-reply-form button {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    padding: 0 20px;
-}
-
-/* --- Polls --- */
-.poll-container {
-    margin-top: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.poll-option, .poll-result {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-.poll-option:hover {
-    background-color: var(--accent-color);
-}
-.poll-result {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    overflow: hidden;
-    cursor: default;
-}
-.poll-result-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: var(--accent-color);
-    opacity: 0.4;
-    transition: width 0.5s ease-in-out;
-}
-.poll-result-label, .poll-result-percent {
-    position: relative;
-    z-index: 1;
-}
-.poll-result.voted {
-    border-color: var(--accent-color);
-    font-weight: bold;
-}
-.poll-info {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    margin-top: 10px;
-}
-
-/* --- Profile Page --- */
-.profile-card {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 15px;
-    overflow: hidden;
-}
-
-.profile-header { position: relative; height: 200px; }
-.profile-header .banner { width: 100%; height: 100%; object-fit: cover; }
-.profile-header .avatar { position: absolute; width: 120px; height: 120px; border-radius: 50%; bottom: -60px; left: 20px; border: 4px solid var(--card-color); }
-
-.profile-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; }
-.profile-actions button { border-radius: 20px; font-weight: bold; padding: 10px 15px;}
-.profile-actions .follow-btn { background-color: var(--accent-color); color: white; border: none; }
-.profile-actions .block-btn { background-color: #d9534f; color: white; border: none; }
-
-.profile-info { padding: 75px 20px 20px 20px; }
-.profile-info .display-name { font-size: 1.5rem; font-weight: bold; margin: 0; }
-.profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
-.profile-info .note { 
-    line-height: 1.5; 
-    overflow-wrap: break-word;
-}
-.profile-info .note a { word-break: break-all; }
-
-/* --- Search Results Page --- */
-#search-results-view { display: flex; flex-direction: column; gap: 10px; }
-.search-result-item { display: flex; align-items: center; gap: 15px; padding: 10px; background-color: var(--card-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
-.search-result-item:hover { background-color: var(--primary-color); }
-.search-result-item img { width: 50px; height: 50px; border-radius: 50%; }
-.search-result-item .display-name { font-weight: bold; font-size: 1.1em; }
-.search-result-item .acct { color: var(--font-color-muted); }
-
-/* --- Notifications --- */
-#notifications-list { padding: 0; }
-.notification-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    font-size: 0.9em;
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-}
-#notifications-list div:last-child {
-    border-bottom: none;
-}
-.notification-icon {
-    color: var(--font-color-muted);
-}
-.notification-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-}
-.notification-content strong {
-    color: var(--font-color);
-}
-#notifications-btn.has-unread::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    right: 8px;
-    width: 9px;
-    height: 9px;
-    background-color: var(--notification-dot-color);
-    border-radius: 50%;
-    border: 2px solid var(--card-color);
-}
-
-/* --- Modals --- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-overlay.visible {
-    display: flex;
-}
-
-.modal-content {
-    background: var(--card-color);
-    padding: 25px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 85vh;
-    overflow-y: auto;
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-top: 20px;
-}
-.modal-actions button {
-    border-radius: 20px;
-    font-weight: bold;
-    padding: 10px 15px;
-    border: none;
-}
-.button-secondary {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-}
-.button-danger {
-    background-color: #d9534f;
-    color: white;
-}
-
-.compose-options {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.compose-options .icon-button {
-    padding: 8px;
-    font-size: 1.2em;
-}
-
-#media-filename-preview {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-}
-
-#poll-creator-container {
-    border-top: 1px solid var(--border-color);
-    margin-top: 15px;
-    padding-top: 15px;
-}
-
-#poll-options-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.poll-option-input {
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    padding: 10px;
-    border-radius: 5px;
-}
-
-#add-poll-option-btn {
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-.poll-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-.poll-settings .form-group {
-    margin: 0;
-}
-.poll-settings label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: normal;
-}
-.poll-settings select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 5px;
-}
-
-/* --- Settings Page --- */
-.settings-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.settings-section {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
-}
-
-.settings-section h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-
-.form-group input[type="text"],
-.form-group textarea {
-    padding: 12px;
-}
-
-.form-group input[type="file"] {
-    font-size: 0.9em;
-}
-
-.file-status {
-    display: inline-block;
-    margin-left: 10px;
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-}
-
-.settings-save-button {
-    background-color: var(--accent-color);
-    color: white;
-    display: block;
-    width: 100%;
-    padding: 15px;
-    font-size: 1.1em;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-}
-.settings-save-button:disabled {
-    background-color: var(--primary-color);
-    cursor: not-allowed;
-}
-
-.filter-input-group {
-    display: flex;
-    gap: 10px;
-}
-
-.filter-input-group input {
-    flex-grow: 1;
-}
-
-#filter-list, #muted-users-list {
-    list-style: none;
-    padding: 0;
-    margin-top: 20px;
-}
-
-.filter-item, .muted-user-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--primary-color);
-    padding: 10px 15px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-}
-
-.filter-item button, .muted-user-item button {
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    cursor: pointer;
-    font-size: 1.2em;
-}
-.filter-item button:hover, .muted-user-item button:hover {
-    color: #d9534f;
-}
-.muted-user-item {
-    gap: 10px;
-    justify-content: flex-start;
-}
-.muted-user-item img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-}
-.muted-user-item .info {
-    flex-grow: 1;
-}
-.muted-user-item .display-name {
-    font-weight: bold;
-}
-.muted-user-item .acct {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-.muted-user-item .unmute-btn {
-    font-size: 0.9em;
-    color: var(--font-color);
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    padding: 6px 12px;
-    border-radius: 20px;
-}
-.muted-user-item .unmute-btn:hover {
-    color: var(--accent-color);
-    border-color: var(--accent-color);
-}
-
-
-/* --- Page/View Headers --- */
-.view-header {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-    font-size: 1.2em;
-    font-weight: bold;
-}
-
-/* --- Mobile Responsiveness --- */
-@media (max-width: 600px) {
-    .container {
-        padding: 10px 5px;
+import { apiFetch } from './components/api.js';
+import { ICONS } from './components/icons.js';
+import { renderStatus, renderPollHTML } from './components/Post.js';
+import { renderProfilePage } from './components/Profile.js';
+import { renderSearchResults } from './components/Search.js';
+import { showComposeModal, initComposeModal } from './components/Compose.js';
+import { fetchNotifications } from './components/Notifications.js';
+import { renderSettingsPage } from './components/Settings.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Elements ---
+    const loginView = document.getElementById('login-view');
+    const instanceUrlInput = document.getElementById('instance-url');
+    const accessTokenInput = document.getElementById('access-token');
+    const connectBtn = document.getElementById('connect-btn');
+    const appView = document.getElementById('app-view');
+    const userDisplayBtn = document.getElementById('user-display-btn');
+    const timelineDiv = document.getElementById('timeline');
+    const profilePageView = document.getElementById('profile-page-view');
+    const searchResultsView = document.getElementById('search-results-view');
+    const statusDetailView = document.getElementById('status-detail-view');
+    const settingsView = document.getElementById('settings-view');
+    const hashtagTimelineView = document.getElementById('hashtag-timeline-view');
+    const backBtn = document.getElementById('back-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const feedsDropdown = document.getElementById('feeds-dropdown');
+    const userDropdown = document.getElementById('user-dropdown');
+    const notificationsDropdown = document.getElementById('notifications-dropdown');
+    const notificationsBtn = document.getElementById('notifications-btn');
+    const notificationsList = document.getElementById('notifications-list');
+    const searchToggleBtn = document.getElementById('search-toggle-btn');
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const navPostBtn = document.getElementById('nav-post-btn');
+    const profileLink = document.getElementById('profile-link');
+    const settingsLink = document.getElementById('settings-link');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const scrollLoader = document.getElementById('scroll-loader');
+
+    const editPostModal = document.getElementById('edit-post-modal');
+    const editPostForm = document.getElementById('edit-post-form');
+    const editPostTextarea = document.getElementById('edit-post-textarea');
+    const cancelEditBtn = editPostModal.querySelector('.cancel-edit');
+    
+    const deletePostModal = document.getElementById('delete-post-modal');
+    const cancelDeleteBtn = deletePostModal.querySelector('.cancel-delete');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    
+    // --- App State ---
+    const state = {
+        instanceUrl: '',
+        accessToken: '',
+        currentUser: null,
+        settings: {},
+        currentTimeline: 'home',
+        currentView: 'timeline',
+        notificationsList,
+        actions: {},
+        isLoadingMore: false,
+        nextPageUrl: null,
+        hasUnreadNotifications: false
+    };
+
+    state.setNextPageUrl = (linkHeader) => {
+        if (linkHeader) {
+            const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
+            if (nextLink) {
+                state.nextPageUrl = nextLink.match(/<(.+)>/)[1];
+                scrollLoader.style.display = 'block';
+                return;
+            }
+        }
+        state.nextPageUrl = null;
+        scrollLoader.style.display = 'none';
+    };
+    
+    state.checkAndLoadMore = () => checkAndLoadMore();
+    
+    let postToEdit = null;
+    let postToDeleteId = null;
+    let publicSocket = null;
+
+    // --- Core Actions ---
+    state.actions.showProfile = (id) => {
+        renderProfilePage(state, id);
+        switchView('profile');
+    };
+    state.actions.showStatusDetail = (id) => showStatusDetail(id);
+    state.actions.showHashtagTimeline = (tagName) => fetchHashtagTimeline(tagName);
+    state.actions.toggleAction = (action, post, button) => toggleAction(action, post, button);
+    state.actions.toggleCommentThread = (status, element, replyToAcct) => toggleCommentThread(status, element, replyToAcct);
+    state.actions.showEditModal = (post) => {
+        postToEdit = post;
+        const plainText = post.content.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<[^>]*>/g, "").trim();
+        editPostTextarea.value = plainText;
+        editPostModal.classList.add('visible');
+    };
+    state.actions.showDeleteModal = (postId) => {
+        postToDeleteId = postId;
+        deletePostModal.classList.add('visible');
+    };
+    state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
+    state.actions.muteAccount = (accountId) => muteAccount(accountId);
+
+    // --- View Management ---
+    function switchView(viewName) {
+        state.currentView = viewName;
+        timelineDiv.style.display = 'none';
+        profilePageView.style.display = 'none';
+        searchResultsView.style.display = 'none';
+        statusDetailView.style.display = 'none';
+        settingsView.style.display = 'none';
+        hashtagTimelineView.style.display = 'none';
+        backBtn.style.display = 'none';
+        feedsDropdown.style.display = 'none';
+        refreshBtn.style.display = 'none';
+        
+        if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
+            publicSocket.close();
+        }
+
+        if (viewName === 'timeline') {
+            timelineDiv.style.display = 'flex';
+            feedsDropdown.style.display = 'block';
+            refreshBtn.style.display = 'flex';
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
+            if (viewName === 'profile') profilePageView.style.display = 'block';
+            if (viewName === 'search') searchResultsView.style.display = 'flex';
+            if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
+            if (viewName === 'settings') settingsView.style.display = 'block';
+            if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
+            backBtn.style.display = 'block';
+        }
     }
 
-    .status-footer {
-        flex-wrap: wrap;
-        justify-content: space-between;
+    // --- Main App Logic ---
+    async function initializeApp() {
+        try {
+            state.currentUser = (await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials')).data;
+            
+            loginView.style.display = 'none';
+            appView.style.display = 'block';
+            document.querySelector('.top-nav').style.display = 'flex';
+            userDisplayBtn.textContent = state.currentUser.display_name;
+            
+            refreshBtn.innerHTML = ICONS.refresh;
+            initComposeModal(state, () => fetchTimeline('home', true));
+            fetchTimeline('home');
+            initUserStreamSocket();
+            initInfiniteScroll();
+
+        } catch (error) {
+            console.error('Initialization failed:', error);
+            alert('Connection failed. Please ensure your instance URL and token are correct.');
+            localStorage.clear();
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
     }
 
-    .status-action {
-        padding: 6px 12px;
-        font-size: 0.8em;
+    function updateNotificationIndicator() {
+        notificationsBtn.classList.toggle('has-unread', state.hasUnreadNotifications);
     }
 
-    .nav-button {
-        font-size: 0.8em;
-        padding: 6px 8px;
+    function initUserStreamSocket() {
+        const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
+        const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=user&access_token=${state.accessToken}`;
+        const socket = new WebSocket(socketUrl);
+
+        socket.onopen = () => console.log('User WebSocket connection established.');
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.event === 'update' && state.currentTimeline === 'home') {
+                const post = JSON.parse(data.payload);
+                const postElement = renderStatus(post, state, state.actions);
+                if (postElement) {
+                    postElement.classList.add('newly-added');
+                    timelineDiv.prepend(postElement);
+                }
+            }
+            if (data.event === 'notification') {
+                state.hasUnreadNotifications = true;
+                updateNotificationIndicator();
+                if (Notification.permission === 'granted') {
+                    showBrowserNotification(JSON.parse(data.payload));
+                }
+            }
+            if (data.event === 'delete') {
+                const postId = data.payload;
+                const postElement = document.querySelector(`.status[data-id='${postId}']`);
+                if (postElement) {
+                    postElement.classList.add('fading-out');
+                    setTimeout(() => postElement.remove(), 500);
+                }
+            }
+            if (data.event === 'status.update') {
+                const updatedPost = JSON.parse(data.payload);
+                const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
+                if (postElement) {
+                    const favButton = postElement.querySelector('[data-action="favorite"]');
+                    const boostButton = postElement.querySelector('[data-action="boost"]');
+                    if (favButton) {
+                        favButton.innerHTML = `${ICONS.favorite} ${updatedPost.favourites_count}`;
+                    }
+                    if (boostButton) {
+                        boostButton.innerHTML = `${ICONS.boost} ${updatedPost.reblogs_count}`;
+                    }
+                }
+            }
+        };
+        socket.onclose = () => {
+            console.log('User WebSocket connection closed. Reconnecting in 5s...');
+            setTimeout(initUserStreamSocket, 5000);
+        };
+        socket.onerror = (error) => console.error('User WebSocket error:', error);
     }
-}
+    
+    function showBrowserNotification(notificationData) {
+        let title = 'New Notification';
+        let options = {
+            icon: notificationData.account.avatar_static,
+            body: ''
+        };
+
+        switch (notificationData.type) {
+            case 'favourite':
+                title = `${notificationData.account.display_name} favorited your post`;
+                options.body = notificationData.status.content.replace(/<[^>]*>/g, "");
+                break;
+            case 'reblog':
+                title = `${notificationData.account.display_name} boosted your post`;
+                options.body = notificationData.status.content.replace(/<[^>]*>/g, "");
+                break;
+            case 'mention':
+                title = `${notificationData.account.display_name} mentioned you`;
+                options.body = notificationData.status.content.replace(/<[^>]*>/g, "");
+                break;
+            case 'follow':
+                title = `${notificationData.account.display_name} followed you`;
+                break;
+            default:
+                return;
+        }
+
+        const notification = new Notification(title, options);
+        notification.onclick = () => {
+            window.focus();
+            if (notificationData.status) {
+                showStatusDetail(notificationData.status.id);
+            } else {
+                showProfile(notificationData.account.id);
+            }
+        };
+    }
+
+    function initPublicStreamSocket(type) {
+        if (type !== 'public?local=true') {
+            return;
+        }
+        const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
+        const streamType = 'public:local';
+        const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=${streamType}`;
+        publicSocket = new WebSocket(socketUrl);
+
+        publicSocket.onopen = () => console.log(`Public WebSocket (${streamType}) connection established.`);
+        publicSocket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.event === 'update' && state.currentTimeline === 'local') {
+                const post = JSON.parse(data.payload);
+                const postElement = renderStatus(post, state, state.actions);
+                if (postElement) {
+                    postElement.classList.add('newly-added');
+                    timelineDiv.prepend(postElement);
+                }
+            }
+            if (data.event === 'delete') {
+                const postId = data.payload;
+                const postElement = document.querySelector(`.status[data-id='${postId}']`);
+                if (postElement) {
+                    postElement.classList.add('fading-out');
+                    setTimeout(() => postElement.remove(), 500);
+                }
+            }
+            if (data.event === 'status.update') {
+                const updatedPost = JSON.parse(data.payload);
+                const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
+                if (postElement) {
+                    const favButton = postElement.querySelector('[data-action="favorite"]');
+                    const boostButton = postElement.querySelector('[data-action="boost"]');
+                    if (favButton) {
+                        favButton.innerHTML = `${ICONS.favorite} ${updatedPost.favourites_count}`;
+                    }
+                    if (boostButton) {
+                        boostButton.innerHTML = `${ICONS.boost} ${updatedPost.reblogs_count}`;
+                    }
+                }
+            }
+        };
+        publicSocket.onclose = () => console.log(`Public WebSocket (${streamType}) connection closed.`);
+        publicSocket.onerror = (error) => console.error(`Public WebSocket (${streamType}) error:`, error);
+    }
+    
+    async function showStatusDetail(statusId) {
+        switchView('statusDetail');
+        try {
+            const mainStatusResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+            const contextResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+            const container = document.getElementById('status-detail-view');
+            container.innerHTML = '';
+            const mainPostElement = renderStatus(mainStatusResponse.data, state, state.actions);
+            container.appendChild(mainPostElement);
+            if (contextResponse.data.descendants && contextResponse.data.descendants.length > 0) {
+                const repliesContainer = document.createElement('div');
+                repliesContainer.className = 'comment-thread';
+                repliesContainer.style.marginTop = '0';
+                contextResponse.data.descendants.forEach(reply => {
+                    repliesContainer.appendChild(renderStatus(reply, state, state.actions));
+                });
+                container.appendChild(repliesContainer);
+            }
+            state.setNextPageUrl(null);
+        } catch (error) {
+            console.error('Failed to load status detail:', error);
+            document.getElementById('status-detail-view').innerHTML = '<p>Could not load post.</p>';
+        }
+    }
+
+    async function fetchTimeline(type = 'home') {
+        state.currentTimeline = type.split('?')[0];
+        if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
+            publicSocket.close();
+        }
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
+            timelineDiv.innerHTML = '';
+            response.data.forEach(status => {
+                const statusElement = renderStatus(status, state, state.actions);
+                if (statusElement) timelineDiv.appendChild(statusElement);
+            });
+            state.setNextPageUrl(response.linkHeader);
+            checkAndLoadMore();
+            if (type.startsWith('public')) {
+                initPublicStreamSocket(type);
+            }
+        } catch (error) {
+            console.error('Failed to fetch timeline:', error);
+            timelineDiv.innerHTML = '<p>Could not load timeline.</p>';
+        }
+    }
+    
+    async function fetchHashtagTimeline(tagName) {
+        switchView('hashtag');
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
+            hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div>`;
+            if (response.data.length === 0) {
+                hashtagTimelineView.innerHTML += '<p>No posts found for this hashtag.</p>';
+                state.setNextPageUrl(null);
+                return;
+            }
+            response.data.forEach(status => {
+                const statusElement = renderStatus(status, state, state.actions);
+                if (statusElement) hashtagTimelineView.appendChild(statusElement);
+            });
+            state.setNextPageUrl(response.linkHeader);
+            checkAndLoadMore();
+        } catch (error) {
+            console.error(`Failed to fetch timeline for #${tagName}:`, error);
+            hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
+        }
+    }
+
+    function checkAndLoadMore() {
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (document.documentElement.scrollHeight <= window.innerHeight) {
+            loadMoreContent();
+        }
+    }
+
+    async function loadMoreContent() {
+        if (!state.nextPageUrl || state.isLoadingMore) return;
+        state.isLoadingMore = true;
+        scrollLoader.classList.add('visible');
+        const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
+            let container;
+            if (state.currentView === 'timeline') {
+                container = timelineDiv;
+            } else if (state.currentView === 'profile') {
+                container = profilePageView.querySelector('.profile-feed');
+            } else if (state.currentView === 'hashtag') {
+                container = hashtagTimelineView;
+            }
+            if (container) {
+                response.data.forEach(status => {
+                    container.appendChild(renderStatus(status, state, state.actions));
+                });
+            }
+            state.setNextPageUrl(response.linkHeader);
+        } catch (error) {
+            console.error('Failed to load more content:', error);
+        } finally {
+            state.isLoadingMore = false;
+            scrollLoader.classList.remove('visible');
+        }
+    }
+    
+    function onLoginSuccess(instance, token) {
+        state.instanceUrl = instance;
+        state.accessToken = token;
+        initializeApp();
+    }
+    
+    async function voteOnPoll(pollId, choices, statusElement) {
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/polls/${pollId}/votes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ choices })
+            });
+            const updatedPoll = response.data;
+            const pollContainer = statusElement.querySelector('.poll-container');
+            if (pollContainer) {
+                pollContainer.outerHTML = renderPollHTML(updatedPoll);
+            }
+        } catch (error) {
+            console.error('Failed to vote on poll:', error);
+            alert('Could not cast vote.');
+        }
+    }
+    
+    async function toggleAction(action, post, button) {
+        if (action === 'reply') {
+            const postElement = button.closest('.status');
+            const threadContainer = postElement.closest('.comment-thread, .status-detail-view, #timeline');
+            if (postElement.parentElement.classList.contains('comment-thread')) {
+                insertTemporaryReplyBox(post, postElement, threadContainer);
+            } else {
+                toggleCommentThread(post, postElement, post.account.acct);
+            }
+            return;
+        }
+        const isActive = button.classList.contains('active');
+        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' : (action === 'boost' && !isActive) ? 'reblog' : (action === 'favorite' && isActive) ? 'unfavourite' : (action === 'favorite' && !isActive) ? 'favourite' : (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
+        const endpoint = `/api/v1/statuses/${post.id}/${endpointAction}`;
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+            const updatedPost = response.data;
+            button.classList.toggle('active');
+            if (action === 'boost' && state.currentTimeline === 'home') {
+                if (endpointAction === 'reblog') {
+                    const newPostElement = renderStatus(updatedPost, state, state.actions);
+                    if (newPostElement) {
+                        newPostElement.classList.add('newly-added');
+                        timelineDiv.prepend(newPostElement);
+                    }
+                } else {
+                    const postToRemove = timelineDiv.querySelector(`.status[data-id='${updatedPost.id}']`);
+                    if (postToRemove) postToRemove.remove();
+                }
+            } else if (action === 'boost' || action === 'favorite') {
+                const count = updatedPost[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
+                button.innerHTML = `${ICONS[action]} ${count}`;
+            }
+        } catch (error) {
+            console.error(`Failed to ${action} post:`, error);
+            alert(`Could not ${action} post.`);
+        }
+    }
+
+    async function toggleCommentThread(status, statusElement, replyToAcct = null) {
+        document.querySelectorAll('.comment-thread').forEach(thread => {
+            if (thread.parentElement !== statusElement) {
+                thread.remove();
+            }
+        });
+        const existingThread = statusElement.querySelector('.comment-thread');
+        if (existingThread) {
+            existingThread.remove();
+            return;
+        }
+        const threadContainer = document.createElement('div');
+        threadContainer.className = 'comment-thread';
+        threadContainer.innerHTML = `<p>Loading replies...</p>`;
+        statusElement.appendChild(threadContainer);
+        try {
+            const context = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/context`)).data;
+            threadContainer.innerHTML = '';
+            if (context.descendants && context.descendants.length > 0) {
+                context.descendants.forEach(reply => {
+                    const replyElement = renderStatus(reply, state, state.actions);
+                    if (replyElement) threadContainer.appendChild(replyElement);
+                });
+            } else {
+                threadContainer.innerHTML = '<p>No replies yet.</p>';
+            }
+            const replyForm = document.createElement('form');
+            replyForm.className = 'comment-reply-form';
+            replyForm.innerHTML = `<textarea placeholder="Write a reply..."></textarea><button type="submit">Reply</button>`;
+            threadContainer.appendChild(replyForm);
+            const textarea = replyForm.querySelector('textarea');
+            if (replyToAcct) {
+                textarea.value = `@${replyToAcct} `;
+                textarea.focus();
+            }
+            replyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const content = textarea.value.trim();
+                if (!content) return;
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: content, in_reply_to_id: status.id })
+                });
+                toggleCommentThread(status, statusElement);
+                setTimeout(() => toggleCommentThread(status, statusElement), 100);
+            });
+        } catch (error) {
+            console.error('Could not load comment thread:', error);
+            threadContainer.innerHTML = '<p>Failed to load replies.</p>';
+        }
+    }
+
+    function insertTemporaryReplyBox(post, statusElement, threadContainer) {
+        const existingTempBox = threadContainer.querySelector('.temporary-reply-form');
+        if (existingTempBox) {
+            existingTempBox.remove();
+        }
+        const mainReplyBox = threadContainer.querySelector('.comment-reply-form:not(.temporary-reply-form)');
+        if (mainReplyBox) mainReplyBox.style.display = 'none';
+        const tempReplyForm = document.createElement('form');
+        tempReplyForm.className = 'comment-reply-form temporary-reply-form';
+        tempReplyForm.innerHTML = `
+            <textarea></textarea>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <button type="submit">Reply</button>
+                <button type="button" class="cancel-temp-reply button-secondary">Cancel</button>
+            </div>
+        `;
+        statusElement.after(tempReplyForm);
+        const textarea = tempReplyForm.querySelector('textarea');
+        textarea.value = `@${post.account.acct} `;
+        textarea.focus();
+        const closeAndCleanup = () => {
+            tempReplyForm.remove();
+            if (mainReplyBox) mainReplyBox.style.display = 'flex';
+        };
+        tempReplyForm.querySelector('.cancel-temp-reply').addEventListener('click', closeAndCleanup);
+        tempReplyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const content = textarea.value.trim();
+            if (!content) return;
+            try {
+                const mainPostElement = threadContainer.closest('.status');
+                const mainPostId = mainPostElement.dataset.id;
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: content, in_reply_to_id: mainPostId })
+                });
+                toggleCommentThread(mainPostElement, mainPostElement);
+                setTimeout(() => toggleCommentThread(mainPostElement, mainPostElement), 100);
+            } catch(error) {
+                console.error("Failed to post nested reply:", error);
+                alert("Could not post reply.");
+                closeAndCleanup();
+            }
+        });
+    }
+
+    async function muteAccount(accountId) {
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/mute`, {
+                method: 'POST'
+            });
+            alert('User muted. Their posts will be hidden on your next timeline refresh.');
+        } catch (error) {
+            console.error('Failed to mute user:', error);
+            alert('Could not mute user.');
+        }
+    }
+
+    // --- Event Listeners ---
+    connectBtn.addEventListener('click', () => {
+        const instance = instanceUrlInput.value.trim();
+        const token = accessTokenInput.value.trim();
+        if (!instance || !token) {
+            alert('Please provide both an instance URL and an access token.');
+            return;
+        }
+        localStorage.setItem('instanceUrl', instance);
+        localStorage.setItem('accessToken', token);
+        onLoginSuccess(instance, token);
+    });
+
+    logoutBtn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        localStorage.clear(); 
+        window.location.reload(); 
+    });
+    
+    backBtn.addEventListener('click', () => switchView('timeline'));
+    
+    profileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        state.actions.showProfile(state.currentUser.id);
+    });
+
+    settingsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderSettingsPage(state);
+        switchView('settings');
+    });
+    
+    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
+        if (dd) {
+            dd.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    if (d !== dd) d.classList.remove('active');
+                });
+                dd.classList.toggle('active');
+                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                    state.hasUnreadNotifications = false;
+                    updateNotificationIndicator();
+                    fetchNotifications(state);
+                }
+            });
+        }
+    });
+
+    function initInfiniteScroll() {
+        const options = { root: null, rootMargin: '0px', threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadMoreContent();
+                }
+            });
+        }, options);
+        observer.observe(scrollLoader);
+    }
+    
+    document.addEventListener('click', (e) => {
+        const isClickInsideDropdown = e.target.closest('.dropdown');
+        const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
+        const isClickInsidePostOptions = e.target.closest('.post-options-btn') || e.target.closest('.post-options-menu');
+        if (!isClickInsideDropdown) {
+            document.querySelectorAll('.dropdown.active').forEach(d => {
+                d.classList.remove('active');
+            });
+        }
+        if (!isClickInsideSearch) {
+            searchInput.value = '';
+            searchForm.style.display = 'none';
+            searchToggleBtn.style.display = 'block';
+        }
+        if (!isClickInsidePostOptions) {
+            document.querySelectorAll('.post-options-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+        }
+    });
+
+    feedsDropdown.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('timeline');
+            fetchTimeline(link.dataset.timeline);
+        });
+    });
+    
+    refreshBtn.addEventListener('click', () => {
+        if (state.currentView === 'timeline') {
+            const currentTimelineType = state.currentTimeline === 'home' ? 'home' : state.currentTimeline === 'local' ? 'public?local=true' : 'public';
+            fetchTimeline(currentTimelineType);
+        }
+    });
+    
+    searchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchForm.style.display = 'block';
+        searchInput.focus();
+        searchToggleBtn.style.display = 'none';
+    });
+    
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+        renderSearchResults(state, query);
+        switchView('search');
+    });
+    
+    navPostBtn.addEventListener('click', () => showComposeModal(state));
+    
+    editPostForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newContent = editPostTextarea.value;
+        if (!postToEdit || newContent.trim() === '') return;
+        try {
+            const updatedPost = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToEdit.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newContent })
+            })).data;
+            const oldPostElement = document.querySelector(`.status[data-id='${postToEdit.id}']`);
+            if (oldPostElement) {
+                const newPostElement = renderStatus(updatedPost, state, state.actions);
+                oldPostElement.replaceWith(newPostElement);
+            }
+            editPostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to edit post:', error);
+            alert('Error editing post.');
+        }
+    });
+
+    cancelEditBtn.addEventListener('click', () => editPostModal.classList.remove('visible'));
+
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if (!postToDeleteId) return;
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
+            const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
+            if (postElement) postElement.remove();
+            deletePostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to delete post:', error);
+            alert('Error deleting post.');
+        }
+    });
+
+    cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
+
+    // --- Initial Load ---
+    function initLoginOnLoad() {
+        const instance = localStorage.getItem('instanceUrl');
+        const token = localStorage.getItem('accessToken');
+        if (instance && token) {
+            onLoginSuccess(instance, token);
+        } else {
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+    
+    initLoginOnLoad();
+});
