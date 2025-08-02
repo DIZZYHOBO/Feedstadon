@@ -9,6 +9,7 @@ import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
+    const refreshBtn = document.getElementById('refresh-btn');
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
     const accessTokenInput = document.getElementById('access-token');
@@ -119,13 +120,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewName === 'timeline') {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
-        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
-            if (viewName === 'profile') profilePageView.style.display = 'block';
-            if (viewName === 'search') searchResultsView.style.display = 'flex';
-            if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
-            if (viewName === 'settings') settingsView.style.display = 'block';
-            if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
-            backBtn.style.display = 'block';
+            refreshBtn.style.display = 'flex';
+        } else {
+            refreshBtn.style.display = 'none';
+            if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
+                if (viewName === 'profile') profilePageView.style.display = 'block';
+                if (viewName === 'search') searchResultsView.style.display = 'flex';
+                if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
+                if (viewName === 'settings') settingsView.style.display = 'block';
+                if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
+                backBtn.style.display = 'block';
+            }
         }
     }
 
@@ -139,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.top-nav').style.display = 'flex';
             userDisplayBtn.textContent = state.currentUser.display_name;
             
+            refreshBtn.innerHTML = ICONS.refresh;
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
             initUserStreamSocket();
@@ -165,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onopen = () => console.log('User WebSocket connection established.');
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-
             if (data.event === 'update' && state.currentTimeline === 'home') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
@@ -174,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
-            
             if (data.event === 'notification') {
                 state.hasUnreadNotifications = true;
                 updateNotificationIndicator();
@@ -182,7 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     showBrowserNotification(JSON.parse(data.payload));
                 }
             }
-            
             if (data.event === 'delete') {
                 const postId = data.payload;
                 const postElement = document.querySelector(`.status[data-id='${postId}']`);
@@ -191,8 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => postElement.remove(), 500);
                 }
             }
-
-            // MODIFIED: Handle live updates to post stats
             if (data.event === 'status.update') {
                 const updatedPost = JSON.parse(data.payload);
                 const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
@@ -281,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => postElement.remove(), 500);
                 }
             }
-            // MODIFIED: Handle live updates to post stats
             if (data.event === 'status.update') {
                 const updatedPost = JSON.parse(data.payload);
                 const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
@@ -663,6 +663,12 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('timeline');
             fetchTimeline(link.dataset.timeline);
         });
+    });
+    
+    refreshBtn.addEventListener('click', () => {
+        if (state.currentView === 'timeline') {
+            fetchTimeline(state.currentTimeline);
+        }
     });
     
     searchToggleBtn.addEventListener('click', (e) => {
