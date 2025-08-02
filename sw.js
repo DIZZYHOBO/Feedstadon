@@ -1,5 +1,5 @@
 // MODIFIED: The cache name now includes a version number.
-const CACHE_NAME = 'feedstadon-v4.2.4'; 
+const CACHE_NAME = 'feedstadon-v4.2.5'; 
 const urlsToCache = [
   './',
   './index.html',
