@@ -22,12 +22,12 @@ function renderPollHTML(poll, state) {
         }
     }).join('');
 
-    const info = poll.expired ? `Poll ended · ${totalVotes} votes` : `${totalVotes} votes · Poll ends soon`;
+    const infoText = poll.expired ? `Poll ended · ${totalVotes} votes` : `${totalVotes} votes · Poll ends soon`;
 
     return `
         <div class="poll-container" data-poll-id="${poll.id}">
             ${optionsHTML}
-            <div class="poll-info">${info}</div>
+            <div class="poll-info">${infoText}</div>
         </div>
     `;
 }
@@ -59,10 +59,17 @@ export function renderStatus(status, state, actions) {
 
     let mediaHTML = '';
     if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
-        mediaHTML = '...'; // Media rendering logic here
+        mediaHTML += '<div class="status-media">';
+        originalPost.media_attachments.forEach(attachment => {
+            if (attachment.type === 'image') {
+                mediaHTML += `<img src="${attachment.url}" alt="${attachment.description || 'Post image'}" loading="lazy">`;
+            } else if (attachment.type === 'video' || attachment.type === 'gifv') {
+                mediaHTML += `<video src="${attachment.url}" controls loop muted playsinline></video>`;
+            }
+        });
+        mediaHTML += '</div>';
     }
 
-    // ADDED: Check for and render a poll
     let pollHTML = '';
     if (originalPost.poll) {
         pollHTML = renderPollHTML(originalPost.poll, state);
@@ -72,27 +79,36 @@ export function renderStatus(status, state, actions) {
 
     statusDiv.innerHTML = `
         <div class="status-header">
+            <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
+            <div>
+                <span class="display-name">${originalPost.account.display_name}</span>
+                <span class="acct">@${originalPost.account.acct}</span>
+                <span class="timestamp">· ${timestamp}</span>
             </div>
+            ${optionsMenuHTML}
+        </div>
         <div class="status-content">${originalPost.content}</div>
         ${pollHTML}
         ${mediaHTML}
         <div class="status-footer">
-            </div>
+            <button class="status-action" data-action="reply">${ICONS.reply} ${originalPost.replies_count}</button>
+            <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost} ${originalPost.reblogs_count}</button>
+            <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${originalPost.favourites_count}</button>
+            <button class="status-action ${originalPost.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+        </div>
     `;
 
     // --- Event Listeners ---
     
     statusDiv.addEventListener('click', (e) => {
-        // Handle hashtag clicks
-        const hashtagLink = e.target.closest('a.hashtag');
-        if (hashtagLink) {
+        const link = e.target.closest('a');
+        if (link && link.classList.contains('hashtag')) {
             e.preventDefault();
-            const tagName = hashtagLink.getAttribute('href').split('/tags/')[1];
+            const tagName = link.getAttribute('href').split('/tags/')[1];
             if (tagName) actions.showHashtagTimeline(tagName);
             return;
         }
 
-        // ADDED: Handle poll voting clicks
         const pollOption = e.target.closest('.poll-option');
         if (pollOption) {
             e.preventDefault();
@@ -103,7 +119,42 @@ export function renderStatus(status, state, actions) {
         }
     });
 
-    // ... other event listeners (avatar, display name, footer buttons, options menu) are unchanged ...
+    const avatar = statusDiv.querySelector('.avatar');
+    const displayName = statusDiv.querySelector('.display-name');
+    if (avatar) avatar.onclick = () => actions.showProfile(originalPost.account.id);
+    if (displayName) displayName.onclick = () => actions.showProfile(originalPost.account.id);
+
+    statusDiv.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = button.dataset.action;
+            actions.toggleAction(action, originalPost, button);
+        });
+    });
+
+    const optionsBtn = statusDiv.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = statusDiv.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.post-options-menu').forEach(m => {
+                if (m !== menu) m.style.display = 'none';
+            });
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        menu.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = 'none';
+            actions.showEditModal(originalPost);
+        });
+
+        menu.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = 'none';
+            actions.showDeleteModal(originalPost.id);
+        });
+    }
 
     return statusDiv;
 }
