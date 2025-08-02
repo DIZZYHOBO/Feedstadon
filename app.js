@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageUrl: null
     };
     
-    // DEBUGGING: Make state accessible in the console
+    // ADDED: This is the important debugging line
     window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
