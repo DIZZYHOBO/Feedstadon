@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
             initUserStreamSocket();
+            requestNotificationPermission(); // ADDED: Ask for permission on startup
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -148,6 +149,19 @@ document.addEventListener('DOMContentLoaded', () => {
             loginView.style.display = 'block';
             appView.style.display = 'none';
             document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+
+    // ADDED: New function to ask for notification permission
+    function requestNotificationPermission() {
+        if (!("Notification" in window)) {
+            console.log("This browser does not support desktop notification");
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    console.log("Notification permission granted.");
+                }
+            });
         }
     }
 
@@ -163,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onopen = () => console.log('User WebSocket connection established.');
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-
             if (data.event === 'update' && state.currentTimeline === 'home') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
@@ -172,13 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
-            
             if (data.event === 'notification') {
+                const notificationData = JSON.parse(data.payload);
                 state.hasUnreadNotifications = true;
                 updateNotificationIndicator();
+                
+                // MODIFIED: Show a browser notification if permission is granted
+                if (Notification.permission === 'granted') {
+                    showBrowserNotification(notificationData);
+                }
             }
-
-            // MODIFIED: Handle delete events
             if (data.event === 'delete') {
                 const postId = data.payload;
                 const postElement = document.querySelector(`.status[data-id='${postId}']`);
@@ -194,6 +210,45 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         socket.onerror = (error) => console.error('User WebSocket error:', error);
     }
+    
+    // ADDED: New function to construct and show the browser notification
+    function showBrowserNotification(notificationData) {
+        let title = 'New Notification';
+        let options = {
+            icon: notificationData.account.avatar_static,
+            body: ''
+        };
+
+        switch (notificationData.type) {
+            case 'favourite':
+                title = `${notificationData.account.display_name} favorited your post`;
+                options.body = notificationData.status.content.replace(/<[^>]*>/g, "");
+                break;
+            case 'reblog':
+                title = `${notificationData.account.display_name} boosted your post`;
+                options.body = notificationData.status.content.replace(/<[^>]*>/g, "");
+                break;
+            case 'mention':
+                title = `${notificationData.account.display_name} mentioned you`;
+                options.body = notificationData.status.content.replace(/<[^>]*>/g, "");
+                break;
+            case 'follow':
+                title = `${notificationData.account.display_name} followed you`;
+                break;
+            default:
+                return;
+        }
+
+        const notification = new Notification(title, options);
+        notification.onclick = () => {
+            window.focus(); // Bring the app's tab to the front
+            if (notificationData.status) {
+                showStatusDetail(notificationData.status.id);
+            } else {
+                showProfile(notificationData.account.id);
+            }
+        };
+    }
 
     function initPublicStreamSocket(type) {
         if (type !== 'public?local=true') {
@@ -201,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
         const streamType = 'public:local';
-
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=${streamType}`;
         publicSocket = new WebSocket(socketUrl);
 
@@ -216,8 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
-
-            // MODIFIED: Handle delete events
             if (data.event === 'delete') {
                 const postId = data.payload;
                 const postElement = document.querySelector(`.status[data-id='${postId}']`);
@@ -233,17 +285,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function showStatusDetail(statusId) {
         switchView('statusDetail');
-
         try {
             const mainStatusResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
             const contextResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
-            
             const container = document.getElementById('status-detail-view');
             container.innerHTML = '';
-            
             const mainPostElement = renderStatus(mainStatusResponse.data, state, state.actions);
             container.appendChild(mainPostElement);
-
             if (contextResponse.data.descendants && contextResponse.data.descendants.length > 0) {
                 const repliesContainer = document.createElement('div');
                 repliesContainer.className = 'comment-thread';
@@ -254,7 +302,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.appendChild(repliesContainer);
             }
             state.setNextPageUrl(null);
-
         } catch (error) {
             console.error('Failed to load status detail:', error);
             document.getElementById('status-detail-view').innerHTML = '<p>Could not load post.</p>';
@@ -263,11 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchTimeline(type = 'home') {
         state.currentTimeline = type.split('?')[0];
-        
         if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
             publicSocket.close();
         }
-        
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
             timelineDiv.innerHTML = '';
@@ -275,14 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
-            
             state.setNextPageUrl(response.linkHeader);
             checkAndLoadMore();
-
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
-
         } catch (error) {
             console.error('Failed to fetch timeline:', error);
             timelineDiv.innerHTML = '<p>Could not load timeline.</p>';
@@ -320,13 +362,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
-
         state.isLoadingMore = true;
         const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
-
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
-            
             let container;
             if (state.currentView === 'timeline') {
                 container = timelineDiv;
@@ -335,13 +374,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (state.currentView === 'hashtag') {
                 container = hashtagTimelineView;
             }
-
             if (container) {
                 response.data.forEach(status => {
                     container.appendChild(renderStatus(status, state, state.actions));
                 });
             }
-
             state.setNextPageUrl(response.linkHeader);
         } catch (error) {
             console.error('Failed to load more content:', error);
@@ -361,7 +398,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action === 'reply') {
             const postElement = button.closest('.status');
             const threadContainer = postElement.closest('.comment-thread, .status-detail-view, #timeline');
-            
             if (postElement.parentElement.classList.contains('comment-thread')) {
                 insertTemporaryReplyBox(post, postElement, threadContainer);
             } else {
@@ -369,21 +405,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
-
         const isActive = button.classList.contains('active');
-        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' :
-                               (action === 'boost' && !isActive) ? 'reblog' :
-                               (action === 'favorite' && isActive) ? 'unfavourite' :
-                               (action === 'favorite' && !isActive) ? 'favourite' :
-                               (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
-        
+        const endpointAction = (action === 'boost' && isActive) ? 'unreblog' : (action === 'boost' && !isActive) ? 'reblog' : (action === 'favorite' && isActive) ? 'unfavourite' : (action === 'favorite' && !isActive) ? 'favourite' : (action === 'bookmark' && isActive) ? 'unbookmark' : 'bookmark';
         const endpoint = `/api/v1/statuses/${post.id}/${endpointAction}`;
-
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             const updatedPost = response.data;
             button.classList.toggle('active');
-
             if (action === 'boost' && state.currentTimeline === 'home') {
                 if (endpointAction === 'reblog') {
                     const newPostElement = renderStatus(updatedPost, state, state.actions);
@@ -399,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const count = updatedPost[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
-
         } catch (error) {
             console.error(`Failed to ${action} post:`, error);
             alert(`Could not ${action} post.`);
@@ -412,23 +439,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 thread.remove();
             }
         });
-
         const existingThread = statusElement.querySelector('.comment-thread');
-        
         if (existingThread) {
             existingThread.remove();
             return;
         }
-
         const threadContainer = document.createElement('div');
         threadContainer.className = 'comment-thread';
         threadContainer.innerHTML = `<p>Loading replies...</p>`;
         statusElement.appendChild(threadContainer);
-
         try {
             const context = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/context`)).data;
             threadContainer.innerHTML = '';
-
             if (context.descendants && context.descendants.length > 0) {
                 context.descendants.forEach(reply => {
                     const replyElement = renderStatus(reply, state, state.actions);
@@ -437,33 +459,27 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 threadContainer.innerHTML = '<p>No replies yet.</p>';
             }
-
             const replyForm = document.createElement('form');
             replyForm.className = 'comment-reply-form';
             replyForm.innerHTML = `<textarea placeholder="Write a reply..."></textarea><button type="submit">Reply</button>`;
             threadContainer.appendChild(replyForm);
-
             const textarea = replyForm.querySelector('textarea');
             if (replyToAcct) {
                 textarea.value = `@${replyToAcct} `;
                 textarea.focus();
             }
-
             replyForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const content = textarea.value.trim();
                 if (!content) return;
-
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: content, in_reply_to_id: status.id })
                 });
-
                 toggleCommentThread(status, statusElement);
                 setTimeout(() => toggleCommentThread(status, statusElement), 100);
             });
-
         } catch (error) {
             console.error('Could not load comment thread:', error);
             threadContainer.innerHTML = '<p>Failed to load replies.</p>';
@@ -475,10 +491,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (existingTempBox) {
             existingTempBox.remove();
         }
-
         const mainReplyBox = threadContainer.querySelector('.comment-reply-form:not(.temporary-reply-form)');
         if (mainReplyBox) mainReplyBox.style.display = 'none';
-
         const tempReplyForm = document.createElement('form');
         tempReplyForm.className = 'comment-reply-form temporary-reply-form';
         tempReplyForm.innerHTML = `
@@ -488,38 +502,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" class="cancel-temp-reply button-secondary">Cancel</button>
             </div>
         `;
-        
         statusElement.after(tempReplyForm);
-
         const textarea = tempReplyForm.querySelector('textarea');
         textarea.value = `@${post.account.acct} `;
         textarea.focus();
-
         const closeAndCleanup = () => {
             tempReplyForm.remove();
             if (mainReplyBox) mainReplyBox.style.display = 'flex';
         };
-
         tempReplyForm.querySelector('.cancel-temp-reply').addEventListener('click', closeAndCleanup);
-
         tempReplyForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const content = textarea.value.trim();
             if (!content) return;
-
             try {
                 const mainPostElement = threadContainer.closest('.status');
                 const mainPostId = mainPostElement.dataset.id;
-                
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: content, in_reply_to_id: mainPostId })
                 });
-
                 toggleCommentThread(mainPostElement, mainPostElement);
                 setTimeout(() => toggleCommentThread(mainPostElement, mainPostElement), 100);
-
             } catch(error) {
                 console.error("Failed to post nested reply:", error);
                 alert("Could not post reply.");
@@ -580,13 +585,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const isClickInsideDropdown = e.target.closest('.dropdown');
         const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
-
         if (!isClickInsideDropdown) {
             document.querySelectorAll('.dropdown.active').forEach(d => {
                 d.classList.remove('active');
             });
         }
-        
         if (!isClickInsideSearch) {
             searchInput.value = '';
             searchForm.style.display = 'none';
@@ -613,7 +616,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const query = searchInput.value.trim();
         if (!query) return;
-    
         renderSearchResults(state, query);
         switchView('search');
     });
@@ -624,14 +626,12 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const newContent = editPostTextarea.value;
         if (!postToEdit || newContent.trim() === '') return;
-
         try {
             const updatedPost = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToEdit.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newContent })
             })).data;
-
             const oldPostElement = document.querySelector(`.status[data-id='${postToEdit.id}']`);
             if (oldPostElement) {
                 const newPostElement = renderStatus(updatedPost, state, state.actions);
@@ -650,10 +650,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!postToDeleteId) return;
         try {
             await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
-            
             const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
             if (postElement) postElement.remove();
-            
             deletePostModal.classList.remove('visible');
         } catch (error) {
             console.error('Failed to delete post:', error);
