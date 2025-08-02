@@ -1,5 +1,5 @@
 import { apiFetch } from './api.js';
-import { renderStatus } from './Post.js';
+import { renderStatus, renderPollHTML } from './Post.js';
 
 export async function renderProfilePage(state, accountId) {
     const container = document.getElementById('profile-page-view');
@@ -22,6 +22,7 @@ export async function renderProfilePage(state, accountId) {
                     <img class="avatar" src="${account.avatar_static}" alt="${account.display_name} avatar">
                 </div>
                 <div class="profile-actions">
+                    <button class="mute-btn button-secondary">${relationship.muting ? 'Unmute' : 'Mute'}</button>
                     <button class="block-btn">${relationship.blocking ? 'Unblock' : 'Block'}</button>
                     <button class="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
                 </div>
@@ -41,11 +42,13 @@ export async function renderProfilePage(state, accountId) {
                 if (statusEl) feedContainer.appendChild(statusEl);
             });
             state.setNextPageUrl(statusesResponse.linkHeader);
-            state.checkAndLoadMore(); // ADDED: Check if more content needs to be loaded
+            state.checkAndLoadMore();
         } else {
             feedContainer.innerHTML = '<p>This user has not posted anything yet.</p>';
             state.setNextPageUrl(null);
         }
+
+        // --- Event Listeners for Profile Buttons ---
 
         const followBtn = container.querySelector('.follow-btn');
         followBtn.addEventListener('click', async () => {
@@ -54,9 +57,7 @@ export async function renderProfilePage(state, accountId) {
             try {
                 await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
                 followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
-            } catch (err) {
-                alert('Action failed.');
-            }
+            } catch (err) { alert('Action failed.'); }
         });
         
         const blockBtn = container.querySelector('.block-btn');
@@ -66,10 +67,19 @@ export async function renderProfilePage(state, accountId) {
             try {
                 await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
                 blockBtn.textContent = isBlocking ? 'Block' : 'Unblock';
-            } catch (err) {
-                alert('Action failed.');
-            }
+            } catch (err) { alert('Action failed.'); }
         });
+        
+        const muteBtn = container.querySelector('.mute-btn');
+        muteBtn.addEventListener('click', async () => {
+            const isMuting = muteBtn.textContent === 'Mute';
+            const endpoint = `/api/v1/accounts/${accountId}/${isMuting ? 'mute' : 'unmute'}`;
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+                muteBtn.textContent = isMuting ? 'Unmute' : 'Mute';
+            } catch (err) { alert('Action failed.'); }
+        });
+
 
     } catch(err) {
         console.error('Could not load profile:', err);
