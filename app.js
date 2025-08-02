@@ -163,14 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function showStatusDetail(statusId) {
         const container = document.getElementById('status-detail-view');
-        container.innerHTML = '<p>Loading post...</p>';
-        switchView('statusDetail');
+        switchView('statusDetail'); // Switch view first
 
         try {
             const mainStatus = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
             const context = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
             
-            container.innerHTML = '';
+            container.innerHTML = ''; // Clear content *after* fetching
             
             const mainPostElement = renderStatus(mainStatus, state, state.actions);
             container.appendChild(mainPostElement);
@@ -193,12 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchTimeline(type = 'home', isNewPost = false) {
         state.currentTimeline = type.split('?')[0];
-        if (!isNewPost) {
-            timelineDiv.innerHTML = '<p>Loading timeline...</p>';
-        }
+        
+        // REMOVED the "Loading..." message from here
+        
         try {
             const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
-            timelineDiv.innerHTML = '';
+            timelineDiv.innerHTML = ''; // Clear content *after* fetching
             statuses.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) timelineDiv.appendChild(statusElement);
@@ -211,14 +210,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function fetchHashtagTimeline(tagName) {
         switchView('hashtag');
-        hashtagTimelineView.innerHTML = `
-            <div class="view-header">#${tagName}</div>
-            <p>Loading posts...</p>
-        `;
+        // REMOVED the "Loading..." message from here
 
         try {
             const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
             
+            // Clear content *after* fetching, but keep the header
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div>`;
 
             if (statuses.length === 0) {
@@ -232,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
-            hashtagTimelineView.innerHTML += '<p>Could not load timeline.</p>';
+            hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
     
@@ -268,25 +265,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             button.classList.toggle('active');
 
-            // MODIFIED: This whole block is new logic for smooth updates
             if (action === 'boost' && state.currentTimeline === 'home') {
                 if (endpointAction === 'reblog') {
-                    // A reblog action returns the new reblog status. We add it to the top.
                     const newPostElement = renderStatus(response, state, state.actions);
                     if (newPostElement) {
                         newPostElement.classList.add('newly-added');
                         timelineDiv.prepend(newPostElement);
                     }
-                } else { // It's an unreblog
-                    // An unreblog returns the original status. We remove the reblog from the timeline.
-                    // A reblog in the timeline has a data-id matching the *original* post's ID.
+                } else {
                     const postToRemove = timelineDiv.querySelector(`.status[data-id='${response.id}']`);
                     if (postToRemove) {
                         postToRemove.remove();
                     }
                 }
             } else if (action === 'boost' || action === 'favorite') {
-                // For other timelines, just update the count.
                 const count = response[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
