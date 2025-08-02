@@ -16,11 +16,15 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {})
         throw new Error(`HTTP ${response.status}`);
     }
 
+    // Extract the 'Link' header for pagination
+    const linkHeader = response.headers.get('Link');
+
     if (response.status === 204 || response.status === 202) {
-        return {};
+        return { data: {}, linkHeader: linkHeader };
     }
 
-    return response.json();
+    const data = await response.json();
+    return { data, linkHeader };
 }
 
 
