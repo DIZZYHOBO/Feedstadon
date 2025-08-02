@@ -6,10 +6,8 @@ export async function fetchNotifications(state) {
     container.innerHTML = '<div class="notification-item">Loading...</div>';
 
     try {
-        // MODIFIED: Correctly handle the new response object from apiFetch
         const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
         const notifications = response.data;
-        
         container.innerHTML = '';
 
         if (notifications.length === 0) {
@@ -17,7 +15,9 @@ export async function fetchNotifications(state) {
             return;
         }
 
-        notifications.forEach(notification => {
+        const recentNotifications = notifications.slice(0, 10);
+
+        recentNotifications.forEach(notification => {
             const item = document.createElement('div');
             item.className = 'notification-item';
             let icon = '';
@@ -53,6 +53,17 @@ export async function fetchNotifications(state) {
             `;
             container.appendChild(item);
         });
+
+        if (notifications.length > 10) {
+            const viewAllBtn = document.createElement('button');
+            viewAllBtn.className = 'view-all-button';
+            viewAllBtn.textContent = 'View All';
+            viewAllBtn.onclick = () => {
+                state.actions.showAllNotifications();
+                document.getElementById('notifications-dropdown').classList.remove('active');
+            };
+            container.appendChild(viewAllBtn);
+        }
 
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
