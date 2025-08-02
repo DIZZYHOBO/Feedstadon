@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         actions: {},
         isLoadingMore: false,
         nextPageUrl: null,
-        hasUnreadNotifications: false // ADDED
+        hasUnreadNotifications: false
     };
     
     window.appState = state;
@@ -151,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ADDED: Function to update the notification dot
     function updateNotificationIndicator() {
         notificationsBtn.classList.toggle('has-unread', state.hasUnreadNotifications);
     }
@@ -164,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onopen = () => console.log('User WebSocket connection established.');
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
+
             if (data.event === 'update' && state.currentTimeline === 'home') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
@@ -172,11 +172,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
-            // MODIFIED: Handle notification events
+            
             if (data.event === 'notification') {
-                console.log('New notification received:', JSON.parse(data.payload));
                 state.hasUnreadNotifications = true;
                 updateNotificationIndicator();
+            }
+
+            // MODIFIED: Handle delete events
+            if (data.event === 'delete') {
+                const postId = data.payload;
+                const postElement = document.querySelector(`.status[data-id='${postId}']`);
+                if (postElement) {
+                    postElement.classList.add('fading-out');
+                    setTimeout(() => postElement.remove(), 500);
+                }
             }
         };
         socket.onclose = () => {
@@ -205,6 +214,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (postElement) {
                     postElement.classList.add('newly-added');
                     timelineDiv.prepend(postElement);
+                }
+            }
+
+            // MODIFIED: Handle delete events
+            if (data.event === 'delete') {
+                const postId = data.payload;
+                const postElement = document.querySelector(`.status[data-id='${postId}']`);
+                if (postElement) {
+                    postElement.classList.add('fading-out');
+                    setTimeout(() => postElement.remove(), 500);
                 }
             }
         };
@@ -550,7 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 dd.classList.toggle('active');
                 if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
-                    // MODIFIED: Mark notifications as read when dropdown is opened
                     state.hasUnreadNotifications = false;
                     updateNotificationIndicator();
                     fetchNotifications(state);
