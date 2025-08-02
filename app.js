@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
+            initWebSocket(); // ADDED: Start the live connection
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -122,6 +123,44 @@ document.addEventListener('DOMContentLoaded', () => {
             appView.style.display = 'none';
             document.querySelector('.top-nav').style.display = 'none';
         }
+    }
+
+    // ADDED: New function to handle WebSocket connection
+    function initWebSocket() {
+        const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
+        const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=user&access_token=${state.accessToken}`;
+        const socket = new WebSocket(socketUrl);
+
+        socket.onopen = () => {
+            console.log('WebSocket connection established.');
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            // Listen for new posts on the home timeline
+            if (data.event === 'update' && state.currentTimeline === 'home') {
+                const post = JSON.parse(data.payload);
+                const postElement = renderStatus(post, state, state.actions);
+                if (postElement) {
+                    timelineDiv.prepend(postElement);
+                }
+            }
+
+            // You can add more event handlers here later (e.g., for notifications)
+            if (data.event === 'notification') {
+                console.log('New notification received:', JSON.parse(data.payload));
+            }
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket connection closed. Attempting to reconnect in 5 seconds...');
+            setTimeout(initWebSocket, 5000); // Simple auto-reconnect
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
     }
     
     async function showStatusDetail(statusId) {
