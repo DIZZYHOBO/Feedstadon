@@ -201,7 +201,7 @@ textarea:focus {
     text-align: center;
     padding: 20px;
     color: var(--font-color-muted);
-    display: none; /* Hidden by default */
+    display: none;
 }
 
 /* --- Status / Post --- */
