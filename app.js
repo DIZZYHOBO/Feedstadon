@@ -56,6 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoadingMore: false,
         nextPageUrl: null
     };
+    
+    // DEBUGGING: Make state accessible in the console
+    window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
         if (linkHeader) {
@@ -338,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
-            const updatedPost = response.data; // MODIFIED: Get data from response object
+            const updatedPost = response.data;
             button.classList.toggle('active');
 
             if (action === 'boost' && state.currentTimeline === 'home') {
