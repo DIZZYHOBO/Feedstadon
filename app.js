@@ -338,23 +338,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
+            const updatedPost = response.data; // MODIFIED: Get data from response object
             button.classList.toggle('active');
 
             if (action === 'boost' && state.currentTimeline === 'home') {
                 if (endpointAction === 'reblog') {
-                    const newPostElement = renderStatus(response.data, state, state.actions);
+                    const newPostElement = renderStatus(updatedPost, state, state.actions);
                     if (newPostElement) {
                         newPostElement.classList.add('newly-added');
                         timelineDiv.prepend(newPostElement);
                     }
                 } else {
-                    const postToRemove = timelineDiv.querySelector(`.status[data-id='${response.data.id}']`);
-                    if (postToRemove) {
-                        postToRemove.remove();
-                    }
+                    const postToRemove = timelineDiv.querySelector(`.status[data-id='${updatedPost.id}']`);
+                    if (postToRemove) postToRemove.remove();
                 }
             } else if (action === 'boost' || action === 'favorite') {
-                const count = response.data[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
+                const count = updatedPost[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
 
@@ -490,12 +489,10 @@ document.addEventListener('DOMContentLoaded', () => {
     connectBtn.addEventListener('click', () => {
         const instance = instanceUrlInput.value.trim();
         const token = accessTokenInput.value.trim();
-
         if (!instance || !token) {
             alert('Please provide both an instance URL and an access token.');
             return;
         }
-
         localStorage.setItem('instanceUrl', instance);
         localStorage.setItem('accessToken', token);
         onLoginSuccess(instance, token);
