@@ -62,18 +62,15 @@ export function renderStatus(status, state, actions) {
 
     // --- Event Listeners ---
     
-    // This listener intercepts clicks on hashtag links
     statusDiv.addEventListener('click', (e) => {
         const link = e.target.closest('a');
         if (!link) return;
 
-        // Check if it's a hashtag link
         if (link.classList.contains('hashtag')) {
-            e.preventDefault(); // Stop the browser from navigating
+            e.preventDefault();
             const href = link.getAttribute('href');
             const tagName = href.split('/tags/')[1];
             if (tagName) {
-                // Call our in-app function instead
                 actions.showHashtagTimeline(tagName);
             }
         }
@@ -88,7 +85,8 @@ export function renderStatus(status, state, actions) {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = button.dataset.action;
-            actions.toggleAction(action, originalPost.id, button);
+            // MODIFIED: Pass the entire post object instead of just the ID
+            actions.toggleAction(action, originalPost, button);
         });
     });
 
