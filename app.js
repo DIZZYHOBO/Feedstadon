@@ -9,6 +9,7 @@ import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
+    const scrollLoader = document.getElementById('scroll-loader');
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
     const accessTokenInput = document.getElementById('access-token');
@@ -35,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
     const refreshBtn = document.getElementById('refresh-btn');
-    const scrollLoader = document.getElementById('scroll-loader');
 
     const editPostModal = document.getElementById('edit-post-modal');
     const editPostForm = document.getElementById('edit-post-form');
@@ -337,7 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
-            checkAndLoadMore();
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
@@ -362,24 +361,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
-            checkAndLoadMore();
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
-
-    function checkAndLoadMore() {
-        if (state.isLoadingMore || !state.nextPageUrl) return;
-        if (document.documentElement.scrollHeight <= window.innerHeight) {
-            loadMoreContent();
-        }
-    }
-
+    
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
-        scrollLoader.querySelector('p').style.visibility = 'visible';
+        scrollLoader.classList.add('loading');
         const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
@@ -401,8 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
-            scrollLoader.querySelector('p').style.visibility = 'hidden';
-            setTimeout(checkAndLoadMore, 500);
+            scrollLoader.classList.remove('loading');
         }
     }
     
@@ -632,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initInfiniteScroll() {
         const options = {
-            root: null,
+            root: null, 
             rootMargin: '400px 0px',
             threshold: 0
         };
