@@ -183,7 +183,7 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view, #hashtag-timeline-view { 
+#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view { 
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
@@ -194,6 +194,14 @@ textarea:focus {
 }
 #status-detail-view .status.main-thread-post {
     border-left-color: var(--accent-color);
+}
+
+/* --- Scroll Loader --- */
+#scroll-loader {
+    text-align: center;
+    padding: 20px;
+    color: var(--font-color-muted);
+    display: none; /* Hidden by default */
 }
 
 /* --- Status / Post --- */
@@ -725,6 +733,7 @@ textarea:focus {
     color: var(--accent-color);
     border-color: var(--accent-color);
 }
+
 
 /* --- Page/View Headers --- */
 .view-header {
