@@ -246,14 +246,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function toggleCommentThread(status, statusElement, replyToAcct = null) {
+        document.querySelectorAll('.comment-thread').forEach(thread => {
+            if (thread.parentElement !== statusElement) {
+                thread.remove();
+            }
+        });
+
         const existingThread = statusElement.querySelector('.comment-thread');
         
         if (existingThread) {
-            const textarea = existingThread.querySelector('textarea');
-            if (textarea && replyToAcct) {
-                textarea.value = `@${replyToAcct} `;
-                textarea.focus();
-            }
+            existingThread.remove();
             return;
         }
 
