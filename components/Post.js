@@ -1,8 +1,8 @@
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
-// Helper function to render a poll
-function renderPollHTML(poll, state) {
+// MODIFIED: This function is now exported
+export function renderPollHTML(poll) {
     const totalVotes = poll.votes_count;
     const canVote = !poll.voted && !poll.expired;
 
@@ -72,7 +72,7 @@ export function renderStatus(status, state, actions) {
 
     let pollHTML = '';
     if (originalPost.poll) {
-        pollHTML = renderPollHTML(originalPost.poll, state);
+        pollHTML = renderPollHTML(originalPost.poll);
     }
 
     const timestamp = formatTimestamp(originalPost.created_at);
