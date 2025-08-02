@@ -1,6 +1,6 @@
 import { apiFetch } from './components/api.js';
 import { ICONS } from './components/icons.js';
-import { renderStatus, renderPollHTML } from './components/Post.js';
+import { renderStatus } from './components/Post.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
         deletePostModal.classList.add('visible');
     };
     state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
-
 
     // --- View Management ---
     function switchView(viewName) {
@@ -378,24 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
     
-    async function voteOnPoll(pollId, choices, statusElement) {
-        try {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/polls/${pollId}/votes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ choices })
-            });
-            const updatedPoll = response.data;
-            const pollContainer = statusElement.querySelector('.poll-container');
-            if (pollContainer) {
-                pollContainer.outerHTML = renderPollHTML(updatedPoll);
-            }
-        } catch (error) {
-            console.error('Failed to vote on poll:', error);
-            alert('Could not cast vote.');
-        }
-    }
-    
     async function toggleAction(action, post, button) {
         if (action === 'reply') {
             const postElement = button.closest('.status');
@@ -584,8 +565,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // MODIFIED: This is a more robust scroll check
     window.addEventListener('scroll', () => {
-        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) {
+        const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrollPosition = window.scrollY;
+        
+        // If we are within 500px of the bottom, or exactly at the bottom
+        if (scrollPosition >= scrollableHeight - 500) {
             loadMoreContent();
         }
     });
