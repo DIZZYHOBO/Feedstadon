@@ -74,8 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollLoader.style.display = 'none';
     };
     
-    state.checkAndLoadMore = () => checkAndLoadMore();
-    
     let postToEdit = null;
     let postToDeleteId = null;
     let publicSocket = null;
@@ -381,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
-        scrollLoader.classList.add('visible');
+        scrollLoader.querySelector('p').style.visibility = 'visible';
         const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
@@ -403,7 +401,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
-            scrollLoader.classList.remove('visible');
+            scrollLoader.querySelector('p').style.visibility = 'hidden';
+            setTimeout(checkAndLoadMore, 500);
         }
     }
     
@@ -632,7 +631,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function initInfiniteScroll() {
-        const options = { root: null, rootMargin: '0px', threshold: 0.1 };
+        const options = {
+            root: null,
+            rootMargin: '400px 0px',
+            threshold: 0
+        };
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
