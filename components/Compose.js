@@ -15,7 +15,6 @@ export function showComposeModal(state) {
     document.getElementById('media-attachment-input').value = '';
     pollCreator.style.display = 'none';
     
-    // Re-enable buttons
     addMediaBtn.disabled = false;
     addPollBtn.disabled = false;
     
@@ -55,18 +54,18 @@ export function initComposeModal(state, onPostSuccess) {
         if (mediaInput.files.length > 0) {
             attachedFile = mediaInput.files[0];
             mediaPreview.textContent = attachedFile.name;
-            addPollBtn.disabled = true; // Disable poll button if media is attached
+            addPollBtn.disabled = true;
         } else {
             attachedFile = null;
             mediaPreview.textContent = '';
-            addPollBtn.disabled = false; // Re-enable poll button if media is removed
+            addPollBtn.disabled = false;
         }
     });
     
     addPollBtn.addEventListener('click', () => {
         isPollActive = !isPollActive;
         pollCreator.style.display = isPollActive ? 'block' : 'none';
-        addMediaBtn.disabled = isPollActive; // Disable media button if poll is active
+        addMediaBtn.disabled = isPollActive;
     });
     
     addPollOptionBtn.addEventListener('click', () => {
@@ -94,18 +93,16 @@ export function initComposeModal(state, onPostSuccess) {
             postButton.disabled = true;
             postButton.textContent = 'Posting...';
 
-            let mediaIds = [];
+            const postBody = { 
+                status: content
+            };
+
             if (attachedFile) {
                 const mediaResponse = await apiUploadMedia(state, attachedFile);
                 if (mediaResponse.id) {
-                    mediaIds.push(mediaResponse.id);
+                    postBody.media_ids = [mediaResponse.id];
                 }
             }
-
-            const postBody = { 
-                status: content,
-                media_ids: mediaIds
-            };
             
             if (isPollActive) {
                 const pollOptions = Array.from(pollOptionsContainer.querySelectorAll('.poll-option-input'))
