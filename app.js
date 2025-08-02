@@ -207,8 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function toggleAction(action, post, button) {
         if (action === 'reply') {
-            const postElement = button.closest('.status');
-            toggleCommentThread(post, postElement, post.account.acct);
+            showComposeModal(state, {
+                inReplyToId: post.id,
+                replyToAcct: post.account.acct
+            });
             return;
         }
 
