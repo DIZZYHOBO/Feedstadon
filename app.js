@@ -1,6 +1,6 @@
 import { apiFetch } from './components/api.js';
 import { ICONS } from './components/icons.js';
-import { renderStatus } from './components/Post.js';
+import { renderStatus, renderPollHTML } from './components/Post.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
@@ -9,7 +9,6 @@ import { renderSettingsPage } from './components/Settings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const debugOverlay = document.getElementById('debug-overlay');
     const loginView = document.getElementById('login-view');
     const instanceUrlInput = document.getElementById('instance-url');
     const accessTokenInput = document.getElementById('access-token');
@@ -99,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deletePostModal.classList.add('visible');
     };
     state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
+    state.actions.muteAccount = (accountId) => muteAccount(accountId);
 
     // --- View Management ---
     function switchView(viewName) {
@@ -535,6 +535,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    async function muteAccount(accountId) {
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/mute`, {
+                method: 'POST'
+            });
+            alert('User muted. Their posts will be hidden on your next timeline refresh.');
+        } catch (error) {
+            console.error('Failed to mute user:', error);
+            alert('Could not mute user.');
+        }
+    }
+
     // --- Event Listeners ---
     connectBtn.addEventListener('click', () => {
         const instance = instanceUrlInput.value.trim();
@@ -585,16 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('scroll', () => {
-        const scrollPosition = Math.ceil(window.innerHeight + window.scrollY);
-        const totalHeight = document.documentElement.scrollHeight;
-        
-        debugOverlay.innerHTML = `
-            Position: ${scrollPosition}<br>
-            Total Height: ${totalHeight}<br>
-            Near Bottom: ${scrollPosition >= totalHeight - 1000}
-        `;
-        
-        if (scrollPosition >= totalHeight - 1000) {
+        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 1000) {
             loadMoreContent();
         }
     });
