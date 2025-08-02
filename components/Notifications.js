@@ -6,8 +6,11 @@ export async function fetchNotifications(state) {
     container.innerHTML = '<div class="notification-item">Loading...</div>';
 
     try {
-        const notifications = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
-        container.innerHTML = ''; 
+        // MODIFIED: Correctly handle the new response object from apiFetch
+        const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+        const notifications = response.data;
+        
+        container.innerHTML = '';
 
         if (notifications.length === 0) {
             container.innerHTML = '<div class="notification-item">You have no new notifications.</div>';
@@ -15,7 +18,7 @@ export async function fetchNotifications(state) {
         }
 
         notifications.forEach(notification => {
-            const item = document.createElement('div'); // MODIFIED: Changed from <a> to <div>
+            const item = document.createElement('div');
             item.className = 'notification-item';
             let icon = '';
             let content = '';
@@ -28,7 +31,6 @@ export async function fetchNotifications(state) {
                     content = `<strong>${notification.account.display_name}</strong> ${notification.type}d your post.`;
                     item.addEventListener('click', () => {
                         state.actions.showStatusDetail(notification.status.id);
-                        // Close the dropdown
                         document.getElementById('notifications-dropdown').classList.remove('active');
                     });
                     break;
@@ -37,7 +39,6 @@ export async function fetchNotifications(state) {
                     content = `<strong>${notification.account.display_name}</strong> followed you.`;
                     item.addEventListener('click', () => {
                         state.actions.showProfile(notification.account.id);
-                        // Close the dropdown
                         document.getElementById('notifications-dropdown').classList.remove('active');
                     });
                     break;
