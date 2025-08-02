@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedsDropdown = document.getElementById('feeds-dropdown');
     const userDropdown = document.getElementById('user-dropdown');
     const notificationsDropdown = document.getElementById('notifications-dropdown');
+    const notificationsBtn = document.getElementById('notifications-btn');
     const notificationsList = document.getElementById('notifications-list');
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchForm = document.getElementById('search-form');
@@ -54,7 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationsList,
         actions: {},
         isLoadingMore: false,
-        nextPageUrl: null
+        nextPageUrl: null,
+        hasUnreadNotifications: false // ADDED
     };
     
     window.appState = state;
@@ -64,15 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
             if (nextLink) {
                 state.nextPageUrl = nextLink.match(/<(.+)>/)[1];
-                console.log('Next page URL set:', state.nextPageUrl);
                 return;
             }
         }
-        console.log('No next page URL found.');
         state.nextPageUrl = null;
     };
     
-    // Pass checkAndLoadMore via state so components can call it
     state.checkAndLoadMore = () => checkAndLoadMore();
     
     let postToEdit = null;
@@ -152,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ADDED: Function to update the notification dot
+    function updateNotificationIndicator() {
+        notificationsBtn.classList.toggle('has-unread', state.hasUnreadNotifications);
+    }
+
     function initUserStreamSocket() {
         const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=user&access_token=${state.accessToken}`;
@@ -168,8 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
+            // MODIFIED: Handle notification events
             if (data.event === 'notification') {
                 console.log('New notification received:', JSON.parse(data.payload));
+                state.hasUnreadNotifications = true;
+                updateNotificationIndicator();
             }
         };
         socket.onclose = () => {
@@ -286,31 +293,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkAndLoadMore() {
-        if (state.isLoadingMore || !state.nextPageUrl) {
-            return;
-        }
-        
-        const scrollableHeight = document.documentElement.scrollHeight;
-        const viewportHeight = window.innerHeight;
-
-        if (scrollableHeight <= viewportHeight) {
-            console.log("Content doesn't fill screen, loading more automatically...");
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (document.documentElement.scrollHeight <= window.innerHeight) {
             loadMoreContent();
         }
     }
 
     async function loadMoreContent() {
-        if (!state.nextPageUrl || state.isLoadingMore) {
-            console.log('Load more blocked:', {nextPage: !!state.nextPageUrl, loading: state.isLoadingMore});
-            return;
-        }
+        if (!state.nextPageUrl || state.isLoadingMore) return;
 
-        console.log('Loading more content from:', state.nextPageUrl);
         state.isLoadingMore = true;
-        
-        // The nextPageUrl is a full URL, so we extract the path and query from it.
-        const url = new URL(state.nextPageUrl);
-        const endpoint = url.pathname + url.search;
+        const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
 
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
@@ -335,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
-            // Use a short timeout to allow the DOM to update before checking again
             setTimeout(checkAndLoadMore, 500);
         }
     }
@@ -558,19 +550,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 dd.classList.toggle('active');
                 if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
+                    // MODIFIED: Mark notifications as read when dropdown is opened
+                    state.hasUnreadNotifications = false;
+                    updateNotificationIndicator();
                     fetchNotifications(state);
                 }
             });
-        }
-    });
-
-    window.addEventListener('scroll', () => {
-        const scrollPosition = window.innerHeight + window.scrollY;
-        const totalHeight = document.documentElement.scrollHeight;
-        console.log(`Scroll check: pos=${scrollPosition}, height=${totalHeight}`);
-        
-        if (scrollPosition >= totalHeight - 500) {
-            loadMoreContent();
         }
     });
 
