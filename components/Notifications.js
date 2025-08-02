@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 
-// MODIFIED: Added the 'export' keyword here
+// MODIFIED: The 'export' keyword was missing here.
 export function renderNotification(notification, state) {
     const item = document.createElement('div');
     item.className = 'notification-item';
