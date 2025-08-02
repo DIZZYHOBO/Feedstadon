@@ -101,10 +101,11 @@ textarea:focus {
     align-items: center; padding: 0 10px; z-index: 2000;
 }
 
+/* MODIFIED: Increased gap for better spacing */
 .nav-left, .nav-right { 
     display: flex; 
     align-items: center; 
-    gap: 10px; 
+    gap: 15px; 
     flex-shrink: 0;
 }
 
@@ -115,15 +116,33 @@ textarea:focus {
     padding: 0 20px;
 }
 
+/* MODIFIED: Changed button style to be borderless */
 .nav-button {
-    background: none; border: 1px solid var(--border-color); color: var(--font-color); padding: 8px 12px;
-    border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap; font-size: 0.9em;
+    background: none;
+    border: none;
+    color: var(--font-color);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 0.9em;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.2s;
+}
+.nav-button:hover {
+    background-color: var(--primary-color);
 }
 
-.icon-button { border: 1px solid var(--border-color); font-size: 1.5em; padding: 6px; }
+
+/* MODIFIED: Changed icon button style to be borderless */
+.icon-button {
+    border: none;
+    font-size: 1.5em;
+    padding: 6px;
+}
 
 .dropdown { position: relative; }
 
@@ -174,13 +193,11 @@ textarea:focus {
     background-color: var(--card-color); 
     border-radius: 8px; 
     border: 1px solid var(--border-color); 
-    /* padding: 15px; <-- This is removed so the booster info can be flush */
     transition: all 0.3s ease;
-    overflow: hidden; /* ADDED: to contain the booster info banner */
+    overflow: hidden;
 }
 
-/* ADDED: Styles for the booster info banner */
-.booster-info {
+.booster-info, .reply-info {
     padding: 8px 15px;
     background-color: var(--primary-color);
     font-size: 0.9em;
@@ -189,14 +206,19 @@ textarea:focus {
     align-items: center;
     gap: 8px;
 }
-.booster-info .icon {
+.reply-info {
+    cursor: pointer;
+}
+.reply-info:hover {
+    background-color: #3e4042;
+}
+.booster-info .icon, .reply-info .icon {
     width: 16px;
     height: 16px;
 }
 .status-body-content {
-    padding: 15px; /* ADDED: Re-applies padding to the main content */
+    padding: 15px;
 }
-
 
 .status.newly-added {
     animation: fadeIn 0.5s ease-out;
