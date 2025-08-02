@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
-            initWebSocket(); // ADDED: Start the live connection
+            initWebSocket();
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -125,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ADDED: New function to handle WebSocket connection
     function initWebSocket() {
         const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=user&access_token=${state.accessToken}`;
@@ -138,16 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             
-            // Listen for new posts on the home timeline
             if (data.event === 'update' && state.currentTimeline === 'home') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
                 if (postElement) {
+                    // MODIFIED: Add a class to trigger the animation
+                    postElement.classList.add('newly-added');
                     timelineDiv.prepend(postElement);
                 }
             }
 
-            // You can add more event handlers here later (e.g., for notifications)
             if (data.event === 'notification') {
                 console.log('New notification received:', JSON.parse(data.payload));
             }
@@ -155,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.onclose = () => {
             console.log('WebSocket connection closed. Attempting to reconnect in 5 seconds...');
-            setTimeout(initWebSocket, 5000); // Simple auto-reconnect
+            setTimeout(initWebSocket, 5000);
         };
 
         socket.onerror = (error) => {
