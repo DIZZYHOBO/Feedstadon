@@ -60,11 +60,9 @@ body {
     animation: fadeIn 0.5s ease-in-out;
 }
 
-#login-view h2 {
-    text-align: center;
-    color: var(--font-color);
-    margin: 0 0 10px 0;
-    font-size: 1.8rem;
+.login-logo {
+    width: 250px;
+    margin: 0 auto 10px auto;
 }
 
 #login-view input[type="text"],
@@ -200,14 +198,14 @@ textarea:focus {
 #scroll-loader {
     text-align: center;
     padding: 20px;
-    height: 60px; /* Give it a fixed height */
+    height: 60px;
 }
 #scroll-loader p {
     color: var(--font-color-muted);
-    visibility: hidden; /* Hide the text by default */
+    visibility: hidden;
 }
 #scroll-loader.visible p {
-    visibility: visible; /* Show text when loading */
+    visibility: visible;
 }
 
 
