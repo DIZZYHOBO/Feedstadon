@@ -56,8 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoadingMore: false,
         nextPageUrl: null
     };
-    
-    window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
         if (linkHeader) {
@@ -246,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             state.setNextPageUrl(response.linkHeader);
-            checkAndLoadMore(); // ADDED: Check if more content needs to be loaded
+            checkAndLoadMore();
 
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
@@ -273,26 +271,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
-            checkAndLoadMore(); // ADDED: Check if more content needs to be loaded
+            checkAndLoadMore();
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
 
-    // ADDED: New function to automatically load more content if the screen isn't full
     function checkAndLoadMore() {
         if (state.isLoadingMore || !state.nextPageUrl) return;
-        // Check if the document's scroll height is less than or equal to the window's inner height
-        if (document.body.scrollHeight <= window.innerHeight) {
-            console.log("Content doesn't fill screen, loading more automatically...");
+        if (document.documentElement.scrollHeight <= window.innerHeight) {
             loadMoreContent();
         }
     }
 
     async function loadMoreContent() {
-        console.log("Scroll detected, trying to load more...");
-
         if (!state.nextPageUrl || state.isLoadingMore) return;
 
         state.isLoadingMore = true;
@@ -321,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
-            // ADDED: Check again in case the newly added content STILL doesn't fill the screen
             setTimeout(checkAndLoadMore, 500);
         }
     }
@@ -551,7 +543,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('scroll', () => {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+        // MODIFIED: Use a more robust property for total page height
+        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) {
             loadMoreContent();
         }
     });
