@@ -605,15 +605,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const isClickInsideDropdown = e.target.closest('.dropdown');
         const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
+        const isClickInsidePostOptions = e.target.closest('.post-options-btn') || e.target.closest('.post-options-menu');
+
         if (!isClickInsideDropdown) {
             document.querySelectorAll('.dropdown.active').forEach(d => {
                 d.classList.remove('active');
             });
         }
+        
         if (!isClickInsideSearch) {
             searchInput.value = '';
             searchForm.style.display = 'none';
             searchToggleBtn.style.display = 'block';
+        }
+        
+        if (!isClickInsidePostOptions) {
+            document.querySelectorAll('.post-options-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
         }
     });
 
