@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsView = document.getElementById('settings-view');
     const hashtagTimelineView = document.getElementById('hashtag-timeline-view');
     const notificationsView = document.getElementById('notifications-view');
+    const bookmarksView = document.getElementById('bookmarks-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -43,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshBtn = document.getElementById('refresh-btn');
     const scrollLoader = document.getElementById('scroll-loader');
     const toastNotification = document.getElementById('toast-notification');
-    const bookmarksView = document.getElementById('bookmarks-view');
 
     const editPostModal = document.getElementById('edit-post-modal');
     const editPostForm = document.getElementById('edit-post-form');
