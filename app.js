@@ -565,13 +565,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // MODIFIED: This is a more robust scroll check
     window.addEventListener('scroll', () => {
-        const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
-        const scrollPosition = window.scrollY;
-        
-        // If we are within 500px of the bottom, or exactly at the bottom
-        if (scrollPosition >= scrollableHeight - 500) {
+        // MODIFIED: Increased the trigger threshold to 1000px
+        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 1000) {
             loadMoreContent();
         }
     });
