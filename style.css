@@ -9,6 +9,7 @@
     --font-color-muted: #8E8F90;
     --border-color: #333435;
     --link-color: #88C0D0;
+    --notification-dot-color: #ff3d3d; /* ADDED */
 }
 
 *, *::before, *::after {
@@ -172,7 +173,6 @@ textarea:focus {
     transition: all 0.3s ease;
 }
 
-/* MODIFIED: This animation now only applies to posts with the .newly-added class */
 .status.newly-added {
     animation: fadeIn 0.5s ease-out;
 }
@@ -195,28 +195,26 @@ textarea:focus {
 .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.9em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
 
 .status-action { 
-    background-color: var(--primary-color); 
-    border: 1px solid var(--border-color);
-    color: var(--font-color-muted); 
-    cursor: pointer; 
-    padding: 8px 16px; 
-    border-radius: 20px;
-    display: flex; 
-    align-items: center; 
-    gap: 8px;
-    font-size: inherit; 
-    font-family: inherit; 
-    transition: all 0.2s ease;
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: inherit;
+    font-family: inherit;
+    transition: color 0.2s ease;
 }
 .status-action:hover {
-    border-color: var(--accent-color);
     color: var(--accent-color);
 }
 .icon { width: 22px; height: 22px; flex-shrink: 0; }
 
 .status-action.active {
     color: var(--accent-color);
-    border-color: var(--accent-color);
 }
 
 /* --- Post Options Menu --- */
@@ -339,8 +337,9 @@ textarea:focus {
     padding: 10px 16px;
     font-size: 0.9em;
     border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
 }
-#notifications-list a:last-child, #notifications-list div:last-child {
+#notifications-list div:last-child {
     border-bottom: none;
 }
 .notification-icon {
@@ -354,6 +353,18 @@ textarea:focus {
 .notification-content strong {
     color: var(--font-color);
 }
+#notifications-btn.has-unread::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    width: 9px;
+    height: 9px;
+    background-color: var(--notification-dot-color);
+    border-radius: 50%;
+    border: 2px solid var(--card-color);
+}
+
 
 /* --- Modals --- */
 .modal-overlay {
