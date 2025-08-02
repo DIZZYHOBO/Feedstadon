@@ -189,27 +189,19 @@ textarea:focus {
 
 .status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.9em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
 
-.status-action {
-   background: none; /* Remove background */
-   border: none;       /* Remove border */
-   color: var(--font-color-muted);
-   cursor: pointer;
-   padding: 5px 8px; /* Adjust padding */
-   border-radius: 0;    /* Ensure no rounding */
-   display: flex;
-   align-items: center;
-   gap: 5px;          /* Adjust gap */
-   font-size: inherit;
-   font-family: inherit;
-   transition: color 0.2s ease; /* Only transition color */
-}
-.status-action:hover {
-   color: var(--accent-color);
-}
-.icon { width: 22px; height: 22px; flex-shrink: 0; }
-
-.status-action.active {
-   color: var(--accent-color);
+.status-action { 
+    background-color: var(--primary-color); 
+    border: 1px solid var(--border-color);
+    color: var(--font-color-muted); 
+    cursor: pointer; 
+    padding: 8px 16px; 
+    border-radius: 20px;
+    display: flex; 
+    align-items: center; 
+    gap: 8px;
+    font-size: inherit; 
+    font-family: inherit; 
+    transition: all 0.2s ease;
 }
 .status-action:hover {
     border-color: var(--accent-color);
@@ -464,6 +456,13 @@ textarea:focus {
 
 .form-group input[type="file"] {
     font-size: 0.9em;
+}
+
+.file-status {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 0.8em;
+    color: var(--font-color-muted);
 }
 
 .settings-save-button {
