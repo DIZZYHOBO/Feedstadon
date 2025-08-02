@@ -5,7 +5,8 @@ export async function renderSearchResults(state, query) {
     container.innerHTML = `<p>Searching for "${query}"...</p>`;
 
     try {
-        const results = await apiFetch(state.instanceUrl, state.accessToken, `/api/v2/search?q=${query}&type=accounts&resolve=true`);
+        const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v2/search?q=${query}&type=accounts&resolve=true`);
+        const results = response.data; // MODIFIED: Get data from response object
         
         container.innerHTML = '';
 
