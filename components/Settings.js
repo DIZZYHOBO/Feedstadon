@@ -60,6 +60,20 @@ export async function renderSettingsPage(state) {
 
         container.innerHTML = `
             <div class="settings-container">
+                <div class="settings-section">
+                    <h3>Theme</h3>
+                    <div class="form-group">
+                        <label for="theme-select">Select a theme</label>
+                        <select id="theme-select">
+                            <option value="feedstodon">Feedstodon (Default)</option>
+                            <option value="purple">Dark Purple</option>
+                            <option value="tube">Tube</option>
+                            <option value="readit">Read It</option>
+                            <option value="git">Git</option>
+                        </select>
+                    </div>
+                </div>
+
                 <form id="settings-form">
                     <div class="settings-section">
                         <h3>Profile</h3>
@@ -124,6 +138,16 @@ export async function renderSettingsPage(state) {
         const headerInput = container.querySelector('#header-input');
         const avatarStatus = container.querySelector('#avatar-status');
         const headerStatus = container.querySelector('#header-status');
+        const themeSelect = container.querySelector('#theme-select');
+        
+        // Set initial theme value
+        themeSelect.value = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+
+        themeSelect.addEventListener('change', () => {
+            const newTheme = themeSelect.value;
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('feedstodon-theme', newTheme);
+        });
 
         avatarInput.addEventListener('change', () => {
             avatarStatus.textContent = avatarInput.files.length > 0 ? avatarInput.files[0].name : '';
