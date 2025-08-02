@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchResultsView = document.getElementById('search-results-view');
     const statusDetailView = document.getElementById('status-detail-view');
     const settingsView = document.getElementById('settings-view');
+    const hashtagTimelineView = document.getElementById('hashtag-timeline-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('profile');
     };
     state.actions.showStatusDetail = (id) => showStatusDetail(id);
+    state.actions.showHashtagTimeline = (tagName) => fetchHashtagTimeline(tagName);
     state.actions.toggleAction = (action, id, button) => toggleAction(action, id, button);
     state.actions.toggleCommentThread = (status, element) => toggleCommentThread(status, element);
     state.actions.showEditModal = (post) => {
@@ -82,17 +84,19 @@ document.addEventListener('DOMContentLoaded', () => {
         searchResultsView.style.display = 'none';
         statusDetailView.style.display = 'none';
         settingsView.style.display = 'none';
+        hashtagTimelineView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         
         if (viewName === 'timeline') {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
-        } else if (viewName === 'profile' || viewName === 'search' || viewName === 'statusDetail' || viewName === 'settings') {
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
             if (viewName === 'profile') profilePageView.style.display = 'block';
             if (viewName === 'search') searchResultsView.style.display = 'flex';
             if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
             if (viewName === 'settings') settingsView.style.display = 'block';
+            if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
             backBtn.style.display = 'block';
         }
     }
@@ -165,6 +169,33 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Failed to fetch timeline:', error);
             timelineDiv.innerHTML = '<p>Could not load timeline.</p>';
+        }
+    }
+    
+    async function fetchHashtagTimeline(tagName) {
+        switchView('hashtag');
+        hashtagTimelineView.innerHTML = `
+            <div class="view-header">#${tagName}</div>
+            <p>Loading posts...</p>
+        `;
+
+        try {
+            const statuses = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
+            
+            hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div>`;
+
+            if (statuses.length === 0) {
+                hashtagTimelineView.innerHTML += '<p>No posts found for this hashtag.</p>';
+                return;
+            }
+
+            statuses.forEach(status => {
+                const statusElement = renderStatus(status, state, state.actions);
+                if (statusElement) hashtagTimelineView.appendChild(statusElement);
+            });
+        } catch (error) {
+            console.error(`Failed to fetch timeline for #${tagName}:`, error);
+            hashtagTimelineView.innerHTML += '<p>Could not load timeline.</p>';
         }
     }
     
