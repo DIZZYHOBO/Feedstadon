@@ -41,6 +41,7 @@ export async function renderProfilePage(state, accountId) {
                 if (statusEl) feedContainer.appendChild(statusEl);
             });
             state.setNextPageUrl(statusesResponse.linkHeader);
+            state.checkAndLoadMore(); // ADDED: Check if more content needs to be loaded
         } else {
             feedContainer.innerHTML = '<p>This user has not posted anything yet.</p>';
             state.setNextPageUrl(null);
