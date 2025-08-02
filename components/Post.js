@@ -1,7 +1,6 @@
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
-// MODIFIED: This function is now exported
 export function renderPollHTML(poll) {
     const totalVotes = poll.votes_count;
     const canVote = !poll.voted && !poll.expired;
@@ -47,7 +46,15 @@ export function renderStatus(status, state, actions) {
     const boosterInfo = status.reblog ? `<div class="booster-info">Boosted by ${status.account.display_name}</div>` : '';
 
     let optionsMenuHTML = '';
-    if (state.currentUser && originalPost.account.id === state.currentUser.id) {
+    // MODIFIED: Added a Mute button to the options menu
+    if (state.currentUser && originalPost.account.id !== state.currentUser.id) {
+        optionsMenuHTML = `
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="mute">Mute @${originalPost.account.acct}</button>
+            </div>
+        `;
+    } else if (state.currentUser && originalPost.account.id === state.currentUser.id) {
         optionsMenuHTML = `
             <button class="post-options-btn">${ICONS.more}</button>
             <div class="post-options-menu">
@@ -142,18 +149,34 @@ export function renderStatus(status, state, actions) {
             });
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
+        
+        // MODIFIED: Add listener for the mute button if it exists
+        const muteBtn = menu.querySelector('[data-action="mute"]');
+        if (muteBtn) {
+            muteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.style.display = 'none';
+                actions.muteAccount(originalPost.account.id);
+            });
+        }
 
-        menu.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = 'none';
-            actions.showEditModal(originalPost);
-        });
+        const editBtn = menu.querySelector('[data-action="edit"]');
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.style.display = 'none';
+                actions.showEditModal(originalPost);
+            });
+        }
 
-        menu.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = 'none';
-            actions.showDeleteModal(originalPost.id);
-        });
+        const deleteBtn = menu.querySelector('[data-action="delete"]');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.style.display = 'none';
+                actions.showDeleteModal(originalPost.id);
+            });
+        }
     }
 
     return statusDiv;
