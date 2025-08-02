@@ -141,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
                 if (postElement) {
-                    // MODIFIED: Add a class to trigger the animation
                     postElement.classList.add('newly-added');
                     timelineDiv.prepend(postElement);
                 }
@@ -269,10 +268,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             button.classList.toggle('active');
 
+            // MODIFIED: This whole block is new logic for smooth updates
             if (action === 'boost' && state.currentTimeline === 'home') {
-                fetchTimeline('home');
-            } 
-            else if (action === 'boost' || action === 'favorite') {
+                if (endpointAction === 'reblog') {
+                    // A reblog action returns the new reblog status. We add it to the top.
+                    const newPostElement = renderStatus(response, state, state.actions);
+                    if (newPostElement) {
+                        newPostElement.classList.add('newly-added');
+                        timelineDiv.prepend(newPostElement);
+                    }
+                } else { // It's an unreblog
+                    // An unreblog returns the original status. We remove the reblog from the timeline.
+                    // A reblog in the timeline has a data-id matching the *original* post's ID.
+                    const postToRemove = timelineDiv.querySelector(`.status[data-id='${response.id}']`);
+                    if (postToRemove) {
+                        postToRemove.remove();
+                    }
+                }
+            } else if (action === 'boost' || action === 'favorite') {
+                // For other timelines, just update the count.
                 const count = response[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
