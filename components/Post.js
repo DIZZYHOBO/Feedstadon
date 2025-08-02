@@ -60,6 +60,25 @@ export function renderStatus(status, state, actions) {
         </div>
     `;
 
+    // --- Event Listeners ---
+    
+    // This listener intercepts clicks on hashtag links
+    statusDiv.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (!link) return;
+
+        // Check if it's a hashtag link
+        if (link.classList.contains('hashtag')) {
+            e.preventDefault(); // Stop the browser from navigating
+            const href = link.getAttribute('href');
+            const tagName = href.split('/tags/')[1];
+            if (tagName) {
+                // Call our in-app function instead
+                actions.showHashtagTimeline(tagName);
+            }
+        }
+    });
+
     const avatar = statusDiv.querySelector('.avatar');
     const displayName = statusDiv.querySelector('.display-name');
     if (avatar) avatar.onclick = () => actions.showProfile(originalPost.account.id);
