@@ -210,10 +210,14 @@ textarea {
     text-align: center;
     padding: 20px;
     height: 60px;
-    display: none; /* Hidden by default, shown when there are more pages */
+    display: none;
 }
 #scroll-loader p {
     color: var(--font-color-muted);
+    visibility: hidden;
+}
+#scroll-loader.loading p {
+    visibility: visible;
 }
 
 
@@ -304,6 +308,26 @@ textarea {
 
 .status-action.active {
     color: var(--accent-color);
+}
+
+.spoiler-text {
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.status-content.hidden {
+    display: none;
+}
+.show-more-btn {
+    background-color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    color: var(--font-color);
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    cursor: pointer;
 }
 
 /* --- Post Options Menu --- */
@@ -765,21 +789,6 @@ textarea {
     margin-bottom: 15px;
     font-size: 1.2em;
     font-weight: bold;
-}
-
-/* --- Debugging --- */
-#debug-overlay {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    font-family: monospace;
-    font-size: 12px;
-    z-index: 9999;
-    pointer-events: none;
 }
 
 /* --- Mobile Responsiveness --- */
