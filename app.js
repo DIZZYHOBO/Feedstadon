@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onopen = () => console.log('User WebSocket connection established.');
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
+
             if (data.event === 'update' && state.currentTimeline === 'home') {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
@@ -173,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     timelineDiv.prepend(postElement);
                 }
             }
+            
             if (data.event === 'notification') {
                 state.hasUnreadNotifications = true;
                 updateNotificationIndicator();
@@ -180,12 +182,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     showBrowserNotification(JSON.parse(data.payload));
                 }
             }
+            
             if (data.event === 'delete') {
                 const postId = data.payload;
                 const postElement = document.querySelector(`.status[data-id='${postId}']`);
                 if (postElement) {
                     postElement.classList.add('fading-out');
                     setTimeout(() => postElement.remove(), 500);
+                }
+            }
+
+            // MODIFIED: Handle live updates to post stats
+            if (data.event === 'status.update') {
+                const updatedPost = JSON.parse(data.payload);
+                const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
+                if (postElement) {
+                    const favButton = postElement.querySelector('[data-action="favorite"]');
+                    const boostButton = postElement.querySelector('[data-action="boost"]');
+                    if (favButton) {
+                        favButton.innerHTML = `${ICONS.favorite} ${updatedPost.favourites_count}`;
+                    }
+                    if (boostButton) {
+                        boostButton.innerHTML = `${ICONS.boost} ${updatedPost.reblogs_count}`;
+                    }
                 }
             }
         };
@@ -260,6 +279,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (postElement) {
                     postElement.classList.add('fading-out');
                     setTimeout(() => postElement.remove(), 500);
+                }
+            }
+            // MODIFIED: Handle live updates to post stats
+            if (data.event === 'status.update') {
+                const updatedPost = JSON.parse(data.payload);
+                const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
+                if (postElement) {
+                    const favButton = postElement.querySelector('[data-action="favorite"]');
+                    const boostButton = postElement.querySelector('[data-action="boost"]');
+                    if (favButton) {
+                        favButton.innerHTML = `${ICONS.favorite} ${updatedPost.favourites_count}`;
+                    }
+                    if (boostButton) {
+                        boostButton.innerHTML = `${ICONS.boost} ${updatedPost.reblogs_count}`;
+                    }
                 }
             }
         };
@@ -606,19 +640,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const isClickInsideDropdown = e.target.closest('.dropdown');
         const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
         const isClickInsidePostOptions = e.target.closest('.post-options-btn') || e.target.closest('.post-options-menu');
-
         if (!isClickInsideDropdown) {
             document.querySelectorAll('.dropdown.active').forEach(d => {
                 d.classList.remove('active');
             });
         }
-        
         if (!isClickInsideSearch) {
             searchInput.value = '';
             searchForm.style.display = 'none';
             searchToggleBtn.style.display = 'block';
         }
-        
         if (!isClickInsidePostOptions) {
             document.querySelectorAll('.post-options-menu').forEach(menu => {
                 menu.style.display = 'none';
