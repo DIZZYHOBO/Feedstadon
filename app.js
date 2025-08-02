@@ -56,17 +56,24 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoadingMore: false,
         nextPageUrl: null
     };
+    
+    window.appState = state;
 
     state.setNextPageUrl = (linkHeader) => {
         if (linkHeader) {
             const nextLink = linkHeader.split(',').find(link => link.includes('rel="next"'));
             if (nextLink) {
                 state.nextPageUrl = nextLink.match(/<(.+)>/)[1];
+                console.log('Next page URL set:', state.nextPageUrl);
                 return;
             }
         }
+        console.log('No next page URL found.');
         state.nextPageUrl = null;
     };
+    
+    // Pass checkAndLoadMore via state so components can call it
+    state.checkAndLoadMore = () => checkAndLoadMore();
     
     let postToEdit = null;
     let postToDeleteId = null;
@@ -279,17 +286,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkAndLoadMore() {
-        if (state.isLoadingMore || !state.nextPageUrl) return;
-        if (document.documentElement.scrollHeight <= window.innerHeight) {
+        if (state.isLoadingMore || !state.nextPageUrl) {
+            return;
+        }
+        
+        const scrollableHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+
+        if (scrollableHeight <= viewportHeight) {
+            console.log("Content doesn't fill screen, loading more automatically...");
             loadMoreContent();
         }
     }
 
     async function loadMoreContent() {
-        if (!state.nextPageUrl || state.isLoadingMore) return;
+        if (!state.nextPageUrl || state.isLoadingMore) {
+            console.log('Load more blocked:', {nextPage: !!state.nextPageUrl, loading: state.isLoadingMore});
+            return;
+        }
 
+        console.log('Loading more content from:', state.nextPageUrl);
         state.isLoadingMore = true;
-        const endpoint = state.nextPageUrl.split(state.instanceUrl)[1];
+        
+        // The nextPageUrl is a full URL, so we extract the path and query from it.
+        const url = new URL(state.nextPageUrl);
+        const endpoint = url.pathname + url.search;
 
         try {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
@@ -314,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load more content:', error);
         } finally {
             state.isLoadingMore = false;
+            // Use a short timeout to allow the DOM to update before checking again
             setTimeout(checkAndLoadMore, 500);
         }
     }
@@ -543,8 +565,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('scroll', () => {
-        // MODIFIED: Use a more robust property for total page height
-        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) {
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const totalHeight = document.documentElement.scrollHeight;
+        console.log(`Scroll check: pos=${scrollPosition}, height=${totalHeight}`);
+        
+        if (scrollPosition >= totalHeight - 500) {
             loadMoreContent();
         }
     });
