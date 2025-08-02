@@ -45,6 +45,13 @@ export function renderStatus(status, state, actions) {
 
     const boosterInfo = status.reblog ? `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>` : '';
 
+    let replyInfo = '';
+    if (originalPost.in_reply_to_id) {
+        replyInfo = `<div class="reply-info" data-action="view-parent" data-parent-id="${originalPost.in_reply_to_id}">
+                        ${ICONS.reply} Replying to thread
+                     </div>`;
+    }
+
     let optionsMenuHTML = '';
     if (state.currentUser && originalPost.account.id !== state.currentUser.id) {
         optionsMenuHTML = `
@@ -85,6 +92,7 @@ export function renderStatus(status, state, actions) {
 
     statusDiv.innerHTML = `
         ${boosterInfo}
+        ${replyInfo}
         <div class="status-body-content">
             <div class="status-header">
                 <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
@@ -125,6 +133,15 @@ export function renderStatus(status, state, actions) {
             const pollId = pollContainer.dataset.pollId;
             const choice = parseInt(pollOption.dataset.choice, 10);
             actions.voteOnPoll(pollId, [choice], statusDiv);
+            return;
+        }
+
+        const replyBanner = e.target.closest('.reply-info');
+        if (replyBanner) {
+            e.preventDefault();
+            const parentId = replyBanner.dataset.parentId;
+            if (parentId) actions.showStatusDetail(parentId);
+            return;
         }
     });
 
