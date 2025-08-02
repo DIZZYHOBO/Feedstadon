@@ -1,6 +1,6 @@
 import { apiFetch } from './components/api.js';
 import { ICONS } from './components/icons.js';
-import { renderStatus } from './components/Post.js';
+import { renderStatus, renderPollHTML } from './components/Post.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
 
+
     // --- View Management ---
     function switchView(viewName) {
         state.currentView = viewName;
@@ -194,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         socket.onerror = (error) => console.error('User WebSocket error:', error);
     }
-
+    
     function showBrowserNotification(notificationData) {
         let title = 'New Notification';
         let options = {
@@ -384,10 +385,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ choices })
             });
-            const statusId = statusElement.dataset.id;
-            const originalStatusResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
-            const newStatusElement = renderStatus(originalStatusResponse.data, state, state.actions);
-            statusElement.replaceWith(newStatusElement);
+            const updatedPoll = response.data;
+            const pollContainer = statusElement.querySelector('.poll-container');
+            if (pollContainer) {
+                pollContainer.outerHTML = renderPollHTML(updatedPoll);
+            }
         } catch (error) {
             console.error('Failed to vote on poll:', error);
             alert('Could not cast vote.');
@@ -579,6 +581,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     fetchNotifications(state);
                 }
             });
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) {
+            loadMoreContent();
         }
     });
 
