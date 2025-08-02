@@ -472,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.setNextPageUrl(response.linkHeader);
         } catch (error) {
             console.error('Failed to load more content:', error);
+            alert('Failed to load more posts.');
         } finally {
             state.isLoadingMore = false;
             scrollLoader.classList.remove('loading');
