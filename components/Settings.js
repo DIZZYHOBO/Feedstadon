@@ -88,6 +88,7 @@ export async function renderSettingsPage(state) {
 
                 <div class="settings-section">
                     <h3>Keyword Filters</h3>
+                    <p>Hide posts from your timelines that contain these words or phrases.</p>
                     <div class="form-group">
                         <div class="filter-input-group">
                             <input type="text" id="add-filter-input" placeholder="e.g., politics, spoilers">
@@ -137,17 +138,78 @@ export async function renderSettingsPage(state) {
             const saveButton = settingsForm.querySelector('.settings-save-button');
             saveButton.disabled = true;
             saveButton.textContent = 'Saving...';
-            // ... (profile saving logic is unchanged)
+
+            const avatarFile = avatarInput.files[0];
+            const headerFile = headerInput.files[0];
+
+            if (avatarFile) avatarStatus.textContent = 'Uploading avatar...';
+            if (headerFile) headerStatus.textContent = 'Uploading header...';
+
+            try {
+                const formData = new FormData();
+                formData.append('display_name', document.getElementById('display-name-input').value);
+                formData.append('note', document.getElementById('bio-textarea').value);
+                
+                if (avatarFile) formData.append('avatar', avatarFile);
+                if (headerFile) formData.append('header', headerFile);
+
+                const updatedAccount = await apiUpdateCredentials(state, formData);
+                state.currentUser = updatedAccount;
+                
+                alert('Settings saved successfully!');
+                document.getElementById('user-display-btn').textContent = updatedAccount.display_name;
+                avatarStatus.textContent = '';
+                headerStatus.textContent = '';
+                avatarInput.value = '';
+                headerInput.value = '';
+
+            } catch (error) {
+                console.error('Failed to save settings:', error);
+                alert('Could not save settings.');
+                if (avatarFile) avatarStatus.textContent = 'Upload failed.';
+                if (headerFile) headerStatus.textContent = 'Upload failed.';
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Profile Settings';
+            }
         });
 
         addFilterBtn.addEventListener('click', async () => {
-            // ... (add filter logic is unchanged)
+            const input = container.querySelector('#add-filter-input');
+            const phrase = input.value.trim();
+            if (!phrase) return;
+
+            try {
+                const newFilter = (await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phrase: phrase,
+                        context: ['home', 'public']
+                    })
+                })).data;
+                input.value = '';
+                currentFilters.push(newFilter);
+                renderFilterList(container, currentFilters);
+            } catch (error) {
+                console.error('Failed to add filter:', error);
+                alert('Could not add filter.');
+            }
         });
 
         filterList.addEventListener('click', async (e) => {
-            if (e.target.dataset.id) {
+            if (e.target.tagName === 'BUTTON' && e.target.dataset.id) {
                 const filterId = e.target.dataset.id;
-                // ... (delete filter logic is unchanged)
+                try {
+                    await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/filters/${filterId}`, {
+                        method: 'DELETE'
+                    });
+                    currentFilters = currentFilters.filter(f => f.id !== filterId);
+                    renderFilterList(container, currentFilters);
+                } catch (error) {
+                    console.error('Failed to delete filter:', error);
+                    alert('Could not delete filter.');
+                }
             }
         });
         
@@ -158,7 +220,6 @@ export async function renderSettingsPage(state) {
                     await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/unmute`, {
                         method: 'POST'
                     });
-                    // Remove the user from the list visually
                     e.target.closest('.muted-user-item').remove();
                 } catch (error) {
                     console.error('Failed to unmute user:', error);
