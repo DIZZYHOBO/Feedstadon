@@ -80,19 +80,6 @@ textarea {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-#login-view input[type="text"]::placeholder,
-#login-view input[type="password"]::placeholder {
-    color: var(--font-color-muted);
-}
-
-#login-view input[type="text"]:focus,
-#login-view input[type="password"]:focus,
-textarea:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2);
-}
-
 #connect-btn {
     background-color: transparent;
     background-image: url('./images/login.png');
@@ -155,6 +142,7 @@ textarea:focus {
 .nav-button:hover {
     background-color: var(--primary-color);
 }
+
 
 .icon-button {
     border: none;
@@ -222,14 +210,12 @@ textarea:focus {
     text-align: center;
     padding: 20px;
     height: 60px;
+    display: none; /* Hidden by default, shown when there are more pages */
 }
 #scroll-loader p {
     color: var(--font-color-muted);
-    visibility: hidden;
 }
-#scroll-loader.visible p {
-    visibility: visible;
-}
+
 
 /* --- Status / Post --- */
 .status { 
@@ -282,8 +268,6 @@ textarea:focus {
     line-height: 1.5; 
     overflow-wrap: break-word;
 }
-
-/* MODIFIED: Link Styling */
 .status-content a, .profile-info .note a { 
     color: var(--font-color); 
     text-decoration: none;
@@ -781,6 +765,21 @@ textarea:focus {
     margin-bottom: 15px;
     font-size: 1.2em;
     font-weight: bold;
+}
+
+/* --- Debugging --- */
+#debug-overlay {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 9999;
+    pointer-events: none;
 }
 
 /* --- Mobile Responsiveness --- */
