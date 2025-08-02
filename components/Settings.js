@@ -25,9 +25,8 @@ export async function renderSettingsPage(state) {
     container.innerHTML = '<p>Loading settings...</p>';
 
     try {
-        // Fetch account and filters in parallel
         const [account, filters] = await Promise.all([
-            state.currentUser, // We already have this
+            state.currentUser,
             apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters')
         ]);
 
@@ -47,10 +46,12 @@ export async function renderSettingsPage(state) {
                         <div class="form-group">
                             <label for="avatar-input">Avatar (Profile Picture)</label>
                             <input type="file" id="avatar-input" accept="image/*">
+                            <span class="file-status" id="avatar-status"></span>
                         </div>
                         <div class="form-group">
                             <label for="header-input">Header (Banner Image)</label>
                             <input type="file" id="header-input" accept="image/*">
+                            <span class="file-status" id="header-status"></span>
                         </div>
                     </div>
                     
@@ -83,14 +84,60 @@ export async function renderSettingsPage(state) {
         const settingsForm = container.querySelector('#settings-form');
         const addFilterBtn = container.querySelector('#add-filter-btn');
         const filterList = container.querySelector('#filter-list');
+        const avatarInput = container.querySelector('#avatar-input');
+        const headerInput = container.querySelector('#header-input');
+        const avatarStatus = container.querySelector('#avatar-status');
+        const headerStatus = container.querySelector('#header-status');
 
-        // Listener for saving main profile settings
-        settingsForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            // ... (profile saving logic is unchanged)
+        avatarInput.addEventListener('change', () => {
+            avatarStatus.textContent = avatarInput.files.length > 0 ? avatarInput.files[0].name : '';
         });
 
-        // Listener for adding a new filter
+        headerInput.addEventListener('change', () => {
+            headerStatus.textContent = headerInput.files.length > 0 ? headerInput.files[0].name : '';
+        });
+
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const saveButton = settingsForm.querySelector('.settings-save-button');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            const avatarFile = avatarInput.files[0];
+            const headerFile = headerInput.files[0];
+
+            if (avatarFile) avatarStatus.textContent = 'Uploading avatar...';
+            if (headerFile) headerStatus.textContent = 'Uploading header...';
+
+            try {
+                const formData = new FormData();
+                formData.append('display_name', document.getElementById('display-name-input').value);
+                formData.append('note', document.getElementById('bio-textarea').value);
+                
+                if (avatarFile) formData.append('avatar', avatarFile);
+                if (headerFile) formData.append('header', headerFile);
+
+                const updatedAccount = await apiUpdateCredentials(state, formData);
+                state.currentUser = updatedAccount;
+                
+                alert('Settings saved successfully!');
+                document.getElementById('user-display-btn').textContent = updatedAccount.display_name;
+                avatarStatus.textContent = '';
+                headerStatus.textContent = '';
+                avatarInput.value = '';
+                headerInput.value = '';
+
+            } catch (error) {
+                console.error('Failed to save settings:', error);
+                alert('Could not save settings.');
+                if (avatarFile) avatarStatus.textContent = 'Upload failed.';
+                if (headerFile) headerStatus.textContent = 'Upload failed.';
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Settings';
+            }
+        });
+
         addFilterBtn.addEventListener('click', async () => {
             const input = container.querySelector('#add-filter-input');
             const phrase = input.value.trim();
@@ -102,7 +149,7 @@ export async function renderSettingsPage(state) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         phrase: phrase,
-                        context: ['home', 'public'] // Apply to home and public timelines
+                        context: ['home', 'public']
                     })
                 });
                 input.value = '';
@@ -114,7 +161,6 @@ export async function renderSettingsPage(state) {
             }
         });
 
-        // Listener for deleting filters (using event delegation)
         filterList.addEventListener('click', async (e) => {
             if (e.target.tagName === 'BUTTON') {
                 const filterId = e.target.dataset.id;
