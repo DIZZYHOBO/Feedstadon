@@ -9,7 +9,7 @@
     --font-color-muted: #8E8F90;
     --border-color: #333435;
     --link-color: #88C0D0;
-    --notification-dot-color: #ff3d3d; /* ADDED */
+    --notification-dot-color: #ff3d3d;
 }
 
 *, *::before, *::after {
@@ -19,6 +19,12 @@
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ADDED: Animation for posts being removed */
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 body {
@@ -175,6 +181,11 @@ textarea:focus {
 
 .status.newly-added {
     animation: fadeIn 0.5s ease-out;
+}
+
+/* ADDED: Style for fading out deleted posts */
+.status.fading-out {
+    animation: fadeOut 0.5s ease-out forwards;
 }
 
 .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; position: relative; }
@@ -364,7 +375,6 @@ textarea:focus {
     border-radius: 50%;
     border: 2px solid var(--card-color);
 }
-
 
 /* --- Modals --- */
 .modal-overlay {
