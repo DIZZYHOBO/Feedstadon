@@ -84,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.nextPageUrl = null;
         scrollLoader.style.display = 'none';
     };
+    
+    // This is the helper function that was missing
+    state.checkAndLoadMore = () => checkAndLoadMore();
 
     // --- Core Actions ---
     state.actions.showProfile = (id) => {
@@ -383,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            checkAndLoadMore();
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
@@ -407,12 +411,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
+            checkAndLoadMore();
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
-    
+
+    function checkAndLoadMore() {
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (document.documentElement.scrollHeight <= window.innerHeight) {
+            loadMoreContent();
+        }
+    }
+
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
