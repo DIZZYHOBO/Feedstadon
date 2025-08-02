@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDetailView = document.getElementById('status-detail-view');
     const settingsView = document.getElementById('settings-view');
     const hashtagTimelineView = document.getElementById('hashtag-timeline-view');
+    const notificationsView = document.getElementById('notifications-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsLink = document.getElementById('settings-link');
     const refreshBtn = document.getElementById('refresh-btn');
     const scrollLoader = document.getElementById('scroll-loader');
+    const toastNotification = document.getElementById('toast-notification');
 
     const editPostModal = document.getElementById('edit-post-modal');
     const editPostForm = document.getElementById('edit-post-form');
@@ -64,6 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageUrl: null,
         hasUnreadNotifications: false
     };
+    
+    let postToEdit = null;
+    let postToDeleteId = null;
+    let publicSocket = null;
+    let backPressExit = false;
 
     state.setNextPageUrl = (linkHeader) => {
         if (linkHeader) {
@@ -77,12 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.nextPageUrl = null;
         scrollLoader.style.display = 'none';
     };
-    
-    state.checkAndLoadMore = () => checkAndLoadMore();
-    
-    let postToEdit = null;
-    let postToDeleteId = null;
-    let publicSocket = null;
 
     // --- Core Actions ---
     state.actions.showProfile = (id) => {
@@ -105,9 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
     state.actions.muteAccount = (accountId) => muteAccount(accountId);
+    state.actions.showAllNotifications = () => renderNotificationsPage();
 
     // --- View Management ---
-    function switchView(viewName) {
+    function switchView(viewName, pushHistory = true) {
         state.currentView = viewName;
         timelineDiv.style.display = 'none';
         profilePageView.style.display = 'none';
@@ -115,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDetailView.style.display = 'none';
         settingsView.style.display = 'none';
         hashtagTimelineView.style.display = 'none';
+        notificationsView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         refreshBtn.style.display = 'none';
@@ -127,13 +130,18 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
             refreshBtn.style.display = 'flex';
-        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag'].includes(viewName)) {
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications'].includes(viewName)) {
             if (viewName === 'profile') profilePageView.style.display = 'block';
             if (viewName === 'search') searchResultsView.style.display = 'flex';
             if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
             if (viewName === 'settings') settingsView.style.display = 'block';
             if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
+            if (viewName === 'notifications') notificationsView.style.display = 'block';
             backBtn.style.display = 'block';
+        }
+
+        if (pushHistory) {
+            history.pushState({ view: viewName }, '', `#${viewName}`);
         }
     }
 
@@ -153,6 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initUserStreamSocket();
             initInfiniteScroll();
 
+            history.replaceState({ view: 'timeline' }, '', '#timeline');
+
         } catch (error) {
             console.error('Initialization failed:', error);
             alert('Connection failed. Please ensure your instance URL and token are correct.');
@@ -160,6 +170,58 @@ document.addEventListener('DOMContentLoaded', () => {
             loginView.style.display = 'block';
             appView.style.display = 'none';
             document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+
+    function showToast(message) {
+        toastNotification.textContent = message;
+        toastNotification.classList.add('visible');
+        setTimeout(() => {
+            toastNotification.classList.remove('visible');
+        }, 2000);
+    }
+    
+    async function renderNotificationsPage() {
+        switchView('notifications');
+        notificationsView.innerHTML = '<div class="view-header">Notifications</div>';
+        try {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+            const notifications = response.data;
+            if (notifications.length === 0) {
+                notificationsView.innerHTML += '<p>No notifications found.</p>';
+                return;
+            }
+            notifications.forEach(notification => {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                let icon = '';
+                let content = '';
+
+                switch (notification.type) {
+                    case 'favourite': case 'reblog': case 'mention':
+                        icon = ICONS[notification.type === 'favourite' ? 'favorite' : notification.type === 'reblog' ? 'boost' : 'reply'];
+                        content = `<strong>${notification.account.display_name}</strong> ${notification.type}d your post.`;
+                        item.addEventListener('click', () => state.actions.showStatusDetail(notification.status.id));
+                        break;
+                    case 'follow':
+                        icon = '👤';
+                        content = `<strong>${notification.account.display_name}</strong> followed you.`;
+                        item.addEventListener('click', () => state.actions.showProfile(notification.account.id));
+                        break;
+                    default: return;
+                }
+                
+                item.innerHTML = `
+                    <div class="notification-icon">${icon}</div>
+                    <img class="notification-avatar" src="${notification.account.avatar_static}" alt="${notification.account.display_name}">
+                    <div class="notification-content">${content}</div>
+                `;
+                notificationsView.appendChild(item);
+            });
+            state.setNextPageUrl(response.linkHeader);
+        } catch (error) {
+            console.error('Failed to load notifications page:', error);
+            notificationsView.innerHTML += '<p>Could not load notifications.</p>';
         }
     }
 
@@ -343,7 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
-            state.checkAndLoadMore();
             if (type.startsWith('public')) {
                 initPublicStreamSocket(type);
             }
@@ -368,20 +429,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusElement) hashtagTimelineView.appendChild(statusElement);
             });
             state.setNextPageUrl(response.linkHeader);
-            state.checkAndLoadMore();
         } catch (error) {
             console.error(`Failed to fetch timeline for #${tagName}:`, error);
             hashtagTimelineView.innerHTML = `<div class="view-header">#${tagName}</div><p>Could not load timeline.</p>`;
         }
     }
-
-    function checkAndLoadMore() {
-        if (state.isLoadingMore || !state.nextPageUrl) return;
-        if (document.documentElement.scrollHeight <= window.innerHeight) {
-            loadMoreContent();
-        }
-    }
-
+    
     async function loadMoreContent() {
         if (!state.nextPageUrl || state.isLoadingMore) return;
         state.isLoadingMore = true;
@@ -396,10 +449,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 container = profilePageView.querySelector('.profile-feed');
             } else if (state.currentView === 'hashtag') {
                 container = hashtagTimelineView;
+            } else if (state.currentView === 'notifications') {
+                container = notificationsView;
             }
             if (container) {
-                response.data.forEach(status => {
-                    container.appendChild(renderStatus(status, state, state.actions));
+                response.data.forEach(item => {
+                    // This assumes all "load more" content are statuses, which is not true for notifications.
+                    // For now, we'll assume only timelines and profiles are infinitely scrolled.
+                    if(item.content) { // A rough check for a status object
+                        container.appendChild(renderStatus(item, state, state.actions));
+                    }
                 });
             }
             state.setNextPageUrl(response.linkHeader);
@@ -744,11 +803,26 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
     
     window.addEventListener('popstate', (event) => {
+        if (state.currentView === 'timeline') {
+            if (backPressExit) {
+                window.close();
+            } else {
+                backPressExit = true;
+                showToast('Press back again to exit');
+                setTimeout(() => { backPressExit = false; }, 2000);
+                history.pushState({ view: 'timeline' }, '', '#timeline');
+            }
+            return;
+        }
+
         if (event.state && event.state.view) {
             switchView(event.state.view, false);
             if (event.state.view === 'timeline') {
                 fetchTimeline(state.currentTimeline);
             }
+        } else {
+            switchView('timeline', false);
+            fetchTimeline('home');
         }
     });
 
