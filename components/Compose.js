@@ -1,8 +1,27 @@
 import { apiFetch, apiUploadMedia } from './api.js';
 
-export function showComposeModal(state) {
+let inReplyToId = null; // Module-level variable to hold the ID of the post we're replying to
+
+export function showComposeModal(state, options = {}) {
     const composeModal = document.getElementById('compose-modal');
+    const composeTextarea = document.getElementById('compose-textarea');
+    const mediaPreview = document.getElementById('media-filename-preview');
+
+    // Reset fields from any previous use
+    composeTextarea.value = '';
+    mediaPreview.textContent = '';
+    document.getElementById('media-attachment-input').value = '';
+
+    // Check if we are in reply mode
+    if (options.inReplyToId && options.replyToAcct) {
+        inReplyToId = options.inReplyToId;
+        composeTextarea.value = `@${options.replyToAcct} `;
+    } else {
+        inReplyToId = null;
+    }
+
     composeModal.classList.add('visible');
+    composeTextarea.focus();
 }
 
 export function initComposeModal(state, onPostSuccess) {
@@ -34,7 +53,7 @@ export function initComposeModal(state, onPostSuccess) {
     composeForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const content = composeTextarea.value.trim();
-        if (!content && !attachedFile) return; // Must have content or a file
+        if (!content && !attachedFile) return;
 
         try {
             const postButton = composeForm.querySelector('button[type="submit"]');
@@ -49,20 +68,28 @@ export function initComposeModal(state, onPostSuccess) {
                 }
             }
 
+            const postBody = { 
+                status: content,
+                media_ids: mediaIds
+            };
+            
+            // Add the reply ID if it exists
+            if (inReplyToId) {
+                postBody.in_reply_to_id = inReplyToId;
+            }
+
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    status: content,
-                    media_ids: mediaIds
-                })
+                body: JSON.stringify(postBody)
             });
 
-            // Reset form
+            // Reset form and state
             composeTextarea.value = '';
             mediaInput.value = '';
             attachedFile = null;
             mediaPreview.textContent = '';
+            inReplyToId = null; // Clear reply ID after posting
             postButton.disabled = false;
             postButton.textContent = 'Post';
 
