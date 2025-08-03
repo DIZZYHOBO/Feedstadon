@@ -6,9 +6,12 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {})
     const url = `https://${cleanInstanceUrl}${endpoint}`;
     
     const headers = {
-        'Authorization': `Bearer ${accessToken}`,
         ...options.headers
     };
+
+    if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+    }
 
     const response = await fetch(url, { ...options, headers });
 
