@@ -3,33 +3,31 @@ import { ICONS } from './icons.js';
 import { renderStatus } from './Post.js';
 
 export async function renderHashtagSuggestions(state, query) {
-    const searchView = document.getElementById('search-results-view');
-    let suggestionBar = searchView.querySelector('.hashtag-suggestion-bar');
+    const suggestionsContainer = document.getElementById('search-suggestions-container');
+    suggestionsContainer.innerHTML = ''; 
 
     if (!query.startsWith('#') || query.length < 2) {
-        if (suggestionBar) suggestionBar.remove();
+        suggestionsContainer.style.display = 'none';
         return;
-    }
-    
-    if (!suggestionBar) {
-        suggestionBar = document.createElement('div');
-        suggestionBar.className = 'hashtag-suggestion-bar';
-        searchView.prepend(suggestionBar);
     }
 
     try {
         const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/trends`);
         const suggestions = response.data;
         
-        suggestionBar.innerHTML = ''; // Clear previous suggestions
-
-        if (suggestions.length === 0) return;
+        if (suggestions.length === 0) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
 
         const filteredSuggestions = suggestions
             .filter(tag => tag.name.toLowerCase().startsWith(query.substring(1).toLowerCase()))
             .slice(0, 4);
 
         if (filteredSuggestions.length > 0) {
+            const suggestionBar = document.createElement('div');
+            suggestionBar.className = 'hashtag-suggestion-bar';
+            
             filteredSuggestions.forEach(tag => {
                 const button = document.createElement('button');
                 button.className = 'hashtag-suggestion-btn';
@@ -37,47 +35,35 @@ export async function renderHashtagSuggestions(state, query) {
                 button.onclick = () => {
                     document.getElementById('search-input').value = `#${tag.name}`;
                     renderSearchResults(state, `#${tag.name}`);
+                    suggestionsContainer.style.display = 'none'; 
                 };
                 suggestionBar.appendChild(button);
             });
+            suggestionsContainer.appendChild(suggestionBar);
+            suggestionsContainer.style.display = 'block';
+        } else {
+            suggestionsContainer.style.display = 'none';
         }
+
     } catch (err) {
         console.error("Hashtag suggestion failed:", err);
+        suggestionsContainer.style.display = 'none';
     }
 }
 
 
 export async function renderSearchResults(state, query) {
     const container = document.getElementById('search-results-view');
-    
-    // Clear previous suggestion bar if it exists
-    const existingBar = container.querySelector('.hashtag-suggestion-bar');
-    if (existingBar) existingBar.remove();
-
+    document.getElementById('search-suggestions-container').style.display = 'none';
     container.innerHTML = `<p>Searching for "${query}"...</p>`;
 
     try {
-        // If the query is a hashtag, fetch the tag timeline directly.
         if (query.startsWith('#')) {
             const tagName = query.substring(1);
-            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
-            const statuses = response.data;
-
-            container.innerHTML = `<div class="view-header">#${tagName}</div>`;
-
-            if (statuses.length === 0) {
-                container.innerHTML += `<p>No posts found for "${query}".</p>`;
-                return;
-            }
-
-            statuses.forEach(status => {
-                const statusElement = renderStatus(status, state, state.actions);
-                if (statusElement) container.appendChild(statusElement);
-            });
+            fetchHashtagTimeline(state, tagName, container); // Use a helper
             return;
         }
 
-        // Otherwise, perform a general search.
         const results = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v2/search?q=${query}&resolve=true`)).data;
         
         container.innerHTML = '';
@@ -102,9 +88,7 @@ export async function renderSearchResults(state, query) {
                         <div class="acct">@${account.acct}</div>
                     </div>
                 `;
-                resultDiv.addEventListener('click', () => {
-                    state.actions.showProfile(account.id);
-                });
+                resultDiv.addEventListener('click', () => state.actions.showProfile(account.id));
                 container.appendChild(resultDiv);
             });
         }
@@ -124,9 +108,7 @@ export async function renderSearchResults(state, query) {
                         <div class="acct">${tag.history[0].uses} posts this week</div>
                     </div>
                 `;
-                resultDiv.addEventListener('click', () => {
-                    state.actions.showHashtagTimeline(tag.name);
-                });
+                resultDiv.addEventListener('click', () => state.actions.showHashtagTimeline(tag.name));
                 container.appendChild(resultDiv);
             });
         }
@@ -145,5 +127,27 @@ export async function renderSearchResults(state, query) {
     } catch (err) {
         console.error("Search failed:", err);
         container.innerHTML = `<p>Could not perform search. Please try again later.</p>`;
+    }
+}
+
+async function fetchHashtagTimeline(state, tagName, container) {
+    try {
+        const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
+        const statuses = response.data;
+
+        container.innerHTML = `<div class="view-header">#${tagName}</div>`;
+
+        if (statuses.length === 0) {
+            container.innerHTML += `<p>No posts found for #${tagName}.</p>`;
+            return;
+        }
+
+        statuses.forEach(status => {
+            const statusElement = renderStatus(status, state, state.actions);
+            if (statusElement) container.appendChild(statusElement);
+        });
+    } catch (err) {
+        console.error(`Failed to fetch timeline for #${tagName}:`, err);
+        container.innerHTML = `<p>Could not load timeline for #${tagName}.</p>`;
     }
 }
