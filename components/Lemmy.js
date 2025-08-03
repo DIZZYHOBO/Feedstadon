@@ -1,35 +1,91 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { renderStatus } from './Post.js';
 import { formatTimestamp } from './utils.js';
+
+function renderLemmyComment(comment, level = 0) {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'lemmy-comment';
+    commentDiv.style.marginLeft = `${level * 20}px`;
+
+    const timestamp = formatTimestamp(comment.comment.published);
+
+    commentDiv.innerHTML = `
+        <div class="comment-header">
+            <span class="lemmy-user">${comment.creator.name}</span>
+            <span class="timestamp">· ${timestamp}</span>
+        </div>
+        <div class="comment-content">${comment.comment.content}</div>
+    `;
+
+    if (comment.replies && comment.replies.length > 0) {
+        const repliesContainer = document.createElement('div');
+        repliesContainer.className = 'lemmy-replies';
+        comment.replies.forEach(reply => {
+            repliesContainer.appendChild(renderLemmyComment(reply, level + 1));
+        });
+        commentDiv.appendChild(repliesContainer);
+    }
+
+    return commentDiv;
+}
+
+async function toggleLemmyCommentThread(post, postDiv, state) {
+    let threadContainer = postDiv.querySelector('.lemmy-comment-thread');
+    if (threadContainer) {
+        threadContainer.remove();
+        return;
+    }
+
+    threadContainer = document.createElement('div');
+    threadContainer.className = 'lemmy-comment-thread';
+    threadContainer.innerHTML = `<p>Loading comments...</p>`;
+    postDiv.appendChild(threadContainer);
+
+    try {
+        const communityHostname = new URL(post.community.actor_id).hostname;
+        const response = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post?id=${post.post.id}`);
+        const comments = response.data.comments;
+
+        threadContainer.innerHTML = '';
+        if (comments.length > 0) {
+            comments.forEach(comment => {
+                threadContainer.appendChild(renderLemmyComment(comment));
+            });
+        } else {
+            threadContainer.innerHTML = '<p>No comments yet.</p>';
+        }
+    } catch (err) {
+        console.error("Failed to load Lemmy comments:", err);
+        threadContainer.innerHTML = '<p>Could not load comments.</p>';
+    }
+}
+
 
 function renderLemmyPost(post, state, actions) {
     const postDiv = document.createElement('div');
-    postDiv.className = 'status lemmy-post'; // Added a special class for Lemmy posts
+    postDiv.className = 'status lemmy-post';
     postDiv.dataset.id = post.post.ap_id;
 
     const communityLink = `!${post.community.name}@${new URL(post.community.actor_id).hostname}`;
+    const timestamp = formatTimestamp(post.post.published);
 
     let mediaHTML = '';
     if (post.post.url && post.post.thumbnail_url) {
-        mediaHTML = `<div class="lemmy-thumbnail"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+        mediaHTML = `<div class="lemmy-thumbnail"><a href="${post.post.url}" target="_blank" rel="noopener noreferrer"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></a></div>`;
     }
 
-    const timestamp = formatTimestamp(post.post.published);
-
     postDiv.innerHTML = `
-        <div class="lemmy-header">
-             <span class="community-link" data-community-acct="${post.community.name}@${new URL(post.community.actor_id).hostname}">${communityLink}</span> · 
-             <span class="lemmy-user">by ${post.creator.name}</span>
-        </div>
-        <div class="lemmy-content">
+        <div class="status-body-content">
+            <h3 class="lemmy-title"><a href="${post.post.ap_id}" target="_blank" rel="noopener noreferrer">${post.post.name}</a></h3>
             ${mediaHTML}
-            <div class="lemmy-post-details">
-                <h3 class="lemmy-title">${post.post.name}</h3>
-                <div class="status-footer">
-                    <button class="status-action" data-action="reply">${ICONS.reply} ${post.counts.comments}</button>
-                    <button class="status-action" data-action="boost">${ICONS.boost} ${post.counts.score}</button>
-                </div>
+            <div class="lemmy-post-footer">
+                <span class="community-link" data-community-acct="${post.community.name}@${new URL(post.community.actor_id).hostname}">${communityLink}</span> · 
+                <span class="lemmy-user">by ${post.creator.name}</span>
+                <span class="timestamp">· ${timestamp}</span>
+            </div>
+            <div class="status-footer">
+                <button class="status-action" data-action="toggle-comments">${ICONS.reply} ${post.counts.comments}</button>
+                <button class="status-action" data-action="boost">${ICONS.boost} ${post.counts.score}</button>
             </div>
         </div>
     `;
@@ -38,12 +94,16 @@ function renderLemmyPost(post, state, actions) {
         e.stopPropagation();
         actions.showLemmyCommunity(e.target.dataset.communityAcct);
     });
-    
+
     postDiv.querySelectorAll('.status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = button.dataset.action;
-            actions.toggleAction(action, { id: post.post.ap_id }, button);
+            if (action === 'toggle-comments') {
+                toggleLemmyCommentThread(post, postDiv, state);
+            } else {
+                actions.toggleAction(action, { id: post.post.ap_id }, button);
+            }
         });
     });
 
@@ -58,10 +118,10 @@ export async function renderLemmyCommunityPage(state, communityAcct, switchView)
     try {
         const [communityName, communityHostname] = communityAcct.split('@');
         const communityResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/community?name=${communityName}`);
-        const community = communityResponse.data.community_view;
+        const community = communityResponse.community_view;
         
         const postsResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post/list?community_id=${community.community.id}`);
-        const topLevelPosts = postsResponse.data.posts.filter(p => p.post.name && p.post.name.trim() !== '');
+        const topLevelPosts = postsResponse.posts.filter(p => p.post.name && p.post.name.trim() !== '');
 
         container.innerHTML = `
             <div class="lemmy-community-header" style="background-image: url(${community.community.banner || ''})">
