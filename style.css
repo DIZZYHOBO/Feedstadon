@@ -319,13 +319,12 @@ textarea:focus {
     overflow-wrap: break-word;
 }
 .status-content a, .profile-info .note a { 
-    color: var(--font-color); 
+    color: var(--link-color); 
     text-decoration: none;
     word-break: break-all; 
 }
 .status-content a:hover, .profile-info .note a:hover {
     text-decoration: underline;
-    color: var(--accent-color);
 }
 
 
@@ -536,6 +535,26 @@ textarea:focus {
 .profile-info .note { 
     line-height: 1.5; 
     overflow-wrap: break-word;
+}
+.profile-tabs {
+    display: flex;
+    border-top: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+.tab-button {
+    flex-grow: 1;
+    padding: 15px;
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+}
+.tab-button.active {
+    color: var(--font-color);
+    border-bottom-color: var(--accent-color);
 }
 
 /* --- Search Results Page --- */
@@ -1143,8 +1162,9 @@ textarea:focus {
 }
 .lemmy-comment {
     padding: 10px 0 10px 15px;
-    border-left: 2px solid var(--border-color);
+    border-left: 2px solid var(--accent-color);
     margin-top: 10px;
+    animation: fadeIn 0.3s;
 }
 .lemmy-comment .comment-footer {
     display: flex;
@@ -1164,6 +1184,34 @@ textarea:focus {
 .comment-content {
     line-height: 1.5;
 }
+
+.lemmy-reply-box {
+    margin-top: 10px;
+    padding-left: 15px;
+    animation: fadeIn 0.3s;
+}
+.lemmy-reply-box .reply-textarea {
+    width: 100%;
+    min-height: 80px;
+    margin-bottom: 10px;
+}
+.lemmy-reply-box .reply-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.lemmy-reply-box .reply-actions button {
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+}
+.lemmy-reply-box .reply-actions .submit-reply-btn {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+
 .lemmy-community-body {
     display: flex;
     gap: 15px;
