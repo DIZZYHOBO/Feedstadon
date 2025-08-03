@@ -1,6 +1,6 @@
-import { apiFetch } from './api.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+import { apiFetch } from './components/api.js';
+import { ICONS } from './components/icons.js';
+import { formatTimestamp } from './components/utils.js';
 
 function renderLemmyComment(comment, state, level = 0) {
     const commentDiv = document.createElement('div');
