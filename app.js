@@ -49,30 +49,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = (viewName) => {
-        // Hide all views by iterating through the views object
-        for (const key in views) {
+        // Hide all views first by iterating over the `views` object
+        Object.keys(views).forEach(key => {
             if (views[key] && views[key].style) {
-                 views[key].style.display = 'none';
+                views[key].style.display = 'none';
             }
-        }
-        
-        // Show the login view separately if needed
-        document.getElementById('login-view').style.display = 'none';
+        });
 
+        // Handle login view separately
         if (viewName === 'login') {
-            document.getElementById('login-view').style.display = 'block';
-            document.getElementById('app-view').style.display = 'none';
-        } else {
-            document.getElementById('app-view').style.display = 'block';
-            // Show the correct view from the views object
-            if (views[viewName]) {
-                // Use 'flex' for view containers that lay out children, which is most of them
-                views[viewName].style.display = 'flex';
-                // The main app view itself should be a block
-                views.app.style.display = 'block'; 
-            }
+            views.login.style.display = 'block';
+            views.app.style.display = 'none'; // Ensure app is hidden
+            return; 
         }
 
+        // For all other views, show the main app container
+        views.app.style.display = 'block';
+        
+        // And show the specific view inside it
+        if (views[viewName]) {
+            views[viewName].style.display = 'flex'; // Most views are flex containers
+        }
+
+        // Set visibility of other UI elements
         document.getElementById('back-btn').style.display = viewName !== 'timeline' ? 'block' : 'none';
         document.getElementById('search-form').style.display = 'none';
         document.getElementById('search-toggle-btn').style.display = 'block';
@@ -224,13 +223,19 @@ document.addEventListener('DOMContentLoaded', () => {
         state.accessToken = accessToken;
         apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
             .then(response => {
+                if(!response || !response.data || !response.data.id) {
+                    showLogin();
+                    showToast('Login failed: Invalid credentials response.');
+                    return;
+                }
                 state.currentUser = response.data;
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 document.querySelector('.top-nav').style.display = 'flex';
-                fetchTimeline(state, 'home');
                 switchView('timeline');
+                fetchTimeline(state, 'home');
             })
             .catch(err => {
+                console.error("Login API call failed:", err);
                 showLogin();
                 showToast('Login failed. Please check your instance URL and access token.');
             });
@@ -262,16 +267,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('feeds-dropdown').addEventListener('click', (e) => {
         if (e.target.dataset.timeline) {
             e.preventDefault();
-            fetchTimeline(state, e.target.dataset.timeline);
             switchView('timeline');
+            fetchTimeline(state, e.target.dataset.timeline);
             document.getElementById('feeds-dropdown').classList.remove('active');
         }
     });
 
     document.getElementById('refresh-btn').addEventListener('click', () => fetchTimeline(state, state.currentTimeline));
     document.getElementById('back-btn').addEventListener('click', () => {
-        fetchTimeline(state, state.currentTimeline);
         switchView('timeline');
+        fetchTimeline(state, state.currentTimeline);
     });
     
     document.getElementById('discover-lemmy-link').addEventListener('click', (e) => {
