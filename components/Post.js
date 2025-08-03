@@ -1,5 +1,6 @@
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
+import { apiFetch } from './api.js';
 
 export function renderPollHTML(poll) {
     const totalVotes = poll.votes_count;
@@ -201,4 +202,53 @@ export function renderStatus(status, state, actions, isThreadContext = false) {
     }
 
     return statusDiv;
+}
+
+export async function renderStatusDetail(state, statusId) {
+    const container = document.getElementById('status-detail-view');
+    container.innerHTML = '<p>Loading status...</p>';
+
+    try {
+        const context = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`)).data;
+        container.innerHTML = ''; // Clear loading message
+
+        const statusList = document.createElement('div');
+        statusList.className = 'status-list';
+
+        // Render ancestors
+        if (context.ancestors && context.ancestors.length > 0) {
+            context.ancestors.forEach(ancestor => {
+                const statusEl = renderStatus(ancestor, state, state.actions, true);
+                if (statusEl) {
+                    statusList.appendChild(statusEl);
+                }
+            });
+        }
+
+        // Render the main status
+        const mainStatusResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        const mainStatus = mainStatusResponse.data;
+        const mainStatusEl = renderStatus(mainStatus, state, state.actions, true);
+        if (mainStatusEl) {
+            mainStatusEl.classList.add('main-thread-post');
+            statusList.appendChild(mainStatusEl);
+        }
+
+
+        // Render descendants
+        if (context.descendants && context.descendants.length > 0) {
+            context.descendants.forEach(descendant => {
+                const statusEl = renderStatus(descendant, state, state.actions, true);
+                if (statusEl) {
+                    statusList.appendChild(statusEl);
+                }
+            });
+        }
+        container.appendChild(statusList);
+
+
+    } catch (err) {
+        console.error('Failed to load status detail:', err);
+        container.innerHTML = '<p>Could not load status details.</p>';
+    }
 }
