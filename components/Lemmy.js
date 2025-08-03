@@ -66,10 +66,10 @@ async function renderLemmyCommunityPage(state, communityAcct, switchView) {
 
     try {
         const [communityName, communityHostname] = communityAcct.split('@');
-        const communityResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/community?name=${communityName}`);
+        const communityResponse = await apiFetch(communityHostname, null, `/api/v3/community?name=${communityName}`);
         const community = communityResponse.data.community_view;
         
-        const postsResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post/list?community_id=${community.community.id}`);
+        const postsResponse = await apiFetch(communityHostname, null, `/api/v3/post/list?community_id=${community.community.id}`);
         const topLevelPosts = postsResponse.data.posts.filter(p => p.post.name && p.post.name.trim() !== '');
 
         container.innerHTML = `
@@ -110,7 +110,7 @@ async function renderLemmyDiscoverPage(state, switchView) {
 
     state.lemmyInstances.forEach(async (instanceUrl) => {
         try {
-            const response = await apiFetch(`https://${instanceUrl}`, null, '/api/v3/community/list');
+            const response = await apiFetch(instanceUrl, null, '/api/v3/community/list');
             if (!response.data || !response.data.communities) {
                  console.warn(`Could not fetch communities from ${instanceUrl}, it may be blocking requests.`);
                  return;
@@ -143,7 +143,7 @@ async function renderSubscribedFeed(state, switchView) {
     container.innerHTML = `<p>Loading subscribed feed...</p>`;
 
     try {
-        const lemmyInstance = state.lemmyInstances[0];
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         if (!lemmyInstance) {
             container.innerHTML = `<p>No Lemmy instance configured.</p>`;
             return;
@@ -155,7 +155,7 @@ async function renderSubscribedFeed(state, switchView) {
             return;
         }
 
-        const response = await apiFetch(`https://${lemmyInstance}`, jwt, '/api/v3/post/list?listing_type=Subscribed');
+        const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/list?listing_type=Subscribed');
         const posts = response.data.posts;
 
         container.innerHTML = '';
@@ -197,15 +197,15 @@ async function renderSubscribedFeed(state, switchView) {
 async function renderUnifiedFeed(state, switchView) {
     const container = document.getElementById('unified-feed');
     switchView('unified-feed');
-    container.innerHTML = `<p>Loading unified feed...</p>`;
+    container.innerHTML = `<p>Loading home feed...</p>`;
 
     try {
-        const lemmyInstance = state.lemmyInstances[0];
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const lemmyJwt = localStorage.getItem('lemmy_jwt');
 
         const [mastodonResponse, lemmyResponse] = await Promise.all([
             apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home'),
-            lemmyJwt ? apiFetch(`https://${lemmyInstance}`, lemmyJwt, '/api/v3/post/list?listing_type=Subscribed') : Promise.resolve({ data: { posts: [] } })
+            lemmyJwt ? apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=All') : Promise.resolve({ data: { posts: [] } })
         ]);
 
         const mastodonPosts = mastodonResponse.data;
