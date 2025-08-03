@@ -236,7 +236,7 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view { 
+#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view { 
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
@@ -1153,6 +1153,26 @@ textarea:focus {
 .comment-content {
     line-height: 1.5;
 }
+.lemmy-community-body {
+    display: flex;
+    gap: 15px;
+}
+.lemmy-sidebar {
+    flex: 0 0 250px;
+}
+.lemmy-sidebar details {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    background-color: var(--card-color);
+}
+.lemmy-sidebar summary {
+    font-weight: bold;
+    cursor: pointer;
+}
+.lemmy-post-list {
+    flex-grow: 1;
+}
 
 
 /* --- Mobile Responsiveness --- */
@@ -1174,5 +1194,12 @@ textarea:focus {
     .nav-button {
         font-size: 0.8em;
         padding: 6px 8px;
+    }
+
+    .lemmy-community-body {
+        flex-direction: column;
+    }
+    .lemmy-sidebar {
+        flex: 0 0 auto;
     }
 }
