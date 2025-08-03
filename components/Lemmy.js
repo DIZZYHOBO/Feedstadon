@@ -100,6 +100,10 @@ export async function renderLemmyDiscoverPage(state, switchView) {
     state.lemmyInstances.forEach(async (instanceUrl) => {
         try {
             const response = await apiFetch(`https://${instanceUrl}`, null, '/api/v3/community/list');
+            if (!response || !response.communities) {
+                 console.warn(`Could not fetch communities from ${instanceUrl}, it may be blocking requests.`);
+                 return;
+            }
             const communities = response.communities;
 
             communities.forEach(item => {
@@ -117,7 +121,7 @@ export async function renderLemmyDiscoverPage(state, switchView) {
                 communityList.appendChild(communityDiv);
             });
         } catch (err) {
-            console.warn(`Could not fetch communities from ${instanceUrl}`);
+            console.warn(`Could not fetch communities from ${instanceUrl}:`, err);
         }
     });
 }
