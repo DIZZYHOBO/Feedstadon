@@ -236,7 +236,7 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed { 
+#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed { 
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
@@ -753,6 +753,7 @@ textarea:focus {
 }
 
 .form-group input[type="text"],
+.form-group input[type="password"],
 .form-group textarea,
 .form-group select {
     padding: 12px;
@@ -855,6 +856,12 @@ textarea:focus {
 .muted-user-item .unmute-btn:hover {
     color: var(--accent-color);
     border-color: var(--accent-color);
+}
+
+.lemmy-login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 
