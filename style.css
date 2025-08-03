@@ -236,7 +236,7 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view { 
+#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed { 
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
@@ -1171,6 +1171,30 @@ textarea:focus {
     cursor: pointer;
 }
 .lemmy-post-list {
+    flex-grow: 1;
+}
+
+.lemmy-card {
+    display: flex;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.lemmy-card:hover {
+    background-color: var(--primary-color);
+}
+.vote-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    background-color: var(--primary-color);
+}
+.post-content {
+    padding: 15px;
     flex-grow: 1;
 }
 
