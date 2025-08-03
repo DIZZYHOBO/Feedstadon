@@ -18,7 +18,7 @@ function renderLemmyPost(post, state, actions) {
     const timestamp = formatTimestamp(post.post.published);
 
     postDiv.innerHTML = `
-        <div classs="lemmy-header">
+        <div class="lemmy-header">
              <span class="community-link" data-community-id="${post.community.actor_id}">${communityLink}</span> · 
              <span class="lemmy-user">by ${post.creator.name}</span>
         </div>
@@ -50,25 +50,29 @@ function renderLemmyPost(post, state, actions) {
     return postDiv;
 }
 
-export async function renderLemmyCommunityPage(state, communityId) {
+export async function renderLemmyCommunityPage(state, communityId, switchView) {
     const container = document.getElementById('lemmy-community-view');
     switchView('lemmy-community');
     container.innerHTML = `<p>Loading community...</p>`;
 
     try {
-        const community = await apiFetch(communityId, null, '/api/v3/community');
-        const posts = (await apiFetch(communityId, null, `/api/v3/post/list?community_id=${community.community_view.community.id}`)).posts;
+        const communityHostname = new URL(communityId).hostname;
+        const communityResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/community?actor_id=${communityId}`);
+        const community = communityResponse.community_view;
+        
+        const postsResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post/list?community_id=${community.community.id}`);
+        const posts = postsResponse.posts;
 
         container.innerHTML = `
-            <div class="lemmy-community-header" style="background-image: url(${community.community_view.community.banner || ''})">
-                <img src="${community.community_view.community.icon}" alt="${community.community_view.community.name} icon">
-                <h2>${community.community_view.community.name}</h2>
+            <div class="lemmy-community-header" style="background-image: url(${community.community.banner || ''})">
+                <img src="${community.community.icon}" alt="${community.community.name} icon">
+                <h2>${community.community.name}</h2>
             </div>
             <div class="lemmy-community-body">
                 <div class="lemmy-sidebar">
                     <h3>About</h3>
-                    <p>${community.community_view.community.description}</p>
-                    <button class="subscribe-btn" data-community-id="${community.community_view.community.actor_id}">Subscribe</button>
+                    <p>${community.community.description}</p>
+                    <button class="subscribe-btn" data-community-id="${community.community.actor_id}">Subscribe</button>
                 </div>
                 <div class="lemmy-post-list"></div>
             </div>
@@ -85,7 +89,7 @@ export async function renderLemmyCommunityPage(state, communityId) {
     }
 }
 
-export async function renderLemmyDiscoverPage(state) {
+export async function renderLemmyDiscoverPage(state, switchView) {
     const container = document.getElementById('lemmy-discover-view');
     switchView('lemmy-discover');
     container.innerHTML = `<div class="view-header">Discover Lemmy Communities</div>`;
