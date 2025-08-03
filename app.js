@@ -112,12 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.muteAccount = (accountId) => muteAccount(accountId);
     state.actions.showAllNotifications = () => {
         renderNotificationsPage();
-        userDropdown.classList.remove('active');
     };
     state.actions.showConversations = () => {
         renderConversationsList(state);
         switchView('conversations');
-        userDropdown.classList.remove('active');
     };
     state.actions.loadMoreContent = () => loadMoreContent();
 
@@ -155,7 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
             if (viewName === 'notifications') notificationsView.style.display = 'block';
             if (viewName === 'bookmarks') bookmarksView.style.display = 'block';
-            if (viewName === 'conversations') conversationsView.style.display = 'flex';
+            if (viewName === 'conversations') {
+                conversationsView.style.display = 'flex';
+                state.setNextPageUrl(null); // No infinite scroll on conversations list
+            }
             backBtn.style.display = 'block';
         }
 
@@ -697,10 +698,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     messagesBtn.addEventListener('click', () => {
         state.actions.showConversations();
+        userDropdown.classList.remove('active');
     });
 
     notificationsBtn.addEventListener('click', () => {
         state.actions.showAllNotifications();
+        userDropdown.classList.remove('active');
     });
 
     newPostLink.addEventListener('click', (e) => {
