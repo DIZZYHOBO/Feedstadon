@@ -609,4 +609,284 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function insertTemporaryReplyBox(post, statusElement,
+    function insertTemporaryReplyBox(post, statusElement, threadContainer) {
+        const existingTempBox = threadContainer.querySelector('.temporary-reply-form');
+        if (existingTempBox) {
+            existingTempBox.remove();
+        }
+        const mainReplyBox = threadContainer.querySelector('.comment-reply-form:not(.temporary-reply-form)');
+        if (mainReplyBox) mainReplyBox.style.display = 'none';
+        const tempReplyForm = document.createElement('form');
+        tempReplyForm.className = 'comment-reply-form temporary-reply-form';
+        tempReplyForm.innerHTML = `
+            <textarea></textarea>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <button type="submit">Reply</button>
+                <button type="button" class="cancel-temp-reply button-secondary">Cancel</button>
+            </div>
+        `;
+        statusElement.after(tempReplyForm);
+        const textarea = tempReplyForm.querySelector('textarea');
+        textarea.value = `@${post.account.acct} `;
+        const closeAndCleanup = () => {
+            tempReplyForm.remove();
+            if (mainReplyBox) mainReplyBox.style.display = 'flex';
+        };
+        tempReplyForm.querySelector('.cancel-temp-reply').addEventListener('click', closeAndCleanup);
+        tempReplyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const content = textarea.value.trim();
+            if (!content) return;
+            try {
+                const mainPostElement = threadContainer.closest('.status');
+                const mainPostId = mainPostElement.dataset.id;
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: content, in_reply_to_id: mainPostId })
+                });
+                toggleCommentThread(mainPostElement, mainPostElement);
+                setTimeout(() => toggleCommentThread(mainPostElement, mainPostElement), 100);
+            } catch(error) {
+                console.error("Failed to post nested reply:", error);
+                alert("Could not post reply.");
+                closeAndCleanup();
+            }
+        });
+    }
+
+    async function muteAccount(accountId) {
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/mute`, {
+                method: 'POST'
+            });
+            alert('User muted. Their posts will be hidden on your next timeline refresh.');
+        } catch (error) {
+            console.error('Failed to mute user:', error);
+            alert('Could not mute user.');
+        }
+    }
+
+    // --- Event Listeners ---
+    connectBtn.addEventListener('click', () => {
+        const instance = instanceUrlInput.value.trim();
+        const token = accessTokenInput.value.trim();
+        if (!instance || !token) {
+            alert('Please provide both an instance URL and an access token.');
+            return;
+        }
+        localStorage.setItem('instanceUrl', instance);
+        localStorage.setItem('accessToken', token);
+        onLoginSuccess(instance, token);
+    });
+
+    logoutBtn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        localStorage.clear(); 
+        window.location.reload(); 
+    });
+    
+    backBtn.addEventListener('click', () => {
+        if (state.currentView === 'conversations' && document.querySelector('.message-list')) {
+             state.actions.showConversations();
+        } else {
+            history.back();
+        }
+    });
+    
+    function handleMenuAction(action) {
+        action();
+        userDropdown.classList.remove('active');
+    }
+
+    messagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleMenuAction(state.actions.showConversations);
+    });
+
+    notificationsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleMenuAction(state.actions.showAllNotifications);
+    });
+
+    newPostLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMenuAction(() => showComposeModal(state));
+    });
+
+    profileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMenuAction(() => state.actions.showProfile(state.currentUser.id));
+    });
+
+    settingsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMenuAction(() => {
+            renderSettingsPage(state);
+            switchView('settings');
+        });
+    });
+    
+    [userDropdown, feedsDropdown].forEach(dd => {
+        if (dd) {
+            dd.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    if (d !== dd) d.classList.remove('active');
+                });
+                dd.classList.toggle('active');
+            });
+        }
+    });
+
+    function initInfiniteScroll() {
+        const options = {
+            root: null,
+            rootMargin: '400px 0px', // Increased margin for better mobile performance
+            threshold: 0
+        };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadMoreContent();
+                }
+            });
+        }, options);
+        observer.observe(scrollLoader);
+    }
+    
+    document.addEventListener('click', (e) => {
+        const isClickInsideDropdown = e.target.closest('.dropdown');
+        const isClickInsideSearch = e.target.closest('.nav-center') || e.target.closest('#search-toggle-btn');
+        const isClickInsidePostOptions = e.target.closest('.post-options-btn') || e.target.closest('.post-options-menu');
+        if (!isClickInsideDropdown) {
+            document.querySelectorAll('.dropdown.active').forEach(d => {
+                d.classList.remove('active');
+            });
+        }
+        if (!isClickInsideSearch) {
+            searchInput.value = '';
+            searchForm.style.display = 'none';
+            searchToggleBtn.style.display = 'block';
+        }
+        if (!isClickInsidePostOptions) {
+            document.querySelectorAll('.post-options-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+        }
+    });
+
+    feedsDropdown.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('timeline');
+            fetchTimeline(link.dataset.timeline);
+        });
+    });
+    
+    refreshBtn.addEventListener('click', () => {
+        if (state.currentView === 'timeline') {
+            fetchTimeline(state.currentTimeline === 'local' ? 'public?local=true' : state.currentTimeline);
+        }
+    });
+    
+    searchToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchForm.style.display = 'block';
+        searchInput.focus();
+        searchToggleBtn.style.display = 'none';
+    });
+    
+    searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+        renderSearchResults(state, query);
+        switchView('search');
+    });
+    
+    editPostForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newContent = editPostTextarea.value;
+        if (!postToEdit || newContent.trim() === '') return;
+        try {
+            const updatedPost = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToEdit.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newContent })
+            })).data;
+            const oldPostElement = document.querySelector(`.status[data-id='${postToEdit.id}']`);
+            if (oldPostElement) {
+                const newPostElement = renderStatus(updatedPost, state, state.actions);
+                oldPostElement.replaceWith(newPostElement);
+            }
+            editPostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to edit post:', error);
+            alert('Error editing post.');
+        }
+    });
+
+    cancelEditBtn.addEventListener('click', () => editPostModal.classList.remove('visible'));
+
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if (!postToDeleteId) return;
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
+            const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
+            if (postElement) postElement.remove();
+            deletePostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to delete post:', error);
+            alert('Error deleting post.');
+        }
+    });
+
+    cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
+    
+    window.addEventListener('popstate', (event) => {
+        if (state.currentView === 'timeline') {
+            if (backPressExit) {
+                window.close();
+            } else {
+                backPressExit = true;
+                showToast('Press back again to exit');
+                setTimeout(() => { backPressExit = false; }, 2000);
+                history.pushState({ view: 'timeline' }, '', '#timeline');
+            }
+            return;
+        }
+
+        if (event.state && event.state.view) {
+            switchView(event.state.view, false);
+            if (event.state.view === 'timeline') {
+                fetchTimeline(state.currentTimeline);
+            } else if (event.state.view === 'bookmarks') {
+                fetchTimeline('bookmarks');
+            } else if (event.state.view === 'notifications') {
+                renderNotificationsPage();
+            }
+        } else {
+            switchView('timeline', false);
+            fetchTimeline('home');
+        }
+    });
+
+    // --- Initial Load ---
+    function initLoginOnLoad() {
+        const instance = localStorage.getItem('instanceUrl');
+        const token = localStorage.getItem('accessToken');
+        if (instance && token) {
+            onLoginSuccess(instance, token);
+        } else {
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+    
+    initLoginOnLoad();
+});
