@@ -157,9 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewName === 'bookmarks') bookmarksView.style.display = 'block';
             if (viewName === 'conversations') {
                 conversationsView.style.display = 'flex';
-                state.setNextPageUrl(null); // No infinite scroll on conversations list
+                state.setNextPageUrl(null); 
             }
             backBtn.style.display = 'block';
+            feedsDropdown.style.display = 'block';
         }
 
         if (pushHistory) {
@@ -692,7 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.currentView === 'conversations' && document.querySelector('.message-list')) {
              state.actions.showConversations();
         } else {
-            history.back();
+            window.history.back();
         }
     });
     
