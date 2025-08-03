@@ -76,13 +76,16 @@
             <div class="dropdown" id="feeds-dropdown">
                 <button class="nav-button">Feeds</button>
                 <div class="dropdown-content">
-                    <a href="#" id="home-feed-link">Home Feed</a>
-                    <a href="#" data-timeline="home">Subscribed</a>
+                    <a href="#" data-timeline="home" class="main-feed-link">Home Feed</a>
+                    <div class="dropdown-divider">Lemmy</div>
+                    <a href="#" data-lemmy-feed="Subscribed">Subscribed</a>
+                    <a href="#" data-lemmy-feed="Local">Local</a>
+                    <a href="#" data-lemmy-feed="All">All</a>
+                     <a href="#" id="discover-lemmy-link">Discover</a>
+                    <div class="dropdown-divider">Mastodon</div>
                     <a href="#" data-timeline="public?local=true">Local</a>
                     <a href="#" data-timeline="public">All</a>
-                    <a href="#" id="saved-feed-link" data-timeline="bookmarks">Saved</a>
-                    <a href="#" id="discover-lemmy-link">Discover Communities</a>
-                    <a href="#" id="lemmy-subscribed-link">Lemmy Subscribed</a>
+                    <a href="#" data-timeline="bookmarks">Saved</a>
                 </div>
             </div>
         </div>
@@ -120,6 +123,17 @@
             <button id="connect-btn" title="Connect"></button>
         </div>
         <div id="app-view">
+            <div id="lemmy-filter-bar" class="filter-bar" style="display: none;">
+                 <select id="lemmy-sort-select">
+                    <option value="New">New</option>
+                    <option value="Active">Active</option>
+                    <option value="Hot">Hot</option>
+                    <option value="TopHour">Top Hour</option>
+                    <option value="TopSixHour">Top Six Hour</option>
+                    <option value="TopTwelveHour">Top Twelve Hour</option>
+                    <option value="TopDay">Top Day</option>
+                </select>
+            </div>
             <div id="timeline"></div>
             <div id="subscribed-feed" style="display: none;"></div>
             <div id="unified-feed" style="display: none;"></div>
