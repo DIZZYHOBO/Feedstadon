@@ -14,13 +14,17 @@ function renderLemmyCard(post, actions) {
         thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
     }
 
+    const communityFullName = `${post.community.name}@${new URL(post.community.actor_id).hostname}`;
+    const userFullName = `${post.creator.name}@${new URL(post.creator.actor_id).hostname}`;
+
+
     card.innerHTML = `
         <div class="status-body-content">
             <div class="status-header">
                 <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar">
                 <div>
-                    <span class="display-name">${post.community.name}</span>
-                    <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
+                    <a href="#" class="display-name lemmy-community-link" data-community="${communityFullName}">${post.community.name}</a>
+                    <span class="acct">posted by <a href="#" class="lemmy-user-link" data-user="${userFullName}">${post.creator.name}</a> · ${formatTimestamp(post.post.published)}</span>
                 </div>
             </div>
             <div class="status-content">
@@ -50,8 +54,16 @@ function renderLemmyCard(post, actions) {
         actions.lemmySave(post.post.id, e.currentTarget);
     });
     
-    card.addEventListener('click', () => {
-        actions.showLemmyPostDetail(post);
+    card.addEventListener('click', (e) => {
+        if (e.target.closest('.lemmy-community-link')) {
+            e.preventDefault();
+            actions.showLemmyCommunity(e.target.closest('.lemmy-community-link').dataset.community);
+        } else if (e.target.closest('.lemmy-user-link')) {
+             e.preventDefault();
+            actions.showLemmyProfile(e.target.closest('.lemmy-user-link').dataset.user);
+        } else {
+            actions.showLemmyPostDetail(post);
+        }
     });
 
     return card;
