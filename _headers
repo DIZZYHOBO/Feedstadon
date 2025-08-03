@@ -1,7 +1,5 @@
-# Set the correct MIME type for HTML files
 /index.html
   Content-Type: text/html
 
-# Set the correct MIME type for all JavaScript files
 /*.js
   Content-Type: application/javascript
