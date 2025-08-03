@@ -19,7 +19,7 @@ function renderLemmyPost(post, state, actions) {
 
     postDiv.innerHTML = `
         <div class="lemmy-header">
-             <span class="community-link" data-community-id="${post.community.actor_id}">${communityLink}</span> · 
+             <span class="community-link" data-community-acct="${post.community.name}@${new URL(post.community.actor_id).hostname}">${communityLink}</span> · 
              <span class="lemmy-user">by ${post.creator.name}</span>
         </div>
         <div class="lemmy-content">
@@ -36,7 +36,7 @@ function renderLemmyPost(post, state, actions) {
 
     postDiv.querySelector('.community-link').addEventListener('click', (e) => {
         e.stopPropagation();
-        actions.showLemmyCommunity(post.community.actor_id);
+        actions.showLemmyCommunity(e.target.dataset.communityAcct);
     });
     
     postDiv.querySelectorAll('.status-action').forEach(button => {
@@ -50,18 +50,17 @@ function renderLemmyPost(post, state, actions) {
     return postDiv;
 }
 
-export async function renderLemmyCommunityPage(state, communityId, switchView) {
+export async function renderLemmyCommunityPage(state, communityAcct, switchView) {
     const container = document.getElementById('lemmy-community-view');
     switchView('lemmy-community');
     container.innerHTML = `<p>Loading community...</p>`;
 
     try {
-        const communityHostname = new URL(communityId).hostname;
-        const communityResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/community?actor_id=${communityId}`);
+        const [communityName, communityHostname] = communityAcct.split('@');
+        const communityResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/community?name=${communityName}`);
         const community = communityResponse.community_view;
         
         const postsResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post/list?community_id=${community.community.id}`);
-        // This is the new line that filters for top-level posts only
         const topLevelPosts = postsResponse.posts.filter(p => p.post.name && p.post.name.trim() !== '');
 
         container.innerHTML = `
