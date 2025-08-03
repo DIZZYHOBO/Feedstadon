@@ -32,7 +32,7 @@ export function renderPollHTML(poll) {
 }
 
 
-export function renderStatus(status, state, actions) {
+export function renderStatus(status, state, actions, isThreadContext = false) {
     const originalPost = status.reblog || status;
 
     if (state.settings.hideNsfw && originalPost.sensitive) {
@@ -43,10 +43,13 @@ export function renderStatus(status, state, actions) {
     statusDiv.className = 'status';
     statusDiv.dataset.id = originalPost.id;
 
-    const boosterInfo = status.reblog ? `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>` : '';
+    let boosterInfo = '';
+    if (status.reblog && !isThreadContext) {
+        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
+    }
 
     let replyInfo = '';
-    if (originalPost.in_reply_to_id) {
+    if (originalPost.in_reply_to_id && !isThreadContext) {
         replyInfo = `<div class="reply-info" data-action="view-parent" data-parent-id="${originalPost.in_reply_to_id}">
                         ${ICONS.reply} Replying to thread
                      </div>`;
