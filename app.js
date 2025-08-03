@@ -444,6 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
             timelineDiv.innerHTML = '';
             response.data.forEach(status => {
+                if (type === 'home' && state.lemmyInstances.some(instance => status.account.acct.endsWith(`@${instance}`)) && !status.reblog && status.in_reply_to_id) {
+                    return; 
+                }
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) timelineDiv.appendChild(statusElement);
             });
