@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedFeedLink = document.getElementById('saved-feed-link');
     const discoverLemmyLink = document.getElementById('discover-lemmy-link');
     const lemmySubscribedLink = document.getElementById('lemmy-subscribed-link');
-    const unifiedFeedLink = document.getElementById('unified-feed-link');
+    const homeFeedLink = document.getElementById('home-feed-link');
     const refreshBtn = document.getElementById('refresh-btn');
     const scrollLoader = document.getElementById('scroll-loader');
     const toastNotification = document.getElementById('toast-notification');
@@ -800,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    unifiedFeedLink.addEventListener('click', (e) => {
+    homeFeedLink.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         handleMenuAction(() => {
@@ -871,6 +871,10 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshBtn.addEventListener('click', () => {
         if (state.currentView === 'timeline') {
             fetchTimeline(state.currentTimeline === 'local' ? 'public?local=true' : state.currentTimeline);
+        } else if (state.currentView === 'unified-feed') {
+            renderUnifiedFeed(state, switchView);
+        } else if (state.currentView === 'subscribed-feed') {
+            renderSubscribedFeed(state, switchView);
         }
     });
     
