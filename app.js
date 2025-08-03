@@ -6,6 +6,7 @@ import { renderSearchResults } from './components/Search.js';
 import { showComposeModal, initComposeModal } from './components/Compose.js';
 import { fetchNotifications, renderNotification } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
+import { renderConversationsList } from './components/Conversations.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- App Initialization ---
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hashtagTimelineView = document.getElementById('hashtag-timeline-view');
     const notificationsView = document.getElementById('notifications-view');
     const bookmarksView = document.getElementById('bookmarks-view');
+    const conversationsView = document.getElementById('conversations-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -38,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
     const navPostBtn = document.getElementById('nav-post-btn');
+    const messagesBtn = document.getElementById('messages-btn');
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
     const savedFeedLink = document.getElementById('saved-feed-link');
@@ -63,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTimeline: 'home',
         currentView: 'timeline',
         notificationsList,
+        conversations: [],
         actions: {},
         isLoadingMore: false,
         nextPageUrl: null,
@@ -109,6 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
     state.actions.muteAccount = (accountId) => muteAccount(accountId);
     state.actions.showAllNotifications = () => renderNotificationsPage();
+    state.actions.showConversations = () => {
+        renderConversationsList(state);
+        switchView('conversations');
+    };
 
     // --- View Management ---
     function switchView(viewName, pushHistory = true) {
@@ -121,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hashtagTimelineView.style.display = 'none';
         notificationsView.style.display = 'none';
         bookmarksView.style.display = 'none';
+        conversationsView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         refreshBtn.style.display = 'none';
@@ -133,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
             refreshBtn.style.display = 'flex';
-        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks'].includes(viewName)) {
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks', 'conversations'].includes(viewName)) {
             if (viewName === 'profile') profilePageView.style.display = 'block';
             if (viewName === 'search') searchResultsView.style.display = 'flex';
             if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
@@ -141,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewName === 'hashtag') hashtagTimelineView.style.display = 'block';
             if (viewName === 'notifications') notificationsView.style.display = 'block';
             if (viewName === 'bookmarks') bookmarksView.style.display = 'block';
+            if (viewName === 'conversations') conversationsView.style.display = 'flex';
             backBtn.style.display = 'block';
         }
 
@@ -159,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.top-nav').style.display = 'flex';
             userDisplayBtn.textContent = state.currentUser.display_name;
             
+            messagesBtn.innerHTML = ICONS.message;
             refreshBtn.innerHTML = ICONS.refresh;
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
@@ -208,7 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateNotificationIndicator() {
+        // This could be updated to show a dot for unread messages too
+        const unreadConversations = state.conversations.some(c => c.unread);
         notificationsBtn.classList.toggle('has-unread', state.hasUnreadNotifications);
+        messagesBtn.classList.toggle('has-unread', unreadConversations);
     }
 
     function initUserStreamSocket() {
@@ -232,6 +246,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateNotificationIndicator();
                 if (Notification.permission === 'granted') {
                     showBrowserNotification(JSON.parse(data.payload));
+                }
+            }
+            if (data.event === 'conversation') {
+                // When a new DM arrives, refresh the conversations list if it's open
+                if (state.currentView === 'conversations') {
+                    renderConversationsList(state);
+                } else {
+                    // Just update the indicator
+                    const convo = JSON.parse(data.payload);
+                    const existing = state.conversations.find(c => c.id === convo.id);
+                    if (existing) {
+                        existing.unread = true;
+                    }
+                    updateNotificationIndicator();
                 }
             }
             if (data.event === 'delete') {
@@ -669,8 +697,18 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload(); 
     });
     
-    backBtn.addEventListener('click', () => history.back());
+    backBtn.addEventListener('click', () => {
+        if (state.currentView === 'conversations' && document.querySelector('.message-list')) {
+             state.actions.showConversations();
+        } else {
+            history.back();
+        }
+    });
     
+    messagesBtn.addEventListener('click', () => {
+        state.actions.showConversations();
+    });
+
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
         state.actions.showProfile(state.currentUser.id);
