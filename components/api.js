@@ -1,9 +1,18 @@
 /**
  * A helper function to make authenticated JSON API requests.
+ * It can handle both full URLs (for pagination) and API endpoints.
  */
-export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}) {
-    const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const url = `https://${cleanInstanceUrl}${endpoint}`;
+export async function apiFetch(instanceUrl, accessToken, endpointOrUrl, options = {}, isPaginated = false) {
+    let url;
+
+    // If it's a paginated call, the full URL is provided in endpointOrUrl
+    if (isPaginated && (endpointOrUrl.startsWith('http://') || endpointOrUrl.startsWith('https://'))) {
+        url = endpointOrUrl;
+    } else {
+        // Otherwise, construct the URL from the instance and endpoint
+        const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        url = `https://${cleanInstanceUrl}${endpointOrUrl}`;
+    }
     
     const headers = {
         ...options.headers
