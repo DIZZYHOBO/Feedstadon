@@ -3,7 +3,7 @@ import { fetchTimeline } from './components/Timeline.js';
 import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
-import { renderStatusDetail } from './components/Status.js';
+import { renderStatusDetail } from './components/Post.js';
 import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
 import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed } from './components/Lemmy.js';
