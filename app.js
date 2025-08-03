@@ -7,7 +7,7 @@ import { showComposeModal, initComposeModal } from './components/Compose.js';
 import { fetchNotifications, renderNotification } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderConversationsList } from './components/Conversations.js';
-import { renderLemmyDiscoverPage, renderLemmyCommunityPage } from './components/Lemmy.js';
+import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage } from './components/Lemmy.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- App Initialization ---
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const conversationsView = document.getElementById('conversations-view');
     const lemmyDiscoverView = document.getElementById('lemmy-discover-view');
     const lemmyCommunityView = document.getElementById('lemmy-community-view');
+    const lemmyPostView = document.getElementById('lemmy-post-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -130,10 +131,12 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.showLemmyCommunity = (communityAcct) => {
         renderLemmyCommunityPage(state, communityAcct, switchView);
     };
+    state.actions.showLemmyPostDetail = (post) => {
+        renderLemmyPostPage(state, post, switchView);
+    };
     state.actions.loadMoreContent = () => loadMoreContent();
 
     state.actions.handleSearchResultClick = (account) => {
-        // Use the account's acct to check if it's a known Lemmy instance
         if (state.lemmyInstances.some(instance => account.acct.endsWith(`@${instance}`))) {
             state.actions.showLemmyCommunity(account.acct);
         } else {
@@ -155,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         conversationsView.style.display = 'none';
         lemmyDiscoverView.style.display = 'none';
         lemmyCommunityView.style.display = 'none';
+        lemmyPostView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         refreshBtn.style.display = 'none';
@@ -168,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
             refreshBtn.style.display = 'flex';
-        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks', 'conversations', 'lemmy-discover', 'lemmy-community'].includes(viewName)) {
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks', 'conversations', 'lemmy-discover', 'lemmy-community', 'lemmy-post'].includes(viewName)) {
             if (viewName === 'profile') profilePageView.style.display = 'block';
             if (viewName === 'search') searchResultsView.style.display = 'flex';
             if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
@@ -182,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (viewName === 'lemmy-discover') lemmyDiscoverView.style.display = 'block';
             if (viewName === 'lemmy-community') lemmyCommunityView.style.display = 'block';
+            if (viewName === 'lemmy-post') lemmyPostView.style.display = 'block';
             backBtn.style.display = 'block';
             feedsDropdown.style.display = 'block';
         }
