@@ -49,25 +49,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = (viewName) => {
-        // Hide all major view containers within the app-view
-        const appViews = document.getElementById('app-view').children;
-        for (let view of appViews) {
-            view.style.display = 'none';
-        }
-
-        // Show the correct view
-        if (views[viewName]) {
-            views[viewName].style.display = 'flex'; // Use flex for consistency
+        // Hide all views by iterating through the views object
+        for (const key in views) {
+            if (views[key] && views[key].style) {
+                 views[key].style.display = 'none';
+            }
         }
         
-        // Special handling for the main timeline view which is a direct child
-        if (viewName === 'timeline') {
-             document.getElementById('timeline').style.display = 'flex';
+        // Show the login view separately if needed
+        document.getElementById('login-view').style.display = 'none';
+
+        if (viewName === 'login') {
+            document.getElementById('login-view').style.display = 'block';
+            document.getElementById('app-view').style.display = 'none';
+        } else {
+            document.getElementById('app-view').style.display = 'block';
+            // Show the correct view from the views object
+            if (views[viewName]) {
+                // Use 'flex' for view containers that lay out children, which is most of them
+                views[viewName].style.display = 'flex';
+                // The main app view itself should be a block
+                views.app.style.display = 'block'; 
+            }
         }
 
-
-        document.getElementById('app-view').style.display = 'block';
-        document.getElementById('login-view').style.display = 'none';
         document.getElementById('back-btn').style.display = viewName !== 'timeline' ? 'block' : 'none';
         document.getElementById('search-form').style.display = 'none';
         document.getElementById('search-toggle-btn').style.display = 'block';
@@ -222,8 +227,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.currentUser = response.data;
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 document.querySelector('.top-nav').style.display = 'flex';
-                switchView('timeline');
                 fetchTimeline(state, 'home');
+                switchView('timeline');
             })
             .catch(err => {
                 showLogin();
@@ -265,8 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('refresh-btn').addEventListener('click', () => fetchTimeline(state, state.currentTimeline));
     document.getElementById('back-btn').addEventListener('click', () => {
-        switchView('timeline');
         fetchTimeline(state, state.currentTimeline);
+        switchView('timeline');
     });
     
     document.getElementById('discover-lemmy-link').addEventListener('click', (e) => {
@@ -338,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show notifications dropdown
     });
 
-    window.addEventListener('scroll', () => {
+    window.addEventListener('scroll', (). => {
         if (state.isLoadingMore || !state.nextPageUrl) return;
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
             fetchTimeline(state, state.currentTimeline, true);
