@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser: null,
         settings: {},
         currentTimeline: 'home',
-        currentView: 'timeline',
+        currentView: 'unified-feed',
         conversations: [],
         lemmyInstances: JSON.parse(localStorage.getItem('lemmyInstances')) || ['lemmy.world'],
         actions: {},
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isSaved = buttonElement.classList.contains('active');
 
         try {
-            const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/save', {
+            await apiFetch(lemmyInstance, jwt, '/api/v3/post/save', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ post_id: postId, save: !isSaved })
@@ -316,11 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationsBtn.innerHTML = ICONS.notifications;
             refreshBtn.innerHTML = ICONS.refresh;
             initComposeModal(state, () => fetchTimeline('home', true));
-            fetchTimeline('home');
+            state.actions.showUnifiedFeed(); // Default to unified feed
             initUserStreamSocket();
             initInfiniteScroll();
 
-            history.replaceState({ view: 'timeline' }, '', '#timeline');
+            history.replaceState({ view: 'unified-feed' }, '', '#home');
 
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -377,12 +377,13 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.onopen = () => console.log('User WebSocket connection established.');
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.event === 'update' && state.currentTimeline === 'home') {
+            if (data.event === 'update' && (state.currentView === 'timeline' || state.currentView === 'unified-feed')) {
                 const post = JSON.parse(data.payload);
                 const postElement = renderStatus(post, state, state.actions);
                 if (postElement) {
                     postElement.classList.add('newly-added');
-                    timelineDiv.prepend(postElement);
+                    const targetFeed = state.currentView === 'unified-feed' ? unifiedFeedDiv : timelineDiv;
+                    targetFeed.prepend(postElement);
                 }
             }
             if (data.event === 'notification') {
@@ -530,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchTimeline(type = 'home') {
+        state.currentView = 'timeline';
         if (type === 'public?local=true') {
             state.currentTimeline = 'local';
         } else {
@@ -1010,4 +1012,71 @@ document.addEventListener('DOMContentLoaded', () => {
             editPostModal.classList.remove('visible');
         } catch (error) {
             console.error('Failed to edit post:', error);
-            alert('Error editing.
+            alert('Error editing post.');
+        }
+    });
+
+    cancelEditBtn.addEventListener('click', () => editPostModal.classList.remove('visible'));
+
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if (!postToDeleteId) return;
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${postToDeleteId}`, { method: 'DELETE' });
+            const postElement = document.querySelector(`.status[data-id='${postToDeleteId}']`);
+            if (postElement) postElement.remove();
+            deletePostModal.classList.remove('visible');
+        } catch (error) {
+            console.error('Failed to delete post:', error);
+            alert('Error deleting post.');
+        }
+    });
+
+    cancelDeleteBtn.addEventListener('click', () => deletePostModal.classList.remove('visible'));
+    
+    window.addEventListener('popstate', (event) => {
+        if (state.currentView === 'timeline' || state.currentView === 'unified-feed') {
+            if (backPressExit) {
+                window.close();
+            } else {
+                backPressExit = true;
+                showToast('Press back again to exit');
+                setTimeout(() => { backPressExit = false; }, 2000);
+                history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
+            }
+            return;
+        }
+
+        if (event.state && event.state.view) {
+            switchView(event.state.view, false);
+            if (event.state.view === 'timeline') {
+                fetchTimeline(state.currentTimeline);
+            } else if (event.state.view === 'bookmarks') {
+                fetchTimeline('bookmarks');
+            } else if (event.state.view === 'notifications') {
+                renderNotificationsPage();
+            } else if (event.state.view === 'subscribed-feed') {
+                renderSubscribedFeed(state, switchView);
+            } else if (event.state.view === 'unified-feed') {
+                renderUnifiedFeed(state, switchView);
+            }
+        } else {
+            switchView('unified-feed', false);
+            state.actions.showUnifiedFeed();
+        }
+    });
+
+    // --- Initial Load ---
+    function initLoginOnLoad() {
+        const instance = localStorage.getItem('instanceUrl');
+        const token = localStorage.getItem('accessToken');
+        if (instance && token) {
+            onLoginSuccess(instance, token);
+        } else {
+            loginView.style.display = 'block';
+            appView.style.display = 'none';
+            document.querySelector('.top-nav').style.display = 'none';
+        }
+    }
+    
+    initLoginOnLoad();
+});
