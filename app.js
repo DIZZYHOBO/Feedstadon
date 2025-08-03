@@ -1,6 +1,6 @@
 import { initLogin, showLogin } from './components/Login.js';
 import { fetchTimeline } from './components/Timeline.js';
-import { renderProfilePage } from './components/Profile.js';
+import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
@@ -89,11 +89,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const actions = {
         showProfile: (accountId) => {
             switchView('profile');
-            renderProfilePage(state, accountId);
+            renderProfilePage(state, accountId, actions);
+        },
+        showLemmyProfile: (userAcct) => {
+            switchView('profile');
+            renderLemmyProfilePage(state, userAcct, actions);
         },
         showStatusDetail: (statusId) => {
             switchView('statusDetail');
-            renderStatusDetail(state, statusId);
+            renderStatusDetail(state, statusId, actions);
         },
         showHashtagTimeline: (tagName) => {
             switchView('search');
@@ -101,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         showConversations: () => {
             switchView('conversations');
-            renderConversationsList(state);
+            renderConversationsList(state, actions);
         },
         showConversationDetail: (conversationId, participants) => {
             switchView('conversations');
@@ -218,6 +222,20 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 showToast('Failed to vote on comment.');
             }
+        },
+        lemmyPostComment: async (commentData) => {
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            const jwt = localStorage.getItem('lemmy_jwt');
+            if (!jwt || !lemmyInstance) {
+                showToast('You must be logged in to comment.');
+                throw new Error('Not logged in');
+            }
+            const response = await apiFetch(lemmyInstance, jwt, '/api/v3/comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(commentData)
+            });
+            return response.data.comment_view;
         }
     };
 
@@ -323,6 +341,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('profile-link').addEventListener('click', (e) => {
         e.preventDefault();
+        // For now, this will show the user's own Mastodon profile.
+        // A unified profile could be a future enhancement.
         actions.showProfile(state.currentUser.id);
         document.getElementById('user-dropdown').classList.remove('active');
     });
@@ -359,4 +379,4 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchTimeline(state, state.currentTimeline, true);
         }
     });
-});
+});s
