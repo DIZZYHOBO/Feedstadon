@@ -19,7 +19,7 @@ export async function renderSettingsPage(state) {
                 </div>
             </div>
             
-            <div class="settings-section">
+            <div class="settings-section" id="lemmy-auth-section">
                 <h3>Lemmy Login</h3>
                 <form id="lemmy-login-form" class="lemmy-login-form">
                     <div class="form-group">
@@ -54,40 +54,68 @@ export async function renderSettingsPage(state) {
     });
 
     // --- Lemmy Login ---
-    const lemmyLoginForm = container.querySelector('#lemmy-login-form');
-    lemmyLoginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const instance = document.getElementById('lemmy-instance-input').value.trim();
-        const username = document.getElementById('lemmy-username-input').value.trim();
-        const password = document.getElementById('lemmy-password-input').value.trim();
+    const lemmyAuthSection = container.querySelector('#lemmy-auth-section');
 
-        if (!instance || !username || !password) {
-            alert('Please fill in all Lemmy login fields.');
-            return;
-        }
+    const updateLemmyAuthView = () => {
+        const jwt = localStorage.getItem('lemmy_jwt');
+        const username = localStorage.getItem('lemmy_username');
+        const instance = localStorage.getItem('lemmy_instance');
 
-        try {
-            // Corrected: Removed the "https://" prefix from the instance, letting apiFetch handle it.
-            const response = await apiFetch(instance, null, '/api/v3/user/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username_or_email: username,
-                    password: password
-                })
+        if (jwt && username && instance) {
+            lemmyAuthSection.innerHTML = `
+                <h3>Lemmy Login</h3>
+                <p>Logged in as ${username}@${instance}</p>
+                <button id="lemmy-logout-btn" class="button-danger">Logout</button>
+            `;
+            lemmyAuthSection.querySelector('#lemmy-logout-btn').addEventListener('click', () => {
+                localStorage.removeItem('lemmy_jwt');
+                localStorage.removeItem('lemmy_username');
+                localStorage.removeItem('lemmy_instance');
+                renderSettingsPage(state);
             });
-
-            if (response.data.jwt) {
-                localStorage.setItem('lemmy_jwt', response.data.jwt);
-                alert('Lemmy login successful!');
-            } else {
-                alert('Lemmy login failed. Please check your credentials.');
-            }
-        } catch (error) {
-            console.error('Lemmy login error:', error);
-            alert('An error occurred during Lemmy login.');
         }
-    });
+    };
+
+    updateLemmyAuthView();
+
+    const lemmyLoginForm = container.querySelector('#lemmy-login-form');
+    if (lemmyLoginForm) {
+        lemmyLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const instance = document.getElementById('lemmy-instance-input').value.trim();
+            const username = document.getElementById('lemmy-username-input').value.trim();
+            const password = document.getElementById('lemmy-password-input').value.trim();
+
+            if (!instance || !username || !password) {
+                alert('Please fill in all Lemmy login fields.');
+                return;
+            }
+
+            try {
+                const response = await apiFetch(instance, null, '/api/v3/user/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username_or_email: username,
+                        password: password
+                    })
+                });
+
+                if (response.data.jwt) {
+                    localStorage.setItem('lemmy_jwt', response.data.jwt);
+                    localStorage.setItem('lemmy_username', username);
+                    localStorage.setItem('lemmy_instance', instance);
+                    alert('Lemmy login successful!');
+                    updateLemmyAuthView();
+                } else {
+                    alert('Lemmy login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                console.error('Lemmy login error:', error);
+                alert('An error occurred during Lemmy login.');
+            }
+        });
+    }
 
 
     // --- Muted Users ---
