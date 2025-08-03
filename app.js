@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
         timelineDiv: document.getElementById('timeline'),
         scrollLoader: document.getElementById('scroll-loader'),
         isLoadingMore: false,
-        lastPostId: null,
         nextPageUrl: null,
         conversations: [],
         lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works'],
@@ -50,8 +49,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = (viewName) => {
-        Object.values(views).forEach(view => view.style.display = 'none');
-        views[viewName].style.display = 'block';
+        // Hide all major view containers within the app-view
+        const appViews = document.getElementById('app-view').children;
+        for (let view of appViews) {
+            view.style.display = 'none';
+        }
+
+        // Show the correct view
+        if (views[viewName]) {
+            views[viewName].style.display = 'flex'; // Use flex for consistency
+        }
+        
+        // Special handling for the main timeline view which is a direct child
+        if (viewName === 'timeline') {
+             document.getElementById('timeline').style.display = 'flex';
+        }
+
+
+        document.getElementById('app-view').style.display = 'block';
+        document.getElementById('login-view').style.display = 'none';
         document.getElementById('back-btn').style.display = viewName !== 'timeline' ? 'block' : 'none';
         document.getElementById('search-form').style.display = 'none';
         document.getElementById('search-toggle-btn').style.display = 'block';
@@ -114,18 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         toggleAction: async (action, status, button) => {
-            const endpoint = `/api/v1/statuses/${status.id}/${action}`;
             const isToggled = button.classList.contains('active');
-            const method = isToggled ? 'POST' : 'POST'; // Mastodon uses POST for both
             const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
             try {
-                const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
                 button.classList.toggle('active');
-                const countSpan = button.nextElementSibling;
-                if (countSpan && countSpan.classList.contains('count')) {
-                    const currentCount = parseInt(countSpan.textContent, 10);
-                    countSpan.textContent = isToggled ? currentCount - 1 : currentCount + 1;
-                }
             } catch (err) {
                 showToast(`Failed to ${action} post.`);
             }
@@ -213,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.currentUser = response.data;
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 document.querySelector('.top-nav').style.display = 'flex';
-                switchView('app');
+                switchView('timeline');
                 fetchTimeline(state, 'home');
             })
             .catch(err => {
@@ -228,25 +237,48 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Post created successfully!');
     });
 
+    document.querySelectorAll('.dropdown').forEach(dropdown => {
+        const button = dropdown.querySelector('button');
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.dropdown.active').forEach(d => {
+                if (d !== dropdown) d.classList.remove('active');
+            });
+            dropdown.classList.toggle('active');
+        });
+    });
+
+    window.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown.active').forEach(d => {
+            d.classList.remove('active');
+        });
+    });
+    
+    document.getElementById('feeds-dropdown').addEventListener('click', (e) => {
+        if (e.target.dataset.timeline) {
+            e.preventDefault();
+            fetchTimeline(state, e.target.dataset.timeline);
+            switchView('timeline');
+            document.getElementById('feeds-dropdown').classList.remove('active');
+        }
+    });
+
     document.getElementById('refresh-btn').addEventListener('click', () => fetchTimeline(state, state.currentTimeline));
-    document.getElementById('back-btn').addEventListener('click', () => switchView('timeline'));
-    document.getElementById('home-feed-link').addEventListener('click', (e) => {
-        e.preventDefault();
-        fetchTimeline(state, 'home');
+    document.getElementById('back-btn').addEventListener('click', () => {
         switchView('timeline');
+        fetchTimeline(state, state.currentTimeline);
     });
-    document.getElementById('saved-feed-link').addEventListener('click', (e) => {
-        e.preventDefault();
-        fetchTimeline(state, 'bookmarks');
-        switchView('timeline');
-    });
+    
     document.getElementById('discover-lemmy-link').addEventListener('click', (e) => {
         e.preventDefault();
         actions.showLemmyDiscover();
+        document.getElementById('feeds-dropdown').classList.remove('active');
     });
+
     document.getElementById('lemmy-subscribed-link').addEventListener('click', (e) => {
         e.preventDefault();
         actions.showLemmySubscribedFeed();
+        document.getElementById('feeds-dropdown').classList.remove('active');
     });
 
     document.getElementById('search-toggle-btn').addEventListener('click', () => {
@@ -271,16 +303,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('new-post-link').addEventListener('click', (e) => {
         e.preventDefault();
         showComposeModal(state);
+        document.getElementById('user-dropdown').classList.remove('active');
     });
 
     document.getElementById('profile-link').addEventListener('click', (e) => {
         e.preventDefault();
         actions.showProfile(state.currentUser.id);
+        document.getElementById('user-dropdown').classList.remove('active');
     });
 
     document.getElementById('settings-link').addEventListener('click', (e) => {
         e.preventDefault();
         actions.showSettings();
+        document.getElementById('user-dropdown').classList.remove('active');
     });
 
     document.getElementById('logout-btn').addEventListener('click', () => {
@@ -295,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('messages-btn').addEventListener('click', (e) => {
         e.preventDefault();
         actions.showConversations();
+        document.getElementById('user-dropdown').classList.remove('active');
     });
 
     document.getElementById('notifications-btn').addEventListener('click', (e) => {
