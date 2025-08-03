@@ -136,4 +136,55 @@ async function renderLemmyDiscoverPage(state, switchView) {
     });
 }
 
-export { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage };
+async function renderSubscribedFeed(state, switchView) {
+    const container = document.getElementById('subscribed-feed');
+    switchView('subscribed-feed');
+    container.innerHTML = `<p>Loading subscribed feed...</p>`;
+
+    try {
+        const lemmyInstance = state.lemmyInstances[0];
+        if (!lemmyInstance) {
+            container.innerHTML = `<p>No Lemmy instance configured.</p>`;
+            return;
+        }
+
+        const response = await apiFetch(`https://${lemmyInstance}`, state.accessToken, '/api/v3/post/list?listing_type=Subscribed');
+        const posts = response.data.posts;
+
+        container.innerHTML = '';
+        if (posts && posts.length > 0) {
+            posts.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'lemmy-card';
+                card.dataset.postId = post.post.id;
+                card.innerHTML = `
+                    <div class="vote-sidebar">
+                        <span>${ICONS.boost}</span>
+                        <span>${post.counts.score}</span>
+                    </div>
+                    <div class="post-content">
+                        <h3 class="lemmy-title">${post.post.name}</h3>
+                        <div class="lemmy-post-footer">
+                            <span class="community-link" data-community-acct="${post.community.name}@${new URL(post.community.actor_id).hostname}">!${post.community.name}</span> · 
+                            <span class="lemmy-user">by ${post.creator.name}</span>
+                            <span class="timestamp">· ${formatTimestamp(post.post.published)}</span>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    state.actions.showLemmyPostDetail(post);
+                });
+
+                container.appendChild(card);
+            });
+        } else {
+            container.innerHTML = '<p>No posts in your subscribed communities.</p>';
+        }
+    } catch (err) {
+        console.error("Failed to load subscribed Lemmy feed:", err);
+        container.innerHTML = '<p>Could not load subscribed feed.</p>';
+    }
+}
+
+export { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage, renderSubscribedFeed };
