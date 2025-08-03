@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
             publicSocket.close();
+            publicSocket = null;
         }
 
         if (viewName === 'timeline') {
@@ -173,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.top-nav').style.display = 'flex';
             
             messagesBtn.innerHTML = ICONS.message;
-            notificationsBtn.innerHTML = ICONS.notifications || '🔔';
+            notificationsBtn.innerHTML = ICONS.notifications || '🔔'; 
             refreshBtn.innerHTML = ICONS.refresh;
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
@@ -334,44 +335,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '');
         const streamType = 'public:local';
         const socketUrl = `wss://${cleanInstanceUrl}/api/v1/streaming?stream=${streamType}`;
-        publicSocket = new WebSocket(socketUrl);
+        
+        try {
+            publicSocket = new WebSocket(socketUrl);
 
-        publicSocket.onopen = () => console.log(`Public WebSocket (${streamType}) connection established.`);
-        publicSocket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.event === 'update' && state.currentTimeline === 'local') {
-                const post = JSON.parse(data.payload);
-                const postElement = renderStatus(post, state, state.actions);
-                if (postElement) {
-                    postElement.classList.add('newly-added');
-                    timelineDiv.prepend(postElement);
-                }
-            }
-            if (data.event === 'delete') {
-                const postId = data.payload;
-                const postElement = document.querySelector(`.status[data-id='${postId}']`);
-                if (postElement) {
-                    postElement.classList.add('fading-out');
-                    setTimeout(() => postElement.remove(), 500);
-                }
-            }
-            if (data.event === 'status.update') {
-                const updatedPost = JSON.parse(data.payload);
-                const postElement = document.querySelector(`.status[data-id='${updatedPost.id}']`);
-                if (postElement) {
-                    const favButton = postElement.querySelector('[data-action="favorite"]');
-                    const boostButton = postElement.querySelector('[data-action="boost"]');
-                    if (favButton) {
-                        favButton.innerHTML = `${ICONS.favorite} ${updatedPost.favourites_count}`;
-                    }
-                    if (boostButton) {
-                        boostButton.innerHTML = `${ICONS.boost} ${updatedPost.reblogs_count}`;
+            publicSocket.onopen = () => console.log(`Public WebSocket (${streamType}) connection established.`);
+            publicSocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.event === 'update' && state.currentTimeline === 'local') {
+                    const post = JSON.parse(data.payload);
+                    const postElement = renderStatus(post, state, state.actions);
+                    if (postElement) {
+                        postElement.classList.add('newly-added');
+                        timelineDiv.prepend(postElement);
                     }
                 }
-            }
-        };
-        publicSocket.onclose = () => console.log(`Public WebSocket (${streamType}) connection closed.`);
-        publicSocket.onerror = (error) => console.error(`Public WebSocket (${streamType}) error:`, error);
+            };
+            publicSocket.onclose = () => console.log(`Public WebSocket (${streamType}) connection closed.`);
+            publicSocket.onerror = (error) => {
+                console.error(`Public WebSocket (${streamType}) error. This instance may not support this stream.`, error);
+            };
+        } catch (error) {
+            console.error(`Failed to create Public WebSocket (${streamType}).`, error);
+        }
     }
     
     async function showStatusDetail(statusId) {
@@ -405,10 +391,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchTimeline(type = 'home') {
-        state.currentTimeline = type.split('?')[0];
+        if (type === 'public?local=true') {
+            state.currentTimeline = 'local';
+        } else {
+            state.currentTimeline = type.split('?')[0];
+        }
+
         if (publicSocket && publicSocket.readyState === WebSocket.OPEN) {
             publicSocket.close();
+            publicSocket = null;
         }
+
         try {
             let endpoint;
             if (type === 'bookmarks') {
@@ -719,12 +712,14 @@ document.addEventListener('DOMContentLoaded', () => {
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
         state.actions.showProfile(state.currentUser.id);
+        userDropdown.classList.remove('active');
     });
 
     settingsLink.addEventListener('click', (e) => {
         e.preventDefault();
         renderSettingsPage(state);
         switchView('settings');
+        userDropdown.classList.remove('active');
     });
     
     [userDropdown, feedsDropdown].forEach(dd => {
@@ -786,8 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     refreshBtn.addEventListener('click', () => {
         if (state.currentView === 'timeline') {
-            const currentTimelineType = state.currentTimeline === 'home' ? 'home' : state.currentTimeline === 'local' ? 'public?local=true' : 'public';
-            fetchTimeline(currentTimelineType);
+            fetchTimeline(state.currentTimeline === 'local' ? 'public?local=true' : state.currentTimeline);
         }
     });
     
