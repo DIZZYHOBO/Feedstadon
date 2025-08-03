@@ -522,6 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             const updatedPost = response.data;
             button.classList.toggle('active');
+
             if (action === 'boost' && state.currentTimeline === 'home') {
                 if (endpointAction === 'reblog') {
                     const newPostElement = renderStatus(updatedPost, state, state.actions);
@@ -537,6 +538,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const count = updatedPost[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
+
+            // MODIFIED: Handle removing a post from the bookmarks view when unbookmarking
+            if (action === 'bookmark' && state.currentView === 'bookmarks' && endpointAction === 'unbookmark') {
+                const postElement = document.querySelector(`.status[data-id='${post.id}']`);
+                if (postElement) {
+                    postElement.classList.add('fading-out');
+                    setTimeout(() => postElement.remove(), 500);
+                }
+            }
+
         } catch (error) {
             console.error(`Failed to ${action} post:`, error);
             alert(`Could not ${action} post.`);
