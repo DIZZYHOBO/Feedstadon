@@ -1,2 +1,13 @@
-/*
+# Set the correct MIME type ONLY for JavaScript files
+/components/*.js
+  Content-Type: application/javascript
+/app.js
+  Content-Type: application/javascript
+/sw.js
+  Content-Type: application/javascript
+/utils.js
+  Content-Type: application/javascript
+/icons.js
+  Content-Type: application/javascript
+/api.js
   Content-Type: application/javascript
