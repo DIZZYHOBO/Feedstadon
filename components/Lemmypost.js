@@ -69,7 +69,7 @@ export async function renderLemmyPostPage(state, post, switchView) {
     try {
         const communityHostname = new URL(post.community.actor_id).hostname;
         const response = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post?id=${post.post.id}`);
-        const comments = response.data.comments;
+        const comments = response.comments;
 
         threadContainer.innerHTML = '';
         if (comments && comments.length > 0) {
