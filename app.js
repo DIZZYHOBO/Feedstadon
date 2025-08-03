@@ -117,6 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderConversationsList(state);
         switchView('conversations');
     };
+    state.actions.loadMoreContent = () => loadMoreContent();
+
 
     // --- View Management ---
     function switchView(viewName, pushHistory = true) {
