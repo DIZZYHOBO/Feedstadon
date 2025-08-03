@@ -1095,50 +1095,42 @@ textarea:focus {
 }
 
 /* --- Lemmy Integration Styles --- */
-.lemmy-post {
-    padding: 15px;
+.lemmy-card .status-header img {
+    width: 24px;
+    height: 24px;
 }
-.lemmy-header {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    margin-bottom: 10px;
-}
-.community-link {
+.lemmy-card .lemmy-title {
+    font-size: 1.2em;
     font-weight: bold;
-    color: var(--font-color);
-    cursor: pointer;
-}
-.lemmy-content {
-    display: flex;
-    gap: 15px;
+    margin: 8px 0;
 }
 .lemmy-thumbnail {
-    flex-shrink: 0;
-}
-.lemmy-thumbnail img {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
+    margin-top: 10px;
+    max-height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
     border-radius: 8px;
 }
-.lemmy-title {
-    margin: 0 0 10px 0;
+.lemmy-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.lemmy-card .status-footer {
+    justify-content: flex-start;
+    gap: 15px;
+    padding: 10px 0 0 0;
+}
+.lemmy-vote-btn {
     font-size: 1.2em;
 }
-.lemmy-title a {
-    color: var(--font-color);
-    text-decoration: none;
+.lemmy-vote-btn.active {
+    color: var(--accent-color);
 }
-.lemmy-title a:hover {
-    text-decoration: underline;
-}
-.lemmy-post-details {
-    flex-grow: 1;
-}
-.lemmy-post-footer {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    margin-top: 10px;
+.lemmy-score {
+    font-weight: bold;
 }
 .lemmy-comment-thread {
     margin-top: 15px;
@@ -1178,30 +1170,6 @@ textarea:focus {
     cursor: pointer;
 }
 .lemmy-post-list {
-    flex-grow: 1;
-}
-
-.lemmy-card {
-    display: flex;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-.lemmy-card:hover {
-    background-color: var(--primary-color);
-}
-.vote-sidebar {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 8px;
-    background-color: var(--primary-color);
-}
-.post-content {
-    padding: 15px;
     flex-grow: 1;
 }
 
