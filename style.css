@@ -1087,6 +1087,73 @@ textarea:focus {
     flex-shrink: 0;
 }
 
+/* --- Lemmy Integration Styles --- */
+.lemmy-post {
+    padding: 15px;
+}
+.lemmy-header {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+    margin-bottom: 10px;
+}
+.community-link {
+    font-weight: bold;
+    color: var(--font-color);
+    cursor: pointer;
+}
+.lemmy-content {
+    display: flex;
+    gap: 15px;
+}
+.lemmy-thumbnail {
+    flex-shrink: 0;
+}
+.lemmy-thumbnail img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+.lemmy-title {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+}
+.lemmy-title a {
+    color: var(--font-color);
+    text-decoration: none;
+}
+.lemmy-title a:hover {
+    text-decoration: underline;
+}
+.lemmy-post-details {
+    flex-grow: 1;
+}
+.lemmy-post-footer {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+    margin-top: 10px;
+}
+.lemmy-comment-thread {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+.lemmy-comment {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.lemmy-comment:last-child {
+    border-bottom: none;
+}
+.comment-header {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+    margin-bottom: 5px;
+}
+.comment-content {
+    line-height: 1.5;
+}
+
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
