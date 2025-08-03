@@ -2,6 +2,7 @@ import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 import { renderLemmyPostPage } from './LemmyPost.js';
+import { renderStatus } from './Post.js';
 
 function renderLemmyPost(post, state, actions) {
     const postDiv = document.createElement('div');
@@ -148,7 +149,13 @@ async function renderSubscribedFeed(state, switchView) {
             return;
         }
 
-        const response = await apiFetch(`https://${lemmyInstance}`, state.accessToken, '/api/v3/post/list?listing_type=Subscribed');
+        const jwt = localStorage.getItem('lemmy_jwt');
+        if (!jwt) {
+            container.innerHTML = `<p>You are not logged into Lemmy. Please login in the settings.</p>`;
+            return;
+        }
+
+        const response = await apiFetch(`https://${lemmyInstance}`, jwt, '/api/v3/post/list?listing_type=Subscribed');
         const posts = response.data.posts;
 
         container.innerHTML = '';
@@ -187,4 +194,63 @@ async function renderSubscribedFeed(state, switchView) {
     }
 }
 
-export { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage, renderSubscribedFeed };
+async function renderUnifiedFeed(state, switchView) {
+    const container = document.getElementById('unified-feed');
+    switchView('unified-feed');
+    container.innerHTML = `<p>Loading unified feed...</p>`;
+
+    try {
+        const lemmyInstance = state.lemmyInstances[0];
+        const lemmyJwt = localStorage.getItem('lemmy_jwt');
+
+        const [mastodonResponse, lemmyResponse] = await Promise.all([
+            apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home'),
+            lemmyJwt ? apiFetch(`https://${lemmyInstance}`, lemmyJwt, '/api/v3/post/list?listing_type=Subscribed') : Promise.resolve({ data: { posts: [] } })
+        ]);
+
+        const mastodonPosts = mastodonResponse.data;
+        const lemmyPosts = lemmyResponse.data.posts;
+
+        const unified = [...mastodonPosts, ...lemmyPosts].sort((a, b) => {
+            const dateA = new Date(a.created_at || a.post.published);
+            const dateB = new Date(b.created_at || b.post.published);
+            return dateB - dateA;
+        });
+
+        container.innerHTML = '';
+        unified.forEach(item => {
+            if (item.post) { // It's a Lemmy post
+                const card = document.createElement('div');
+                card.className = 'lemmy-card';
+                card.dataset.postId = item.post.id;
+                card.innerHTML = `
+                    <div class="vote-sidebar">
+                        <span>${ICONS.boost}</span>
+                        <span>${item.counts.score}</span>
+                    </div>
+                    <div class="post-content">
+                        <h3 class="lemmy-title">${item.post.name}</h3>
+                        <div class="lemmy-post-footer">
+                            <span class="community-link" data-community-acct="${item.community.name}@${new URL(item.community.actor_id).hostname}">!${item.community.name}</span> · 
+                            <span class="lemmy-user">by ${item.creator.name}</span>
+                            <span class="timestamp">· ${formatTimestamp(item.post.published)}</span>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    state.actions.showLemmyPostDetail(item);
+                });
+                container.appendChild(card);
+            } else { // It's a Mastodon post
+                container.appendChild(renderStatus(item, state, state.actions));
+            }
+        });
+
+    } catch (err) {
+        console.error("Failed to load unified feed:", err);
+        container.innerHTML = '<p>Could not load unified feed.</p>';
+    }
+}
+
+export { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage, renderSubscribedFeed, renderUnifiedFeed };
