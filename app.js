@@ -6,7 +6,7 @@ import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
 import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
-import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed } from './components/Lemmy.js';
+import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed, fetchLemmyFeed } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoadingMore: false,
         nextPageUrl: null,
         conversations: [],
-        lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works'],
+        lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'lemina.space'],
         settings: {
             hideNsfw: false,
         },
@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('back-btn').style.display = viewName !== 'timeline' ? 'block' : 'none';
         document.getElementById('search-form').style.display = 'none';
         document.getElementById('search-toggle-btn').style.display = 'block';
+        document.getElementById('lemmy-filter-bar').style.display = 'none';
     };
 
     const showToast = (message) => {
@@ -126,6 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showLemmyPostDetail: (post) => {
             switchView('lemmyPost');
             renderLemmyPostPage(state, post, actions);
+        },
+        showLemmyFeed: (feedType) => {
+            switchView('timeline');
+            document.getElementById('lemmy-filter-bar').style.display = 'flex';
+            fetchLemmyFeed(state, feedType, 'New'); // Default to 'New' sort
         },
         showLemmySubscribedFeed: () => {
             switchView('subscribedFeed');
@@ -288,10 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     document.getElementById('feeds-dropdown').addEventListener('click', (e) => {
-        if (e.target.dataset.timeline) {
+        const target = e.target;
+        if (target.dataset.timeline) {
             e.preventDefault();
             switchView('timeline');
-            fetchTimeline(state, e.target.dataset.timeline);
+            fetchTimeline(state, target.dataset.timeline);
+            document.getElementById('feeds-dropdown').classList.remove('active');
+        } else if (target.dataset.lemmyFeed) {
+             e.preventDefault();
+            actions.showLemmyFeed(target.dataset.lemmyFeed);
             document.getElementById('feeds-dropdown').classList.remove('active');
         }
     });
@@ -308,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
 
-    document.getElementById('lemmy-subscribed-link').addEventListener('click', (e) => {
+    document.getElementById('lemmy-subscribed-link')?.addEventListener('click', (e) => {
         e.preventDefault();
         actions.showLemmySubscribedFeed();
         document.getElementById('feeds-dropdown').classList.remove('active');
@@ -379,4 +390,4 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchTimeline(state, state.currentTimeline, true);
         }
     });
-});s
+});
