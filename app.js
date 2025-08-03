@@ -379,16 +379,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const contextResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
             const container = document.getElementById('status-detail-view');
             container.innerHTML = '';
-            const mainPostElement = renderStatus(mainStatusResponse.data, state, state.actions);
-            container.appendChild(mainPostElement);
-            if (contextResponse.data.descendants && contextResponse.data.descendants.length > 0) {
-                const repliesContainer = document.createElement('div');
-                repliesContainer.className = 'comment-thread';
-                repliesContainer.style.marginTop = '0';
-                contextResponse.data.descendants.forEach(reply => {
-                    repliesContainer.appendChild(renderStatus(reply, state, state.actions));
+            
+            if (contextResponse.data.ancestors && contextResponse.data.ancestors.length > 0) {
+                contextResponse.data.ancestors.forEach(ancestor => {
+                    container.appendChild(renderStatus(ancestor, state, state.actions));
                 });
-                container.appendChild(repliesContainer);
+            }
+
+            const mainPostElement = renderStatus(mainStatusResponse.data, state, state.actions);
+            mainPostElement.classList.add('main-thread-post');
+            container.appendChild(mainPostElement);
+
+            if (contextResponse.data.descendants && contextResponse.data.descendants.length > 0) {
+                contextResponse.data.descendants.forEach(descendant => {
+                    container.appendChild(renderStatus(descendant, state, state.actions));
+                });
             }
             state.setNextPageUrl(null);
         } catch (error) {
@@ -522,7 +527,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint, { method: 'POST' });
             const updatedPost = response.data;
             button.classList.toggle('active');
-
             if (action === 'boost' && state.currentTimeline === 'home') {
                 if (endpointAction === 'reblog') {
                     const newPostElement = renderStatus(updatedPost, state, state.actions);
@@ -538,8 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const count = updatedPost[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
-
-            // MODIFIED: Handle removing a post from the bookmarks view when unbookmarking
             if (action === 'bookmark' && state.currentView === 'bookmarks' && endpointAction === 'unbookmark') {
                 const postElement = document.querySelector(`.status[data-id='${post.id}']`);
                 if (postElement) {
@@ -547,7 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => postElement.remove(), 500);
                 }
             }
-
         } catch (error) {
             console.error(`Failed to ${action} post:`, error);
             alert(`Could not ${action} post.`);
@@ -850,6 +851,10 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView(event.state.view, false);
             if (event.state.view === 'timeline') {
                 fetchTimeline(state.currentTimeline);
+            } else if (event.state.view === 'bookmarks') {
+                fetchBookmarksTimeline();
+            } else if (event.state.view === 'notifications') {
+                renderNotificationsPage();
             }
         } else {
             switchView('timeline', false);
