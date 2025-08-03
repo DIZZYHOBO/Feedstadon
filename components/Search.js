@@ -4,36 +4,42 @@ import { renderStatus } from './Post.js';
 
 export async function renderHashtagSuggestions(state, query) {
     const container = document.getElementById('search-results-view');
-    if (!query.startsWith('#') || query.length < 1) {
-        container.innerHTML = '';
-        return;
+    const suggestionBar = document.createElement('div');
+    suggestionBar.className = 'hashtag-suggestion-bar';
+    
+    // Clear previous suggestions
+    const existingBar = container.querySelector('.hashtag-suggestion-bar');
+    if (existingBar) {
+        existingBar.remove();
+    }
+
+    if (!query.startsWith('#') || query.length < 2) {
+        return; // Only show for hashtags with at least one character after #
     }
 
     try {
-        // Using trends as a source for suggestions
         const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/trends`);
         const suggestions = response.data;
         
-        container.innerHTML = '';
-
         if (suggestions.length === 0) return;
 
-        const filteredSuggestions = suggestions.filter(tag => tag.name.toLowerCase().includes(query.substring(1).toLowerCase()));
+        const filteredSuggestions = suggestions
+            .filter(tag => tag.name.toLowerCase().includes(query.substring(1).toLowerCase()))
+            .slice(0, 4);
 
-        filteredSuggestions.slice(0, 10).forEach(tag => {
-            const suggestionDiv = document.createElement('div');
-            suggestionDiv.className = 'search-result-item'; // Reuse style
-            suggestionDiv.innerHTML = `
-                <div class="hashtag-icon">#</div>
-                <div>
-                    <div class="display-name">${tag.name}</div>
-                </div>`;
-            suggestionDiv.addEventListener('click', () => {
-                document.getElementById('search-input').value = `#${tag.name}`;
-                renderSearchResults(state, `#${tag.name}`);
+        if (filteredSuggestions.length > 0) {
+            filteredSuggestions.forEach(tag => {
+                const button = document.createElement('button');
+                button.className = 'hashtag-suggestion-btn';
+                button.textContent = `#${tag.name}`;
+                button.onclick = () => {
+                    document.getElementById('search-input').value = `#${tag.name}`;
+                    renderSearchResults(state, `#${tag.name}`);
+                };
+                suggestionBar.appendChild(button);
             });
-            container.appendChild(suggestionDiv);
-        });
+            container.prepend(suggestionBar);
+        }
 
     } catch (err) {
         console.error("Hashtag suggestion failed:", err);
