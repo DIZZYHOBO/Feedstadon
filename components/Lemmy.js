@@ -4,60 +4,61 @@ import { formatTimestamp } from './utils.js';
 import { renderLemmyPostPage } from './LemmyPost.js';
 import { renderStatus } from './Post.js';
 
-function renderLemmyPost(post, state, actions) {
-    const postDiv = document.createElement('div');
-    postDiv.className = 'status lemmy-post';
-    postDiv.dataset.id = post.post.ap_id;
+function renderLemmyCard(post, state, actions) {
+    const card = document.createElement('div');
+    card.className = 'status lemmy-card'; // Use both classes for styling consistency
+    card.dataset.postId = post.post.id;
 
-    const communityLink = `!${post.community.name}@${new URL(post.community.actor_id).hostname}`;
-    const timestamp = formatTimestamp(post.post.published);
-
-    let mediaHTML = '';
-    if (post.post.url && post.post.thumbnail_url) {
-        mediaHTML = `<div class="lemmy-thumbnail"><a href="${post.post.url}" target="_blank" rel="noopener noreferrer"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></a></div>`;
+    let thumbnailHTML = '';
+    if (post.post.thumbnail_url) {
+        thumbnailHTML = `<div class="lemmy-thumbnail"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
     }
 
-    postDiv.innerHTML = `
+    card.innerHTML = `
         <div class="status-body-content">
-            <h3 class="lemmy-title">${post.post.name}</h3>
-            ${mediaHTML}
-            <div class="lemmy-post-footer">
-                <span class="community-link" data-community-acct="${post.community.name}@${new URL(post.community.actor_id).hostname}">${communityLink}</span> · 
-                <span class="lemmy-user">by ${post.creator.name}</span>
-                <span class="timestamp">· ${timestamp}</span>
+            <div class="status-header">
+                <img src="${post.community.icon}" alt="${post.community.name} icon" class="lemmy-community-icon">
+                <div>
+                    <span class="display-name">${post.community.name}</span>
+                    <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
+                </div>
+            </div>
+            <div class="status-content">
+                <h3 class="lemmy-title">${post.post.name}</h3>
+                ${thumbnailHTML}
             </div>
             <div class="status-footer">
+                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
+                <span class="lemmy-score">${post.counts.score}</span>
+                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
                 <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
-                <button class="status-action" data-action="boost">${ICONS.boost} ${post.counts.score}</button>
+                <button class="status-action" data-action="save">${ICONS.bookmark}</button>
             </div>
         </div>
     `;
 
-    postDiv.querySelector('.community-link').addEventListener('click', (e) => {
-        e.stopPropagation();
-        actions.showLemmyCommunity(e.target.dataset.communityAcct);
-    });
-
-    postDiv.querySelector('.lemmy-title').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        actions.showLemmyPostDetail(post);
-    });
-    
-    postDiv.querySelectorAll('.status-action').forEach(button => {
+    // --- Event Listeners for Real-Time Actions ---
+    card.querySelectorAll('.lemmy-vote-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
-            const action = button.dataset.action;
-            if (action === 'view-comments') {
-                actions.showLemmyPostDetail(post);
-            } else {
-                actions.toggleAction(action, { id: post.post.ap_id }, button);
-            }
+            const score = parseInt(e.currentTarget.dataset.score, 10);
+            actions.lemmyVote(post.post.id, score, card);
         });
     });
 
-    return postDiv;
+    card.querySelector('[data-action="save"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.lemmySave(post.post.id, e.currentTarget);
+    });
+    
+    // Main card click to view post details
+    card.addEventListener('click', () => {
+        actions.showLemmyPostDetail(post);
+    });
+
+    return card;
 }
+
 
 async function renderLemmyCommunityPage(state, communityAcct, switchView) {
     const container = document.getElementById('lemmy-community-view');
@@ -91,7 +92,7 @@ async function renderLemmyCommunityPage(state, communityAcct, switchView) {
 
         const postList = container.querySelector('.lemmy-post-list');
         topLevelPosts.forEach(post => {
-            postList.appendChild(renderLemmyPost(post, state, state.actions));
+            postList.appendChild(renderLemmyCard(post, state, state.actions));
         });
 
     } catch (err) {
@@ -161,29 +162,7 @@ async function renderSubscribedFeed(state, switchView) {
         container.innerHTML = '';
         if (posts && posts.length > 0) {
             posts.forEach(post => {
-                const card = document.createElement('div');
-                card.className = 'lemmy-card';
-                card.dataset.postId = post.post.id;
-                card.innerHTML = `
-                    <div class="vote-sidebar">
-                        <span>${ICONS.boost}</span>
-                        <span>${post.counts.score}</span>
-                    </div>
-                    <div class="post-content">
-                        <h3 class="lemmy-title">${post.post.name}</h3>
-                        <div class="lemmy-post-footer">
-                            <span class="community-link" data-community-acct="${post.community.name}@${new URL(post.community.actor_id).hostname}">!${post.community.name}</span> · 
-                            <span class="lemmy-user">by ${post.creator.name}</span>
-                            <span class="timestamp">· ${formatTimestamp(post.post.published)}</span>
-                        </div>
-                    </div>
-                `;
-
-                card.addEventListener('click', () => {
-                    state.actions.showLemmyPostDetail(post);
-                });
-
-                container.appendChild(card);
+                container.appendChild(renderLemmyCard(post, state, state.actions));
             });
         } else {
             container.innerHTML = '<p>No posts in your subscribed communities.</p>';
@@ -220,28 +199,7 @@ async function renderUnifiedFeed(state, switchView) {
         container.innerHTML = '';
         unified.forEach(item => {
             if (item.post) { // It's a Lemmy post
-                const card = document.createElement('div');
-                card.className = 'lemmy-card';
-                card.dataset.postId = item.post.id;
-                card.innerHTML = `
-                    <div class="vote-sidebar">
-                        <span>${ICONS.boost}</span>
-                        <span>${item.counts.score}</span>
-                    </div>
-                    <div class="post-content">
-                        <h3 class="lemmy-title">${item.post.name}</h3>
-                        <div class="lemmy-post-footer">
-                            <span class="community-link" data-community-acct="${item.community.name}@${new URL(item.community.actor_id).hostname}">!${item.community.name}</span> · 
-                            <span class="lemmy-user">by ${item.creator.name}</span>
-                            <span class="timestamp">· ${formatTimestamp(item.post.published)}</span>
-                        </div>
-                    </div>
-                `;
-
-                card.addEventListener('click', () => {
-                    state.actions.showLemmyPostDetail(item);
-                });
-                container.appendChild(card);
+                container.appendChild(renderLemmyCard(item, state, state.actions));
             } else { // It's a Mastodon post
                 container.appendChild(renderStatus(item, state, state.actions));
             }
