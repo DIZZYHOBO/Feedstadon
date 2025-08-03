@@ -3,28 +3,30 @@ import { ICONS } from './icons.js';
 import { renderStatus } from './Post.js';
 
 export async function renderHashtagSuggestions(state, query) {
-    const container = document.getElementById('search-results-view');
-    const suggestionBar = document.createElement('div');
-    suggestionBar.className = 'hashtag-suggestion-bar';
-    
-    // Clear previous suggestions
-    const existingBar = container.querySelector('.hashtag-suggestion-bar');
-    if (existingBar) {
-        existingBar.remove();
-    }
+    const searchView = document.getElementById('search-results-view');
+    let suggestionBar = searchView.querySelector('.hashtag-suggestion-bar');
 
     if (!query.startsWith('#') || query.length < 2) {
-        return; // Only show for hashtags with at least one character after #
+        if (suggestionBar) suggestionBar.remove();
+        return;
+    }
+    
+    if (!suggestionBar) {
+        suggestionBar = document.createElement('div');
+        suggestionBar.className = 'hashtag-suggestion-bar';
+        searchView.prepend(suggestionBar);
     }
 
     try {
         const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/trends`);
         const suggestions = response.data;
         
+        suggestionBar.innerHTML = ''; // Clear previous suggestions
+
         if (suggestions.length === 0) return;
 
         const filteredSuggestions = suggestions
-            .filter(tag => tag.name.toLowerCase().includes(query.substring(1).toLowerCase()))
+            .filter(tag => tag.name.toLowerCase().startsWith(query.substring(1).toLowerCase()))
             .slice(0, 4);
 
         if (filteredSuggestions.length > 0) {
@@ -38,9 +40,7 @@ export async function renderHashtagSuggestions(state, query) {
                 };
                 suggestionBar.appendChild(button);
             });
-            container.prepend(suggestionBar);
         }
-
     } catch (err) {
         console.error("Hashtag suggestion failed:", err);
     }
@@ -49,6 +49,11 @@ export async function renderHashtagSuggestions(state, query) {
 
 export async function renderSearchResults(state, query) {
     const container = document.getElementById('search-results-view');
+    
+    // Clear previous suggestion bar if it exists
+    const existingBar = container.querySelector('.hashtag-suggestion-bar');
+    if (existingBar) existingBar.remove();
+
     container.innerHTML = `<p>Searching for "${query}"...</p>`;
 
     try {
@@ -69,7 +74,7 @@ export async function renderSearchResults(state, query) {
                 const statusElement = renderStatus(status, state, state.actions);
                 if (statusElement) container.appendChild(statusElement);
             });
-            return; // Stop execution here for hashtag search
+            return;
         }
 
         // Otherwise, perform a general search.
