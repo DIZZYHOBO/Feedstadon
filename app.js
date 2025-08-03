@@ -7,7 +7,7 @@ import { showComposeModal, initComposeModal } from './components/Compose.js';
 import { fetchNotifications, renderNotification } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderConversationsList } from './components/Conversations.js';
-import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage, renderSubscribedFeed } from './components/Lemmy.js';
+import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage, renderSubscribedFeed, renderUnifiedFeed } from './components/Lemmy.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- App Initialization ---
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userDisplayBtn = document.getElementById('user-display-btn');
     const timelineDiv = document.getElementById('timeline');
     const subscribedFeedDiv = document.getElementById('subscribed-feed');
+    const unifiedFeedDiv = document.getElementById('unified-feed');
     const profilePageView = document.getElementById('profile-page-view');
     const searchResultsView = document.getElementById('search-results-view');
     const statusDetailView = document.getElementById('status-detail-view');
@@ -50,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedFeedLink = document.getElementById('saved-feed-link');
     const discoverLemmyLink = document.getElementById('discover-lemmy-link');
     const lemmySubscribedLink = document.getElementById('lemmy-subscribed-link');
+    const unifiedFeedLink = document.getElementById('unified-feed-link');
     const refreshBtn = document.getElementById('refresh-btn');
     const scrollLoader = document.getElementById('scroll-loader');
     const toastNotification = document.getElementById('toast-notification');
@@ -139,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.showSubscribedFeed = () => {
         renderSubscribedFeed(state, switchView);
     };
+    state.actions.showUnifiedFeed = () => {
+        renderUnifiedFeed(state, switchView);
+    };
     state.actions.loadMoreContent = () => loadMoreContent();
 
     state.actions.handleSearchResultClick = (account) => {
@@ -154,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentView = viewName;
         timelineDiv.style.display = 'none';
         subscribedFeedDiv.style.display = 'none';
+        unifiedFeedDiv.style.display = 'none';
         profilePageView.style.display = 'none';
         searchResultsView.style.display = 'none';
         statusDetailView.style.display = 'none';
@@ -180,6 +186,10 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshBtn.style.display = 'flex';
         } else if (viewName === 'subscribed-feed') {
             subscribedFeedDiv.style.display = 'flex';
+            feedsDropdown.style.display = 'block';
+            refreshBtn.style.display = 'flex';
+        } else if (viewName === 'unified-feed') {
+            unifiedFeedDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
             refreshBtn.style.display = 'flex';
         } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks', 'conversations', 'lemmy-discover', 'lemmy-community', 'lemmy-post'].includes(viewName)) {
@@ -789,6 +799,14 @@ document.addEventListener('DOMContentLoaded', () => {
             state.actions.showSubscribedFeed();
         });
     });
+
+    unifiedFeedLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMenuAction(() => {
+            state.actions.showUnifiedFeed();
+        });
+    });
     
     [userDropdown, feedsDropdown].forEach(dd => {
         if (dd) {
@@ -943,6 +961,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderNotificationsPage();
             } else if (event.state.view === 'subscribed-feed') {
                 renderSubscribedFeed(state, switchView);
+            } else if (event.state.view === 'unified-feed') {
+                renderUnifiedFeed(state, switchView);
             }
         } else {
             switchView('timeline', false);
