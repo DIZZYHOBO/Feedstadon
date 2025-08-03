@@ -208,6 +208,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    state.actions.lemmyCommentVote = async (commentId, score, commentElement) => {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const jwt = localStorage.getItem('lemmy_jwt');
+        if (!lemmyInstance || !jwt) return;
+
+        try {
+            const response = await apiFetch(lemmyInstance, jwt, '/api/v3/comment/like', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment_id: commentId, score: score })
+            });
+            
+            const updatedComment = response.data.comment_view;
+            const scoreElement = commentElement.querySelector('.lemmy-score');
+            scoreElement.textContent = updatedComment.counts.score;
+            
+            const upvoteBtn = commentElement.querySelector('[data-action="upvote"]');
+            const downvoteBtn = commentElement.querySelector('[data-action="downvote"]');
+            
+            upvoteBtn.classList.remove('active');
+            downvoteBtn.classList.remove('active');
+            
+            if (updatedComment.my_vote === 1) {
+                upvoteBtn.classList.add('active');
+            } else if (updatedComment.my_vote === -1) {
+                downvoteBtn.classList.add('active');
+            }
+
+        } catch (error) {
+            console.error('Lemmy comment vote error:', error);
+        }
+    };
+
     // --- View Management ---
     function switchView(viewName, pushHistory = true) {
         state.currentView = viewName;
