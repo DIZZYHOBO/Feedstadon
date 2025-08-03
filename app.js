@@ -154,6 +154,60 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    state.actions.lemmyVote = async (postId, score, cardElement) => {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const jwt = localStorage.getItem('lemmy_jwt');
+        if (!lemmyInstance || !jwt) return;
+
+        try {
+            const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/like', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, score: score })
+            });
+
+            const updatedPost = response.data.post_view;
+            const scoreElement = cardElement.querySelector('.lemmy-score');
+            scoreElement.textContent = updatedPost.counts.score;
+
+            const upvoteBtn = cardElement.querySelector('[data-action="upvote"]');
+            const downvoteBtn = cardElement.querySelector('[data-action="downvote"]');
+
+            upvoteBtn.classList.remove('active');
+            downvoteBtn.classList.remove('active');
+
+            if (updatedPost.my_vote === 1) {
+                upvoteBtn.classList.add('active');
+            } else if (updatedPost.my_vote === -1) {
+                downvoteBtn.classList.add('active');
+            }
+
+        } catch (error) {
+            console.error('Lemmy vote error:', error);
+        }
+    };
+
+    state.actions.lemmySave = async (postId, buttonElement) => {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const jwt = localStorage.getItem('lemmy_jwt');
+        if (!lemmyInstance || !jwt) return;
+
+        const isSaved = buttonElement.classList.contains('active');
+
+        try {
+            const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/save', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, save: !isSaved })
+            });
+            
+            buttonElement.classList.toggle('active');
+
+        } catch (error) {
+            console.error('Lemmy save error:', error);
+        }
+    };
+
     // --- View Management ---
     function switchView(viewName, pushHistory = true) {
         state.currentView = viewName;
