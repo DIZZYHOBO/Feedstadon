@@ -1,27 +1,32 @@
-export function formatTimestamp(isoDate) {
+/**
+ * Formats a timestamp into a human-readable string (e.g., "5m", "2h", "3d").
+ * @param {string} timestamp - The ISO 8601 timestamp string.
+ * @returns {string} - The formatted, relative time string.
+ */
+export function formatTimestamp(timestamp) {
     const now = new Date();
-    const postDate = new Date(isoDate);
+    const postDate = new Date(timestamp);
     const seconds = Math.floor((now - postDate) / 1000);
 
-    let interval = seconds / 31536000; // years
+    let interval = seconds / 31536000;
     if (interval > 1) {
-        return postDate.toLocaleDateString('en-us', { month: 'short', day: 'numeric', year: 'numeric' });
+        return Math.floor(interval) + "y";
     }
-    interval = seconds / 2592000; // months
+    interval = seconds / 2592000;
     if (interval > 1) {
-        return postDate.toLocaleDateString('en-us', { month: 'short', day: 'numeric' });
+        return Math.floor(interval) + "mo";
     }
-    interval = seconds / 86400; // days
+    interval = seconds / 86400;
     if (interval > 1) {
-        return `${Math.floor(interval)}d`;
+        return Math.floor(interval) + "d";
     }
-    interval = seconds / 3600; // hours
+    interval = seconds / 3600;
     if (interval > 1) {
-        return `${Math.floor(interval)}h`;
+        return Math.floor(interval) + "h";
     }
-    interval = seconds / 60; // minutes
+    interval = seconds / 60;
     if (interval > 1) {
-        return `${Math.floor(interval)}m`;
+        return Math.floor(interval) + "m";
     }
-    return `${Math.floor(seconds)}s`;
+    return Math.floor(seconds) + "s";
 }
