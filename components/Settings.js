@@ -1,259 +1,125 @@
-import { apiFetch, apiUpdateCredentials } from './api.js';
-
-function renderFilterList(container, filters) {
-    const list = container.querySelector('#filter-list');
-    list.innerHTML = '';
-
-    if (!filters || filters.length === 0) {
-        list.innerHTML = '<li>No filters set.</li>';
-        return;
-    }
-
-    filters.forEach(filter => {
-        const item = document.createElement('li');
-        item.className = 'filter-item';
-        item.innerHTML = `
-            <span>${filter.phrase}</span>
-            <button data-id="${filter.id}" title="Delete filter">&times;</button>
-        `;
-        list.appendChild(item);
-    });
-}
-
-function renderMutedList(container, mutedAccounts) {
-    const list = container.querySelector('#muted-users-list');
-    list.innerHTML = '';
-
-    if (!mutedAccounts || mutedAccounts.length === 0) {
-        list.innerHTML = '<li>You haven\'t muted anyone.</li>';
-        return;
-    }
-
-    mutedAccounts.forEach(account => {
-        const item = document.createElement('li');
-        item.className = 'muted-user-item';
-        item.innerHTML = `
-            <img src="${account.avatar_static}" alt="${account.acct} avatar">
-            <div class="info">
-                <div class="display-name">${account.display_name}</div>
-                <div class="acct">@${account.acct}</div>
-            </div>
-            <button class="unmute-btn" data-id="${account.id}">Unmute</button>
-        `;
-        list.appendChild(item);
-    });
-}
+import { apiFetch } from './api.js';
 
 export async function renderSettingsPage(state) {
     const container = document.getElementById('settings-view');
-    container.innerHTML = '<p>Loading settings...</p>';
-
-    try {
-        const [account, filtersResponse, mutesResponse] = await Promise.all([
-            state.currentUser,
-            apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters'),
-            apiFetch(state.instanceUrl, state.accessToken, '/api/v1/mutes')
-        ]);
-
-        const filters = filtersResponse.data;
-        const mutedAccounts = mutesResponse.data;
-
-        container.innerHTML = `
-            <div class="settings-container">
-                <div class="settings-section">
-                    <h3>Theme</h3>
-                    <div class="form-group">
-                        <label for="theme-select">Select a theme</label>
-                        <select id="theme-select">
-                            <option value="feedstodon">Feedstodon (Default)</option>
-                            <option value="purple">Dark Purple</option>
-                            <option value="tube">Tube</option>
-                            <option value="readit">Read It</option>
-                            <option value="git">Git</option>
-                        </select>
-                    </div>
-                </div>
-
-                <form id="settings-form">
-                    <div class="settings-section">
-                        <h3>Profile</h3>
-                        <div class="form-group">
-                            <label for="display-name-input">Display Name</label>
-                            <input type="text" id="display-name-input" value="${account.display_name}">
-                        </div>
-                        <div class="form-group">
-                            <label for="bio-textarea">Bio / Note</label>
-                            <textarea id="bio-textarea" rows="4"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="avatar-input">Avatar (Profile Picture)</label>
-                            <input type="file" id="avatar-input" accept="image/*">
-                            <span class="file-status" id="avatar-status"></span>
-                        </div>
-                        <div class="form-group">
-                            <label for="header-input">Header (Banner Image)</label>
-                            <input type="file" id="header-input" accept="image/*">
-                            <span class="file-status" id="header-status"></span>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="settings-save-button">Save Profile Settings</button>
-                </form>
-
-                <div class="settings-section">
-                    <h3>Keyword Filters</h3>
-                    <p>Hide posts from your timelines that contain these words or phrases.</p>
-                    <div class="form-group">
-                        <div class="filter-input-group">
-                            <input type="text" id="add-filter-input" placeholder="e.g., politics, spoilers">
-                            <button type="button" id="add-filter-btn" class="nav-button">Add</button>
-                        </div>
-                    </div>
-                    <ul id="filter-list"></ul>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Muted Users</h3>
-                    <ul id="muted-users-list"></ul>
+    container.innerHTML = `
+        <div class="view-header">Settings</div>
+        <div class="settings-container">
+            <div class="settings-section">
+                <h3>Theme</h3>
+                <div class="form-group">
+                    <label for="theme-select">Select a theme for the app</label>
+                    <select id="theme-select">
+                        <option value="feedstodon">Feedstodon (Default)</option>
+                        <option value="purple">Purple</option>
+                        <option value="tube">Tube</option>
+                        <option value="readit">Readit</option>
+                        <option value="git">Git</option>
+                    </select>
                 </div>
             </div>
-        `;
-        
-        const bioTextarea = container.querySelector('#bio-textarea');
-        const plainTextBio = account.note.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<[^>]*>/g, "").trim();
-        bioTextarea.value = plainTextBio;
-        
-        let currentFilters = filters;
-        renderFilterList(container, currentFilters);
+            
+            <div class="settings-section">
+                <h3>Lemmy Instances</h3>
+                <div class="form-group">
+                    <label for="lemmy-instance-input">Add a Lemmy Instance</label>
+                    <p class="form-description">Add Lemmy instances (e.g., lemmy.world) to discover their communities.</p>
+                    <div class="filter-input-group">
+                        <input type="text" id="lemmy-instance-input" placeholder="lemmy.world">
+                        <button id="add-lemmy-instance-btn">Add</button>
+                    </div>
+                    <ul id="lemmy-instances-list"></ul>
+                </div>
+            </div>
 
-        let currentMutes = mutedAccounts;
-        renderMutedList(container, currentMutes);
+            <div class="settings-section">
+                <h3>Muted Users</h3>
+                <ul id="muted-users-list"><p>Loading muted users...</p></ul>
+            </div>
+        </div>
+    `;
 
-        // --- Event Listeners ---
-        const settingsForm = container.querySelector('#settings-form');
-        const addFilterBtn = container.querySelector('#add-filter-btn');
-        const filterList = container.querySelector('#filter-list');
-        const mutedList = container.querySelector('#muted-users-list');
-        const avatarInput = container.querySelector('#avatar-input');
-        const headerInput = container.querySelector('#header-input');
-        const avatarStatus = container.querySelector('#avatar-status');
-        const headerStatus = container.querySelector('#header-status');
-        const themeSelect = container.querySelector('#theme-select');
-        
-        // Set initial theme value
-        themeSelect.value = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+    // --- Theme Settings ---
+    const themeSelect = container.querySelector('#theme-select');
+    themeSelect.value = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+    themeSelect.addEventListener('change', () => {
+        document.documentElement.dataset.theme = themeSelect.value;
+        localStorage.setItem('feedstodon-theme', themeSelect.value);
+    });
 
-        themeSelect.addEventListener('change', () => {
-            const newTheme = themeSelect.value;
-            document.documentElement.dataset.theme = newTheme;
-            localStorage.setItem('feedstodon-theme', newTheme);
+    // --- Lemmy Instance Settings ---
+    const instanceInput = container.querySelector('#lemmy-instance-input');
+    const addInstanceBtn = container.querySelector('#add-lemmy-instance-btn');
+    const instancesList = container.querySelector('#lemmy-instances-list');
+
+    function renderLemmyInstances() {
+        instancesList.innerHTML = '';
+        state.lemmyInstances.forEach(instance => {
+            const li = document.createElement('li');
+            li.className = 'muted-user-item'; // Re-use style for consistency
+            li.innerHTML = `
+                <div class="info">
+                    <span class="display-name">${instance}</span>
+                </div>
+                <button class="unmute-btn" data-instance="${instance}">Remove</button>
+            `;
+            li.querySelector('button').addEventListener('click', () => {
+                state.lemmyInstances = state.lemmyInstances.filter(i => i !== instance);
+                localStorage.setItem('lemmyInstances', JSON.stringify(state.lemmyInstances));
+                renderLemmyInstances();
+            });
+            instancesList.appendChild(li);
+        });
+    }
+
+    addInstanceBtn.addEventListener('click', () => {
+        const newInstance = instanceInput.value.trim();
+        if (newInstance && !state.lemmyInstances.includes(newInstance)) {
+            state.lemmyInstances.push(newInstance);
+            localStorage.setItem('lemmyInstances', JSON.stringify(state.lemmyInstances));
+            renderLemmyInstances();
+            instanceInput.value = '';
+        }
+    });
+    
+    renderLemmyInstances();
+
+
+    // --- Muted Users ---
+    const mutedUsersList = container.querySelector('#muted-users-list');
+    try {
+        const muted = (await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/mutes')).data;
+        mutedUsersList.innerHTML = '';
+        if (muted.length === 0) {
+            mutedUsersList.innerHTML = '<p>You haven\'t muted anyone.</p>';
+        }
+        muted.forEach(account => {
+            const item = document.createElement('li');
+            item.className = 'muted-user-item';
+            item.innerHTML = `
+                <img src="${account.avatar_static}" alt="${account.acct} avatar">
+                <div class="info">
+                    <span class="display-name">${account.display_name}</span>
+                    <div class="acct">@${account.acct}</div>
+                </div>
+                <button class="unmute-btn" data-id="${account.id}">Unmute</button>
+            `;
+            mutedUsersList.appendChild(item);
         });
 
-        avatarInput.addEventListener('change', () => {
-            avatarStatus.textContent = avatarInput.files.length > 0 ? avatarInput.files[0].name : '';
-        });
-
-        headerInput.addEventListener('change', () => {
-            headerStatus.textContent = headerInput.files.length > 0 ? headerInput.files[0].name : '';
-        });
-
-        settingsForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const saveButton = settingsForm.querySelector('.settings-save-button');
-            saveButton.disabled = true;
-            saveButton.textContent = 'Saving...';
-
-            const avatarFile = avatarInput.files[0];
-            const headerFile = headerInput.files[0];
-
-            if (avatarFile) avatarStatus.textContent = 'Uploading avatar...';
-            if (headerFile) headerStatus.textContent = 'Uploading header...';
-
-            try {
-                const formData = new FormData();
-                formData.append('display_name', document.getElementById('display-name-input').value);
-                formData.append('note', document.getElementById('bio-textarea').value);
-                
-                if (avatarFile) formData.append('avatar', avatarFile);
-                if (headerFile) formData.append('header', headerFile);
-
-                const updatedAccount = await apiUpdateCredentials(state, formData);
-                state.currentUser = updatedAccount;
-                
-                alert('Settings saved successfully!');
-                document.getElementById('user-display-btn').textContent = updatedAccount.display_name;
-                avatarStatus.textContent = '';
-                headerStatus.textContent = '';
-                avatarInput.value = '';
-                headerInput.value = '';
-
-            } catch (error) {
-                console.error('Failed to save settings:', error);
-                alert('Could not save settings.');
-                if (avatarFile) avatarStatus.textContent = 'Upload failed.';
-                if (headerFile) headerStatus.textContent = 'Upload failed.';
-            } finally {
-                saveButton.disabled = false;
-                saveButton.textContent = 'Save Profile Settings';
-            }
-        });
-
-        addFilterBtn.addEventListener('click', async () => {
-            const input = container.querySelector('#add-filter-input');
-            const phrase = input.value.trim();
-            if (!phrase) return;
-
-            try {
-                const newFilter = (await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/filters', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phrase: phrase,
-                        context: ['home', 'public']
-                    })
-                })).data;
-                input.value = '';
-                currentFilters.push(newFilter);
-                renderFilterList(container, currentFilters);
-            } catch (error) {
-                console.error('Failed to add filter:', error);
-                alert('Could not add filter.');
-            }
-        });
-
-        filterList.addEventListener('click', async (e) => {
-            if (e.target.tagName === 'BUTTON' && e.target.dataset.id) {
-                const filterId = e.target.dataset.id;
-                try {
-                    await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/filters/${filterId}`, {
-                        method: 'DELETE'
-                    });
-                    currentFilters = currentFilters.filter(f => f.id !== filterId);
-                    renderFilterList(container, currentFilters);
-                } catch (error) {
-                    console.error('Failed to delete filter:', error);
-                    alert('Could not delete filter.');
-                }
-            }
-        });
-        
-        mutedList.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('unmute-btn')) {
+        mutedUsersList.querySelectorAll('.unmute-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
                 const accountId = e.target.dataset.id;
                 try {
-                    await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/unmute`, {
-                        method: 'POST'
-                    });
+                    await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/unmute`, { method: 'POST' });
                     e.target.closest('.muted-user-item').remove();
-                } catch (error) {
-                    console.error('Failed to unmute user:', error);
-                    alert('Could not unmute user.');
+                } catch (err) {
+                    alert('Failed to unmute user.');
                 }
-            }
+            });
         });
 
-    } catch (error) {
-        console.error('Failed to render settings page:', error);
-        container.innerHTML = '<p>Could not load settings.</p>';
+    } catch (err) {
+        mutedUsersList.innerHTML = '<p>Could not load muted users.</p>';
     }
 }
