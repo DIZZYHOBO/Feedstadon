@@ -1,12 +1,10 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
-import { renderLemmyPostPage } from './LemmyPost.js';
-import { renderStatus } from './Post.js';
 
-function renderLemmyCard(post, state, actions) {
+function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
-    card.className = 'status lemmy-card';
+    card.className = 'lemmy-card'; // Use a dedicated class for Lemmy content
     card.dataset.postId = post.post.id;
 
     let thumbnailHTML = '';
@@ -15,25 +13,23 @@ function renderLemmyCard(post, state, actions) {
     }
 
     card.innerHTML = `
-        <div class="status-body-content">
-            <div class="status-header">
-                <img src="${post.community.icon}" alt="${post.community.name} icon" class="lemmy-community-icon">
-                <div>
-                    <span class="display-name">${post.community.name}</span>
-                    <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
-                </div>
+        <div class="lemmy-card-header">
+            <img src="${post.community.icon}" alt="${post.community.name} icon" class="lemmy-community-icon">
+            <div>
+                <span class="display-name">${post.community.name}</span>
+                <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
             </div>
-            <div class="status-content">
-                <h3 class="lemmy-title">${post.post.name}</h3>
-                ${thumbnailHTML}
-            </div>
-            <div class="status-footer">
-                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
-                <span class="lemmy-score">${post.counts.score}</span>
-                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
-                <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
-                <button class="status-action" data-action="save">${ICONS.bookmark}</button>
-            </div>
+        </div>
+        <div class="lemmy-card-body">
+            <h3 class="lemmy-title">${post.post.name}</h3>
+            ${thumbnailHTML}
+        </div>
+        <div class="lemmy-card-footer">
+            <button class="lemmy-action-btn lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
+            <span class="lemmy-score">${post.counts.score}</span>
+            <button class="lemmy-action-btn lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
+            <button class="lemmy-action-btn" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
+            <button class="lemmy-action-btn" data-action="save">${ICONS.bookmark}</button>
         </div>
     `;
 
@@ -58,9 +54,8 @@ function renderLemmyCard(post, state, actions) {
 }
 
 
-async function renderLemmyCommunityPage(state, communityAcct, switchView) {
+export async function renderLemmyCommunityPage(state, communityAcct, actions) {
     const container = document.getElementById('lemmy-community-view');
-    switchView('lemmy-community');
     container.innerHTML = `<p>Loading community...</p>`;
 
     try {
@@ -90,7 +85,7 @@ async function renderLemmyCommunityPage(state, communityAcct, switchView) {
         const postList = container.querySelector('.lemmy-post-list');
         if (topLevelPosts.length > 0) {
             topLevelPosts.forEach(post => {
-                postList.appendChild(renderLemmyCard(post, state, state.actions));
+                postList.appendChild(renderLemmyCard(post, actions));
             });
         } else {
             postList.innerHTML = '<p>No posts in this community yet.</p>';
@@ -102,9 +97,8 @@ async function renderLemmyCommunityPage(state, communityAcct, switchView) {
     }
 }
 
-async function renderLemmyDiscoverPage(state, switchView) {
+export async function renderLemmyDiscoverPage(state, actions) {
     const container = document.getElementById('lemmy-discover-view');
-    switchView('lemmy-discover');
     container.innerHTML = `<div class="view-header">Discover Lemmy Communities</div><div class="community-list-container"></div>`;
     const listContainer = container.querySelector('.community-list-container');
     listContainer.innerHTML = `<p>Fetching communities from multiple instances...</p>`;
@@ -135,7 +129,7 @@ async function renderLemmyDiscoverPage(state, switchView) {
                         <div class="acct">${new URL(community.actor_id).hostname}</div>
                     </div>
                 `;
-                communityDiv.addEventListener('click', () => state.actions.showLemmyCommunity(fullAcct));
+                communityDiv.addEventListener('click', () => actions.showLemmyCommunity(fullAcct));
                 listContainer.appendChild(communityDiv);
             });
         } else {
@@ -149,10 +143,8 @@ async function renderLemmyDiscoverPage(state, switchView) {
     }
 }
 
-async function renderSubscribedFeed(state, switchView) {
+export async function renderSubscribedFeed(state, actions) {
     const container = document.getElementById('subscribed-feed');
-    switchView('subscribed-feed');
-
     const lemmyInstance = localStorage.getItem('lemmy_instance');
     const jwt = localStorage.getItem('lemmy_jwt');
 
@@ -176,7 +168,7 @@ async function renderSubscribedFeed(state, switchView) {
         container.innerHTML = '';
         if (posts && posts.length > 0) {
             posts.forEach(post => {
-                container.appendChild(renderLemmyCard(post, state, state.actions));
+                container.appendChild(renderLemmyCard(post, actions));
             });
         } else {
             container.innerHTML = '<div class="status-body-content"><p>No posts in your subscribed Lemmy communities yet.</p></div>';
@@ -193,9 +185,8 @@ async function renderSubscribedFeed(state, switchView) {
     }
 }
 
-async function renderUnifiedFeed(state, switchView) {
+export async function renderUnifiedFeed(state, actions) {
     const container = document.getElementById('unified-feed');
-    switchView('unified-feed');
     container.innerHTML = `<p>Loading home feed...</p>`;
 
     try {
@@ -225,9 +216,9 @@ async function renderUnifiedFeed(state, switchView) {
         if (unified.length > 0) {
             unified.forEach(item => {
                 if (item.post) {
-                    container.appendChild(renderLemmyCard(item, state, state.actions));
+                    container.appendChild(renderLemmyCard(item, actions));
                 } else {
-                    container.appendChild(renderStatus(item, state, state.actions));
+                    container.appendChild(renderStatus(item, state, actions));
                 }
             });
         } else {
@@ -239,5 +230,3 @@ async function renderUnifiedFeed(state, switchView) {
         container.innerHTML = '<p>Could not load unified feed.</p>';
     }
 }
-
-export { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderLemmyPostPage, renderSubscribedFeed, renderUnifiedFeed };
