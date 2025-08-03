@@ -58,10 +58,10 @@ export async function renderLemmyCommunityPage(state, communityAcct, switchView)
     try {
         const [communityName, communityHostname] = communityAcct.split('@');
         const communityResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/community?name=${communityName}`);
-        const community = communityResponse.community_view;
+        const community = communityResponse.data.community_view;
         
         const postsResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post/list?community_id=${community.community.id}`);
-        const topLevelPosts = postsResponse.posts.filter(p => p.post.name && p.post.name.trim() !== '');
+        const topLevelPosts = postsResponse.data.posts.filter(p => p.post.name && p.post.name.trim() !== '');
 
         container.innerHTML = `
             <div class="lemmy-community-header" style="background-image: url(${community.community.banner || ''})">
@@ -100,11 +100,11 @@ export async function renderLemmyDiscoverPage(state, switchView) {
     state.lemmyInstances.forEach(async (instanceUrl) => {
         try {
             const response = await apiFetch(`https://${instanceUrl}`, null, '/api/v3/community/list');
-            if (!response || !response.communities) {
+            if (!response.data || !response.data.communities) {
                  console.warn(`Could not fetch communities from ${instanceUrl}, it may be blocking requests.`);
                  return;
             }
-            const communities = response.communities;
+            const communities = response.data.communities;
 
             communities.forEach(item => {
                 const community = item.community;
