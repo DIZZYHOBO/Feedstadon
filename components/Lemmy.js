@@ -61,7 +61,8 @@ export async function renderLemmyCommunityPage(state, communityId, switchView) {
         const community = communityResponse.community_view;
         
         const postsResponse = await apiFetch(`https://${communityHostname}`, null, `/api/v3/post/list?community_id=${community.community.id}`);
-        const posts = postsResponse.posts;
+        // This is the new line that filters for top-level posts only
+        const topLevelPosts = postsResponse.posts.filter(p => p.post.name && p.post.name.trim() !== '');
 
         container.innerHTML = `
             <div class="lemmy-community-header" style="background-image: url(${community.community.banner || ''})">
@@ -79,7 +80,7 @@ export async function renderLemmyCommunityPage(state, communityId, switchView) {
         `;
 
         const postList = container.querySelector('.lemmy-post-list');
-        posts.forEach(post => {
+        topLevelPosts.forEach(post => {
             postList.appendChild(renderLemmyPost(post, state, state.actions));
         });
 
