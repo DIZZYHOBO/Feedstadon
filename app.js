@@ -696,33 +696,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    messagesBtn.addEventListener('click', () => {
-        state.actions.showConversations();
+    function handleMenuAction(action) {
+        action();
         userDropdown.classList.remove('active');
+    }
+
+    messagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleMenuAction(state.actions.showConversations);
     });
 
-    notificationsBtn.addEventListener('click', () => {
-        state.actions.showAllNotifications();
-        userDropdown.classList.remove('active');
+    notificationsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleMenuAction(state.actions.showAllNotifications);
     });
 
     newPostLink.addEventListener('click', (e) => {
         e.preventDefault();
-        showComposeModal(state);
-        userDropdown.classList.remove('active');
+        e.stopPropagation();
+        handleMenuAction(() => showComposeModal(state));
     });
 
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
-        state.actions.showProfile(state.currentUser.id);
-        userDropdown.classList.remove('active');
+        e.stopPropagation();
+        handleMenuAction(() => state.actions.showProfile(state.currentUser.id));
     });
 
     settingsLink.addEventListener('click', (e) => {
         e.preventDefault();
-        renderSettingsPage(state);
-        switchView('settings');
-        userDropdown.classList.remove('active');
+        e.stopPropagation();
+        handleMenuAction(() => {
+            renderSettingsPage(state);
+            switchView('settings');
+        });
     });
     
     [userDropdown, feedsDropdown].forEach(dd => {
@@ -740,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initInfiniteScroll() {
         const options = {
             root: null,
-            rootMargin: '400px 0px',
+            rootMargin: '250px 0px',
             threshold: 0
         };
         const observer = new IntersectionObserver((entries) => {
