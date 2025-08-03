@@ -33,14 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
     const userDropdown = document.getElementById('user-dropdown');
-    const notificationsDropdown = document.getElementById('notifications-dropdown');
-    const notificationsBtn = document.getElementById('notifications-btn');
-    const notificationsList = document.getElementById('notifications-list');
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
-    const navPostBtn = document.getElementById('nav-post-btn');
+    const newPostLink = document.getElementById('new-post-link');
     const messagesBtn = document.getElementById('messages-btn');
+    const notificationsBtn = document.getElementById('notifications-btn');
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
     const savedFeedLink = document.getElementById('saved-feed-link');
@@ -65,12 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
         settings: {},
         currentTimeline: 'home',
         currentView: 'timeline',
-        notificationsList,
         conversations: [],
         actions: {},
         isLoadingMore: false,
         nextPageUrl: null,
-        hasUnreadNotifications: false
+        hasUnreadNotifications: false,
+        hasUnreadMessages: false
     };
     
     let postToEdit = null;
@@ -112,10 +110,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     state.actions.voteOnPoll = (pollId, choices, statusElement) => voteOnPoll(pollId, choices, statusElement);
     state.actions.muteAccount = (accountId) => muteAccount(accountId);
-    state.actions.showAllNotifications = () => renderNotificationsPage();
+    state.actions.showAllNotifications = () => {
+        renderNotificationsPage();
+        userDropdown.classList.remove('active');
+    };
     state.actions.showConversations = () => {
         renderConversationsList(state);
         switchView('conversations');
+        userDropdown.classList.remove('active');
     };
     state.actions.loadMoreContent = () => loadMoreContent();
 
@@ -169,9 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
             loginView.style.display = 'none';
             appView.style.display = 'block';
             document.querySelector('.top-nav').style.display = 'flex';
-            userDisplayBtn.textContent = state.currentUser.display_name;
             
             messagesBtn.innerHTML = ICONS.message;
+            notificationsBtn.innerHTML = ICONS.notifications || '🔔';
             refreshBtn.innerHTML = ICONS.refresh;
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
@@ -214,6 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(item) notificationsView.appendChild(item);
             });
             state.setNextPageUrl(response.linkHeader);
+            state.hasUnreadNotifications = false;
+            updateNotificationIndicator();
         } catch (error) {
             console.error('Failed to load notifications page:', error);
             notificationsView.innerHTML += '<p>Could not load notifications.</p>';
@@ -221,10 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateNotificationIndicator() {
-        // This could be updated to show a dot for unread messages too
-        const unreadConversations = state.conversations.some(c => c.unread);
-        notificationsBtn.classList.toggle('has-unread', state.hasUnreadNotifications);
-        messagesBtn.classList.toggle('has-unread', unreadConversations);
+        const hasUnread = state.hasUnreadNotifications || state.hasUnreadMessages;
+        userDisplayBtn.classList.toggle('has-unread', hasUnread);
     }
 
     function initUserStreamSocket() {
@@ -251,17 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             if (data.event === 'conversation') {
-                // When a new DM arrives, refresh the conversations list if it's open
+                state.hasUnreadMessages = true;
+                updateNotificationIndicator();
                 if (state.currentView === 'conversations') {
-                    renderConversationsList(state);
-                } else {
-                    // Just update the indicator
-                    const convo = JSON.parse(data.payload);
-                    const existing = state.conversations.find(c => c.id === convo.id);
-                    if (existing) {
-                        existing.unread = true;
-                    }
-                    updateNotificationIndicator();
+                    state.actions.showConversations();
                 }
             }
             if (data.event === 'delete') {
@@ -711,6 +706,16 @@ document.addEventListener('DOMContentLoaded', () => {
         state.actions.showConversations();
     });
 
+    notificationsBtn.addEventListener('click', () => {
+        state.actions.showAllNotifications();
+    });
+
+    newPostLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        showComposeModal(state);
+        userDropdown.classList.remove('active');
+    });
+
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
         state.actions.showProfile(state.currentUser.id);
@@ -722,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('settings');
     });
     
-    [userDropdown, feedsDropdown, notificationsDropdown].forEach(dd => {
+    [userDropdown, feedsDropdown].forEach(dd => {
         if (dd) {
             dd.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -730,11 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (d !== dd) d.classList.remove('active');
                 });
                 dd.classList.toggle('active');
-                if (dd.id === 'notifications-dropdown' && dd.classList.contains('active')) {
-                    state.hasUnreadNotifications = false;
-                    updateNotificationIndicator();
-                    fetchNotifications(state);
-                }
             });
         }
     });
@@ -805,8 +805,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSearchResults(state, query);
         switchView('search');
     });
-    
-    navPostBtn.addEventListener('click', () => showComposeModal(state));
     
     editPostForm.addEventListener('submit', async (e) => {
         e.preventDefault();
