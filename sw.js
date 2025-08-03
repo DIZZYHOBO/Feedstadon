@@ -1,5 +1,5 @@
 // MODIFIED: The cache name now includes a version number.
-const CACHE_NAME = 'feedstadon-v4.3.1'; 
+const CACHE_NAME = 'feedstadon-v4.3.2'; 
 const urlsToCache = [
   './',
   './index.html',
@@ -13,7 +13,8 @@ const urlsToCache = [
   './components/Profile.js',
   './components/Search.js',
   './components/Settings.js',
-  './components/utils.js'
+  './components/utils.js',
+  './components/Conversations.js'
 ];
 
 // Install event: cache all the app's assets.
