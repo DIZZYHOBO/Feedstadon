@@ -67,7 +67,8 @@ export async function renderSettingsPage(state) {
         }
 
         try {
-            const response = await apiFetch(`https://${instance}`, null, '/api/v3/user/login', {
+            // Corrected: Removed the "https://" prefix from the instance, letting apiFetch handle it.
+            const response = await apiFetch(instance, null, '/api/v3/user/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
