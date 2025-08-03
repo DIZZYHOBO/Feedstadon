@@ -1,35 +1,41 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
+import { renderLemmyPostPage } from './LemmyPost.js';
+import { renderStatus } from './Post.js';
 
 function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
-    card.className = 'lemmy-card'; // Use a dedicated class for Lemmy content
+    // Use the same .status class as Mastodon posts for consistent styling
+    card.className = 'status lemmy-card'; 
     card.dataset.postId = post.post.id;
 
     let thumbnailHTML = '';
     if (post.post.thumbnail_url) {
-        thumbnailHTML = `<div class="lemmy-thumbnail"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+        // Use the same .status-media class for consistency
+        thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
     }
 
     card.innerHTML = `
-        <div class="lemmy-card-header">
-            <img src="${post.community.icon}" alt="${post.community.name} icon" class="lemmy-community-icon">
-            <div>
-                <span class="display-name">${post.community.name}</span>
-                <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
+        <div class="status-body-content">
+            <div class="status-header">
+                <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar">
+                <div>
+                    <span class="display-name">${post.community.name}</span>
+                    <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
+                </div>
             </div>
-        </div>
-        <div class="lemmy-card-body">
-            <h3 class="lemmy-title">${post.post.name}</h3>
+            <div class="status-content">
+                <h3 class="lemmy-title">${post.post.name}</h3>
+            </div>
             ${thumbnailHTML}
-        </div>
-        <div class="lemmy-card-footer">
-            <button class="lemmy-action-btn lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
-            <span class="lemmy-score">${post.counts.score}</span>
-            <button class="lemmy-action-btn lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
-            <button class="lemmy-action-btn" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
-            <button class="lemmy-action-btn" data-action="save">${ICONS.bookmark}</button>
+            <div class="status-footer">
+                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
+                <span class="lemmy-score">${post.counts.score}</span>
+                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
+                <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
+                <button class="status-action" data-action="save">${ICONS.bookmark}</button>
+            </div>
         </div>
     `;
 
@@ -145,6 +151,7 @@ export async function renderLemmyDiscoverPage(state, actions) {
 
 export async function renderSubscribedFeed(state, actions) {
     const container = document.getElementById('subscribed-feed');
+
     const lemmyInstance = localStorage.getItem('lemmy_instance');
     const jwt = localStorage.getItem('lemmy_jwt');
 
