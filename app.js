@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.top-nav').style.display = 'flex';
             
             messagesBtn.innerHTML = ICONS.message;
-            notificationsBtn.innerHTML = ICONS.notifications || '🔔'; 
+            notificationsBtn.innerHTML = ICONS.notifications;
             refreshBtn.innerHTML = ICONS.refresh;
             initComposeModal(state, () => fetchTimeline('home', true));
             fetchTimeline('home');
