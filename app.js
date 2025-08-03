@@ -7,6 +7,7 @@ import { showComposeModal, initComposeModal } from './components/Compose.js';
 import { fetchNotifications, renderNotification } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderConversationsList } from './components/Conversations.js';
+import { renderLemmyDiscoverPage } from './components/Lemmy.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- App Initialization ---
@@ -29,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationsView = document.getElementById('notifications-view');
     const bookmarksView = document.getElementById('bookmarks-view');
     const conversationsView = document.getElementById('conversations-view');
+    const lemmyDiscoverView = document.getElementById('lemmy-discover-view');
+    const lemmyCommunityView = document.getElementById('lemmy-community-view');
     const backBtn = document.getElementById('back-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const feedsDropdown = document.getElementById('feeds-dropdown');
@@ -43,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
     const savedFeedLink = document.getElementById('saved-feed-link');
+    const discoverLemmyLink = document.getElementById('discover-lemmy-link');
     const refreshBtn = document.getElementById('refresh-btn');
     const scrollLoader = document.getElementById('scroll-loader');
     const toastNotification = document.getElementById('toast-notification');
@@ -65,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTimeline: 'home',
         currentView: 'timeline',
         conversations: [],
+        lemmyInstances: JSON.parse(localStorage.getItem('lemmyInstances')) || ['lemmy.world'],
         actions: {},
         isLoadingMore: false,
         nextPageUrl: null,
@@ -119,6 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderConversationsList(state);
         switchView('conversations');
     };
+    state.actions.showLemmyDiscover = () => {
+        renderLemmyDiscoverPage(state);
+    };
     state.actions.loadMoreContent = () => loadMoreContent();
 
 
@@ -134,6 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationsView.style.display = 'none';
         bookmarksView.style.display = 'none';
         conversationsView.style.display = 'none';
+        lemmyDiscoverView.style.display = 'none';
+        lemmyCommunityView.style.display = 'none';
         backBtn.style.display = 'none';
         feedsDropdown.style.display = 'none';
         refreshBtn.style.display = 'none';
@@ -147,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineDiv.style.display = 'flex';
             feedsDropdown.style.display = 'block';
             refreshBtn.style.display = 'flex';
-        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks', 'conversations'].includes(viewName)) {
+        } else if (['profile', 'search', 'statusDetail', 'settings', 'hashtag', 'notifications', 'bookmarks', 'conversations', 'lemmy-discover', 'lemmy-community'].includes(viewName)) {
             if (viewName === 'profile') profilePageView.style.display = 'block';
             if (viewName === 'search') searchResultsView.style.display = 'flex';
             if (viewName === 'statusDetail') statusDetailView.style.display = 'block';
@@ -159,6 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 conversationsView.style.display = 'flex';
                 state.setNextPageUrl(null); 
             }
+            if (viewName === 'lemmy-discover') lemmyDiscoverView.style.display = 'block';
+            if (viewName === 'lemmy-community') lemmyCommunityView.style.display = 'block';
             backBtn.style.display = 'block';
             feedsDropdown.style.display = 'block';
         }
@@ -730,6 +742,14 @@ document.addEventListener('DOMContentLoaded', () => {
         handleMenuAction(() => {
             renderSettingsPage(state);
             switchView('settings');
+        });
+    });
+
+    discoverLemmyLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMenuAction(() => {
+            state.actions.showLemmyDiscover();
         });
     });
     
