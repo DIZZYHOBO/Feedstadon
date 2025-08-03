@@ -236,7 +236,7 @@ textarea:focus {
 
 /* --- Main App Views --- */
 #app-view { display: none; }
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed { 
+#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed, #lemmy-discover-view, #lemmy-community-view { 
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
@@ -272,6 +272,8 @@ textarea:focus {
     border: 1px solid var(--border-color); 
     transition: all 0.3s ease;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .booster-info, .reply-info {
@@ -306,7 +308,7 @@ textarea:focus {
 }
 
 .status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; position: relative; }
-.status-header img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
+.status-header .avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
 .status-header .display-name { font-weight: bold; cursor: pointer; }
 .status-header .acct { color: var(--font-color-muted); }
 .status-header .timestamp { color: var(--font-color-muted); font-size: 0.9em; }
@@ -1095,43 +1097,34 @@ textarea:focus {
 }
 
 /* --- Lemmy Integration Styles --- */
-.lemmy-card .status-header img {
-    width: 24px;
-    height: 24px;
+.lemmy-card .status-header .avatar {
+    border-radius: 8px; /* Lemmy community icons are often square */
 }
+
 .lemmy-card .lemmy-title {
-    font-size: 1.2em;
+    font-size: 1.1em;
     font-weight: bold;
-    margin: 8px 0;
+    margin: 0 0 10px 0;
 }
-.lemmy-thumbnail {
-    margin-top: 10px;
-    max-height: 400px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    border-radius: 8px;
-}
-.lemmy-thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+
 .lemmy-card .status-footer {
     justify-content: flex-start;
     gap: 15px;
-    padding: 10px 0 0 0;
 }
+
 .lemmy-vote-btn {
     font-size: 1.2em;
 }
+
 .lemmy-vote-btn.active {
     color: var(--accent-color);
 }
+
 .lemmy-score {
     font-weight: bold;
+    color: var(--font-color);
 }
+
 .lemmy-comment-thread {
     margin-top: 15px;
     padding-top: 15px;
