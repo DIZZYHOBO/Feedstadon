@@ -157,7 +157,13 @@ async function renderSubscribedFeed(state, switchView) {
     const jwt = localStorage.getItem('lemmy_jwt');
 
     if (!jwt || !lemmyInstance) {
-        container.innerHTML = `<div class="view-header">Not Logged In</div><div class="status-body-content"><p>You are not logged into a Lemmy account. Please log in via the Settings page to see your subscribed communities.</p></div>`;
+        container.innerHTML = `
+            <div class="view-header">Not Logged In to Lemmy</div>
+            <div class="status-body-content">
+                <p>To see your subscribed Lemmy communities, you need to log in to your Lemmy account.</p>
+                <p>Please go to <strong>Settings</strong> and enter your Lemmy credentials.</p>
+            </div>
+        `;
         return;
     }
 
@@ -173,11 +179,17 @@ async function renderSubscribedFeed(state, switchView) {
                 container.appendChild(renderLemmyCard(post, state, state.actions));
             });
         } else {
-            container.innerHTML = '<p>No posts in your subscribed communities.</p>';
+            container.innerHTML = '<div class="status-body-content"><p>No posts in your subscribed Lemmy communities yet.</p></div>';
         }
     } catch (err) {
         console.error("Failed to load subscribed Lemmy feed:", err);
-        container.innerHTML = '<div class="view-header">Error</div><p>Could not load your subscribed Lemmy feed. Please check your Lemmy login details in settings and ensure the instance is reachable.</p>';
+        container.innerHTML = `
+            <div class="view-header">Error</div>
+            <div class="status-body-content">
+                <p>Could not load your subscribed Lemmy feed.</p>
+                <p>Please check your Lemmy login details in settings and ensure the instance is reachable.</p>
+            </div>
+        `;
     }
 }
 
