@@ -132,6 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     state.actions.loadMoreContent = () => loadMoreContent();
 
+    state.actions.handleSearchResultClick = (account) => {
+        // Simple heuristic: Lemmy communities often have "!" in their acct name when federated.
+        if (account.acct.includes('!')) {
+            state.actions.showLemmyCommunity(account.url);
+        } else {
+            state.actions.showProfile(account.id);
+        }
+    };
+
 
     // --- View Management ---
     function switchView(viewName, pushHistory = true) {
