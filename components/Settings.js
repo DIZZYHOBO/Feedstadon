@@ -20,16 +20,22 @@ export async function renderSettingsPage(state) {
             </div>
             
             <div class="settings-section">
-                <h3>Lemmy Instances</h3>
-                <div class="form-group">
-                    <label for="lemmy-instance-input">Add a Lemmy Instance</label>
-                    <p class="form-description">Add Lemmy instances (e.g., lemmy.world) to discover their communities.</p>
-                    <div class="filter-input-group">
+                <h3>Lemmy Login</h3>
+                <form id="lemmy-login-form" class="lemmy-login-form">
+                    <div class="form-group">
+                        <label for="lemmy-instance-input">Lemmy Instance</label>
                         <input type="text" id="lemmy-instance-input" placeholder="lemmy.world">
-                        <button id="add-lemmy-instance-btn">Add</button>
                     </div>
-                    <ul id="lemmy-instances-list"></ul>
-                </div>
+                    <div class="form-group">
+                        <label for="lemmy-username-input">Username</label>
+                        <input type="text" id="lemmy-username-input" placeholder="Your Lemmy Username">
+                    </div>
+                    <div class="form-group">
+                        <label for="lemmy-password-input">Password</label>
+                        <input type="password" id="lemmy-password-input" placeholder="Your Lemmy Password">
+                    </div>
+                    <button type="submit" class="settings-save-button">Login to Lemmy</button>
+                </form>
             </div>
 
             <div class="settings-section">
@@ -47,42 +53,40 @@ export async function renderSettingsPage(state) {
         localStorage.setItem('feedstodon-theme', themeSelect.value);
     });
 
-    // --- Lemmy Instance Settings ---
-    const instanceInput = container.querySelector('#lemmy-instance-input');
-    const addInstanceBtn = container.querySelector('#add-lemmy-instance-btn');
-    const instancesList = container.querySelector('#lemmy-instances-list');
+    // --- Lemmy Login ---
+    const lemmyLoginForm = container.querySelector('#lemmy-login-form');
+    lemmyLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const instance = document.getElementById('lemmy-instance-input').value.trim();
+        const username = document.getElementById('lemmy-username-input').value.trim();
+        const password = document.getElementById('lemmy-password-input').value.trim();
 
-    function renderLemmyInstances() {
-        instancesList.innerHTML = '';
-        state.lemmyInstances.forEach(instance => {
-            const li = document.createElement('li');
-            li.className = 'muted-user-item'; // Re-use style for consistency
-            li.innerHTML = `
-                <div class="info">
-                    <span class="display-name">${instance}</span>
-                </div>
-                <button class="unmute-btn" data-instance="${instance}">Remove</button>
-            `;
-            li.querySelector('button').addEventListener('click', () => {
-                state.lemmyInstances = state.lemmyInstances.filter(i => i !== instance);
-                localStorage.setItem('lemmyInstances', JSON.stringify(state.lemmyInstances));
-                renderLemmyInstances();
+        if (!instance || !username || !password) {
+            alert('Please fill in all Lemmy login fields.');
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`https://${instance}`, null, '/api/v3/user/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username_or_email: username,
+                    password: password
+                })
             });
-            instancesList.appendChild(li);
-        });
-    }
 
-    addInstanceBtn.addEventListener('click', () => {
-        const newInstance = instanceInput.value.trim();
-        if (newInstance && !state.lemmyInstances.includes(newInstance)) {
-            state.lemmyInstances.push(newInstance);
-            localStorage.setItem('lemmyInstances', JSON.stringify(state.lemmyInstances));
-            renderLemmyInstances();
-            instanceInput.value = '';
+            if (response.data.jwt) {
+                localStorage.setItem('lemmy_jwt', response.data.jwt);
+                alert('Lemmy login successful!');
+            } else {
+                alert('Lemmy login failed. Please check your credentials.');
+            }
+        } catch (error) {
+            console.error('Lemmy login error:', error);
+            alert('An error occurred during Lemmy login.');
         }
     });
-    
-    renderLemmyInstances();
 
 
     // --- Muted Users ---
