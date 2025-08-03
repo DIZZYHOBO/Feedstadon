@@ -6,13 +6,11 @@ import { renderStatus } from './Post.js';
 
 function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
-    // Use the same .status class as Mastodon posts for consistent styling
     card.className = 'status lemmy-card'; 
     card.dataset.postId = post.post.id;
 
     let thumbnailHTML = '';
     if (post.post.thumbnail_url) {
-        // Use the same .status-media class for consistency
         thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
     }
 
@@ -30,9 +28,9 @@ function renderLemmyCard(post, actions) {
             </div>
             ${thumbnailHTML}
             <div class="status-footer">
-                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
+                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
                 <span class="lemmy-score">${post.counts.score}</span>
-                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
+                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                 <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
                 <button class="status-action" data-action="save">${ICONS.bookmark}</button>
             </div>
@@ -151,7 +149,6 @@ export async function renderLemmyDiscoverPage(state, actions) {
 
 export async function renderSubscribedFeed(state, actions) {
     const container = document.getElementById('subscribed-feed');
-
     const lemmyInstance = localStorage.getItem('lemmy_instance');
     const jwt = localStorage.getItem('lemmy_jwt');
 
