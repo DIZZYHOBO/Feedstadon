@@ -1098,23 +1098,26 @@ textarea:focus {
     display: flex;
     gap: 10px;
     padding: 10px 15px;
-    background-color: var(--primary-color);
+    background-color: var(--card-color);
     border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 50px;
+    z-index: 100;
 }
 
 .hashtag-suggestion-btn {
-    background-color: var(--accent-color);
-    color: white;
+    background: none;
     border: none;
-    border-radius: 20px;
-    padding: 8px 12px;
-    font-size: 0.9em;
+    color: var(--accent-color);
+    padding: 8px 0;
+    font-size: 1em;
+    font-weight: bold;
     cursor: pointer;
     white-space: nowrap;
 }
 
 .hashtag-suggestion-btn:hover {
-    opacity: 0.8;
+    text-decoration: underline;
 }
 
 .hashtag-icon {
