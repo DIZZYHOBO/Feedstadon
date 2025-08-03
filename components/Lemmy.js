@@ -6,7 +6,7 @@ import { renderStatus } from './Post.js';
 
 function renderLemmyCard(post, state, actions) {
     const card = document.createElement('div');
-    card.className = 'status lemmy-card'; // Use both classes for styling consistency
+    card.className = 'status lemmy-card';
     card.dataset.postId = post.post.id;
 
     let thumbnailHTML = '';
@@ -37,7 +37,6 @@ function renderLemmyCard(post, state, actions) {
         </div>
     `;
 
-    // --- Event Listeners for Real-Time Actions ---
     card.querySelectorAll('.lemmy-vote-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -51,7 +50,6 @@ function renderLemmyCard(post, state, actions) {
         actions.lemmySave(post.post.id, e.currentTarget);
     });
     
-    // Main card click to view post details
     card.addEventListener('click', () => {
         actions.showLemmyPostDetail(post);
     });
@@ -80,10 +78,9 @@ async function renderLemmyCommunityPage(state, communityAcct, switchView) {
             </div>
             <div class="lemmy-community-body">
                 <div class="lemmy-sidebar">
-                    <details>
+                    <details open>
                         <summary>Sidebar</summary>
-                        <p>${community.community.description}</p>
-                        <button class="subscribe-btn" data-community-id="${community.community.actor_id}">Subscribe</button>
+                        <p>${community.community.description || 'No description available.'}</p>
                     </details>
                 </div>
                 <div class="lemmy-post-list"></div>
@@ -91,71 +88,82 @@ async function renderLemmyCommunityPage(state, communityAcct, switchView) {
         `;
 
         const postList = container.querySelector('.lemmy-post-list');
-        topLevelPosts.forEach(post => {
-            postList.appendChild(renderLemmyCard(post, state, state.actions));
-        });
+        if (topLevelPosts.length > 0) {
+            topLevelPosts.forEach(post => {
+                postList.appendChild(renderLemmyCard(post, state, state.actions));
+            });
+        } else {
+            postList.innerHTML = '<p>No posts in this community yet.</p>';
+        }
 
     } catch (err) {
         console.error("Failed to load Lemmy community:", err);
-        container.innerHTML = `<p>Could not load community.</p>`;
+        container.innerHTML = `<div class="view-header">Error</div><p>Could not load data for ${communityAcct}. The instance may be down or blocking requests (CORS).</p>`;
     }
 }
 
 async function renderLemmyDiscoverPage(state, switchView) {
     const container = document.getElementById('lemmy-discover-view');
     switchView('lemmy-discover');
-    container.innerHTML = `<div class="view-header">Discover Lemmy Communities</div>`;
-    
-    const communityList = document.createElement('div');
-    container.appendChild(communityList);
+    container.innerHTML = `<div class="view-header">Discover Lemmy Communities</div><div class="community-list-container"></div>`;
+    const listContainer = container.querySelector('.community-list-container');
+    listContainer.innerHTML = `<p>Fetching communities from multiple instances...</p>`;
 
-    state.lemmyInstances.forEach(async (instanceUrl) => {
-        try {
-            const response = await apiFetch(instanceUrl, null, '/api/v3/community/list');
-            if (!response.data || !response.data.communities) {
-                 console.warn(`Could not fetch communities from ${instanceUrl}, it may be blocking requests.`);
-                 return;
-            }
-            const communities = response.data.communities;
+    const promises = state.lemmyInstances.map(instanceUrl => 
+        apiFetch(instanceUrl, null, '/api/v3/community/list').catch(err => ({ error: err, instance: instanceUrl }))
+    );
+
+    const results = await Promise.allSettled(promises);
+    let hasContent = false;
+    listContainer.innerHTML = '';
+
+    results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.data && result.value.data.communities) {
+            const communities = result.value.data.communities;
+            if (communities.length > 0) hasContent = true;
 
             communities.forEach(item => {
                 const community = item.community;
+                const fullAcct = `${community.name}@${new URL(community.actor_id).hostname}`;
+
                 const communityDiv = document.createElement('div');
                 communityDiv.className = 'search-result-item';
                 communityDiv.innerHTML = `
-                    <img src="${community.icon}" alt="${community.name} icon">
+                    <img src="${community.icon}" alt="${community.name} icon" style="width: 40px; height: 40px; border-radius: 8px;">
                     <div>
                         <div class="display-name">${community.name}</div>
-                        <div class="acct">${community.actor_id.split('/c/')[1]}</div>
+                        <div class="acct">${new URL(community.actor_id).hostname}</div>
                     </div>
-                    <button class="subscribe-btn" data-community-id="${community.actor_id}">Subscribe</button>
                 `;
-                communityList.appendChild(communityDiv);
+                communityDiv.addEventListener('click', () => state.actions.showLemmyCommunity(fullAcct));
+                listContainer.appendChild(communityDiv);
             });
-        } catch (err) {
-            console.warn(`Could not fetch communities from ${instanceUrl}:`, err);
+        } else {
+            const instance = result.reason ? result.reason.instance : (result.value ? result.value.instance : 'Unknown');
+            console.warn(`Failed to fetch from a Lemmy instance: ${instance}`);
         }
     });
+
+    if (!hasContent) {
+        listContainer.innerHTML = `<div class="status-body-content"><p>Could not fetch communities from any Lemmy instance. This might be due to network issues or Cross-Origin Resource Sharing (CORS) policies on the Lemmy servers, which this app cannot control. Please try again later.</p></div>`;
+    }
 }
 
 async function renderSubscribedFeed(state, switchView) {
     const container = document.getElementById('subscribed-feed');
     switchView('subscribed-feed');
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    const jwt = localStorage.getItem('lemmy_jwt');
+
+    if (!jwt || !lemmyInstance) {
+        container.innerHTML = `<div class="view-header">Not Logged In</div><div class="status-body-content"><p>You are not logged into a Lemmy account. Please log in via the Settings page to see your subscribed communities.</p></div>`;
+        return;
+    }
+
     container.innerHTML = `<p>Loading subscribed feed...</p>`;
 
     try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        if (!lemmyInstance) {
-            container.innerHTML = `<p>No Lemmy instance configured.</p>`;
-            return;
-        }
-
-        const jwt = localStorage.getItem('lemmy_jwt');
-        if (!jwt) {
-            container.innerHTML = `<p>You are not logged into Lemmy. Please login in the settings.</p>`;
-            return;
-        }
-
         const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/list?listing_type=Subscribed');
         const posts = response.data.posts;
 
@@ -169,7 +177,7 @@ async function renderSubscribedFeed(state, switchView) {
         }
     } catch (err) {
         console.error("Failed to load subscribed Lemmy feed:", err);
-        container.innerHTML = '<p>Could not load subscribed feed.</p>';
+        container.innerHTML = '<div class="view-header">Error</div><p>Could not load your subscribed Lemmy feed. Please check your Lemmy login details in settings and ensure the instance is reachable.</p>';
     }
 }
 
@@ -179,16 +187,21 @@ async function renderUnifiedFeed(state, switchView) {
     container.innerHTML = `<p>Loading home feed...</p>`;
 
     try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
         const lemmyJwt = localStorage.getItem('lemmy_jwt');
 
-        const [mastodonResponse, lemmyResponse] = await Promise.all([
+        const promises = [
             apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home'),
-            lemmyJwt ? apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=All') : Promise.resolve({ data: { posts: [] } })
-        ]);
+        ];
+
+        if (lemmyJwt && lemmyInstance) {
+            promises.push(apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=All'));
+        }
+
+        const [mastodonResponse, lemmyResponse] = await Promise.all(promises);
 
         const mastodonPosts = mastodonResponse.data;
-        const lemmyPosts = lemmyResponse.data.posts;
+        const lemmyPosts = lemmyResponse ? lemmyResponse.data.posts : [];
 
         const unified = [...mastodonPosts, ...lemmyPosts].sort((a, b) => {
             const dateA = new Date(a.created_at || a.post.published);
@@ -197,13 +210,17 @@ async function renderUnifiedFeed(state, switchView) {
         });
 
         container.innerHTML = '';
-        unified.forEach(item => {
-            if (item.post) { // It's a Lemmy post
-                container.appendChild(renderLemmyCard(item, state, state.actions));
-            } else { // It's a Mastodon post
-                container.appendChild(renderStatus(item, state, state.actions));
-            }
-        });
+        if (unified.length > 0) {
+            unified.forEach(item => {
+                if (item.post) {
+                    container.appendChild(renderLemmyCard(item, state, state.actions));
+                } else {
+                    container.appendChild(renderStatus(item, state, state.actions));
+                }
+            });
+        } else {
+            container.innerHTML = '<p>Nothing to see in your unified feed.</p>';
+        }
 
     } catch (err) {
         console.error("Failed to load unified feed:", err);
