@@ -1,65 +1,94 @@
-// MODIFIED: The cache name now includes a version number.
-const CACHE_NAME = 'feedstadon-v5'; 
-const urlsToCache = [
-  './',
-  './index.html',
-  './style.css',
-  './app.js',
-  './components/api.js',
-  './components/Compose.js',
-  './components/icons.js',
-  './components/Notifications.js',
-  './components/Post.js',
-  './components/Profile.js',
-  './components/Search.js',
-  './components/Settings.js',
-  './components/utils.js',
-  './components/Conversations.js'
+const CACHE_NAME = 'feedstodon-cache-v1';
+const ASSETS_TO_CACHE = [
+    '/',
+    './index.html',
+    './style.css',
+    './app.js',
+    './components/api.js',
+    './components/Compose.js',
+    './components/Conversations.js',
+    './components/icons.js',
+    './components/Lemmy.js',
+    './components/LemmyPost.js',
+    './components/Notifications.js',
+    './components/Post.js',
+    './components/Profile.js',
+    './components/Search.js',
+    './components/Settings.js',
+    './components/utils.js',
+    './images/logo.png',
+    './images/login.png'
 ];
 
-// Install event: cache all the app's assets.
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache and caching new assets');
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => {
-        // ADDED: Force the new service worker to become active immediately.
-        return self.skipWaiting();
-      })
-  );
+// --- Install Event ---
+// Caches the application shell.
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('Service Worker: Caching App Shell');
+                return cache.addAll(ASSETS_TO_CACHE);
+            })
+            .catch(error => {
+                console.error('Failed to cache app shell:', error);
+            })
+    );
 });
 
-// ADDED: Activate event to clean up old caches.
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          // If this cache name is not in our whitelist, delete it.
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
+// --- Activate Event ---
+// Cleans up old caches.
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cache) => {
+                    if (cache !== CACHE_NAME) {
+                        console.log('Service Worker: Clearing Old Cache');
+                        return caches.delete(cache);
+                    }
+                })
+            );
         })
-      );
-    })
-  );
+    );
+    return self.clients.claim();
 });
 
-// Fetch event: serve from cache if available, otherwise fetch from network.
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response; // Serve from cache
-        }
-        return fetch(event.request); // Fetch from network
-      }
-    )
-  );
+// --- Fetch Event ---
+// Implements a Network First, falling back to Cache strategy.
+self.addEventListener('fetch', (event) => {
+    // We only want to cache GET requests for our assets.
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request)
+            .then((networkResponse) => {
+                // If we get a valid response, cache it and return it.
+                if (networkResponse.ok) {
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME)
+                        .then((cache) => {
+                            cache.put(event.request, responseToCache);
+                        });
+                }
+                return networkResponse;
+            })
+            .catch(() => {
+                // If the network fails, try to get the response from the cache.
+                return caches.match(event.request)
+                    .then((cachedResponse) => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // If not in cache, and network is down, it's a genuine failure.
+                        // This part is crucial for debugging.
+                        console.error('Service Worker: Fetch failed; no response in cache.');
+                        return new Response("Network error and not in cache", {
+                            status: 404,
+                            statusText: "Not Found"
+                        });
+                    });
+            })
+    );
 });
