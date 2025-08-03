@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPostBtn = document.getElementById('nav-post-btn');
     const profileLink = document.getElementById('profile-link');
     const settingsLink = document.getElementById('settings-link');
-    const bookmarksLink = document.getElementById('bookmarks-link');
     const savedFeedLink = document.getElementById('saved-feed-link');
     const refreshBtn = document.getElementById('refresh-btn');
     const scrollLoader = document.getElementById('scroll-loader');
@@ -675,12 +674,6 @@ document.addEventListener('DOMContentLoaded', () => {
     profileLink.addEventListener('click', (e) => {
         e.preventDefault();
         state.actions.showProfile(state.currentUser.id);
-    });
-
-    bookmarksLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        switchView('timeline');
-        fetchTimeline('bookmarks');
     });
 
     settingsLink.addEventListener('click', (e) => {
