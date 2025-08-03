@@ -1,130 +1,311 @@
-import { apiFetch } from './components/api.js';
+import { initLogin, showLogin } from './components/Login.js';
+import { fetchTimeline } from './components/Timeline.js';
+import { renderProfilePage } from './components/Profile.js';
+import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
+import { renderSettingsPage } from './components/Settings.js';
+import { renderStatusDetail } from './components/Status.js';
+import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
+import { initComposeModal, showComposeModal } from './components/Compose.js';
+import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed } from './components/Lemmy.js';
+import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
-import { formatTimestamp } from './components/utils.js';
+import { apiFetch } from './components/api.js';
 
-function renderLemmyComment(comment, state, level = 0) {
-    const commentDiv = document.createElement('div');
-    commentDiv.className = 'lemmy-comment';
-    commentDiv.style.marginLeft = `${level * 20}px`;
-    commentDiv.dataset.commentId = comment.comment.id;
+document.addEventListener('DOMContentLoaded', () => {
+    const state = {
+        instanceUrl: null,
+        accessToken: null,
+        currentUser: null,
+        currentTimeline: 'home',
+        timelineDiv: document.getElementById('timeline'),
+        scrollLoader: document.getElementById('scroll-loader'),
+        isLoadingMore: false,
+        lastPostId: null,
+        nextPageUrl: null,
+        conversations: [],
+        lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works'],
+        settings: {
+            hideNsfw: false,
+        },
+        actions: {}
+    };
 
-    const timestamp = formatTimestamp(comment.comment.published);
+    const views = {
+        login: document.getElementById('login-view'),
+        app: document.getElementById('app-view'),
+        timeline: document.getElementById('timeline'),
+        profile: document.getElementById('profile-page-view'),
+        search: document.getElementById('search-results-view'),
+        settings: document.getElementById('settings-view'),
+        statusDetail: document.getElementById('status-detail-view'),
+        hashtag: document.getElementById('hashtag-timeline-view'),
+        notifications: document.getElementById('notifications-view'),
+        bookmarks: document.getElementById('bookmarks-view'),
+        conversations: document.getElementById('conversations-view'),
+        lemmyDiscover: document.getElementById('lemmy-discover-view'),
+        lemmyCommunity: document.getElementById('lemmy-community-view'),
+        lemmyPost: document.getElementById('lemmy-post-view'),
+        subscribedFeed: document.getElementById('subscribed-feed'),
+        unifiedFeed: document.getElementById('unified-feed'),
+    };
 
-    commentDiv.innerHTML = `
-        <div class="comment-header">
-            <span class="lemmy-user">${comment.creator.name}</span>
-            <span class="timestamp">· ${timestamp}</span>
-        </div>
-        <div class="comment-content">${comment.comment.content}</div>
-        <div class="comment-footer">
-            <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">▲</button>
-            <span class="lemmy-score">${comment.counts.score}</span>
-            <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">▼</button>
-        </div>
-    `;
-    
-    // Set initial vote status
-    const upvoteBtn = commentDiv.querySelector('[data-action="upvote"]');
-    const downvoteBtn = commentDiv.querySelector('[data-action="downvote"]');
-    if (comment.my_vote === 1) {
-        upvoteBtn.classList.add('active');
-    } else if (comment.my_vote === -1) {
-        downvoteBtn.classList.add('active');
-    }
+    const switchView = (viewName) => {
+        Object.values(views).forEach(view => view.style.display = 'none');
+        views[viewName].style.display = 'block';
+        document.getElementById('back-btn').style.display = viewName !== 'timeline' ? 'block' : 'none';
+        document.getElementById('search-form').style.display = 'none';
+        document.getElementById('search-toggle-btn').style.display = 'block';
+    };
 
-    // Add event listeners for comment voting
-    commentDiv.querySelectorAll('.lemmy-comment-vote-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const score = parseInt(e.currentTarget.dataset.score, 10);
-            state.actions.lemmyCommentVote(comment.comment.id, score, commentDiv);
-        });
-    });
+    const showToast = (message) => {
+        const toast = document.getElementById('toast-notification');
+        toast.textContent = message;
+        toast.classList.add('visible');
+        setTimeout(() => {
+            toast.classList.remove('visible');
+        }, 3000);
+    };
 
-    if (comment.replies && comment.replies.length > 0) {
-        const repliesContainer = document.createElement('div');
-        repliesContainer.className = 'lemmy-replies';
-        comment.replies.forEach(reply => {
-            repliesContainer.appendChild(renderLemmyComment(reply, state, level + 1));
-        });
-        commentDiv.appendChild(repliesContainer);
-    }
-
-    return commentDiv;
-}
-
-export async function renderLemmyPostPage(state, post, switchView) {
-    const container = document.getElementById('lemmy-post-view');
-    switchView('lemmy-post');
-    container.innerHTML = `<p>Loading post...</p>`;
-
-    let thumbnailHTML = '';
-    if (post.post.thumbnail_url) {
-        thumbnailHTML = `<div class="lemmy-thumbnail"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
-    }
-
-    const postHTML = `
-        <div class="status lemmy-card" data-post-id="${post.post.id}">
-            <div class="status-body-content">
-                <div class="status-header">
-                    <img src="${post.community.icon}" alt="${post.community.name} icon" class="lemmy-community-icon">
-                    <div>
-                        <span class="display-name">${post.community.name}</span>
-                        <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
-                    </div>
-                </div>
-                <div class="status-content">
-                    <h3 class="lemmy-title">${post.post.name}</h3>
-                    ${thumbnailHTML}
-                </div>
-                <div class="status-footer">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">▲</button>
-                    <span class="lemmy-score">${post.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">▼</button>
-                    <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
-                    <button class="status-action" data-action="save">${ICONS.bookmark}</button>
-                </div>
-            </div>
-        </div>
-        <div class="lemmy-comment-thread"></div>
-    `;
-
-    container.innerHTML = postHTML;
-    const postCard = container.querySelector('.lemmy-card');
-
-    // Re-attach event listeners for the main post card on this page
-    postCard.querySelectorAll('.lemmy-vote-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const score = parseInt(e.currentTarget.dataset.score, 10);
-            state.actions.lemmyVote(post.post.id, score, postCard);
-        });
-    });
-
-    postCard.querySelector('[data-action="save"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.actions.lemmySave(post.post.id, e.currentTarget);
-    });
-
-    const threadContainer = container.querySelector('.lemmy-comment-thread');
-    threadContainer.innerHTML = `<p>Loading comments...</p>`;
-
-    try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}`);
-        const comments = response.data.comments;
-
-        threadContainer.innerHTML = '';
-        if (comments && comments.length > 0) {
-            comments.forEach(comment => {
-                threadContainer.appendChild(renderLemmyComment(comment, state));
-            });
-        } else {
-            threadContainer.innerHTML = '<p>No comments yet.</p>';
+    const actions = {
+        showProfile: (accountId) => {
+            renderProfilePage(state, accountId);
+            switchView('profile');
+        },
+        showStatusDetail: (statusId) => {
+            renderStatusDetail(state, statusId);
+            switchView('statusDetail');
+        },
+        showHashtagTimeline: (tagName) => {
+            renderSearchResults(state, `#${tagName}`);
+            switchView('search');
+        },
+        showConversations: () => {
+            renderConversationsList(state);
+            switchView('conversations');
+        },
+        showConversationDetail: (conversationId, participants) => {
+            renderConversationDetail(state, conversationId, participants);
+            switchView('conversations');
+        },
+        showSettings: () => {
+            renderSettingsPage(state);
+            switchView('settings');
+        },
+        showLemmyDiscover: () => {
+            renderLemmyDiscoverPage(state, switchView);
+        },
+        showLemmyCommunity: (communityAcct) => {
+            renderLemmyCommunityPage(state, communityAcct, switchView);
+        },
+        showLemmyPostDetail: (post) => {
+            renderLemmyPostPage(state, post, switchView);
+        },
+        showLemmySubscribedFeed: () => {
+            renderSubscribedFeed(state, switchView);
+        },
+        showUnifiedFeed: () => {
+            renderUnifiedFeed(state, switchView);
+        },
+        handleSearchResultClick: (account) => {
+            if (account.acct.includes('@')) {
+                actions.showProfile(account.id);
+            } else {
+                actions.showLemmyCommunity(account.acct);
+            }
+        },
+        toggleAction: async (action, status, button) => {
+            const endpoint = `/api/v1/statuses/${status.id}/${action}`;
+            const isToggled = button.classList.contains('active');
+            const method = isToggled ? 'POST' : 'POST'; // Mastodon uses POST for both
+            const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
+            try {
+                const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
+                button.classList.toggle('active');
+                const countSpan = button.nextElementSibling;
+                if (countSpan && countSpan.classList.contains('count')) {
+                    const currentCount = parseInt(countSpan.textContent, 10);
+                    countSpan.textContent = isToggled ? currentCount - 1 : currentCount + 1;
+                }
+            } catch (err) {
+                showToast(`Failed to ${action} post.`);
+            }
+        },
+        muteAccount: async (accountId) => {
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/mute`, { method: 'POST' });
+                showToast('User muted successfully.');
+                fetchTimeline(state, state.currentTimeline);
+            } catch (err) {
+                showToast('Failed to mute user.');
+            }
+        },
+        showEditModal: (post) => {
+            // Implementation for editing a post
+        },
+        showDeleteModal: (postId) => {
+            // Implementation for deleting a post
+        },
+        lemmyVote: async (postId, score, card) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const jwt = localStorage.getItem('lemmy_jwt');
+                if (!jwt) {
+                    showToast('You need to be logged into Lemmy to vote.');
+                    return;
+                }
+                const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, score: score })
+                });
+                const scoreSpan = card.querySelector('.lemmy-score');
+                scoreSpan.textContent = response.data.post.counts.score;
+            } catch (err) {
+                showToast('Failed to vote on post.');
+            }
+        },
+        lemmySave: async (postId, button) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const jwt = localStorage.getItem('lemmy_jwt');
+                if (!jwt) {
+                    showToast('You need to be logged into Lemmy to save posts.');
+                    return;
+                }
+                const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, save: !button.classList.contains('active') })
+                });
+                button.classList.toggle('active');
+            } catch (err) {
+                showToast('Failed to save post.');
+            }
+        },
+        lemmyCommentVote: async (commentId, score, commentDiv) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const jwt = localStorage.getItem('lemmy_jwt');
+                if (!jwt) {
+                    showToast('You need to be logged into Lemmy to vote.');
+                    return;
+                }
+                const response = await apiFetch(lemmyInstance, jwt, '/api/v3/comment/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment_id: commentId, score: score })
+                });
+                const scoreSpan = commentDiv.querySelector('.lemmy-score');
+                scoreSpan.textContent = response.data.comment.counts.score;
+            } catch (err) {
+                showToast('Failed to vote on comment.');
+            }
         }
-    } catch (err) {
-        console.error("Failed to load Lemmy comments:", err);
-        threadContainer.innerHTML = '<p>Could not load comments.</p>';
-    }
-}
+    };
+
+    state.actions = actions;
+
+    const onLoginSuccess = (instanceUrl, accessToken) => {
+        state.instanceUrl = instanceUrl;
+        state.accessToken = accessToken;
+        apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
+            .then(response => {
+                state.currentUser = response.data;
+                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
+                document.querySelector('.top-nav').style.display = 'flex';
+                switchView('app');
+                fetchTimeline(state, 'home');
+            })
+            .catch(err => {
+                showLogin();
+                showToast('Login failed. Please check your instance URL and access token.');
+            });
+    };
+
+    initLogin(onLoginSuccess);
+    initComposeModal(state, () => {
+        fetchTimeline(state, state.currentTimeline);
+        showToast('Post created successfully!');
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', () => fetchTimeline(state, state.currentTimeline));
+    document.getElementById('back-btn').addEventListener('click', () => switchView('timeline'));
+    document.getElementById('home-feed-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        fetchTimeline(state, 'home');
+        switchView('timeline');
+    });
+    document.getElementById('saved-feed-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        fetchTimeline(state, 'bookmarks');
+        switchView('timeline');
+    });
+    document.getElementById('discover-lemmy-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        actions.showLemmyDiscover();
+    });
+    document.getElementById('lemmy-subscribed-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        actions.showLemmySubscribedFeed();
+    });
+
+    document.getElementById('search-toggle-btn').addEventListener('click', () => {
+        document.getElementById('search-form').style.display = 'block';
+        document.getElementById('search-toggle-btn').style.display = 'none';
+        document.getElementById('search-input').focus();
+    });
+
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = document.getElementById('search-input').value.trim();
+        if (query) {
+            renderSearchResults(state, query);
+            switchView('search');
+        }
+    });
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        renderHashtagSuggestions(state, e.target.value);
+    });
+
+    document.getElementById('new-post-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        showComposeModal(state);
+    });
+
+    document.getElementById('profile-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        actions.showProfile(state.currentUser.id);
+    });
+
+    document.getElementById('settings-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        actions.showSettings();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('fediverse-instance');
+        localStorage.removeItem('fediverse-token');
+        localStorage.removeItem('lemmy_jwt');
+        localStorage.removeItem('lemmy_username');
+        localStorage.removeItem('lemmy_instance');
+        window.location.reload();
+    });
+
+    document.getElementById('messages-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        actions.showConversations();
+    });
+
+    document.getElementById('notifications-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        // Show notifications dropdown
+    });
+
+    window.addEventListener('scroll', () => {
+        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+            fetchTimeline(state, state.currentTimeline, true);
+        }
+    });
+});
