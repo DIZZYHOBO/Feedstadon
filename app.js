@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const count = updatedPost[action === 'boost' ? 'reblogs_count' : 'favourites_count'];
                 button.innerHTML = `${ICONS[action]} ${count}`;
             }
-            if (action === 'bookmark' && state.currentView === 'bookmarks' && endpointAction === 'unbookmark') {
+            if (action === 'bookmark' && endpointAction === 'unbookmark' && state.currentTimeline === 'bookmarks') {
                 const postElement = document.querySelector(`.status[data-id='${post.id}']`);
                 if (postElement) {
                     postElement.classList.add('fading-out');
