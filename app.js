@@ -113,23 +113,23 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         showLemmyDiscover: () => {
             switchView('lemmyDiscover');
-            renderLemmyDiscoverPage(state, switchView);
+            renderLemmyDiscoverPage(state, actions);
         },
         showLemmyCommunity: (communityAcct) => {
             switchView('lemmyCommunity');
-            renderLemmyCommunityPage(state, communityAcct, switchView);
+            renderLemmyCommunityPage(state, communityAcct, actions);
         },
         showLemmyPostDetail: (post) => {
             switchView('lemmyPost');
-            renderLemmyPostPage(state, post, switchView);
+            renderLemmyPostPage(state, post, actions);
         },
         showLemmySubscribedFeed: () => {
             switchView('subscribedFeed');
-            renderSubscribedFeed(state, switchView);
+            renderSubscribedFeed(state, actions);
         },
         showUnifiedFeed: () => {
             switchView('unifiedFeed');
-            renderUnifiedFeed(state, switchView);
+            renderUnifiedFeed(state, actions);
         },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
