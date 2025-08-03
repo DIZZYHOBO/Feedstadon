@@ -127,15 +127,15 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.showLemmyDiscover = () => {
         renderLemmyDiscoverPage(state, switchView);
     };
-    state.actions.showLemmyCommunity = (communityId) => {
-        renderLemmyCommunityPage(state, communityId, switchView);
+    state.actions.showLemmyCommunity = (communityAcct) => {
+        renderLemmyCommunityPage(state, communityAcct, switchView);
     };
     state.actions.loadMoreContent = () => loadMoreContent();
 
     state.actions.handleSearchResultClick = (account) => {
-        // Simple heuristic: Lemmy communities often have "!" in their acct name when federated.
+        // Use the account's acct to check if it's a known Lemmy instance
         if (state.lemmyInstances.some(instance => account.acct.endsWith(`@${instance}`))) {
-            state.actions.showLemmyCommunity(account.url);
+            state.actions.showLemmyCommunity(account.acct);
         } else {
             state.actions.showProfile(account.id);
         }
