@@ -306,8 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const query = document.getElementById('search-input').value.trim();
         if (query) {
-            renderSearchResults(state, query);
             switchView('search');
+            renderSearchResults(state, query);
         }
     });
 
