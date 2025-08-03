@@ -147,7 +147,7 @@ async function toggleLemmyCommentThread(post, postDiv, state) {
         const comments = response.data.comments;
 
         threadContainer.innerHTML = '';
-        if (comments.length > 0) {
+        if (comments && comments.length > 0) {
             comments.forEach(comment => {
                 threadContainer.appendChild(renderLemmyComment(comment));
             });
