@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
+    const searchSuggestionsContainer = document.getElementById('search-suggestions-container');
     const newPostLink = document.getElementById('new-post-link');
     const messagesBtn = document.getElementById('messages-btn');
     const notificationsBtn = document.getElementById('notifications-btn');
@@ -772,6 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchInput.value = '';
             searchForm.style.display = 'none';
             searchToggleBtn.style.display = 'block';
+            searchSuggestionsContainer.style.display = 'none';
         }
         if (!isClickInsidePostOptions) {
             document.querySelectorAll('.post-options-menu').forEach(menu => {
@@ -805,8 +807,8 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const query = searchInput.value.trim();
         if (!query) return;
-        renderSearchResults(state, query);
         switchView('search');
+        renderSearchResults(state, query);
     });
 
     searchInput.addEventListener('input', () => {
@@ -815,12 +817,8 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTimeout = setTimeout(() => {
             if (query.startsWith('#')) {
                 renderHashtagSuggestions(state, query);
-                if (state.currentView !== 'search') {
-                    switchView('search', false);
-                }
             } else {
-                const existingBar = document.querySelector('.hashtag-suggestion-bar');
-                if (existingBar) existingBar.remove();
+                searchSuggestionsContainer.style.display = 'none';
             }
         }, 100);
     });
