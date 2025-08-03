@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show notifications dropdown
     });
 
-    window.addEventListener('scroll', (). => {
+    window.addEventListener('scroll', () => {
         if (state.isLoadingMore || !state.nextPageUrl) return;
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
             fetchTimeline(state, state.currentTimeline, true);
