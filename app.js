@@ -88,42 +88,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const actions = {
         showProfile: (accountId) => {
-            renderProfilePage(state, accountId);
             switchView('profile');
+            renderProfilePage(state, accountId);
         },
         showStatusDetail: (statusId) => {
-            renderStatusDetail(state, statusId);
             switchView('statusDetail');
+            renderStatusDetail(state, statusId);
         },
         showHashtagTimeline: (tagName) => {
-            renderSearchResults(state, `#${tagName}`);
             switchView('search');
+            renderSearchResults(state, `#${tagName}`);
         },
         showConversations: () => {
-            renderConversationsList(state);
             switchView('conversations');
+            renderConversationsList(state);
         },
         showConversationDetail: (conversationId, participants) => {
-            renderConversationDetail(state, conversationId, participants);
             switchView('conversations');
+            renderConversationDetail(state, conversationId, participants);
         },
         showSettings: () => {
-            renderSettingsPage(state);
             switchView('settings');
+            renderSettingsPage(state);
         },
         showLemmyDiscover: () => {
+            switchView('lemmyDiscover');
             renderLemmyDiscoverPage(state, switchView);
         },
         showLemmyCommunity: (communityAcct) => {
+            switchView('lemmyCommunity');
             renderLemmyCommunityPage(state, communityAcct, switchView);
         },
         showLemmyPostDetail: (post) => {
+            switchView('lemmyPost');
             renderLemmyPostPage(state, post, switchView);
         },
         showLemmySubscribedFeed: () => {
+            switchView('subscribedFeed');
             renderSubscribedFeed(state, switchView);
         },
         showUnifiedFeed: () => {
+            switchView('unifiedFeed');
             renderUnifiedFeed(state, switchView);
         },
         handleSearchResultClick: (account) => {
