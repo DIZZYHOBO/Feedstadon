@@ -60,7 +60,7 @@ export async function renderSearchResults(state, query) {
     try {
         if (query.startsWith('#')) {
             const tagName = query.substring(1);
-            fetchHashtagTimeline(state, tagName, container); // Use a helper
+            fetchHashtagTimeline(state, tagName, container);
             return;
         }
 
@@ -76,7 +76,7 @@ export async function renderSearchResults(state, query) {
         if (results.accounts.length > 0) {
             const accountsHeader = document.createElement('div');
             accountsHeader.className = 'view-header';
-            accountsHeader.textContent = 'Accounts';
+            accountsHeader.textContent = 'Accounts & Communities';
             container.appendChild(accountsHeader);
             results.accounts.forEach(account => {
                 const resultDiv = document.createElement('div');
@@ -88,7 +88,10 @@ export async function renderSearchResults(state, query) {
                         <div class="acct">@${account.acct}</div>
                     </div>
                 `;
-                resultDiv.addEventListener('click', () => state.actions.showProfile(account.id));
+                resultDiv.addEventListener('click', () => {
+                    // This now calls the smart handler in app.js
+                    state.actions.handleSearchResultClick(account);
+                });
                 container.appendChild(resultDiv);
             });
         }
@@ -108,7 +111,9 @@ export async function renderSearchResults(state, query) {
                         <div class="acct">${tag.history[0].uses} posts this week</div>
                     </div>
                 `;
-                resultDiv.addEventListener('click', () => state.actions.showHashtagTimeline(tag.name));
+                resultDiv.addEventListener('click', () => {
+                    state.actions.showHashtagTimeline(tag.name);
+                });
                 container.appendChild(resultDiv);
             });
         }
