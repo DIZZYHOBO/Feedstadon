@@ -208,28 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function fetchBookmarksTimeline() {
-        switchView('bookmarks');
-        bookmarksView.innerHTML = '<div class="view-header">Bookmarks</div>';
-        try {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/bookmarks');
-            const statuses = response.data;
-            if (statuses.length === 0) {
-                bookmarksView.innerHTML += '<p>You have no bookmarked posts.</p>';
-                state.setNextPageUrl(null);
-                return;
-            }
-            statuses.forEach(status => {
-                const statusElement = renderStatus(status, state, state.actions);
-                if (statusElement) bookmarksView.appendChild(statusElement);
-            });
-            state.setNextPageUrl(response.linkHeader);
-        } catch (error) {
-            console.error('Failed to fetch bookmarks:', error);
-            bookmarksView.innerHTML += '<p>Could not load bookmarks.</p>';
-        }
-    }
-
     function updateNotificationIndicator() {
         notificationsBtn.classList.toggle('has-unread', state.hasUnreadNotifications);
     }
@@ -408,7 +386,13 @@ document.addEventListener('DOMContentLoaded', () => {
             publicSocket.close();
         }
         try {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${type}`);
+            let endpoint;
+            if (type === 'bookmarks') {
+                endpoint = '/api/v1/bookmarks';
+            } else {
+                endpoint = `/api/v1/timelines/${type}`;
+            }
+            const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
             timelineDiv.innerHTML = '';
             response.data.forEach(status => {
                 const statusElement = renderStatus(status, state, state.actions);
@@ -695,12 +679,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bookmarksLink.addEventListener('click', (e) => {
         e.preventDefault();
-        fetchBookmarksTimeline();
-    });
-
-    savedFeedLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        fetchBookmarksTimeline();
+        switchView('timeline');
+        fetchTimeline('bookmarks');
     });
 
     settingsLink.addEventListener('click', (e) => {
@@ -852,7 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.state.view === 'timeline') {
                 fetchTimeline(state.currentTimeline);
             } else if (event.state.view === 'bookmarks') {
-                fetchBookmarksTimeline();
+                fetchTimeline('bookmarks');
             } else if (event.state.view === 'notifications') {
                 renderNotificationsPage();
             }
