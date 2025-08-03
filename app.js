@@ -815,7 +815,12 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTimeout = setTimeout(() => {
             if (query.startsWith('#')) {
                 renderHashtagSuggestions(state, query);
-                switchView('search', false);
+                if (state.currentView !== 'search') {
+                    switchView('search', false);
+                }
+            } else {
+                const existingBar = document.querySelector('.hashtag-suggestion-bar');
+                if (existingBar) existingBar.remove();
             }
         }, 300);
     });
