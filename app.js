@@ -822,7 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const existingBar = document.querySelector('.hashtag-suggestion-bar');
                 if (existingBar) existingBar.remove();
             }
-        }, 300);
+        }, 100);
     });
     
     editPostForm.addEventListener('submit', async (e) => {
