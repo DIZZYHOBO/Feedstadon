@@ -4,17 +4,16 @@ import { formatTimestamp } from './utils.js';
 
 function renderLemmyPost(post, state, actions) {
     const postDiv = document.createElement('div');
-    postDiv.className = 'status lemmy-post'; // Added a special class for Lemmy posts
+    postDiv.className = 'status lemmy-post';
     postDiv.dataset.id = post.post.ap_id;
 
     const communityLink = `!${post.community.name}@${new URL(post.community.actor_id).hostname}`;
+    const timestamp = formatTimestamp(post.post.published);
 
     let mediaHTML = '';
     if (post.post.url && post.post.thumbnail_url) {
         mediaHTML = `<div class="lemmy-thumbnail"><a href="${post.post.url}" target="_blank" rel="noopener noreferrer"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></a></div>`;
     }
-
-    const timestamp = formatTimestamp(post.post.published);
 
     postDiv.innerHTML = `
         <div class="status-body-content">
@@ -58,7 +57,7 @@ function renderLemmyPost(post, state, actions) {
     return postDiv;
 }
 
-export async function renderLemmyCommunityPage(state, communityAcct, switchView) {
+async function renderLemmyCommunityPage(state, communityAcct, switchView) {
     const container = document.getElementById('lemmy-community-view');
     switchView('lemmy-community');
     container.innerHTML = `<p>Loading community...</p>`;
@@ -99,7 +98,7 @@ export async function renderLemmyCommunityPage(state, communityAcct, switchView)
     }
 }
 
-export async function renderLemmyDiscoverPage(state, switchView) {
+async function renderLemmyDiscoverPage(state, switchView) {
     const container = document.getElementById('lemmy-discover-view');
     switchView('lemmy-discover');
     container.innerHTML = `<div class="view-header">Discover Lemmy Communities</div>`;
@@ -163,7 +162,7 @@ function renderLemmyComment(comment, level = 0) {
     return commentDiv;
 }
 
-export async function renderLemmyPostPage(state, post, switchView) {
+async function renderLemmyPostPage(state, post, switchView) {
     const container = document.getElementById('lemmy-post-view');
     switchView('lemmy-post');
     container.innerHTML = `<p>Loading post...</p>`;
