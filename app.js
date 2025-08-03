@@ -7,7 +7,7 @@ import { showComposeModal, initComposeModal } from './components/Compose.js';
 import { fetchNotifications, renderNotification } from './components/Notifications.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderConversationsList } from './components/Conversations.js';
-import { renderLemmyDiscoverPage } from './components/Lemmy.js';
+import { renderLemmyDiscoverPage, renderLemmyCommunityPage } from './components/Lemmy.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- App Initialization ---
@@ -125,7 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('conversations');
     };
     state.actions.showLemmyDiscover = () => {
-        renderLemmyDiscoverPage(state);
+        renderLemmyDiscoverPage(state, switchView);
+    };
+    state.actions.showLemmyCommunity = (communityId) => {
+        renderLemmyCommunityPage(state, communityId, switchView);
     };
     state.actions.loadMoreContent = () => loadMoreContent();
 
