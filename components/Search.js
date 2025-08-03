@@ -1,6 +1,6 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { renderStatus } from './Post.js'; // Import renderStatus for hashtag results
+import { renderStatus } from './Post.js';
 
 export async function renderHashtagSuggestions(state, query) {
     const container = document.getElementById('search-results-view');
@@ -10,6 +10,7 @@ export async function renderHashtagSuggestions(state, query) {
     }
 
     try {
+        // Using trends as a source for suggestions
         const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/trends`);
         const suggestions = response.data;
         
@@ -45,14 +46,28 @@ export async function renderSearchResults(state, query) {
     container.innerHTML = `<p>Searching for "${query}"...</p>`;
 
     try {
-        let results;
+        // If the query is a hashtag, fetch the tag timeline directly.
         if (query.startsWith('#')) {
             const tagName = query.substring(1);
-            state.actions.showHashtagTimeline(tagName);
-            return;
-        } else {
-             results = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v2/search?q=${query}&resolve=true`)).data;
+            const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/tag/${tagName}`);
+            const statuses = response.data;
+
+            container.innerHTML = `<div class="view-header">#${tagName}</div>`;
+
+            if (statuses.length === 0) {
+                container.innerHTML += `<p>No posts found for "${query}".</p>`;
+                return;
+            }
+
+            statuses.forEach(status => {
+                const statusElement = renderStatus(status, state, state.actions);
+                if (statusElement) container.appendChild(statusElement);
+            });
+            return; // Stop execution here for hashtag search
         }
+
+        // Otherwise, perform a general search.
+        const results = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v2/search?q=${query}&resolve=true`)).data;
         
         container.innerHTML = '';
 
