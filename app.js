@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions.loadMoreContent = () => loadMoreContent();
 
     state.actions.handleSearchResultClick = (account) => {
-        // This is the new function that checks if a result is a Lemmy community.
+        // Simple heuristic: Lemmy communities often have "!" in their acct name when federated.
         if (state.lemmyInstances.some(instance => account.acct.endsWith(`@${instance}`))) {
             state.actions.showLemmyCommunity(account.url);
         } else {
