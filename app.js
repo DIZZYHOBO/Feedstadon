@@ -590,7 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const textarea = replyForm.querySelector('textarea');
             if (replyToAcct) {
                 textarea.value = `@${replyToAcct} `;
-                textarea.focus();
             }
             replyForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -629,7 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusElement.after(tempReplyForm);
         const textarea = tempReplyForm.querySelector('textarea');
         textarea.value = `@${post.account.acct} `;
-        textarea.focus();
         const closeAndCleanup = () => {
             tempReplyForm.remove();
             if (mainReplyBox) mainReplyBox.style.display = 'flex';
@@ -747,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initInfiniteScroll() {
         const options = {
             root: null,
-            rootMargin: '250px 0px',
+            rootMargin: '400px 0px', // Increased margin for better mobile performance
             threshold: 0
         };
         const observer = new IntersectionObserver((entries) => {
