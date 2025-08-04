@@ -535,15 +535,17 @@ textarea:focus {
 }
 
 .lemmy-comment {
-    border-left: 2px solid transparent;
-    padding-left: 10px;
+    margin-bottom: 10px;
+}
+
+.lemmy-comment-wrapper {
+    margin-top: 10px;
 }
 
 .top-level-comment {
-    border-left-color: #5A94F1 !important; /* Blue for parent */
+    border-left: 2px solid #5A94F1 !important; /* Blue for parent */
 }
 
-/* --- Removed red bar from replies --- */
 .comment-replies-container {
     margin-left: 15px;
     padding-left: 15px;
@@ -1334,7 +1336,7 @@ textarea:focus {
     flex-grow: 1;
 }
 
-.filter-bar {
+#lemmy-filter-container.filter-bar {
     background-color: transparent;
     padding: 0;
     margin: 0;
@@ -1355,9 +1357,30 @@ textarea:focus {
         padding: 60px 5px 10px;
     }
 
+    .nav-left, .nav-right {
+        gap: 5px;
+    }
+
+    #search-toggle-btn {
+        font-size: 1.2em;
+        padding: 6px;
+    }
+    .nav-button {
+        font-size: 0.8em;
+        padding: 6px 8px;
+    }
+    #lemmy-filter-container {
+        margin-left: 5px;
+    }
+    #lemmy-sort-select {
+        padding: 6px;
+        font-size: 0.8em;
+    }
+    
     .status-footer {
         flex-wrap: wrap;
-        justify-content: space-between;
+        justify-content: space-around;
+        gap: 10px !important;
     }
 
     .status-action {
@@ -1365,12 +1388,16 @@ textarea:focus {
         font-size: 0.8em;
     }
 
-    .nav-button {
-        font-size: 0.8em;
-        padding: 6px 8px;
-    }
-
     .login-forms-container {
         flex-direction: column;
+    }
+    .vertical-divider {
+        width: auto;
+        height: 1px;
+    }
+    
+    .comment-replies-container {
+        margin-left: 5px;
+        padding-left: 10px;
     }
 }
