@@ -11,6 +11,30 @@ import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 
+function initDropdowns() {
+    document.querySelectorAll('.dropdown').forEach(dropdown => {
+        const button = dropdown.querySelector('button');
+        if (button) {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close other open dropdowns
+                document.querySelectorAll('.dropdown.active').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('active');
+                });
+                dropdown.classList.toggle('active');
+            });
+        }
+    });
+
+    // Global click to close dropdowns
+    window.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown.active').forEach(d => {
+            d.classList.remove('active');
+        });
+    });
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const state = {
         history: [],
@@ -321,8 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lemmySection.style.display = lemmyJwt ? 'none' : 'flex';
         enterBtn.style.display = (mastodonToken || lemmyJwt) ? 'block' : 'none';
 
-        // ** THE FIX IS HERE **
-        // Only switch to login view if user is fully logged out AND not already on the login page.
         if (!mastodonToken && !lemmyJwt && state.currentView !== 'login') {
             switchView('login');
         }
@@ -330,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
+    initDropdowns(); // Initialize dropdowns on first load
 
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
