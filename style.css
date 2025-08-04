@@ -515,17 +515,23 @@ textarea:focus {
 
 /* --- Comment Thread --- */
 .lemmy-comment-thread {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.lemmy-comment-wrapper {
+    display: flex;
+    flex-direction: column;
 }
 .lemmy-comment {
-    position: relative;
-    padding: 10px;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
 }
 .lemmy-replies {
-    padding-left: 25px;
-    margin-left: -15px; /* Adjust this to align with the parent's padding */
+    padding-left: 20px;
+    margin-top: 10px;
     border-left: 2px solid var(--border-color);
 }
 
@@ -1337,3 +1343,7 @@ textarea:focus {
     }
 
     .nav-button {
+        font-size: 0.8em;
+        padding: 6px 8px;
+    }
+}
