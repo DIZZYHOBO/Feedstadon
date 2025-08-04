@@ -16,7 +16,7 @@ function showReplyBox(commentDiv, comment, actions) {
     replyBox.innerHTML = `
         <textarea class="reply-textarea" placeholder="Write your reply..."></textarea>
         <div class="reply-actions">
-            <button class="cancel-reply-btn">Cancel</button>
+            <button class="cancel-reply-btn button-secondary">Cancel</button>
             <button class="submit-reply-btn">Reply</button>
         </div>
     `;
@@ -161,6 +161,7 @@ export async function renderLemmyPostPage(state, post, actions) {
                 </div>
                 <div class="status-content">
                     <h3 class="lemmy-title">${post.post.name}</h3>
+                    <p>${post.post.body || ''}</p>
                 </div>
                 ${thumbnailHTML}
                 <div class="status-footer">
@@ -172,6 +173,10 @@ export async function renderLemmyPostPage(state, post, actions) {
                     ${userActionsHTML}
                 </div>
             </div>
+        </div>
+        <div class="lemmy-comment-box-container">
+            <textarea id="lemmy-new-comment" placeholder="Add a comment..."></textarea>
+            <button id="submit-new-lemmy-comment" class="button-primary">Post</button>
         </div>
         <div class="lemmy-comment-thread"></div>
     `;
@@ -201,6 +206,25 @@ export async function renderLemmyPostPage(state, post, actions) {
                     break;
             }
         });
+    });
+
+    // Handle new top-level comments
+    document.getElementById('submit-new-lemmy-comment').addEventListener('click', async () => {
+        const textarea = document.getElementById('lemmy-new-comment');
+        const content = textarea.value.trim();
+        if (!content) return;
+
+        try {
+            const newComment = await actions.lemmyPostComment({
+                content: content,
+                post_id: post.post.id,
+            });
+            const newCommentEl = renderLemmyComment(newComment, actions, 0);
+            document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
+            textarea.value = '';
+        } catch (err) {
+            alert('Failed to post comment.');
+        }
     });
 
     const threadContainer = container.querySelector('.lemmy-comment-thread');
