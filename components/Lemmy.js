@@ -6,12 +6,17 @@ import { renderStatus } from './Post.js';
 
 function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
-    card.className = 'status lemmy-card'; 
+    card.className = 'status lemmy-card';
     card.dataset.postId = post.post.id;
 
     let thumbnailHTML = '';
+    let bodyHTML = '';
+
     if (post.post.thumbnail_url) {
         thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+    } else {
+        // Only show the body if there is no thumbnail
+        bodyHTML = `<div class="status-content"><p>${post.post.body || ''}</p></div>`;
     }
 
     const communityFullName = `${post.community.name}@${new URL(post.community.actor_id).hostname}`;
@@ -29,8 +34,8 @@ function renderLemmyCard(post, actions) {
             </div>
             <div class="status-content">
                 <h3 class="lemmy-title">${post.post.name}</h3>
-                ${post.post.body ? `<p>${post.post.body}</p>` : ''}
             </div>
+            ${bodyHTML}
             ${thumbnailHTML}
             <div class="status-footer">
                 <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
@@ -81,7 +86,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
         state.scrollLoader.classList.add('loading');
     }
 
-    const lemmyInstance = localStorage.getItem('lemmy_instance') || 'lemina.space';
+    const lemmyInstance = localStorage.getItem('lemmy_instance') || 'leminal.space';
     const jwt = localStorage.getItem('lemmy_jwt');
     const sort = state.currentLemmySort || 'New';
 
