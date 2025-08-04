@@ -21,8 +21,8 @@ function showReplyBox(commentDiv, comment, actions) {
     `;
 
     // Append it after the comment's content but before any nested replies
-    const repliesContainer = commentDiv.querySelector('.lemmy-replies');
-    commentDiv.insertBefore(replyBox, repliesContainer);
+    const mainCommentContainer = commentDiv.querySelector('.comment-main');
+    mainCommentContainer.insertAdjacentElement('afterend', replyBox);
     
     replyBox.querySelector('.cancel-reply-btn').addEventListener('click', () => {
         replyBox.remove();
@@ -40,9 +40,9 @@ function showReplyBox(commentDiv, comment, actions) {
                 parent_id: comment.comment.id
             });
             
-            // Replace the reply box with the new comment
+            // Add the new comment to the replies container
             const newCommentEl = renderCommentNode(newComment.comment_view, actions);
-            repliesContainer.prepend(newCommentEl);
+            commentDiv.querySelector('.lemmy-replies').prepend(newCommentEl);
             replyBox.remove();
 
         } catch (err) {
@@ -57,14 +57,11 @@ function renderCommentNode(commentView, actions) {
     const creator = commentView.creator;
     const counts = commentView.counts;
 
-    const commentDiv = document.createElement('div');
-    commentDiv.className = 'lemmy-comment';
-    commentDiv.dataset.commentId = comment.id;
-
-    const timestamp = formatTimestamp(comment.published);
-    const isOwnComment = localStorage.getItem('lemmy_username') === creator.name;
+    const commentWrapper = document.createElement('div');
+    commentWrapper.className = 'lemmy-comment-wrapper';
 
     let userActionsHTML = '';
+    const isOwnComment = localStorage.getItem('lemmy_username') === creator.name;
     if (isOwnComment) {
         userActionsHTML = `
             <button class="status-action" data-action="edit-comment">${ICONS.edit}</button>
@@ -72,34 +69,35 @@ function renderCommentNode(commentView, actions) {
         `;
     }
 
-    commentDiv.innerHTML = `
-        <div class="comment-main">
-            <div class="comment-header">
-                <span class="lemmy-user">${creator.name}</span>
-                <span class="timestamp">· ${timestamp}</span>
-            </div>
-            <div class="comment-content">${comment.content}</div>
-            <div class="comment-footer">
-                <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                <span class="lemmy-score">${counts.score}</span>
-                <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
-                ${userActionsHTML}
+    commentWrapper.innerHTML = `
+        <div class="lemmy-comment" data-comment-id="${comment.id}">
+            <div class="comment-main">
+                <div class="comment-header">
+                    <span class="lemmy-user">${creator.name}</span>
+                    <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
+                </div>
+                <div class="comment-content">${comment.content}</div>
+                <div class="comment-footer">
+                    <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${counts.score}</span>
+                    <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                    <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
+                    ${userActionsHTML}
+                </div>
             </div>
         </div>
-        <div class="lemmy-replies"></div> 
+        <div class="lemmy-replies"></div>
     `;
     
+    const commentDiv = commentWrapper.querySelector('.lemmy-comment');
+
     // Set initial vote status
     const upvoteBtn = commentDiv.querySelector('[data-action="upvote"]');
     const downvoteBtn = commentDiv.querySelector('[data-action="downvote"]');
-    if (commentView.my_vote === 1) {
-        upvoteBtn.classList.add('active');
-    } else if (commentView.my_vote === -1) {
-        downvoteBtn.classList.add('active');
-    }
+    if (commentView.my_vote === 1) upvoteBtn.classList.add('active');
+    if (commentView.my_vote === -1) downvoteBtn.classList.add('active');
 
-    // Add event listeners for comment voting and replying
+    // Add event listeners
     commentDiv.querySelectorAll('.status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -114,23 +112,22 @@ function renderCommentNode(commentView, actions) {
                     showReplyBox(commentDiv, commentView, actions);
                     break;
                 case 'edit-comment':
-                    alert('Editing comments coming soon!');
-                    break;
                 case 'delete-comment':
-                    alert('Deleting comments coming soon!');
+                    alert('Coming soon!');
                     break;
             }
         });
     });
 
-    const repliesContainer = commentDiv.querySelector('.lemmy-replies');
+    // Recursively render replies
+    const repliesContainer = commentWrapper.querySelector('.lemmy-replies');
     if (commentView.replies && commentView.replies.length > 0) {
         commentView.replies.forEach(replyView => {
             repliesContainer.appendChild(renderCommentNode(replyView, actions));
         });
     }
 
-    return commentDiv;
+    return commentWrapper;
 }
 
 export async function renderLemmyPostPage(state, post, actions) {
@@ -186,7 +183,6 @@ export async function renderLemmyPostPage(state, post, actions) {
     container.innerHTML = postHTML;
     const postCard = container.querySelector('.lemmy-card');
 
-    // Re-attach event listeners for the main post card on this page
     postCard.querySelectorAll('.status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -200,27 +196,17 @@ export async function renderLemmyPostPage(state, post, actions) {
                 case 'save':
                      actions.lemmySave(post.post.id, e.currentTarget);
                      break;
-                case 'edit-post':
-                    alert('Editing posts coming soon!');
-                    break;
-                case 'delete-post':
-                    alert('Deleting posts coming soon!');
-                    break;
             }
         });
     });
 
-    // Handle new top-level comments
     document.getElementById('submit-new-lemmy-comment').addEventListener('click', async () => {
         const textarea = document.getElementById('lemmy-new-comment');
         const content = textarea.value.trim();
         if (!content) return;
 
         try {
-            const newComment = await actions.lemmyPostComment({
-                content: content,
-                post_id: post.post.id,
-            });
+            const newComment = await actions.lemmyPostComment({ content: content, post_id: post.post.id });
             const newCommentEl = renderCommentNode(newComment.comment_view, actions);
             document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
             textarea.value = '';
@@ -235,27 +221,23 @@ export async function renderLemmyPostPage(state, post, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort_type=New`);
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort=New`);
         const commentsData = response.data.comments;
 
         threadContainer.innerHTML = '';
         if (commentsData && commentsData.length > 0) {
             const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
             const rootComments = [];
-
             for (const commentView of commentMap.values()) {
                 if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
-                    const parent = commentMap.get(commentView.comment.parent_id);
-                    parent.replies.push(commentView);
+                    commentMap.get(commentView.comment.parent_id).replies.push(commentView);
                 } else {
                     rootComments.push(commentView);
                 }
             }
-
             rootComments.forEach(commentView => {
                 threadContainer.appendChild(renderCommentNode(commentView, actions));
             });
-
         } else {
             threadContainer.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
         }
