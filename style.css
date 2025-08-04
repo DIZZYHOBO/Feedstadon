@@ -1143,6 +1143,14 @@ textarea:focus {
 }
 
 /* --- Lemmy Integration Styles --- */
+.lemmy-card .status-header a {
+    text-decoration: none;
+    color: inherit;
+}
+.lemmy-card .status-header a:hover {
+    color: var(--accent-color);
+}
+
 .lemmy-card .status-header .avatar {
     border-radius: 8px; /* Lemmy community icons are often square */
 }
@@ -1156,6 +1164,7 @@ textarea:focus {
 .lemmy-card .status-footer {
     justify-content: flex-start;
     gap: 15px;
+    align-items: center;
 }
 
 .lemmy-vote-btn {
