@@ -1324,6 +1324,26 @@ textarea:focus {
     padding: 8px;
 }
 
+.lemmy-comment-filter-bar {
+    background-color: var(--card-color);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 15px;
+    margin-bottom: 0; /* Remove bottom margin to be closer to comments */
+    border-bottom: 1px solid var(--border-color);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.lemmy-comment-sort-select {
+    background-color: var(--primary-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 8px;
+    width: 100%;
+}
+
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
