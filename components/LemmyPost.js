@@ -2,30 +2,73 @@ import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
-/**
- * Transforms a flat list of comments into a nested tree structure using the 'path' property.
- * @param {Array} comments - The flat array of comment objects from the Lemmy API.
- * @returns {Array} An array of root-level comment objects, with children nested inside.
- */
+function showReplyBox(commentWrapper, comment, actions) {
+    const existingReplyBox = commentWrapper.querySelector('.lemmy-reply-box');
+    if (existingReplyBox) {
+        existingReplyBox.remove();
+        return;
+    }
+
+    const replyBox = document.createElement('div');
+    replyBox.className = 'lemmy-reply-box';
+    replyBox.innerHTML = `
+        <textarea class="reply-textarea" placeholder="Write your reply..."></textarea>
+        <div class="reply-actions">
+            <button class="cancel-reply-btn button-secondary">Cancel</button>
+            <button class="submit-reply-btn">Reply</button>
+        </div>
+    `;
+
+    commentWrapper.querySelector('.status-body-content').appendChild(replyBox);
+
+    replyBox.querySelector('.cancel-reply-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        replyBox.remove();
+    });
+
+    replyBox.querySelector('.submit-reply-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const textarea = replyBox.querySelector('.reply-textarea');
+        const content = textarea.value.trim();
+        if (!content) return;
+
+        try {
+            const newComment = await actions.lemmyPostComment({
+                content: content,
+                post_id: comment.post.id,
+                parent_id: comment.comment.id
+            });
+
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
+            let repliesContainer = commentWrapper.querySelector('.comment-replies-container');
+            if (!repliesContainer) {
+                repliesContainer = document.createElement('div');
+                repliesContainer.className = 'comment-replies-container';
+                commentWrapper.appendChild(repliesContainer);
+            }
+            repliesContainer.prepend(newCommentEl);
+            replyBox.remove();
+
+        } catch (err) {
+            alert('Failed to post reply.');
+        }
+    });
+}
+
 function buildCommentTree(comments) {
     const commentMap = new Map();
     const rootComments = [];
 
-    // First pass: create a map and initialize a children array for each comment.
     comments.forEach(commentView => {
         commentView.children = [];
         commentMap.set(commentView.comment.id, commentView);
     });
 
-    // Second pass: build the tree.
     comments.forEach(commentView => {
         const pathParts = commentView.comment.path.split('.');
-        
-        // Root comments have a path like "0.12345"
         if (pathParts.length === 2) {
             rootComments.push(commentView);
         } else {
-            // It's a reply. The parent ID is the second to last part of the path.
             const parentId = parseInt(pathParts[pathParts.length - 2], 10);
             if (commentMap.has(parentId)) {
                 const parent = commentMap.get(parentId);
@@ -33,16 +76,9 @@ function buildCommentTree(comments) {
             }
         }
     });
-
     return rootComments;
 }
 
-/**
- * Recursively renders the comment tree into the DOM.
- * @param {Array} comments - An array of comment objects (root or children).
- * @param {HTMLElement} container - The DOM element to append the comments to.
- * @param {object} actions - The global actions object for event listeners.
- */
 function renderCommentTree(comments, container, actions) {
     comments.forEach(commentView => {
         const commentElement = renderCommentNode(commentView, actions);
@@ -52,7 +88,6 @@ function renderCommentTree(comments, container, actions) {
             const repliesContainer = document.createElement('div');
             repliesContainer.className = 'comment-replies-container';
             commentElement.appendChild(repliesContainer);
-            // Recursive call for the children
             renderCommentTree(commentView.children, repliesContainer, actions);
         }
     });
@@ -62,14 +97,7 @@ async function fetchAndRenderComments(state, postId, container, actions) {
     container.innerHTML = `<p>Loading comments...</p>`;
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        
-        const params = {
-            post_id: postId,
-            max_depth: 15, // Fetch nested replies
-            sort: 'Hot',   // Default sort, can be changed later
-            type_: 'All'
-        };
-
+        const params = { post_id: postId, max_depth: 15, sort: 'Hot', type_: 'All' };
         const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
         const commentsData = response.data.comments;
 
@@ -92,34 +120,70 @@ function renderCommentNode(commentView, actions) {
     const counts = commentView.counts;
 
     const commentWrapper = document.createElement('div');
-    commentWrapper.className = 'lemmy-comment-wrapper';
+    commentWrapper.className = 'status lemmy-comment';
     commentWrapper.id = `comment-wrapper-${comment.id}`;
-
-    let userActionsHTML = '';
-    const isOwnComment = localStorage.getItem('lemmy_username') === creator.name;
-    if (isOwnComment) {
-        userActionsHTML = `<button class="status-action" data-action="edit-comment">${ICONS.edit}</button><button class="status-action" data-action="delete-comment">${ICONS.delete}</button>`;
+    
+    // Add top-level-comment class to root comments for styling
+    if (comment.path.split('.').length === 2) {
+        commentWrapper.classList.add('top-level-comment');
     }
 
+    let optionsMenuHTML = `
+        <button class="post-options-btn">${ICONS.more}</button>
+        <div class="post-options-menu">
+            <button data-action="edit-comment">Edit</button>
+            <button data-action="delete-comment">Delete</button>
+        </div>
+    `;
+
     commentWrapper.innerHTML = `
-        <div class="lemmy-comment" data-comment-id="${comment.id}">
-            <div class="comment-main">
-                <div class="comment-header">
-                    <span class="lemmy-user">${creator.name}</span>
+        <div class="status-body-content">
+            <div class="status-header">
+                <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                <div>
+                    <span class="display-name">${creator.display_name || creator.name}</span>
+                    <span class="acct">@${creator.name}</span>
                     <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
                 </div>
-                <div class="comment-content">${comment.content}</div>
-                <div class="comment-footer">
-                    <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                    <span class="lemmy-score">${counts.score}</span>
-                    <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                    <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
-                    ${userActionsHTML}
-                </div>
+                ${optionsMenuHTML}
+            </div>
+            <div class="status-content">${comment.content}</div>
+            <div class="status-footer">
+                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                <span class="lemmy-score">${counts.score}</span>
+                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                <button class="status-action" data-action="reply">${ICONS.reply}</button>
             </div>
         </div>
     `;
     
+    // Event listeners
+    commentWrapper.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+            switch(action) {
+                case 'upvote': case 'downvote':
+                    const score = parseInt(e.currentTarget.dataset.score, 10);
+                    actions.lemmyCommentVote(comment.id, score, commentWrapper);
+                    break;
+                case 'reply':
+                    showReplyBox(commentWrapper, commentView, actions);
+                    break;
+            }
+        });
+    });
+
+    const optionsBtn = commentWrapper.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = commentWrapper.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        menu.addEventListener('click', (e) => e.stopPropagation()); // Prevent menu from closing when clicking inside
+    }
+
     return commentWrapper;
 }
 
@@ -163,14 +227,39 @@ export async function renderLemmyPostPage(state, post, actions) {
                 </div>
             </div>
         </div>
-        <div class="lemmy-comment-box-container">
-            <textarea id="lemmy-new-comment" placeholder="Add a comment..."></textarea>
-            <button id="submit-new-lemmy-comment" class="button-primary">Post</button>
+        <button id="reply-to-post-btn" class="button-primary">Reply to Post</button>
+        <div id="reply-to-post-container">
+            <div class="lemmy-comment-box-container">
+                <textarea id="lemmy-new-comment" placeholder="Add a comment..."></textarea>
+                <button id="submit-new-lemmy-comment" class="button-primary">Post</button>
+            </div>
         </div>
         <div class="lemmy-comment-thread"></div>
     `;
 
     container.innerHTML = postHTML;
+
+    const replyBtn = document.getElementById('reply-to-post-btn');
+    const replyContainer = document.getElementById('reply-to-post-container');
+    replyBtn.addEventListener('click', () => {
+        replyContainer.classList.toggle('visible');
+    });
+
+    document.getElementById('submit-new-lemmy-comment').addEventListener('click', async () => {
+        const textarea = document.getElementById('lemmy-new-comment');
+        const content = textarea.value.trim();
+        if (!content) return;
+
+        try {
+            const newComment = await actions.lemmyPostComment({ content: content, post_id: validatedPostId });
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
+            document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
+            textarea.value = '';
+            replyContainer.classList.remove('visible');
+        } catch (err) {
+            alert('Failed to post comment.');
+        }
+    });
 
     const threadContainer = container.querySelector('.lemmy-comment-thread');
     fetchAndRenderComments(state, validatedPostId, threadContainer, actions);
