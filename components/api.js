@@ -1,8 +1,9 @@
 /**
  * A helper function to make authenticated JSON API requests.
  * It can handle both full URLs (for pagination) and API endpoints.
+ * It now handles different authentication types.
  */
-export async function apiFetch(instanceUrl, accessToken, endpointOrUrl, options = {}, isPaginated = false) {
+export async function apiFetch(instanceUrl, token, endpointOrUrl, options = {}, authType = 'mastodon', isPaginated = false) {
     let url;
 
     // If it's a paginated call, the full URL is provided in endpointOrUrl
@@ -18,8 +19,13 @@ export async function apiFetch(instanceUrl, accessToken, endpointOrUrl, options 
         ...options.headers
     };
 
-    if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
+    let authToken = token;
+    if (authType === 'lemmy') {
+        authToken = localStorage.getItem('lemmy_jwt');
+    }
+
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
     }
 
     const response = await fetch(url, { ...options, headers });
