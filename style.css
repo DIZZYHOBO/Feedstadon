@@ -529,7 +529,6 @@ textarea:focus {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    margin-bottom: 15px;
     overflow: hidden;
 }
 
@@ -554,8 +553,9 @@ textarea:focus {
 }
 .profile-tabs {
     display: flex;
-    border-top: 1px solid var(--border-color);
-    margin-top: 20px;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
 }
 .tab-button {
     flex-grow: 1;
