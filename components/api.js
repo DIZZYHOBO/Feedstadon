@@ -1,18 +1,22 @@
 /**
  * A helper function to make authenticated JSON API requests.
  * It can handle both full URLs (for pagination) and API endpoints.
- * It now handles different authentication types.
+ * It now handles different authentication types and builds the URL from a params object.
  */
-export async function apiFetch(instanceUrl, token, endpointOrUrl, options = {}, authType = 'mastodon', isPaginated = false) {
+export async function apiFetch(instanceUrl, token, endpoint, options = {}, authType = 'mastodon', params = null) {
     let url;
-
-    // If it's a paginated call, the full URL is provided in endpointOrUrl
-    if (isPaginated && (endpointOrUrl.startsWith('http://') || endpointOrUrl.startsWith('https://'))) {
-        url = endpointOrUrl;
+    const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    
+    // Check if the endpoint is already a full URL (for pagination)
+    if (endpoint.startsWith('http')) {
+        url = new URL(endpoint);
     } else {
-        // Otherwise, construct the URL from the instance and endpoint
-        const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        url = `https://${cleanInstanceUrl}${endpointOrUrl}`;
+        url = new URL(`https://${cleanInstanceUrl}${endpoint}`);
+    }
+
+    // Append parameters to the URL from the params object
+    if (params) {
+        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
     }
     
     const headers = {
@@ -29,7 +33,7 @@ export async function apiFetch(instanceUrl, token, endpointOrUrl, options = {}, 
         headers['Authorization'] = `Bearer ${authToken}`;
     }
 
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url.toString(), { ...options, headers });
 
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
