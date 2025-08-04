@@ -1,148 +1,245 @@
-import { apiFetch } from './api.js';
-import { renderStatus } from './Post.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Feedstodon</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1D1E1F">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="./images/logo.png" type="image/png">
+    <style>
+        /* --- Login --- */
+        #login-view {
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 400px;
+            margin: 40px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-in-out;
+            align-items: center;
+        }
 
-// --- Lemmy Profile ---
-export async function renderLemmyProfilePage(state, userAcct, actions) {
-    const container = document.getElementById('profile-page-view');
-    container.innerHTML = `<p>Loading Lemmy profile...</p>`;
+        .login-logo {
+            width: 250px;
+            margin-bottom: 10px;
+        }
 
-    try {
-        const [username, instance] = userAcct.split('@');
-        const userResponse = await apiFetch(instance, null, `/api/v3/user?username=${username}`);
-        const user = userResponse.data;
+        #login-view input[type="text"],
+        #login-view input[type="password"] {
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            color: var(--font-color);
+            background-color: var(--primary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            width: 100%;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
 
-        const combinedFeed = [...user.posts, ...user.comments].sort((a, b) => {
-            const dateA = new Date(a.post?.published || a.comment?.published);
-            const dateB = new Date(b.post?.published || b.comment?.published);
-            return dateB - dateA;
-        });
+        #connect-btn {
+            background-color: transparent;
+            background-image: url('./images/login.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border: none;
+            width: 100%;
+            height: 50px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            padding: 0;
+        }
 
-        // Use the correct placeholder images if banner or avatar is missing
-        const bannerUrl = user.person_view.person.banner || './images/phb.png';
-        const avatarUrl = user.person_view.person.avatar || './images/php.png';
+        #connect-btn:hover {
+            opacity: 0.9;
+        }
 
-        container.innerHTML = `
-            <div class="profile-card">
-                <div class="profile-header">
-                     <img class="banner" src="${bannerUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} banner" onerror="this.onerror=null;this.src='./images/phb.png';">
-                     <img class="avatar" src="${avatarUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
-                </div>
-                 <div class="profile-info">
-                    <h2 class="display-name">${user.person_view.person.display_name || user.person_view.person.name}</h2>
-                    <p class="acct">@${user.person_view.person.name}@${instance}</p>
-                    <div class="note">${user.person_view.person.bio || ''}</div>
-                </div>
-                <div class="profile-tabs">
-                    <button class="tab-button active" data-tab="lemmy">Lemmy</button>
-                    <button class="tab-button" data-tab="mastodon">Mastodon</button>
+        #connect-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="nav-left">
+            <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
+            <button class="nav-button" id="back-btn" style="display: none;">Back</button>
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home" class="main-feed-link">Home Feed</a>
+                    <div class="dropdown-divider">Lemmy</div>
+                    <a href="#" data-lemmy-feed="Subscribed">Subscribed</a>
+                    <a href="#" data-lemmy-feed="Local">Local</a>
+                    <a href="#" data-lemmy-feed="All">All</a>
+                     <a href="#" id="discover-lemmy-link">Discover</a>
+                    <div class="dropdown-divider">Mastodon</div>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                    <a href="#" data-timeline="bookmarks">Saved</a>
                 </div>
             </div>
-            <div class="profile-feed"></div>
-        `;
-
-        const feedContainer = container.querySelector('.profile-feed');
-        if(combinedFeed.length > 0) {
-            combinedFeed.forEach(item => {
-                if(item.post) { // It's a post
-                    const postCard = document.createElement('div');
-                    postCard.className = 'status';
-                    postCard.innerHTML = `<div class="status-body-content">Posted in <a href="#" class="lemmy-community-link" data-community="${item.community.name}@${new URL(item.community.actor_id).hostname}">${item.community.name}</a>: <strong>${item.post.name}</strong></div>`;
-                    feedContainer.appendChild(postCard);
-                } else { // It's a comment
-                    const commentCard = document.createElement('div');
-                    commentCard.className = 'status';
-                    commentCard.innerHTML = `<div class="status-body-content">Commented on <strong>${item.post.name}</strong> in <a href="#" class="lemmy-community-link" data-community="${item.community.name}@${new URL(item.community.actor_id).hostname}">${item.community.name}</a>: <p>${item.comment.content}</p></div>`;
-                    feedContainer.appendChild(commentCard);
-                }
-            });
-        } else {
-            feedContainer.innerHTML = '<p>This user has no Lemmy activity.</p>';
-        }
-
-    } catch (err) {
-        console.error('Could not load Lemmy profile:', err);
-        container.innerHTML = '<p>Could not load Lemmy profile.</p>';
-    }
-}
-
-
-// --- Mastodon Profile ---
-export async function renderProfilePage(state, accountId, actions) {
-    const container = document.getElementById('profile-page-view');
-    
-    try {
-        const [accountResponse, relationshipsResponse, statusesResponse] = await Promise.all([
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`),
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/relationships?id[]=${accountId}`),
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses?limit=20`)
-        ]);
-
-        const account = accountResponse.data;
-        const relationship = relationshipsResponse.data[0];
-        const statuses = statusesResponse.data;
+        </div>
         
-        const isOwnProfile = state.currentUser && accountId === state.currentUser.id;
-        
-        let actionsHTML = '';
-        if (!isOwnProfile) {
-            actionsHTML = `
-                <button class="mute-btn button-secondary">${relationship.muting ? 'Unmute' : 'Mute'}</button>
-                <button class="block-btn">${relationship.blocking ? 'Unblock' : 'Block'}</button>
-                <button class="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
-            `;
-        }
-        
-        const bannerUrl = account.header_static || './images/phb.png';
-        const avatarUrl = account.avatar_static || './images/php.png';
+        <div class="nav-center">
+            <form id="search-form" style="display: none;">
+                <input type="search" id="search-input" placeholder="Search accounts and hashtags..." autocomplete="off">
+                <div id="search-suggestions-container"></div>
+            </form>
+        </div>
 
-        container.innerHTML = `
-            <div class="profile-card">
-                <div class="profile-header">
-                    <img class="banner" src="${bannerUrl}" alt="${account.display_name} banner" onerror="this.onerror=null;this.src='./images/phb.png';">
-                    <img class="avatar" src="${avatarUrl}" alt="${account.display_name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
-                </div>
-                <div class="profile-actions">
-                    ${actionsHTML}
-                </div>
-                <div class="profile-info">
-                    <h2 class="display-name">${account.display_name}</h2>
-                    <p class="acct">@${account.acct}</p>
-                    <div class="note">${account.note}</div>
-                     <div class="profile-tabs">
-                        <button class="tab-button" data-tab="lemmy">Lemmy</button>
-                        <button class="tab-button active" data-tab="mastodon">Mastodon</button>
+        <div class="nav-right">
+            <button class="nav-button" id="search-toggle-btn">Search</button>
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn">Menu</button>
+                <div class="dropdown-content">
+                    <a href="#" id="new-post-link">New Post</a>
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="settings-link">Settings</a>
+                    <a href="#" id="logout-btn">Logout</a>
+                    <div class="dropdown-footer-actions">
+                        <button class="nav-button icon-button" id="messages-btn" title="Messages"></button>
+                        <button class="nav-button icon-button" id="notifications-btn" title="Notifications"></button>
                     </div>
                 </div>
             </div>
-            <div class="profile-feed"></div>
-        `;
+        </div>
+    </nav>
 
-        const feedContainer = container.querySelector('.profile-feed');
-        if (statuses.length > 0) {
-            statuses.forEach(status => {
-                const statusEl = renderStatus(status, state, actions);
-                if (statusEl) feedContainer.appendChild(statusEl);
+    <div class="container">
+        <div id="login-view">
+            <img src="./images/logo.png" alt="Feedstodon Logo" class="login-logo">
+            <input type="text" id="instance-url" placeholder="your-instance.social">
+            <input type="password" id="access-token" placeholder="Paste your access token">
+            <button id="connect-btn" title="Connect"></button>
+        </div>
+        <div id="app-view">
+            <div id="lemmy-filter-bar" class="filter-bar" style="display: none;">
+                 <select id="lemmy-sort-select">
+                    <option value="New">New</option>
+                    <option value="Active">Active</option>
+                    <option value="Hot">Hot</option>
+                    <option value="TopHour">Top Hour</option>
+                    <option value="TopSixHour">Top Six Hour</option>
+                    <option value="TopTwelveHour">Top Twelve Hour</option>
+                    <option value="TopDay">Top Day</option>
+                </select>
+            </div>
+            <div id="timeline"></div>
+            <div id="subscribed-feed" style="display: none;"></div>
+            <div id="unified-feed" style="display: none;"></div>
+            <div id="profile-page-view" style="display: none;"></div>
+            <div id="search-results-view" style="display: none;"></div>
+            <div id="status-detail-view" style="display: none;"></div>
+            <div id="settings-view" style="display: none;"></div>
+            <div id="hashtag-timeline-view" style="display: none;"></div>
+            <div id="notifications-view" style="display: none;"></div>
+            <div id="bookmarks-view" style="display: none;"></div>
+            <div id="conversations-view" style="display: none;"></div>
+            <div id="lemmy-discover-view" style="display: none;"></div>
+            <div id="lemmy-community-view" style="display: none;"></div>
+            <div id="lemmy-post-view" style="display: none;"></div>
+            <div id="scroll-loader"><p>Loading more...</p></div>
+        </div>
+    </div>
+    
+    <div id="compose-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>New Post</h3>
+            <form id="compose-form">
+                <div id="cw-creator-container" style="display: none;">
+                    <input type="text" id="spoiler-text-input" placeholder="Content Warning (e.g., spoilers, politics)">
+                </div>
+                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+                <div id="poll-creator-container" style="display: none;">
+                    <div id="poll-options-container">
+                        <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
+                        <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
+                    </div>
+                    <button type="button" id="add-poll-option-btn" class="button-secondary">Add Choice</button>
+                    <div class="poll-settings">
+                        <div class="form-group">
+                            <label for="poll-duration-select">Poll duration</label>
+                            <select id="poll-duration-select">
+                                <option value="300">5 minutes</option>
+                                <option value="1800">30 minutes</option>
+                                <option value="3600">1 hour</option>
+                                <option value="21600">6 hours</option>
+                                <option value="86400" selected>1 day</option>
+                                <option value="259200">3 days</option>
+                                <option value="604800">7 days</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><input type="checkbox" id="poll-multiple-choice-check"> Multiple choices</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <div class="compose-options">
+                        <input type="file" id="media-attachment-input" accept="image/*, video/*" style="display: none;">
+                        <button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media"></button>
+                        <button type="button" id="add-poll-btn" class="button-secondary icon-button" title="Add Poll"></button>
+                        <button type="button" id="add-cw-btn" class="button-secondary icon-button" title="Add Content Warning"></button>
+                        <span id="media-filename-preview"></span>
+                    </div>
+                    <div>
+                        <button type="button" class="button-secondary cancel-compose">Cancel</button>
+                        <button type="submit">Post</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="edit-post-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Edit Post</h3>
+            <form id="edit-post-form">
+                <textarea id="edit-post-textarea"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="button-secondary cancel-edit">Cancel</button>
+                    <button type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-post-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Delete Post</h3>
+            <p>Are you sure you want to permanently delete this post?</p>
+            <div class="modal-actions">
+                <button type="button" class="button-secondary cancel-delete">Cancel</button>
+                <button type="submit" id="confirm-delete-btn" class="button-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification"></div>
+
+    <script type="module" src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration);
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed:', err);
+                    });
             });
-        } else {
-            feedContainer.innerHTML = '<p>This user has not posted anything yet.</p>';
         }
-
-        if (!isOwnProfile) {
-            container.querySelector('.follow-btn').addEventListener('click', async () => {
-                // Follow/unfollow logic
-            });
-            container.querySelector('.block-btn').addEventListener('click', async () => {
-                // Block/unblock logic
-            });
-             container.querySelector('.mute-btn').addEventListener('click', async () => {
-                // Mute/unmute logic
-            });
-        }
-
-    } catch(err) {
-        console.error('Could not load profile:', err);
-        container.innerHTML = '<p>Could not load profile.</p>';
-    }
-}
+    </script>
+</body>
+</html>
