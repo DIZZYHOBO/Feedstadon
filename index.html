@@ -30,6 +30,151 @@
                     <a href="#" data-timeline="bookmarks">Saved</a>
                 </div>
             </div>
+            <div id="lemmy-filter-container" style="display: none;">
+                 <select id="lemmy-sort-select">
+                    <option value="New">New</option>
+                    <option value="Active">Active</option>
+                    <option value="Hot">Hot</option>
+                    <option value="TopHour">Top Hour</option>
+                    <option value="TopSixHour">Top Six Hour</option>
+                    <option value="TopTwelveHour">Top Twelve Hour</option>
+                    <option value="TopDay">Top Day</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="nav-center">
+            <form id="search-form" style="display: none;">
+                <input type="search" id="search-input" placeholder="Search accounts and hashtags..." autocomplete="off">
+                <div id="search-suggestions-container"></div>
+            </form>
+        </div>
+
+        <div class="nav-right">
+            <button class="nav-button" id="search-toggle-btn">Search</button>
+            <div class="dropdown" id="user-dropdown">
+                <button class="nav-button" id="user-display-btn">Menu</button>
+                <div class="dropdown-content">
+                    <a href="#" id="new-post-link">New Post</a>
+                    <a href="#" id="profile-link">Profile</a>
+                    <a href="#" id="settings-link">Settings</a>
+                    <a href="#" id="logout-link">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="login-view">
+            <div class="login-card">
+                <div class="login-forms-container">
+                    <div class="login-form-section" id="mastodon-login-section">
+                        <form id="mastodon-login-form">
+                            <input type="text" id="instance-url" placeholder="your-instance.social">
+                            <input type="password" id="access-token" placeholder="Paste your access token">
+                            <button type="submit" class="connect-btn" id="mastodon-connect-btn">Log In to Mastodon</button>
+                        </form>
+                    </div>
+                    <div class="vertical-divider"></div>
+                    <div class="login-form-section" id="lemmy-login-section">
+                        <form id="lemmy-login-form">
+                            <input type="text" id="lemmy-instance-input" value="leminal.space">
+                            <input type="text" id="lemmy-username-input" placeholder="Your Lemmy Username">
+                            <input type="password" id="lemmy-password-input" placeholder="Your Lemmy Password">
+                            <button type="submit" class="connect-btn" id="lemmy-connect-btn">Log In to Lemmy</button>
+                        </form>
+                    </div>
+                </div>
+                 <button id="enter-app-btn" style="display: none;">Enter</button>
+            </div>
+        </div>
+        <div id="app-view" style="display: none;">
+            <div id="timeline"></div>
+            <div id="subscribed-feed" style="display: none;"></div>
+            <div id="unified-feed" style="display: none;"></div>
+            <div id="profile-page-view" style="display: none;"></div>
+            <div id="search-results-view" style="display: none;"></div>
+            <div id="status-detail-view" style="display: none;"></div>
+            <div id="settings-view" style="display: none;"></div>
+            <div id="hashtag-timeline-view" style="display: none;"></div>
+            <div id="notifications-view" style="display: none;"></div>
+            <div id="bookmarks-view" style="display: none;"></div>
+            <div id="conversations-view" style="display: none;"></div>
+            <div id="lemmy-discover-view" style="display: none;"></div>
+            <div id="lemmy-community-view" style="display: none;"></div>
+            <div id="lemmy-post-view" style="display: none;"></div>
+            <div id="scroll-loader"><p>Loading more...</p></div>
+        </div>
+    </div>
+    
+    <div id="compose-modal" class="modal-overlay">
+        <!-- Compose Modal Content -->
+    </div>
+
+    <div id="logout-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Logout</h3>
+            <p>Choose which account to log out from.</p>
+            <div class="logout-options">
+                <button id="mastodon-logout-btn" class="button-secondary">Mastodon Logout</button>
+                <button id="lemmy-logout-btn" class="button-secondary">Lemmy Logout</button>
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-logout-btn" class="button-secondary">Cancel</button>
+                <button id="logout-all-btn" class="button-danger">Logout All</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification"></div>
+
+    <script type="module" src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration);
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed:', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Feedstodon</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1D1E1F">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="./images/logo.png" type="image/png">
+</head>
+<body>
+
+    <nav class="top-nav" style="display: none;">
+        <div class="nav-left">
+            <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
+            <button class="nav-button" id="back-btn" style="display: none;">Back</button>
+            <div class="dropdown" id="feeds-dropdown">
+                <button class="nav-button">Feeds</button>
+                <div class="dropdown-content">
+                    <a href="#" data-timeline="home" class="main-feed-link">Home Feed</a>
+                    <div class="dropdown-divider">Lemmy</div>
+                    <a href="#" data-lemmy-feed="Subscribed">Subscribed</a>
+                    <a href="#" data-lemmy-feed="Local">Local</a>
+                    <a href="#" data-lemmy-feed="All">All</a>
+                     <a href="#" id="discover-lemmy-link">Discover</a>
+                    <div class="dropdown-divider">Mastodon</div>
+                    <a href="#" data-timeline="public?local=true">Local</a>
+                    <a href="#" data-timeline="public">All</a>
+                    <a href="#" data-timeline="bookmarks">Saved</a>
+                </div>
+            </div>
         </div>
         
         <div class="nav-center">
