@@ -1263,8 +1263,8 @@ textarea:focus {
     border-top: 1px solid var(--border-color);
 }
 .lemmy-comment {
-    padding: 10px 0 10px 15px;
-    border-left: 2px solid var(--accent-color);
+    padding-left: calc(var(--nest-level, 0) * 20px);
+    border-left: 2px solid var(--border-color);
     margin-top: 10px;
     animation: fadeIn 0.3s;
 }
