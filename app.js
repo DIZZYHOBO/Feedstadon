@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageUrl: null, // For Mastodon pagination
         lemmyPage: 1, // For Lemmy pagination
         conversations: [],
-        lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'lemina.space'],
+        lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'leminal.space'],
         settings: {
             hideNsfw: false,
         },
@@ -90,6 +90,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toast.classList.remove('visible');
         }, 3000);
+    };
+    
+    const updateLemmyLoginStatus = () => {
+        const lemmyJwt = localStorage.getItem('lemmy_jwt');
+        document.getElementById('lemmy-login-btn').style.display = lemmyJwt ? 'none' : 'block';
+        document.getElementById('lemmy-logout-btn').style.display = lemmyJwt ? 'block' : 'none';
     };
 
     const actions = {
@@ -268,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.currentUser = response.data;
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 document.querySelector('.top-nav').style.display = 'flex';
+                updateLemmyLoginStatus();
                 switchView('timeline');
                 fetchTimeline(state, 'home');
             })
@@ -278,11 +285,59 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
 
+    const initLemmyLoginModal = () => {
+        const modal = document.getElementById('lemmy-login-modal');
+        const form = document.getElementById('lemmy-login-form');
+
+        document.getElementById('lemmy-login-btn').addEventListener('click', () => {
+            modal.classList.add('visible');
+        });
+
+        modal.querySelector('.cancel-lemmy-login').addEventListener('click', () => {
+            modal.classList.remove('visible');
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const instance = form.querySelector('#lemmy-instance-input').value.trim();
+            const username = form.querySelector('#lemmy-username-input').value.trim();
+            const password = form.querySelector('#lemmy-password-input').value.trim();
+
+            if (!instance || !username || !password) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            try {
+                const response = await apiFetch(instance, null, '/api/v3/user/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username_or_email: username, password: password })
+                });
+
+                if (response.data.jwt) {
+                    localStorage.setItem('lemmy_jwt', response.data.jwt);
+                    localStorage.setItem('lemmy_username', username);
+                    localStorage.setItem('lemmy_instance', instance);
+                    showToast('Lemmy login successful!');
+                    modal.classList.remove('visible');
+                    updateLemmyLoginStatus();
+                    actions.showLemmySubscribedFeed();
+                } else {
+                    alert('Lemmy login failed. Please check your credentials.');
+                }
+            } catch (err) {
+                alert('Login failed. Check the instance URL and your credentials.');
+            }
+        });
+    };
+    
     initLogin(onLoginSuccess);
     initComposeModal(state, () => {
         fetchTimeline(state, state.currentTimeline);
         showToast('Post created successfully!');
     });
+    initLemmyLoginModal();
 
     document.querySelectorAll('.dropdown').forEach(dropdown => {
         const button = dropdown.querySelector('button');
@@ -378,10 +433,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logout-btn').addEventListener('click', () => {
         localStorage.removeItem('fediverse-instance');
         localStorage.removeItem('fediverse-token');
+        window.location.reload();
+    });
+
+    document.getElementById('lemmy-logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
         localStorage.removeItem('lemmy_jwt');
         localStorage.removeItem('lemmy_username');
         localStorage.removeItem('lemmy_instance');
-        window.location.reload();
+        updateLemmyLoginStatus();
+        showToast("You've been logged out from Lemmy.");
+        document.getElementById('user-dropdown').classList.remove('active');
     });
 
     document.getElementById('messages-btn').addEventListener('click', (e) => {
