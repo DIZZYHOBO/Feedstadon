@@ -6,10 +6,11 @@ import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
 import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
-import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed, fetchLemmyFeed } from './components/Lemmy.js';
+import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed, fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
+import { LemmySocket } from './components/LemmySocket.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const state = {
@@ -59,6 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         state.currentView = viewName;
 
+        // Disconnect from Lemmy live feed if we're navigating away
+        if (viewName !== 'timeline' || !state.currentLemmyFeed) {
+            LemmySocket.disconnect();
+        }
+
         // Hide all views first
         Object.keys(views).forEach(key => {
             if (views[key] && views[key].style) {
@@ -74,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return; 
         }
 
-        // For all other views, show the main app container
         document.body.style.paddingTop = '50px';
         views.app.style.display = 'block';
         
@@ -147,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('lemmy-filter-bar').style.display = 'flex';
             document.getElementById('lemmy-sort-select').value = sortType;
             fetchLemmyFeed(state, actions);
+            LemmySocket.connect(state, actions); // Connect to live updates
         },
         showMastodonTimeline: (timelineType) => {
             state.currentLemmyFeed = null;
@@ -458,5 +464,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchTimeline(state, state.currentTimeline, true);
             }
         }
+    });
+
+    window.addEventListener('lemmy:new-post', (e) => {
+        const newPost = e.detail;
+        const postCard = renderLemmyCard(newPost.post_view, actions);
+        postCard.classList.add('newly-added');
+        state.timelineDiv.prepend(postCard);
     });
 });
