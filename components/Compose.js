@@ -45,7 +45,7 @@ export function initComposeModal(state, onPostSuccess) {
     const composeModal = document.getElementById('compose-modal');
     const composeForm = document.getElementById('compose-form');
     const composeTextarea = document.getElementById('compose-textarea');
-    const cancelBtn = composeModal.querySelector('.cancel-compose');
+    const cancelBtn = document.getElementById('cancel-compose-btn'); // Correctly select by ID
     
     const mediaInput = document.getElementById('media-attachment-input');
     const addMediaBtn = document.getElementById('add-media-btn');
