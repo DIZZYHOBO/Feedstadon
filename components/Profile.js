@@ -19,25 +19,24 @@ export async function renderLemmyProfilePage(state, userAcct, actions) {
             return dateB - dateA;
         });
 
-        // Add a check for null or undefined banner/avatar
-        const bannerUrl = user.person_view.person.banner || '';
-        const avatarUrl = user.person_view.person.avatar || '';
+        const bannerUrl = user.person_view.person.banner || './images/phb.png';
+        const avatarUrl = user.person_view.person.avatar || './images/php.png';
 
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
-                     <img class="banner" src="${bannerUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} banner">
-                     <img class="avatar" src="${avatarUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} avatar">
+                     <img class="banner" src="${bannerUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} banner" onerror="this.onerror=null;this.src='./images/phb.png';">
+                     <img class="avatar" src="${avatarUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
                 </div>
                  <div class="profile-info">
                     <h2 class="display-name">${user.person_view.person.display_name || user.person_view.person.name}</h2>
                     <p class="acct">@${user.person_view.person.name}@${instance}</p>
                     <div class="note">${user.person_view.person.bio || ''}</div>
                 </div>
-                <div class="profile-tabs">
-                    <button class="tab-button active" data-tab="lemmy">Lemmy</button>
-                    <button class="tab-button" data-tab="mastodon">Mastodon</button>
-                </div>
+            </div>
+            <div class="profile-tabs">
+                <button class="tab-button active" data-tab="lemmy">Lemmy</button>
+                <button class="tab-button" data-tab="mastodon">Mastodon</button>
             </div>
             <div class="profile-feed"></div>
         `;
@@ -46,7 +45,6 @@ export async function renderLemmyProfilePage(state, userAcct, actions) {
         if(combinedFeed.length > 0) {
             combinedFeed.forEach(item => {
                 if(item.post) { // It's a post
-                    // We can create a more compact "post summary" card here later
                     const postCard = document.createElement('div');
                     postCard.className = 'status';
                     postCard.innerHTML = `<div class="status-body-content">Posted in <a href="#" class="lemmy-community-link" data-community="${item.community.name}@${new URL(item.community.actor_id).hostname}">${item.community.name}</a>: <strong>${item.post.name}</strong></div>`;
@@ -94,12 +92,15 @@ export async function renderProfilePage(state, accountId, actions) {
                 <button class="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
             `;
         }
+        
+        const bannerUrl = account.header_static || './images/phb.png';
+        const avatarUrl = account.avatar_static || './images/php.png';
 
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
-                    <img class="banner" src="${account.header_static}" alt="${account.display_name} banner">
-                    <img class="avatar" src="${account.avatar_static}" alt="${account.display_name} avatar">
+                    <img class="banner" src="${bannerUrl}" alt="${account.display_name} banner" onerror="this.onerror=null;this.src='./images/phb.png';">
+                    <img class="avatar" src="${avatarUrl}" alt="${account.display_name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
                 </div>
                 <div class="profile-actions">
                     ${actionsHTML}
@@ -108,11 +109,11 @@ export async function renderProfilePage(state, accountId, actions) {
                     <h2 class="display-name">${account.display_name}</h2>
                     <p class="acct">@${account.acct}</p>
                     <div class="note">${account.note}</div>
-                     <div class="profile-tabs">
-                        <button class="tab-button" data-tab="lemmy">Lemmy</button>
-                        <button class="tab-button active" data-tab="mastodon">Mastodon</button>
-                    </div>
                 </div>
+            </div>
+            <div class="profile-tabs">
+                <button class="tab-button" data-tab="lemmy">Lemmy</button>
+                <button class="tab-button active" data-tab="mastodon">Mastodon</button>
             </div>
             <div class="profile-feed"></div>
         `;
