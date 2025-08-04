@@ -221,7 +221,7 @@ export async function renderLemmyPostPage(state, post, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort=New`);
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort_type=New`);
         const commentsData = response.data.comments;
 
         threadContainer.innerHTML = '';
