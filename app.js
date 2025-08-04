@@ -195,16 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
         lemmyVote: async (postId, score, card) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-                const jwt = localStorage.getItem('lemmy_jwt');
-                if (!jwt) {
-                    showToast('You need to be logged into Lemmy to vote.');
-                    return;
-                }
-                const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/like', {
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/like', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ post_id: postId, score: score })
-                });
+                }, 'lemmy');
                 const scoreSpan = card.querySelector('.lemmy-score');
                 scoreSpan.textContent = response.data.post.counts.score;
             } catch (err) {
@@ -214,16 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
         lemmySave: async (postId, button) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-                const jwt = localStorage.getItem('lemmy_jwt');
-                if (!jwt) {
-                    showToast('You need to be logged into Lemmy to save posts.');
-                    return;
-                }
-                const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/save', {
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ post_id: postId, save: !button.classList.contains('active') })
-                });
+                }, 'lemmy');
                 button.classList.toggle('active');
             } catch (err) {
                 showToast('Failed to save post.');
@@ -232,16 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
         lemmyCommentVote: async (commentId, score, commentDiv) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-                const jwt = localStorage.getItem('lemmy_jwt');
-                if (!jwt) {
-                    showToast('You need to be logged into Lemmy to vote.');
-                    return;
-                }
-                const response = await apiFetch(lemmyInstance, jwt, '/api/v3/comment/like', {
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/like', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ comment_id: commentId, score: score })
-                });
+                }, 'lemmy');
                 const scoreSpan = commentDiv.querySelector('.lemmy-score');
                 scoreSpan.textContent = response.data.comment.counts.score;
             } catch (err) {
@@ -250,16 +235,15 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         lemmyPostComment: async (commentData) => {
             const lemmyInstance = localStorage.getItem('lemmy_instance');
-            const jwt = localStorage.getItem('lemmy_jwt');
-            if (!jwt || !lemmyInstance) {
+            if (!lemmyInstance) {
                 showToast('You must be logged in to comment.');
                 throw new Error('Not logged in');
             }
-            const response = await apiFetch(lemmyInstance, jwt, '/api/v3/comment', {
+            const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(commentData)
-            });
+            }, 'lemmy');
             return response.data;
         }
     };
@@ -293,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username_or_email: username, password: password })
-        })
+        }, 'none')
         .then(response => {
             if (response.data.jwt) {
                 localStorage.setItem('lemmy_jwt', response.data.jwt);
@@ -312,9 +296,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const onEnterApp = async () => {
         const mastodonToken = localStorage.getItem('fediverse-token');
+        const lemmyJwt = localStorage.getItem('lemmy_jwt');
+
+        if (!mastodonToken && !lemmyJwt) {
+            showToast("Please log in to at least one service.");
+            return;
+        }
+
         if (mastodonToken) {
             await onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
         }
+        
         actions.showUnifiedFeed();
     };
     
