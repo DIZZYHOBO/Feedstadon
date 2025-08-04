@@ -45,7 +45,7 @@ function showReplyBox(commentDiv, comment, actions, level) {
             repliesContainer.prepend(newCommentEl);
             replyBox.remove();
 
-        } catch (err)
+        } catch (err) {
             alert('Failed to post reply.');
         }
     });
