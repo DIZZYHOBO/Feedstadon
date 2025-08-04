@@ -519,22 +519,18 @@ textarea:focus {
     padding-top: 15px;
     border-top: 1px solid var(--border-color);
 }
-.lemmy-comment-wrapper {
-    margin-top: 10px;
-}
+
 .lemmy-comment {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px;
+    border-left: 2px solid transparent; /* Base border */
+    padding-left: 10px;
 }
 
 .top-level-comment {
-    border-left: 2px solid #5A94F1 !important; /* Blue for parent */
+    border-left-color: #5A94F1 !important; /* Blue for parent */
 }
 
-.reply-comment {
-    border-left: 2px solid #FF3D3D !important; /* Red for child */
+.comment-replies-container .lemmy-comment {
+    border-left-color: #FF3D3D !important; /* Red for child */
 }
 
 .comment-replies-container {
