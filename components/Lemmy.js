@@ -89,9 +89,10 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
     const lemmyInstance = localStorage.getItem('lemmy_instance') || 'leminal.space';
     const jwt = localStorage.getItem('lemmy_jwt');
     const sort = state.currentLemmySort || 'New';
+    const limit = 20; // Fetch 20 posts at a time
 
     try {
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/post/list?type_=${state.currentLemmyFeed}&sort=${sort}&page=${state.lemmyPage}`);
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/post/list?type_=${state.currentLemmyFeed}&sort=${sort}&page=${state.lemmyPage}&limit=${limit}`);
         const posts = response.data.posts;
 
         if (!loadMore) {
@@ -139,7 +140,7 @@ export async function renderLemmyCommunityPage(state, communityAcct, actions) {
         `;
 
         const postList = container.querySelector('.lemmy-post-list');
-        const postsResponse = await apiFetch(communityHostname, null, `/api/v3/post/list?community_id=${community.community.id}`);
+        const postsResponse = await apiFetch(communityHostname, null, `/api/v3/post/list?community_id=${community.community.id}&limit=20`);
         const topLevelPosts = postsResponse.data.posts.filter(p => p.post.name && p.post.name.trim() !== '');
 
         if (topLevelPosts.length > 0) {
@@ -221,7 +222,7 @@ export async function renderSubscribedFeed(state, actions) {
     container.innerHTML = `<p>Loading subscribed feed...</p>`;
 
     try {
-        const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/list?listing_type=Subscribed');
+        const response = await apiFetch(lemmyInstance, jwt, '/api/v3/post/list?listing_type=Subscribed&limit=20');
         const posts = response.data.posts;
 
         container.innerHTML = '';
@@ -257,8 +258,7 @@ export async function renderUnifiedFeed(state, actions) {
         ];
 
         if (lemmyJwt && lemmyInstance) {
-            // Correctly pull from the user's subscribed feed for the merged view
-            promises.push(apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=Subscribed&sort=New'));
+            promises.push(apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=Subscribed&sort=New&limit=20'));
         }
 
         const [mastodonResponse, lemmyResponse] = await Promise.all(promises);
