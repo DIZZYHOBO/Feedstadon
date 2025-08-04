@@ -94,8 +94,47 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const actions = {
-        // ... (all other actions remain the same)
-        showLemmyFeed: (feedType, sortType = 'New') => {
+        showProfile: (accountId) => {
+            switchView('profile');
+            renderProfilePage(state, accountId, actions);
+        },
+        showLemmyProfile: (userAcct, isOwnProfile = false) => {
+            switchView('profile');
+            renderLemmyProfilePage(state, userAcct, actions, isOwnProfile);
+        },
+        showStatusDetail: (statusId) => {
+            switchView('statusDetail');
+            renderStatusDetail(state, statusId, actions);
+        },
+        showHashtagTimeline: (tagName) => {
+            switchView('search');
+            renderSearchResults(state, `#${tagName}`);
+        },
+        showConversations: () => {
+            switchView('conversations');
+            renderConversationsList(state, actions);
+        },
+        showConversationDetail: (conversationId, participants) => {
+            switchView('conversations');
+            renderConversationDetail(state, conversationId, participants);
+        },
+        showSettings: () => {
+            switchView('settings');
+            renderSettingsPage(state);
+        },
+        showLemmyDiscover: () => {
+            switchView('lemmyDiscover');
+            renderLemmyDiscoverPage(state, actions);
+        },
+        showLemmyCommunity: (communityAcct) => {
+            switchView('lemmyCommunity');
+            renderLemmyCommunityPage(state, communityAcct, actions);
+        },
+        showLemmyPostDetail: (post) => {
+            switchView('lemmyPost');
+            renderLemmyPostPage(state, post, actions);
+        },
+         showLemmyFeed: (feedType, sortType = 'New') => {
             state.currentLemmyFeed = feedType;
             state.currentTimeline = null;
             state.currentLemmySort = sortType;
@@ -109,6 +148,97 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('timeline');
             fetchTimeline(state, timelineType);
         },
+        showLemmySubscribedFeed: () => {
+            actions.showLemmyFeed('Subscribed');
+        },
+        showUnifiedFeed: () => {
+            state.currentTimeline = null;
+            state.currentLemmyFeed = null;
+            switchView('unifiedFeed');
+            renderUnifiedFeed(state, actions);
+        },
+        handleSearchResultClick: (account) => {
+            if (account.acct.includes('@')) {
+                actions.showProfile(account.id);
+            } else {
+                actions.showLemmyCommunity(account.acct);
+            }
+        },
+        toggleAction: async (action, status, button) => {
+            const isToggled = button.classList.contains('active');
+            const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
+                button.classList.toggle('active');
+            } catch (err) {
+                showToast(`Failed to ${action} post.`);
+            }
+        },
+        muteAccount: async (accountId) => {
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/mute`, { method: 'POST' });
+                showToast('User muted successfully.');
+                fetchTimeline(state, state.currentTimeline);
+            } catch (err) {
+                showToast('Failed to mute user.');
+            }
+        },
+        showEditModal: (post) => {},
+        showDeleteModal: (postId) => {},
+        lemmyVote: async (postId, score, card) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, score: score })
+                }, 'lemmy');
+                const scoreSpan = card.querySelector('.lemmy-score');
+                scoreSpan.textContent = response.data.post.counts.score;
+            } catch (err) {
+                showToast('Failed to vote on post.');
+            }
+        },
+        lemmySave: async (postId, button) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, save: !button.classList.contains('active') })
+                }, 'lemmy');
+                button.classList.toggle('active');
+            } catch (err) {
+                showToast('Failed to save post.');
+            }
+        },
+        lemmyCommentVote: async (commentId, score, commentDiv) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment_id: commentId, score: score })
+                }, 'lemmy');
+                const scoreSpan = commentDiv.querySelector('.lemmy-score');
+                scoreSpan.textContent = response.data.comment.counts.score;
+            } catch (err) {
+                showToast('Failed to vote on comment.');
+            }
+        },
+        lemmyPostComment: async (commentData) => {
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            if (!lemmyInstance) {
+                showToast('You must be logged in to comment.');
+                throw new Error('Not logged in');
+            }
+            const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(commentData)
+            }, 'lemmy');
+            return response.data;
+        }
     };
     state.actions = actions;
 
@@ -191,7 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
         lemmySection.style.display = lemmyJwt ? 'none' : 'flex';
         enterBtn.style.display = (mastodonToken || lemmyJwt) ? 'block' : 'none';
 
-        if (!mastodonToken && !lemmyJwt) {
+        // ** THE FIX IS HERE **
+        // Only switch to login view if user is fully logged out AND not already on the login page.
+        if (!mastodonToken && !lemmyJwt && state.currentView !== 'login') {
             switchView('login');
         }
     };
@@ -199,7 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
 
-    // --- Logout Modal Logic ---
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
         e.preventDefault();
@@ -235,15 +366,15 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.clear();
         window.location.reload();
     });
-
-    // --- Other Event Listeners ---
+    
     document.getElementById('lemmy-sort-select').addEventListener('change', (e) => {
         actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
     });
 
-    // Initial check
-    refreshLoginView();
+    // Initial check on load
     if (localStorage.getItem('fediverse-token') || localStorage.getItem('lemmy_jwt')) {
         onEnterApp();
+    } else {
+        switchView('login');
     }
 });
