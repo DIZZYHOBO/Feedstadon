@@ -75,17 +75,19 @@ function renderCommentNode(commentView, actions, level = 0) {
     }
 
     commentDiv.innerHTML = `
-        <div class="comment-header">
-            <span class="lemmy-user">${creator.name}</span>
-            <span class="timestamp">· ${timestamp}</span>
-        </div>
-        <div class="comment-content">${comment.content}</div>
-        <div class="comment-footer">
-            <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-            <span class="lemmy-score">${counts.score}</span>
-            <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-            <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
-            ${userActionsHTML}
+        <div class="comment-main">
+            <div class="comment-header">
+                <span class="lemmy-user">${creator.name}</span>
+                <span class="timestamp">· ${timestamp}</span>
+            </div>
+            <div class="comment-content">${comment.content}</div>
+            <div class="comment-footer">
+                <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                <span class="lemmy-score">${counts.score}</span>
+                <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
+                ${userActionsHTML}
+            </div>
         </div>
         <div class="lemmy-replies"></div> 
     `;
