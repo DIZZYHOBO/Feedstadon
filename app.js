@@ -303,11 +303,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Prioritize loading Mastodon timeline if logged in, otherwise show Lemmy
         if (mastodonToken) {
-            await onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
+            const loggedIn = await onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
+            if (loggedIn) {
+                actions.showMastodonTimeline('home');
+                return;
+            }
         }
         
-        actions.showUnifiedFeed();
+        if (lemmyJwt) {
+            actions.showLemmyFeed('All');
+        }
     };
     
     initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
