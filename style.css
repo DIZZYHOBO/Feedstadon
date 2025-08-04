@@ -525,16 +525,16 @@ textarea:focus {
     padding-left: 10px;
 }
 
-.top-level-comment {
+.lemmy-comment-wrapper.top-level-comment > .lemmy-comment {
     border-left-color: #5A94F1 !important; /* Blue for parent */
 }
 
-.comment-replies-container .lemmy-comment {
+.comment-replies-container .lemmy-comment-wrapper > .lemmy-comment {
     border-left-color: #FF3D3D !important; /* Red for child */
 }
 
 .comment-replies-container {
-    margin-left: 20px;
+    margin-left: 15px;
     padding-left: 15px;
     border-left: 2px solid var(--border-color);
 }
@@ -1315,12 +1315,15 @@ textarea:focus {
 .lemmy-post-list {
     flex-grow: 1;
 }
+
 .filter-bar {
     background-color: var(--card-color);
     padding: 10px;
     border-radius: 8px;
     margin-bottom: 15px;
+    display: block;
 }
+
 .lemmy-filter-bar {
     position: sticky;
     top: 50px; /* Height of the top nav bar */
