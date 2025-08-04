@@ -135,20 +135,35 @@ async function fetchAndRenderComments(state, postId, sortType, container, action
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${postId}&sort_type=${sortType}`);
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${postId}&sort_type=${sortType}&limit=50`);
         const commentsData = response.data.comments;
+
+        console.log(`Fetching comments with sort: ${sortType}. Raw data:`, commentsData);
 
         container.innerHTML = '';
         if (commentsData && commentsData.length > 0) {
-            const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
+            const commentMap = new Map();
+            // Add all comments to a map and initialize replies array
+            commentsData.forEach(commentView => {
+                commentView.replies = [];
+                commentMap.set(commentView.comment.id, commentView);
+            });
+
             const rootComments = [];
-            for (const commentView of commentMap.values()) {
+            // Iterate again to build the tree
+            commentsData.forEach(commentView => {
                 if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
-                    commentMap.get(commentView.comment.parent_id).replies.push(commentView);
+                    // This is a reply, push it to its parent's replies array
+                    const parent = commentMap.get(commentView.comment.parent_id);
+                    parent.replies.push(commentView);
                 } else {
+                    // This is a root comment
                     rootComments.push(commentView);
                 }
-            }
+            });
+
+            console.log("Constructed root comments:", rootComments);
+
             rootComments.forEach(commentView => {
                 container.appendChild(renderCommentNode(commentView, actions));
             });
@@ -211,10 +226,8 @@ export async function renderLemmyPostPage(state, post, actions) {
         </div>
         <div class="filter-bar lemmy-comment-filter-bar">
              <select class="lemmy-comment-sort-select">
-                <option value="New">New</option>
-                <option value="Old">Old</option>
-                <option value="Hot">Hot</option>
-                <option value="Top">Top</option>
+                <option value="Old">Oldest First</option>
+                <option value="New">Newest First</option>
             </select>
         </div>
         <div class="lemmy-comment-thread"></div>
