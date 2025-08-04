@@ -515,13 +515,12 @@ textarea:focus {
 
 /* --- Comment Thread --- */
 .lemmy-comment-thread {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
 }
 .lemmy-comment-wrapper {
-    display: flex;
-    flex-direction: column;
+    margin-top: 10px;
 }
 .lemmy-comment {
     background-color: var(--card-color);
@@ -530,8 +529,8 @@ textarea:focus {
     padding: 15px;
 }
 .lemmy-replies {
-    padding-left: 20px;
-    margin-top: 10px;
+    margin-left: 20px;
+    padding-left: 15px;
     border-left: 2px solid var(--border-color);
 }
 
