@@ -3,7 +3,7 @@ import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
 // --- Helper function to show the reply box ---
-function showReplyBox(commentDiv, comment, actions, level) {
+function showReplyBox(commentDiv, comment, actions) {
     // Prevent multiple reply boxes by removing any that might already be open
     const existingReplyBox = document.querySelector('.lemmy-reply-box');
     if (existingReplyBox) {
@@ -41,7 +41,7 @@ function showReplyBox(commentDiv, comment, actions, level) {
             });
             
             // Replace the reply box with the new comment
-            const newCommentEl = renderCommentNode(newComment.comment_view, actions, level);
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
             repliesContainer.prepend(newCommentEl);
             replyBox.remove();
 
@@ -52,15 +52,13 @@ function showReplyBox(commentDiv, comment, actions, level) {
 }
 
 
-function renderCommentNode(commentView, actions, level = 0) {
+function renderCommentNode(commentView, actions) {
     const comment = commentView.comment;
     const creator = commentView.creator;
     const counts = commentView.counts;
-    const post = commentView.post;
 
     const commentDiv = document.createElement('div');
     commentDiv.className = 'lemmy-comment';
-    commentDiv.style.setProperty('--nest-level', level); // Use CSS variable for styling
     commentDiv.dataset.commentId = comment.id;
 
     const timestamp = formatTimestamp(comment.published);
@@ -113,7 +111,7 @@ function renderCommentNode(commentView, actions, level = 0) {
                     actions.lemmyCommentVote(comment.id, score, commentDiv);
                     break;
                 case 'reply':
-                    showReplyBox(commentDiv, commentView, actions, level + 1);
+                    showReplyBox(commentDiv, commentView, actions);
                     break;
                 case 'edit-comment':
                     alert('Editing comments coming soon!');
@@ -128,7 +126,7 @@ function renderCommentNode(commentView, actions, level = 0) {
     const repliesContainer = commentDiv.querySelector('.lemmy-replies');
     if (commentView.replies && commentView.replies.length > 0) {
         commentView.replies.forEach(replyView => {
-            repliesContainer.appendChild(renderCommentNode(replyView, actions, level + 1));
+            repliesContainer.appendChild(renderCommentNode(replyView, actions));
         });
     }
 
@@ -223,7 +221,7 @@ export async function renderLemmyPostPage(state, post, actions) {
                 content: content,
                 post_id: post.post.id,
             });
-            const newCommentEl = renderCommentNode(newComment.comment_view, actions, 0);
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
             document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
             textarea.value = '';
         } catch (err) {
