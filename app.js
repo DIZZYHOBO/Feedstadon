@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoadingMore: false,
         nextPageUrl: null, // For Mastodon pagination
         lemmyPage: 1, // For Lemmy pagination
+        lastUnifiedFeedSource: 'lemmy', // To alternate fetching for unified feed
+        lemmyHasMore: true, // To know when to stop fetching from lemmy
         conversations: [],
         lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'leminal.space'],
         settings: {
@@ -161,10 +163,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchTimeline(state, timelineType);
         },
         showLemmySubscribedFeed: () => {
-            switchView('subscribedFeed');
-            renderSubscribedFeed(state, actions);
+            actions.showLemmyFeed('Subscribed');
         },
         showUnifiedFeed: () => {
+            state.currentTimeline = null;
+            state.currentLemmyFeed = null;
             switchView('unifiedFeed');
             renderUnifiedFeed(state, actions);
         },
@@ -318,14 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mastodonToken) {
             onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
         }
-        switchView('timeline');
         actions.showUnifiedFeed();
     };
     
     initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
     initComposeModal(state, () => {
-        fetchTimeline(state, state.currentTimeline);
-        showToast('Post created successfully!');
+        actions.showMastodonTimeline('home');
     });
 
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -412,12 +413,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('profile-link').addEventListener('click', (e) => {
         e.preventDefault();
-        if (state.currentUser && localStorage.getItem('lemmy_jwt')) {
-            const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
-            actions.showLemmyProfile(lemmyUser, true);
-        } else if(state.currentUser) {
-            actions.showProfile(state.currentUser.id);
-        }
+        const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
+        actions.showLemmyProfile(lemmyUser, true);
         document.getElementById('user-dropdown').classList.remove('active');
     });
 
@@ -428,8 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('logout-btn').addEventListener('click', () => {
-        localStorage.removeItem('fediverse-instance');
-        localStorage.removeItem('fediverse-token');
+        localStorage.clear();
         window.location.reload();
     });
 
@@ -462,6 +458,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchLemmyFeed(state, actions, true);
             } else if (state.currentView === 'timeline' && state.currentTimeline && state.nextPageUrl) {
                 fetchTimeline(state, state.currentTimeline, true);
+            } else if (state.currentView === 'unifiedFeed') {
+                renderUnifiedFeed(state, actions, true);
             }
         }
     });
