@@ -3,7 +3,7 @@ import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
 // --- Helper function to show the reply box ---
-function showReplyBox(commentDiv, comment, actions) {
+function showReplyBox(commentDiv, comment, actions, level) {
     // Prevent multiple reply boxes
     const existingReplyBox = commentDiv.querySelector('.lemmy-reply-box');
     if (existingReplyBox) {
@@ -42,7 +42,7 @@ function showReplyBox(commentDiv, comment, actions) {
             });
             
             // Replace the reply box with the new comment
-            const newCommentEl = renderLemmyComment(newComment, actions, comment.level + 1);
+            const newCommentEl = renderLemmyComment(newComment.comment_view, actions, level);
             repliesContainer.prepend(newCommentEl);
             replyBox.remove();
 
@@ -56,7 +56,7 @@ function showReplyBox(commentDiv, comment, actions) {
 function renderLemmyComment(comment, actions, level = 0) {
     const commentDiv = document.createElement('div');
     commentDiv.className = 'lemmy-comment';
-    commentDiv.style.marginLeft = `${level * 20}px`; // Indent nested comments
+    commentDiv.style.marginLeft = `${level * 25}px`; // Increased indent for clarity
     commentDiv.dataset.commentId = comment.comment.id;
 
     const timestamp = formatTimestamp(comment.comment.published);
@@ -107,14 +107,12 @@ function renderLemmyComment(comment, actions, level = 0) {
                     actions.lemmyCommentVote(comment.comment.id, score, commentDiv);
                     break;
                 case 'reply':
-                    showReplyBox(commentDiv, comment, actions);
+                    showReplyBox(commentDiv, comment, actions, level + 1);
                     break;
                 case 'edit-comment':
-                    // To be implemented with a modal
                     alert('Editing comments coming soon!');
                     break;
                 case 'delete-comment':
-                    // To be implemented with a confirmation
                     alert('Deleting comments coming soon!');
                     break;
             }
@@ -219,7 +217,7 @@ export async function renderLemmyPostPage(state, post, actions) {
                 content: content,
                 post_id: post.post.id,
             });
-            const newCommentEl = renderLemmyComment(newComment, actions, 0);
+            const newCommentEl = renderLemmyComment(newComment.comment_view, actions, 0);
             document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
             textarea.value = '';
         } catch (err) {
