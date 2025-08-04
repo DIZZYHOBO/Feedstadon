@@ -525,6 +525,9 @@ textarea:focus {
 }
 
 /* --- Profile Page --- */
+#profile-page-view {
+    flex-direction: column;
+}
 .profile-card {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
@@ -571,6 +574,9 @@ textarea:focus {
 .tab-button.active {
     color: var(--font-color);
     border-bottom-color: var(--accent-color);
+}
+.profile-feed {
+    margin-top: 15px;
 }
 
 /* --- Search Results Page --- */
