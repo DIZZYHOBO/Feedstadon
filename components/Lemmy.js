@@ -67,32 +67,39 @@ export function renderLemmyCard(post, actions) {
 export async function fetchLemmyFeed(state, actions, loadMore = false) {
     if (state.isLoadingMore) return;
 
-    let endpoint;
-    const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-
     if (!loadMore) {
-        state.lemmyPage = 1;
-        state.timelineDiv.innerHTML = '<p>Loading...</p>';
         window.scrollTo(0, 0);
     }
-
+    
     state.isLoadingMore = true;
     if (loadMore) state.scrollLoader.classList.add('loading');
+    else document.getElementById('refresh-btn').classList.add('loading');
+
 
     try {
-        endpoint = `/api/v3/post/list?sort=${state.currentLemmySort}&page=${state.lemmyPage}&limit=20`;
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const params = {
+            sort: state.currentLemmySort,
+            page: loadMore ? state.lemmyPage + 1 : 1,
+            limit: 20
+        };
         if (state.currentLemmyFeed !== 'All') {
-            endpoint += `&type_=${state.currentLemmyFeed}`;
+            params.type_ = state.currentLemmyFeed;
         }
-
-        const response = await apiFetch(lemmyInstance, null, endpoint, {}, 'lemmy');
+        
+        const response = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', params);
         const posts = response.data.posts;
 
         if (!loadMore) {
-            state.timelineDiv.innerHTML = '';
+            state.timelineDiv.innerHTML = ''; // Clear content *after* successful fetch
         }
 
         if (posts && posts.length > 0) {
+            if (loadMore) {
+                state.lemmyPage++;
+            } else {
+                state.lemmyPage = 1;
+            }
             posts.forEach(post_view => {
                 const postCard = renderLemmyCard(post_view, actions);
                 state.timelineDiv.appendChild(postCard);
@@ -113,12 +120,11 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
 
     } catch (error) {
         console.error('Failed to fetch Lemmy feed:', error);
-        if (!loadMore) {
-            state.timelineDiv.innerHTML = `<p>Could not load Lemmy feed. Please try refreshing.</p>`;
-        }
+        actions.showToast(`Could not load Lemmy feed: ${error.message}`);
     } finally {
         state.isLoadingMore = false;
         if (loadMore) state.scrollLoader.classList.remove('loading');
+        else document.getElementById('refresh-btn').classList.remove('loading');
     }
 }
 
