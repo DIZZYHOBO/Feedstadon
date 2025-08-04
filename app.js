@@ -10,7 +10,6 @@ import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
-import { LemmySocket } from './components/LemmySocket.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const state = {
@@ -61,11 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.history.push(state.currentView);
         }
         state.currentView = viewName;
-
-        // Disconnect from Lemmy live feed if we're navigating away
-        if (viewName !== 'timeline' || !state.currentLemmyFeed) {
-            LemmySocket.disconnect();
-        }
 
         // Hide all views first
         Object.keys(views).forEach(key => {
@@ -154,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('lemmy-filter-bar').style.display = 'flex';
             document.getElementById('lemmy-sort-select').value = sortType;
             fetchLemmyFeed(state, actions);
-            LemmySocket.connect(state, actions); // Connect to live updates
         },
         showMastodonTimeline: (timelineType) => {
             state.currentLemmyFeed = null;
@@ -273,25 +266,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     state.actions = actions;
 
-    const onMastodonLoginSuccess = (instanceUrl, accessToken, callback) => {
-        apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
-            .then(response => {
-                if(!response || !response.data || !response.data.id) {
-                    showToast('Mastodon login failed: Invalid credentials.');
-                    return;
-                }
-                state.instanceUrl = instanceUrl;
-                state.accessToken = accessToken;
-                state.currentUser = response.data;
-                localStorage.setItem('fediverse-instance', instanceUrl);
-                localStorage.setItem('fediverse-token', accessToken);
-                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
-                showToast('Mastodon login successful!');
-                if(callback) callback();
-            })
-            .catch(err => {
-                showToast('Mastodon login failed.');
-            });
+    const onMastodonLoginSuccess = async (instanceUrl, accessToken, callback) => {
+        try {
+            const response = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials');
+            if(!response || !response.data || !response.data.id) {
+                showToast('Mastodon login failed: Invalid credentials.');
+                return false;
+            }
+            state.instanceUrl = instanceUrl;
+            state.accessToken = accessToken;
+            state.currentUser = response.data;
+            localStorage.setItem('fediverse-instance', instanceUrl);
+            localStorage.setItem('fediverse-token', accessToken);
+            document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
+            showToast('Mastodon login successful!');
+            if(callback) callback();
+            return true;
+        } catch (err) {
+            showToast('Mastodon login failed.');
+            return false;
+        }
     };
 
     const onLemmyLoginSuccess = (instance, username, password, callback) => {
@@ -316,10 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const onEnterApp = () => {
+    const onEnterApp = async () => {
         const mastodonToken = localStorage.getItem('fediverse-token');
         if (mastodonToken) {
-            onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
+            await onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
         }
         actions.showUnifiedFeed();
     };
