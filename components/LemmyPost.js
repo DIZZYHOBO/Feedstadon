@@ -130,6 +130,38 @@ function renderCommentNode(commentView, actions) {
     return commentWrapper;
 }
 
+async function fetchAndRenderComments(state, postId, sortType, container, actions) {
+    container.innerHTML = `<p>Loading comments...</p>`;
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const jwt = localStorage.getItem('lemmy_jwt');
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${postId}&sort_type=${sortType}`);
+        const commentsData = response.data.comments;
+
+        container.innerHTML = '';
+        if (commentsData && commentsData.length > 0) {
+            const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
+            const rootComments = [];
+            for (const commentView of commentMap.values()) {
+                if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
+                    commentMap.get(commentView.comment.parent_id).replies.push(commentView);
+                } else {
+                    rootComments.push(commentView);
+                }
+            }
+            rootComments.forEach(commentView => {
+                container.appendChild(renderCommentNode(commentView, actions));
+            });
+        } else {
+            container.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
+        }
+    } catch (err) {
+        console.error("Failed to load Lemmy comments:", err);
+        container.innerHTML = '<p>Could not load comments.</p>';
+    }
+}
+
+
 export async function renderLemmyPostPage(state, post, actions) {
     const container = document.getElementById('lemmy-post-view');
     container.innerHTML = `<p>Loading post...</p>`;
@@ -177,6 +209,14 @@ export async function renderLemmyPostPage(state, post, actions) {
             <textarea id="lemmy-new-comment" placeholder="Add a comment..."></textarea>
             <button id="submit-new-lemmy-comment" class="button-primary">Post</button>
         </div>
+        <div class="filter-bar lemmy-comment-filter-bar">
+             <select class="lemmy-comment-sort-select">
+                <option value="New">New</option>
+                <option value="Old">Old</option>
+                <option value="Hot">Hot</option>
+                <option value="Top">Top</option>
+            </select>
+        </div>
         <div class="lemmy-comment-thread"></div>
     `;
 
@@ -216,33 +256,12 @@ export async function renderLemmyPostPage(state, post, actions) {
     });
 
     const threadContainer = container.querySelector('.lemmy-comment-thread');
-    threadContainer.innerHTML = `<p>Loading comments...</p>`;
+    const sortSelect = container.querySelector('.lemmy-comment-sort-select');
 
-    try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&sort_type=Old`);
-        const commentsData = response.data.comments;
+    sortSelect.addEventListener('change', () => {
+        fetchAndRenderComments(state, post.post.id, sortSelect.value, threadContainer, actions);
+    });
 
-        threadContainer.innerHTML = '';
-        if (commentsData && commentsData.length > 0) {
-            const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
-            const rootComments = [];
-            for (const commentView of commentMap.values()) {
-                if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
-                    commentMap.get(commentView.comment.parent_id).replies.push(commentView);
-                } else {
-                    rootComments.push(commentView);
-                }
-            }
-            rootComments.forEach(commentView => {
-                threadContainer.appendChild(renderCommentNode(commentView, actions));
-            });
-        } else {
-            threadContainer.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
-        }
-    } catch (err) {
-        console.error("Failed to load Lemmy comments:", err);
-        threadContainer.innerHTML = '<p>Could not load comments.</p>';
-    }
+    // Initial comment load
+    fetchAndRenderComments(state, post.post.id, sortSelect.value, threadContainer, actions);
 }
