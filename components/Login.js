@@ -1,17 +1,7 @@
-import { apiFetch } from './api.js';
-
 export function initLogin(onMastodonSuccess, onLemmySuccess, onEnter) {
     const mastodonForm = document.getElementById('mastodon-login-form');
     const lemmyForm = document.getElementById('lemmy-login-form');
     const enterBtn = document.getElementById('enter-app-btn');
-
-    const checkLoginStatus = () => {
-        const mastodonToken = localStorage.getItem('fediverse-token');
-        const lemmyToken = localStorage.getItem('lemmy_jwt');
-        if (mastodonToken || lemmyToken) {
-            enterBtn.style.display = 'block';
-        }
-    };
 
     mastodonForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -22,8 +12,8 @@ export function initLogin(onMastodonSuccess, onLemmySuccess, onEnter) {
             return;
         }
         onMastodonSuccess(instanceUrl, accessToken, () => {
-            mastodonForm.style.display = 'none';
-            checkLoginStatus();
+            document.getElementById('mastodon-login-section').style.display = 'none';
+            enterBtn.style.display = 'block';
         });
     });
 
@@ -37,13 +27,10 @@ export function initLogin(onMastodonSuccess, onLemmySuccess, onEnter) {
             return;
         }
         onLemmySuccess(instance, username, password, () => {
-            lemmyForm.style.display = 'none';
-            checkLoginStatus();
+            document.getElementById('lemmy-login-section').style.display = 'none';
+            enterBtn.style.display = 'block';
         });
     });
 
     enterBtn.addEventListener('click', onEnter);
-
-    // Check status on initial load in case of existing tokens
-    checkLoginStatus();
 }
