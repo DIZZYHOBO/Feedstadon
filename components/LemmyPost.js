@@ -236,13 +236,28 @@ export async function renderLemmyPostPage(state, post, actions) {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const jwt = localStorage.getItem('lemmy_jwt');
         const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort_type=New`);
-        const comments = response.data.comments;
+        const commentsData = response.data.comments;
 
         threadContainer.innerHTML = '';
-        if (comments && comments.length > 0) {
-            comments.forEach(commentView => {
+        if (commentsData && commentsData.length > 0) {
+            // Build the comment tree from a potentially flat list
+            const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
+            
+            const rootComments = [];
+
+            for (const commentView of commentMap.values()) {
+                if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
+                    const parent = commentMap.get(commentView.comment.parent_id);
+                    parent.replies.push(commentView);
+                } else {
+                    rootComments.push(commentView);
+                }
+            }
+
+            rootComments.forEach(commentView => {
                 threadContainer.appendChild(renderCommentNode(commentView, actions));
             });
+
         } else {
             threadContainer.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
         }
