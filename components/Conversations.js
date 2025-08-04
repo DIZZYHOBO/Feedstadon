@@ -48,6 +48,11 @@ export async function renderConversationDetail(state, conversationId, participan
     });
 
     try {
+        if (!conversation.last_status) {
+            messageList.innerHTML = '<p>This conversation has no messages yet.</p>';
+            return;
+        }
+
         const context = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${conversation.last_status.id}/context`)).data;
         const messages = [...context.ancestors, conversation.last_status, ...context.descendants];
         
