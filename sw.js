@@ -10,7 +10,6 @@ const ASSETS_TO_CACHE = [
     './components/icons.js',
     './components/Lemmy.js',
     './components/LemmyPost.js',
-    './components/LemmySocket.js',
     './components/Notifications.js',
     './components/Post.js',
     './components/Profile.js',
@@ -83,7 +82,6 @@ self.addEventListener('fetch', (event) => {
                             return cachedResponse;
                         }
                         // If not in cache, and network is down, it's a genuine failure.
-                        // This part is crucial for debugging.
                         console.error('Service Worker: Fetch failed; no response in cache.');
                         return new Response("Network error and not in cache", {
                             status: 404,
