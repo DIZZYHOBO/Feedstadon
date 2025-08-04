@@ -1,4 +1,4 @@
-import { initLogin, showLogin } from './components/Login.js';
+import { initLogin } from './components/Login.js';
 import { fetchTimeline } from './components/Timeline.js';
 import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         instanceUrl: null,
         accessToken: null,
         currentUser: null,
-        currentView: 'timeline',
+        currentView: 'login',
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: 'New',
@@ -63,12 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Handle login view separately
         if (viewName === 'login') {
-            views.login.style.display = 'block';
-            views.app.style.display = 'none'; // Ensure app is hidden
+            document.body.style.paddingTop = '0';
+            views.login.style.display = 'flex';
+            views.app.style.display = 'none'; 
             return; 
         }
 
         // For all other views, show the main app container
+        document.body.style.paddingTop = '50px';
         views.app.style.display = 'block';
         
         // And show the specific view inside it
@@ -77,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Set visibility of other UI elements
-        document.getElementById('back-btn').style.display = viewName !== 'timeline' ? 'block' : 'none';
+        document.querySelector('.top-nav').style.display = 'flex';
+        document.getElementById('back-btn').style.display = viewName !== 'timeline' && viewName !== 'subscribedFeed' ? 'block' : 'none';
         document.getElementById('search-form').style.display = 'none';
         document.getElementById('search-toggle-btn').style.display = 'block';
         document.getElementById('lemmy-filter-bar').style.display = 'none';
@@ -92,12 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     };
     
-    const updateLemmyLoginStatus = () => {
-        const lemmyJwt = localStorage.getItem('lemmy_jwt');
-        document.getElementById('lemmy-login-btn').style.display = lemmyJwt ? 'none' : 'block';
-        document.getElementById('lemmy-logout-btn').style.display = lemmyJwt ? 'block' : 'none';
-    };
-
     const actions = {
         showProfile: (accountId) => {
             switchView('profile');
@@ -255,89 +252,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(commentData)
             });
-            return response.data.comment_view;
+            return response.data;
         }
     };
 
     state.actions = actions;
 
-    const onLoginSuccess = (instanceUrl, accessToken) => {
-        state.instanceUrl = instanceUrl;
-        state.accessToken = accessToken;
+    const onMastodonLoginSuccess = (instanceUrl, accessToken, callback) => {
         apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
             .then(response => {
                 if(!response || !response.data || !response.data.id) {
-                    showLogin();
                     showToast('Login failed: Invalid credentials response.');
                     return;
                 }
+                state.instanceUrl = instanceUrl;
+                state.accessToken = accessToken;
                 state.currentUser = response.data;
+                localStorage.setItem('fediverse-instance', instanceUrl);
+                localStorage.setItem('fediverse-token', accessToken);
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
-                document.querySelector('.top-nav').style.display = 'flex';
-                updateLemmyLoginStatus();
-                switchView('timeline');
-                fetchTimeline(state, 'home');
+                showToast('Mastodon login successful!');
+                callback();
             })
             .catch(err => {
-                console.error("Login API call failed:", err);
-                showLogin();
-                showToast('Login failed. Please check your instance URL and access token.');
+                showToast('Login failed. Check your instance URL and access token.');
             });
     };
 
-    const initLemmyLoginModal = () => {
-        const modal = document.getElementById('lemmy-login-modal');
-        const form = document.getElementById('lemmy-login-form');
-
-        document.getElementById('lemmy-login-btn').addEventListener('click', () => {
-            modal.classList.add('visible');
-        });
-
-        modal.querySelector('.cancel-lemmy-login').addEventListener('click', () => {
-            modal.classList.remove('visible');
-        });
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const instance = form.querySelector('#lemmy-instance-input').value.trim();
-            const username = form.querySelector('#lemmy-username-input').value.trim();
-            const password = form.querySelector('#lemmy-password-input').value.trim();
-
-            if (!instance || !username || !password) {
-                alert('Please fill in all fields.');
-                return;
+    const onLemmyLoginSuccess = (instance, username, password, callback) => {
+        apiFetch(instance, null, '/api/v3/user/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username_or_email: username, password: password })
+        })
+        .then(response => {
+            if (response.data.jwt) {
+                localStorage.setItem('lemmy_jwt', response.data.jwt);
+                localStorage.setItem('lemmy_username', username);
+                localStorage.setItem('lemmy_instance', instance);
+                showToast('Lemmy login successful!');
+                callback();
+            } else {
+                alert('Lemmy login failed. Please check your credentials.');
             }
-
-            try {
-                const response = await apiFetch(instance, null, '/api/v3/user/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username_or_email: username, password: password })
-                });
-
-                if (response.data.jwt) {
-                    localStorage.setItem('lemmy_jwt', response.data.jwt);
-                    localStorage.setItem('lemmy_username', username);
-                    localStorage.setItem('lemmy_instance', instance);
-                    showToast('Lemmy login successful!');
-                    modal.classList.remove('visible');
-                    updateLemmyLoginStatus();
-                    actions.showLemmySubscribedFeed();
-                } else {
-                    alert('Lemmy login failed. Please check your credentials.');
-                }
-            } catch (err) {
-                alert('Login failed. Check the instance URL and your credentials.');
-            }
+        })
+        .catch(err => {
+             alert('Login failed. Check the instance URL and your credentials.');
         });
     };
+
+    const onEnterApp = () => {
+        switchView('timeline');
+        fetchTimeline(state, 'home');
+    };
     
-    initLogin(onLoginSuccess);
+    initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
     initComposeModal(state, () => {
         fetchTimeline(state, state.currentTimeline);
         showToast('Post created successfully!');
     });
-    initLemmyLoginModal();
 
     document.querySelectorAll('.dropdown').forEach(dropdown => {
         const button = dropdown.querySelector('button');
@@ -441,7 +414,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('lemmy_jwt');
         localStorage.removeItem('lemmy_username');
         localStorage.removeItem('lemmy_instance');
-        updateLemmyLoginStatus();
         showToast("You've been logged out from Lemmy.");
         document.getElementById('user-dropdown').classList.remove('active');
     });
