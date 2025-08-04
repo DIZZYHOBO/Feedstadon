@@ -4,7 +4,7 @@ import { formatTimestamp } from './utils.js';
 import { renderLemmyPostPage } from './LemmyPost.js';
 import { renderStatus } from './Post.js';
 
-function renderLemmyCard(post, actions) {
+export function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
     card.className = 'status lemmy-card'; 
     card.dataset.postId = post.post.id;
@@ -257,8 +257,8 @@ export async function renderUnifiedFeed(state, actions) {
         ];
 
         if (lemmyJwt && lemmyInstance) {
-            // Ensure merged feed always gets the latest from Lemmy
-            promises.push(apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=All&sort=New'));
+            // Correctly pull from the user's subscribed feed for the merged view
+            promises.push(apiFetch(lemmyInstance, lemmyJwt, '/api/v3/post/list?listing_type=Subscribed&sort=New'));
         }
 
         const [mastodonResponse, lemmyResponse] = await Promise.all(promises);
