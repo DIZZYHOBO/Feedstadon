@@ -152,10 +152,19 @@ async function fetchAndRenderComments(state, postId, sortType, container, action
             const rootComments = [];
             // Iterate again to build the tree
             commentsData.forEach(commentView => {
-                if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
-                    // This is a reply, push it to its parent's replies array
-                    const parent = commentMap.get(commentView.comment.parent_id);
-                    parent.replies.push(commentView);
+                const parentId = commentView.comment.parent_id;
+                if (parentId) {
+                    // This comment is a reply
+                    const parentExists = commentMap.has(parentId);
+                    console.log(`Comment ${commentView.comment.id} has parent ${parentId}. Parent exists in map: ${parentExists}`);
+                    if (parentExists) {
+                        // This is a reply, push it to its parent's replies array
+                        const parent = commentMap.get(parentId);
+                        parent.replies.push(commentView);
+                    } else {
+                        // Parent not in this batch, treat as a root for now
+                        rootComments.push(commentView);
+                    }
                 } else {
                     // This is a root comment
                     rootComments.push(commentView);
