@@ -129,8 +129,8 @@ async function fetchAndRenderComments(state, postId, sortType, container, action
     container.innerHTML = `<p>Loading comments...</p>`;
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        // Corrected 'sort_type' to 'sort'
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&sort=${sortType}&limit=100`, {}, 'lemmy');
+        // Added the required `type_` parameter
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&sort=${sortType}&type_=All&limit=100`, {}, 'lemmy');
         const commentsData = response.data.comments;
 
         container.innerHTML = '';
