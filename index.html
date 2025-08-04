@@ -98,6 +98,7 @@
         </div>
 
         <div class="nav-right">
+            <button class="nav-button" id="lemmy-login-btn" style="display: none;">Login to Lemmy</button>
             <button class="nav-button" id="search-toggle-btn">Search</button>
             <div class="dropdown" id="user-dropdown">
                 <button class="nav-button" id="user-display-btn">Menu</button>
@@ -105,6 +106,7 @@
                     <a href="#" id="new-post-link">New Post</a>
                     <a href="#" id="profile-link">Profile</a>
                     <a href="#" id="settings-link">Settings</a>
+                    <a href="#" id="lemmy-logout-btn" style="display: none;">Logout from Lemmy</a>
                     <a href="#" id="logout-btn">Logout</a>
                     <div class="dropdown-footer-actions">
                         <button class="nav-button icon-button" id="messages-btn" title="Messages"></button>
@@ -149,6 +151,30 @@
             <div id="lemmy-community-view" style="display: none;"></div>
             <div id="lemmy-post-view" style="display: none;"></div>
             <div id="scroll-loader"><p>Loading more...</p></div>
+        </div>
+    </div>
+
+    <div id="lemmy-login-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Login to Lemmy</h3>
+            <form id="lemmy-login-form">
+                <div class="form-group">
+                    <label for="lemmy-instance-input">Lemmy Instance</label>
+                    <input type="text" id="lemmy-instance-input" value="leminal.space">
+                </div>
+                <div class="form-group">
+                    <label for="lemmy-username-input">Username</label>
+                    <input type="text" id="lemmy-username-input" placeholder="Your Lemmy Username">
+                </div>
+                <div class="form-group">
+                    <label for="lemmy-password-input">Password</label>
+                    <input type="password" id="lemmy-password-input" placeholder="Your Lemmy Password">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="button-secondary cancel-lemmy-login">Cancel</button>
+                    <button type="submit">Login</button>
+                </div>
+            </form>
         </div>
     </div>
     
