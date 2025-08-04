@@ -17,7 +17,6 @@ function initDropdowns() {
         if (button) {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Close other open dropdowns
                 document.querySelectorAll('.dropdown.active').forEach(d => {
                     if (d !== dropdown) d.classList.remove('active');
                 });
@@ -26,7 +25,6 @@ function initDropdowns() {
         }
     });
 
-    // Global click to close dropdowns
     window.addEventListener('click', () => {
         document.querySelectorAll('.dropdown.active').forEach(d => {
             d.classList.remove('active');
@@ -352,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
-    initDropdowns(); // Initialize dropdowns on first load
+    initDropdowns(); 
 
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
@@ -360,6 +358,25 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutModal.classList.add('visible');
         document.getElementById('user-dropdown').classList.remove('active');
     });
+    
+    // ** THE FIX IS HERE **
+    // More specific event listener for dropdown content
+    document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+
+        const timeline = target.dataset.timeline;
+        const lemmyFeed = target.dataset.lemmyFeed;
+
+        if (timeline) {
+            actions.showMastodonTimeline(timeline);
+        } else if (lemmyFeed) {
+            actions.showLemmyFeed(lemmyFeed);
+        }
+        document.getElementById('feeds-dropdown').classList.remove('active');
+    });
+
 
     document.getElementById('cancel-logout-btn').addEventListener('click', () => {
         logoutModal.classList.remove('visible');
@@ -394,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
         actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
     });
 
-    // Initial check on load
     if (localStorage.getItem('fediverse-token') || localStorage.getItem('lemmy_jwt')) {
         onEnterApp();
     } else {
