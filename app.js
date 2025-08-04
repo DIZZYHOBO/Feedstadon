@@ -463,11 +463,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
-    window.addEventListener('lemmy:new-post', (e) => {
-        const newPost = e.detail;
-        const postCard = renderLemmyCard(newPost.post_view, actions);
-        postCard.classList.add('newly-added');
-        state.timelineDiv.prepend(postCard);
-    });
 });
