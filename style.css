@@ -535,48 +535,36 @@ textarea:focus {
 }
 
 .lemmy-comment {
-    border-left: 2px solid transparent; /* Base border */
+    border-left: 2px solid transparent;
     padding-left: 10px;
 }
 
-.lemmy-comment-wrapper.top-level-comment > .lemmy-comment {
+.top-level-comment {
     border-left-color: #5A94F1 !important; /* Blue for parent */
 }
 
-.comment-replies-container .lemmy-comment-wrapper > .lemmy-comment {
-    border-left-color: #FF3D3D !important; /* Red for child */
-}
-
+/* --- Removed red bar from replies --- */
 .comment-replies-container {
     margin-left: 15px;
     padding-left: 15px;
     border-left: 2px solid var(--border-color);
 }
 
-.comment-reply-form {
-    display: flex;
-    gap: 10px;
+.lemmy-reply-box {
     margin-top: 15px;
     padding-top: 15px;
     border-top: 1px solid var(--border-color);
 }
-.comment-reply-form textarea {
-    flex-grow: 1;
-    min-height: 40px;
-    border-radius: 20px;
-    padding: 10px 15px;
-    font-size: 1em;
-    resize: vertical;
-    margin-bottom: 0;
+
+.lemmy-reply-box textarea {
+    min-height: 80px;
+    margin-bottom: 10px;
 }
-.comment-reply-form button {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    padding: 0 20px;
+
+.reply-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 /* --- Polls --- */
@@ -1296,6 +1284,17 @@ textarea:focus {
     color: var(--font-color);
 }
 
+#reply-to-post-container {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+#reply-to-post-container.visible {
+    max-height: 500px;
+    transition: max-height 0.3s ease-in;
+}
+
 .lemmy-comment-box-container {
     background-color: var(--card-color);
     padding: 15px;
@@ -1319,7 +1318,6 @@ textarea:focus {
     cursor: pointer;
 }
 
-
 .lemmy-community-body {
     display: flex;
     flex-direction: column;
@@ -1337,16 +1335,9 @@ textarea:focus {
 }
 
 .filter-bar {
-    background-color: var(--card-color);
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-#lemmy-filter-container {
     background-color: transparent;
     padding: 0;
-    margin-bottom: 0;
+    margin: 0;
 }
 
 #lemmy-sort-select {
