@@ -29,6 +29,7 @@ function renderLemmyCard(post, actions) {
             </div>
             <div class="status-content">
                 <h3 class="lemmy-title">${post.post.name}</h3>
+                ${post.post.body ? `<p>${post.post.body}</p>` : ''}
             </div>
             ${thumbnailHTML}
             <div class="status-footer">
@@ -69,6 +70,48 @@ function renderLemmyCard(post, actions) {
     return card;
 }
 
+export async function fetchLemmyFeed(state, actions, loadMore = false) {
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+
+    if (!loadMore) {
+        state.lemmyPage = 1;
+        state.timelineDiv.innerHTML = '<p>Loading Lemmy feed...</p>';
+    } else {
+        state.scrollLoader.classList.add('loading');
+    }
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance') || 'lemina.space';
+    const jwt = localStorage.getItem('lemmy_jwt');
+    const sort = state.currentLemmySort || 'New';
+
+    try {
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/post/list?type_=${state.currentLemmyFeed}&sort=${sort}&page=${state.lemmyPage}`);
+        const posts = response.data.posts;
+
+        if (!loadMore) {
+            state.timelineDiv.innerHTML = '';
+        }
+
+        if (posts && posts.length > 0) {
+            posts.forEach(post => {
+                state.timelineDiv.appendChild(renderLemmyCard(post, actions));
+            });
+        } else {
+            if (!loadMore) {
+                state.timelineDiv.innerHTML = '<p>No posts found in this feed.</p>';
+            }
+        }
+
+    } catch (err) {
+        console.error('Failed to load Lemmy feed:', err);
+        state.timelineDiv.innerHTML = '<p>Could not load Lemmy feed. The instance may be down or not logged in.</p>';
+    } finally {
+        state.isLoadingMore = false;
+        if(loadMore) state.scrollLoader.classList.remove('loading');
+    }
+}
+
 
 export async function renderLemmyCommunityPage(state, communityAcct, actions) {
     const container = document.getElementById('lemmy-community-view');
@@ -79,26 +122,21 @@ export async function renderLemmyCommunityPage(state, communityAcct, actions) {
         const communityResponse = await apiFetch(communityHostname, null, `/api/v3/community?name=${communityName}`);
         const community = communityResponse.data.community_view;
         
-        const postsResponse = await apiFetch(communityHostname, null, `/api/v3/post/list?community_id=${community.community.id}`);
-        const topLevelPosts = postsResponse.data.posts.filter(p => p.post.name && p.post.name.trim() !== '');
-
         container.innerHTML = `
             <div class="lemmy-community-header" style="background-image: url(${community.community.banner || ''})">
                 <img src="${community.community.icon}" alt="${community.community.name} icon">
                 <h2>${community.community.name}</h2>
             </div>
-            <div class="lemmy-community-body">
-                <div class="lemmy-sidebar">
-                    <details open>
-                        <summary>Sidebar</summary>
-                        <p>${community.community.description || 'No description available.'}</p>
-                    </details>
-                </div>
-                <div class="lemmy-post-list"></div>
+            <div class="lemmy-sidebar">
+                <p>${community.community.description || 'No description available.'}</p>
             </div>
+            <div class="lemmy-post-list"></div>
         `;
 
         const postList = container.querySelector('.lemmy-post-list');
+        const postsResponse = await apiFetch(communityHostname, null, `/api/v3/post/list?community_id=${community.community.id}`);
+        const topLevelPosts = postsResponse.data.posts.filter(p => p.post.name && p.post.name.trim() !== '');
+
         if (topLevelPosts.length > 0) {
             topLevelPosts.forEach(post => {
                 postList.appendChild(renderLemmyCard(post, actions));
