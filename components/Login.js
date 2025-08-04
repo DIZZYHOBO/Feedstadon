@@ -21,7 +21,10 @@ export function initLogin(onMastodonSuccess, onLemmySuccess, onEnter) {
             alert('Please provide both Mastodon instance URL and access token.');
             return;
         }
-        onMastodonSuccess(instanceUrl, accessToken, checkLoginStatus);
+        onMastodonSuccess(instanceUrl, accessToken, () => {
+            mastodonForm.style.display = 'none';
+            checkLoginStatus();
+        });
     });
 
     lemmyForm.addEventListener('submit', async (e) => {
@@ -33,7 +36,10 @@ export function initLogin(onMastodonSuccess, onLemmySuccess, onEnter) {
             alert('Please fill in all Lemmy login fields.');
             return;
         }
-        onLemmySuccess(instance, username, password, checkLoginStatus);
+        onLemmySuccess(instance, username, password, () => {
+            lemmyForm.style.display = 'none';
+            checkLoginStatus();
+        });
     });
 
     enterBtn.addEventListener('click', onEnter);
