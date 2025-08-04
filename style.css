@@ -514,12 +514,38 @@ textarea:focus {
 }
 
 /* --- Comment Thread --- */
-.comment-thread {
+.lemmy-comment-thread {
     margin-top: 15px;
     padding-top: 15px;
     border-top: 1px solid var(--border-color);
-    animation: fadeIn 0.5s;
 }
+.lemmy-comment {
+    position: relative;
+    margin-left: calc(var(--nest-level, 0) * 25px);
+    margin-top: 15px;
+}
+.lemmy-comment::before {
+    content: '';
+    position: absolute;
+    left: -15px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    background-color: var(--border-color);
+}
+.lemmy-comment[style*="--nest-level: 0"]::before {
+    display: none;
+}
+.lemmy-comment .comment-main {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+}
+.lemmy-replies {
+    margin-top: 10px;
+}
+
 .comment-reply-form {
     display: flex;
     gap: 10px;
@@ -1255,62 +1281,6 @@ textarea:focus {
 .lemmy-score {
     font-weight: bold;
     color: var(--font-color);
-}
-
-.lemmy-comment-thread {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
-}
-.lemmy-comment {
-    padding-left: calc(var(--nest-level, 0) * 20px);
-    border-left: 2px solid var(--border-color);
-    margin-top: 10px;
-    animation: fadeIn 0.3s;
-}
-.lemmy-comment .comment-footer {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 5px;
-    font-size: 0.9em;
-}
-.lemmy-comment:last-child {
-    border-bottom: none;
-}
-.comment-header {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    margin-bottom: 5px;
-}
-.comment-content {
-    line-height: 1.5;
-}
-
-.lemmy-reply-box {
-    margin-top: 10px;
-    padding-left: 15px;
-    animation: fadeIn 0.3s;
-}
-.lemmy-reply-box .reply-textarea {
-    width: 100%;
-    min-height: 80px;
-    margin-bottom: 10px;
-}
-.lemmy-reply-box .reply-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-.lemmy-reply-box .reply-actions button {
-    padding: 8px 12px;
-    border-radius: 20px;
-    border: none;
-    cursor: pointer;
-}
-.lemmy-reply-box .reply-actions .submit-reply-btn {
-    background-color: var(--accent-color);
-    color: white;
 }
 
 .lemmy-comment-box-container {
