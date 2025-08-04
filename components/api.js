@@ -1,104 +1,71 @@
-/**
- * A helper function to make authenticated JSON API requests.
- * It can handle both full URLs (for pagination) and API endpoints.
- * It now handles different authentication types and builds the URL from a params object.
- */
-export async function apiFetch(instanceUrl, token, endpoint, options = {}, authType = 'mastodon', params = null) {
-    let url;
-    const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    
-    // Check if the endpoint is already a full URL (for pagination)
-    if (endpoint.startsWith('http')) {
-        url = new URL(endpoint);
-    } else {
-        url = new URL(`https://${cleanInstanceUrl}${endpoint}`);
-    }
-
-    // Append parameters to the URL from the params object
-    if (params) {
-        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-    }
-    
-    const headers = {
-        ...options.headers
-    };
-
-    let authToken = token;
-    if (authType === 'lemmy') {
-        authToken = localStorage.getItem('lemmy_jwt');
-    }
-
-    // Only add the auth header if a token exists for the specified auth type
-    if (authToken && authType !== 'none') {
-        headers['Authorization'] = `Bearer ${authToken}`;
-    }
-
-    const response = await fetch(url.toString(), { ...options, headers });
-
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-    }
-
-    // Extract the 'Link' header for pagination
-    const linkHeader = response.headers.get('Link');
-
-    if (response.status === 204 || response.status === 202) {
-        return { data: {}, linkHeader: linkHeader };
-    }
-
-    const data = await response.json();
-    return { data, linkHeader };
-}
-
+// components/api.js
 
 /**
- * A helper function to upload media files for posts.
+ * Helper function to make API requests to the Lemmy instance.
+ * @param {string} endpoint The API endpoint (e.g., '/api/v3/comment/list').
+ * @param {object} params Optional query parameters.
+ * @param {string} baseUrl The base URL of the Lemmy instance (e.g., 'https://lemmy.world').
  */
-export async function apiUploadMedia(state, file) {
-    const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const url = `https://${cleanInstanceUrl}/api/v2/media`;
+async function apiFetch(endpoint, params = {}, baseUrl) {
+    if (!baseUrl) {
+        console.error("apiFetch called without a baseUrl.");
+        throw new Error("Instance URL not provided.");
+    }
 
-    const formData = new FormData();
-    formData.append('file', file);
+    // Ensure the endpoint starts with a slash
+    if (!endpoint.startsWith('/')) {
+        endpoint = '/' + endpoint;
+    }
 
-    const headers = {
-        'Authorization': `Bearer ${state.accessToken}`
-    };
+    // Ensure baseUrl does not have a trailing slash
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+
+    const url = new URL(cleanBaseUrl + endpoint);
+    
+    // Safely construct query parameters for GET requests
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+        const value = params[key];
+        // Exclude null or undefined parameters, which can cause 400 errors in Lemmy API
+        if (value !== undefined && value !== null) {
+            searchParams.append(key, value.toString());
+        }
+    });
+
+    url.search = searchParams.toString();
+
+    // console.log("DEBUG API Fetch:", url.toString());
 
     const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: headers
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+        }
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        // ENHANCED ERROR LOGGING: Read the response body for details on the 400 error
+        let errorDetail = '';
+        try {
+            // Attempt to parse JSON first, as Lemmy often returns JSON errors, fallback to text
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const errorBody = await response.json();
+                // Lemmy often returns the specific error in the "error" field
+                errorDetail = errorBody.error || JSON.stringify(errorBody);
+            } else {
+                errorDetail = await response.text();
+            }
+        } catch (e) {
+            errorDetail = 'Could not read response body.';
+        }
+        
+        console.error(`API Error Detail: HTTP ${response.status} - Request: ${url} - Detail: ${errorDetail}`);
+        throw new Error(`HTTP ${response.status}: ${errorDetail}`);
     }
 
     return response.json();
 }
 
-
-/**
- * A helper function to update user profile credentials.
- */
-export async function apiUpdateCredentials(state, formData) {
-    const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const url = `https://${cleanInstanceUrl}/api/v1/accounts/update_credentials`;
-
-    const headers = {
-        'Authorization': `Bearer ${state.accessToken}`
-    };
-
-    const response = await fetch(url, {
-        method: 'PATCH',
-        body: formData,
-        headers: headers
-    });
-
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-    }
-
-    return response.json();
-}
+// Ensure this function is globally available if not using modules
+// window.apiFetch = apiFetch;
