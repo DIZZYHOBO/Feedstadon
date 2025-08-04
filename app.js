@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentTimeline = null;
             state.currentLemmySort = sortType;
             switchView('timeline');
-            document.getElementById('lemmy-filter-bar').style.display = 'flex';
+            document.getElementById('lemmy-filter-bar').style.display = 'block';
             document.getElementById('lemmy-sort-select').value = sortType;
             fetchLemmyFeed(state, actions);
         },
@@ -303,17 +303,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Prioritize loading Mastodon timeline if logged in, otherwise show Lemmy
+        // Prioritize loading Lemmy feed if logged in, otherwise Mastodon
+        if (lemmyJwt) {
+            actions.showLemmyFeed('All');
+            return;
+        }
+        
         if (mastodonToken) {
             const loggedIn = await onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
             if (loggedIn) {
                 actions.showMastodonTimeline('home');
-                return;
             }
-        }
-        
-        if (lemmyJwt) {
-            actions.showLemmyFeed('All');
         }
     };
     
