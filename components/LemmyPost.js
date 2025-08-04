@@ -23,7 +23,7 @@ function showReplyBox(commentDiv, comment, actions) {
     // Append it after the comment's content but before any nested replies
     const mainCommentContainer = commentDiv.querySelector('.comment-main');
     mainCommentContainer.insertAdjacentElement('afterend', replyBox);
-    
+
     replyBox.querySelector('.cancel-reply-btn').addEventListener('click', () => {
         replyBox.remove();
     });
@@ -39,7 +39,7 @@ function showReplyBox(commentDiv, comment, actions) {
                 post_id: comment.post.id,
                 parent_id: comment.comment.id
             });
-            
+
             // Add the new comment to the replies container
             const newCommentEl = renderCommentNode(newComment.comment_view, actions);
             commentDiv.querySelector('.lemmy-replies').prepend(newCommentEl);
@@ -59,6 +59,9 @@ function renderCommentNode(commentView, actions) {
 
     const commentWrapper = document.createElement('div');
     commentWrapper.className = 'lemmy-comment-wrapper';
+    // Add a unique ID to the wrapper for easy DOM manipulation
+    commentWrapper.id = `comment-wrapper-${comment.id}`;
+
 
     let userActionsHTML = '';
     const isOwnComment = localStorage.getItem('lemmy_username') === creator.name;
@@ -88,7 +91,7 @@ function renderCommentNode(commentView, actions) {
         </div>
         <div class="lemmy-replies"></div>
     `;
-    
+
     const commentDiv = commentWrapper.querySelector('.lemmy-comment');
 
     // Set initial vote status
@@ -119,14 +122,6 @@ function renderCommentNode(commentView, actions) {
         });
     });
 
-    // Recursively render replies
-    const repliesContainer = commentWrapper.querySelector('.lemmy-replies');
-    if (commentView.replies && commentView.replies.length > 0) {
-        commentView.replies.forEach(replyView => {
-            repliesContainer.appendChild(renderCommentNode(replyView, actions));
-        });
-    }
-
     return commentWrapper;
 }
 
@@ -135,25 +130,33 @@ async function fetchAndRenderComments(state, postId, sortType, container, action
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${postId}&sort_type=${sortType}&limit=50`);
+        // Increase the limit to get more comments, increasing the chance parents are included
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${postId}&sort_type=${sortType}&limit=100`);
         const commentsData = response.data.comments;
 
         container.innerHTML = '';
         if (commentsData && commentsData.length > 0) {
-            const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
-            const rootComments = [];
-            
-            for (const commentView of commentMap.values()) {
-                if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
-                    commentMap.get(commentView.comment.parent_id).replies.push(commentView);
-                } else {
-                    rootComments.push(commentView);
-                }
-            }
-
-            rootComments.forEach(commentView => {
-                container.appendChild(renderCommentNode(commentView, actions));
+            // Render all comments first
+            commentsData.forEach(commentView => {
+                const commentElement = renderCommentNode(commentView, actions);
+                container.appendChild(commentElement);
             });
+
+            // Then, iterate again to move replies to their parents
+            commentsData.forEach(commentView => {
+                const parentId = commentView.comment.parent_id;
+                if (parentId) {
+                    const parentWrapper = document.getElementById(`comment-wrapper-${parentId}`);
+                    if (parentWrapper) {
+                        const replyContainer = parentWrapper.querySelector('.lemmy-replies');
+                        const commentWrapper = document.getElementById(`comment-wrapper-${commentView.comment.id}`);
+                        if (replyContainer && commentWrapper) {
+                            replyContainer.appendChild(commentWrapper);
+                        }
+                    }
+                }
+            });
+
         } else {
             container.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
         }
