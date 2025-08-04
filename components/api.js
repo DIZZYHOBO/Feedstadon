@@ -24,7 +24,8 @@ export async function apiFetch(instanceUrl, token, endpointOrUrl, options = {}, 
         authToken = localStorage.getItem('lemmy_jwt');
     }
 
-    if (authToken) {
+    // Only add the auth header if a token exists for the specified auth type
+    if (authToken && authType !== 'none') {
         headers['Authorization'] = `Bearer ${authToken}`;
     }
 
