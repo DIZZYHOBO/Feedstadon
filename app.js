@@ -13,6 +13,7 @@ import { apiFetch } from './components/api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const state = {
+        history: [],
         instanceUrl: null,
         accessToken: null,
         currentUser: null,
@@ -52,35 +53,36 @@ document.addEventListener('DOMContentLoaded', () => {
         unifiedFeed: document.getElementById('unified-feed'),
     };
 
-    const switchView = (viewName) => {
+    const switchView = (viewName, pushToHistory = true) => {
+        if(pushToHistory && state.currentView !== viewName) {
+            state.history.push(state.currentView);
+        }
         state.currentView = viewName;
-        // Hide all views first by iterating over the `views` object
+
+        // Hide all views first
         Object.keys(views).forEach(key => {
             if (views[key] && views[key].style) {
                 views[key].style.display = 'none';
             }
         });
 
-        // Handle login view separately
         if (viewName === 'login') {
             document.body.style.paddingTop = '0';
+            document.querySelector('.top-nav').style.display = 'none';
             views.login.style.display = 'flex';
             views.app.style.display = 'none'; 
             return; 
         }
 
-        // For all other views, show the main app container
         document.body.style.paddingTop = '50px';
         views.app.style.display = 'block';
         
-        // And show the specific view inside it
         if (views[viewName]) {
-            views[viewName].style.display = 'flex'; // Most views are flex containers
+            views[viewName].style.display = 'flex';
         }
 
-        // Set visibility of other UI elements
         document.querySelector('.top-nav').style.display = 'flex';
-        document.getElementById('back-btn').style.display = viewName !== 'timeline' && viewName !== 'subscribedFeed' ? 'block' : 'none';
+        document.getElementById('back-btn').style.display = state.history.length > 0 ? 'block' : 'none';
         document.getElementById('search-form').style.display = 'none';
         document.getElementById('search-toggle-btn').style.display = 'block';
         document.getElementById('lemmy-filter-bar').style.display = 'none';
@@ -100,9 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('profile');
             renderProfilePage(state, accountId, actions);
         },
-        showLemmyProfile: (userAcct) => {
+        showLemmyProfile: (userAcct, isOwnProfile = false) => {
             switchView('profile');
-            renderLemmyProfilePage(state, userAcct, actions);
+            renderLemmyProfilePage(state, userAcct, actions, isOwnProfile);
         },
         showStatusDetail: (statusId) => {
             switchView('statusDetail');
@@ -138,11 +140,18 @@ document.addEventListener('DOMContentLoaded', () => {
         },
          showLemmyFeed: (feedType, sortType = 'New') => {
             state.currentLemmyFeed = feedType;
+            state.currentTimeline = null;
             state.currentLemmySort = sortType;
             switchView('timeline');
             document.getElementById('lemmy-filter-bar').style.display = 'flex';
             document.getElementById('lemmy-sort-select').value = sortType;
             fetchLemmyFeed(state, actions);
+        },
+        showMastodonTimeline: (timelineType) => {
+            state.currentLemmyFeed = null;
+            state.currentTimeline = timelineType;
+            switchView('timeline');
+            fetchTimeline(state, timelineType);
         },
         showLemmySubscribedFeed: () => {
             switchView('subscribedFeed');
@@ -178,12 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Failed to mute user.');
             }
         },
-        showEditModal: (post) => {
-            // Implementation for editing a post
-        },
-        showDeleteModal: (postId) => {
-            // Implementation for deleting a post
-        },
+        showEditModal: (post) => {},
+        showDeleteModal: (postId) => {},
         lemmyVote: async (postId, score, card) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -262,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
             .then(response => {
                 if(!response || !response.data || !response.data.id) {
-                    showToast('Login failed: Invalid credentials response.');
+                    showToast('Mastodon login failed: Invalid credentials.');
                     return;
                 }
                 state.instanceUrl = instanceUrl;
@@ -272,10 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('fediverse-token', accessToken);
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 showToast('Mastodon login successful!');
-                callback();
+                if(callback) callback();
             })
             .catch(err => {
-                showToast('Login failed. Check your instance URL and access token.');
+                showToast('Mastodon login failed.');
             });
     };
 
@@ -291,19 +296,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
                 showToast('Lemmy login successful!');
-                callback();
+                if(callback) callback();
             } else {
-                alert('Lemmy login failed. Please check your credentials.');
+                alert('Lemmy login failed.');
             }
         })
         .catch(err => {
-             alert('Login failed. Check the instance URL and your credentials.');
+             alert('Lemmy login error.');
         });
     };
 
     const onEnterApp = () => {
+        const mastodonToken = localStorage.getItem('fediverse-token');
+        if (mastodonToken) {
+            onMastodonLoginSuccess(localStorage.getItem('fediverse-instance'), mastodonToken);
+        }
         switchView('timeline');
-        fetchTimeline(state, 'home');
+        actions.showUnifiedFeed();
     };
     
     initLogin(onMastodonLoginSuccess, onLemmyLoginSuccess, onEnterApp);
@@ -333,8 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = e.target;
         if (target.dataset.timeline) {
             e.preventDefault();
-            switchView('timeline');
-            fetchTimeline(state, target.dataset.timeline);
+            actions.showMastodonTimeline(target.dataset.timeline);
             document.getElementById('feeds-dropdown').classList.remove('active');
         } else if (target.dataset.lemmyFeed) {
              e.preventDefault();
@@ -346,14 +354,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refresh-btn').addEventListener('click', () => {
         if (state.currentView === 'timeline' && state.currentLemmyFeed) {
             actions.showLemmyFeed(state.currentLemmyFeed, state.currentLemmySort);
-        } else {
-            fetchTimeline(state, state.currentTimeline);
+        } else if (state.currentView === 'timeline' && state.currentTimeline) {
+            actions.showMastodonTimeline(state.currentTimeline);
+        } else if(state.currentView === 'unifiedFeed') {
+            actions.showUnifiedFeed();
         }
     });
 
     document.getElementById('back-btn').addEventListener('click', () => {
-        switchView('timeline');
-        fetchTimeline(state, state.currentTimeline);
+        const previousView = state.history.pop();
+        if(previousView) {
+            switchView(previousView, false);
+        }
     });
     
     document.getElementById('discover-lemmy-link').addEventListener('click', (e) => {
@@ -393,7 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('profile-link').addEventListener('click', (e) => {
         e.preventDefault();
-        actions.showProfile(state.currentUser.id);
+        if (state.currentUser && localStorage.getItem('lemmy_jwt')) {
+            const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
+            actions.showLemmyProfile(lemmyUser, true);
+        } else if(state.currentUser) {
+            actions.showProfile(state.currentUser.id);
+        }
         document.getElementById('user-dropdown').classList.remove('active');
     });
 
@@ -436,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                 state.lemmyPage++;
                 fetchLemmyFeed(state, actions, true);
-            } else if (state.nextPageUrl) {
+            } else if (state.currentView === 'timeline' && state.currentTimeline && state.nextPageUrl) {
                 fetchTimeline(state, state.currentTimeline, true);
             }
         }
