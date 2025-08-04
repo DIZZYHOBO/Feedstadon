@@ -138,40 +138,18 @@ async function fetchAndRenderComments(state, postId, sortType, container, action
         const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${postId}&sort_type=${sortType}&limit=50`);
         const commentsData = response.data.comments;
 
-        console.log(`Fetching comments with sort: ${sortType}. Raw data:`, commentsData);
-
         container.innerHTML = '';
         if (commentsData && commentsData.length > 0) {
-            const commentMap = new Map();
-            // Add all comments to a map and initialize replies array
-            commentsData.forEach(commentView => {
-                commentView.replies = [];
-                commentMap.set(commentView.comment.id, commentView);
-            });
-
+            const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
             const rootComments = [];
-            // Iterate again to build the tree
-            commentsData.forEach(commentView => {
-                const parentId = commentView.comment.parent_id;
-                if (parentId) {
-                    // This comment is a reply
-                    const parentExists = commentMap.has(parentId);
-                    console.log(`Comment ${commentView.comment.id} has parent ${parentId}. Parent exists in map: ${parentExists}`);
-                    if (parentExists) {
-                        // This is a reply, push it to its parent's replies array
-                        const parent = commentMap.get(parentId);
-                        parent.replies.push(commentView);
-                    } else {
-                        // Parent not in this batch, treat as a root for now
-                        rootComments.push(commentView);
-                    }
+            
+            for (const commentView of commentMap.values()) {
+                if (commentView.comment.parent_id && commentMap.has(commentView.comment.parent_id)) {
+                    commentMap.get(commentView.comment.parent_id).replies.push(commentView);
                 } else {
-                    // This is a root comment
                     rootComments.push(commentView);
                 }
-            });
-
-            console.log("Constructed root comments:", rootComments);
+            }
 
             rootComments.forEach(commentView => {
                 container.appendChild(renderCommentNode(commentView, actions));
@@ -237,6 +215,8 @@ export async function renderLemmyPostPage(state, post, actions) {
              <select class="lemmy-comment-sort-select">
                 <option value="Old">Oldest First</option>
                 <option value="New">Newest First</option>
+                <option value="Hot">Hot</option>
+                <option value="Top">Top</option>
             </select>
         </div>
         <div class="lemmy-comment-thread"></div>
