@@ -24,7 +24,7 @@ export async function renderSettingsPage(state) {
                 <form id="lemmy-login-form" class="lemmy-login-form">
                     <div class="form-group">
                         <label for="lemmy-instance-input">Lemmy Instance</label>
-                        <input type="text" id="lemmy-instance-input" placeholder="lemina.space" value="lemina.space">
+                        <input type="text" id="lemmy-instance-input" placeholder="leminal.space" value="lemina.space">
                     </div>
                     <div class="form-group">
                         <label for="lemmy-username-input">Username</label>
