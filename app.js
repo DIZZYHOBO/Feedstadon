@@ -16,11 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
         instanceUrl: null,
         accessToken: null,
         currentUser: null,
+        currentView: 'timeline',
         currentTimeline: 'home',
+        currentLemmyFeed: null,
+        currentLemmySort: 'New',
         timelineDiv: document.getElementById('timeline'),
         scrollLoader: document.getElementById('scroll-loader'),
         isLoadingMore: false,
-        nextPageUrl: null,
+        nextPageUrl: null, // For Mastodon pagination
+        lemmyPage: 1, // For Lemmy pagination
         conversations: [],
         lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'lemina.space'],
         settings: {
@@ -49,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = (viewName) => {
+        state.currentView = viewName;
         // Hide all views first by iterating over the `views` object
         Object.keys(views).forEach(key => {
             if (views[key] && views[key].style) {
@@ -128,10 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('lemmyPost');
             renderLemmyPostPage(state, post, actions);
         },
-        showLemmyFeed: (feedType) => {
+         showLemmyFeed: (feedType, sortType = 'New') => {
+            state.currentLemmyFeed = feedType;
+            state.currentLemmySort = sortType;
             switchView('timeline');
             document.getElementById('lemmy-filter-bar').style.display = 'flex';
-            fetchLemmyFeed(state, feedType, 'New'); // Default to 'New' sort
+            document.getElementById('lemmy-sort-select').value = sortType;
+            fetchLemmyFeed(state, actions);
         },
         showLemmySubscribedFeed: () => {
             switchView('subscribedFeed');
@@ -307,7 +315,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('refresh-btn').addEventListener('click', () => fetchTimeline(state, state.currentTimeline));
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        if (state.currentView === 'timeline' && state.currentLemmyFeed) {
+            actions.showLemmyFeed(state.currentLemmyFeed, state.currentLemmySort);
+        } else {
+            fetchTimeline(state, state.currentTimeline);
+        }
+    });
+
     document.getElementById('back-btn').addEventListener('click', () => {
         switchView('timeline');
         fetchTimeline(state, state.currentTimeline);
@@ -319,10 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
 
-    document.getElementById('lemmy-subscribed-link')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        actions.showLemmySubscribedFeed();
-        document.getElementById('feeds-dropdown').classList.remove('active');
+    document.getElementById('lemmy-sort-select').addEventListener('change', (e) => {
+        actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
     });
 
     document.getElementById('search-toggle-btn').addEventListener('click', () => {
@@ -352,8 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('profile-link').addEventListener('click', (e) => {
         e.preventDefault();
-        // For now, this will show the user's own Mastodon profile.
-        // A unified profile could be a future enhancement.
         actions.showProfile(state.currentUser.id);
         document.getElementById('user-dropdown').classList.remove('active');
     });
@@ -385,9 +396,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('scroll', () => {
-        if (state.isLoadingMore || !state.nextPageUrl) return;
+        if (state.isLoadingMore) return;
+
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
-            fetchTimeline(state, state.currentTimeline, true);
+            if (state.currentView === 'timeline' && state.currentLemmyFeed) {
+                state.lemmyPage++;
+                fetchLemmyFeed(state, actions, true);
+            } else if (state.nextPageUrl) {
+                fetchTimeline(state, state.currentTimeline, true);
+            }
         }
     });
 });
