@@ -520,30 +520,12 @@ textarea:focus {
     border-top: 1px solid var(--border-color);
 }
 .lemmy-comment {
-    position: relative;
-    margin-left: calc(var(--nest-level, 0) * 25px);
     margin-top: 15px;
 }
-.lemmy-comment::before {
-    content: '';
-    position: absolute;
-    left: -15px;
-    top: 10px;
-    bottom: 10px;
-    width: 2px;
-    background-color: var(--border-color);
-}
-.lemmy-comment[style*="--nest-level: 0"]::before {
-    display: none;
-}
-.lemmy-comment .comment-main {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px;
-}
 .lemmy-replies {
-    margin-top: 10px;
+    margin-left: 20px;
+    padding-left: 15px;
+    border-left: 2px solid var(--border-color);
 }
 
 .comment-reply-form {
