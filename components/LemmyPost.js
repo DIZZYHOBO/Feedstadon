@@ -125,19 +125,20 @@ function renderCommentNode(commentView, actions) {
     return commentWrapper;
 }
 
-async function fetchAndRenderComments(state, postId, sortType, container, actions) {
+async function fetchAndRenderComments(state, postId, container, actions) {
     container.innerHTML = `<p>Loading comments...</p>`;
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        // Corrected API call with the right parameters: 'sort' and 'type_'
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&sort=${sortType}&type_=All&limit=100`, {}, 'lemmy');
+        // Simplified the API call to its most basic, valid form to fix the 400 error.
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&limit=100`, {}, 'lemmy');
         const commentsData = response.data.comments;
 
         container.innerHTML = '';
         if (commentsData && commentsData.length > 0) {
-            // Render all comments first
+            // Render all comments first and add top-level class
             commentsData.forEach(commentView => {
                 const commentElement = renderCommentNode(commentView, actions);
+                commentElement.classList.add('top-level-comment');
                 container.appendChild(commentElement);
             });
 
@@ -150,6 +151,9 @@ async function fetchAndRenderComments(state, postId, sortType, container, action
                         const replyContainer = parentWrapper.querySelector('.lemmy-replies');
                         const commentWrapper = document.getElementById(`comment-wrapper-${commentView.comment.id}`);
                         if (replyContainer && commentWrapper) {
+                            // It's a reply, remove top-level class, add reply class, and move it
+                            commentWrapper.classList.remove('top-level-comment');
+                            commentWrapper.classList.add('reply-comment');
                             replyContainer.appendChild(commentWrapper);
                         }
                     }
@@ -213,14 +217,6 @@ export async function renderLemmyPostPage(state, post, actions) {
             <textarea id="lemmy-new-comment" placeholder="Add a comment..."></textarea>
             <button id="submit-new-lemmy-comment" class="button-primary">Post</button>
         </div>
-        <div class="filter-bar lemmy-comment-filter-bar">
-             <select class="lemmy-comment-sort-select">
-                <option value="Old">Oldest First</option>
-                <option value="New">Newest First</option>
-                <option value="Hot">Hot</option>
-                <option value="Top">Top</option>
-            </select>
-        </div>
         <div class="lemmy-comment-thread"></div>
     `;
 
@@ -260,12 +256,7 @@ export async function renderLemmyPostPage(state, post, actions) {
     });
 
     const threadContainer = container.querySelector('.lemmy-comment-thread');
-    const sortSelect = container.querySelector('.lemmy-comment-sort-select');
-
-    sortSelect.addEventListener('change', () => {
-        fetchAndRenderComments(state, post.post.id, sortSelect.value, threadContainer, actions);
-    });
 
     // Initial comment load
-    fetchAndRenderComments(state, post.post.id, sortSelect.value, threadContainer, actions);
+    fetchAndRenderComments(state, post.post.id, threadContainer, actions);
 }
