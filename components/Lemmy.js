@@ -69,7 +69,6 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
 
     let endpoint;
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-    const jwt = localStorage.getItem('lemmy_jwt');
 
     if (!loadMore) {
         state.lemmyPage = 1;
@@ -86,7 +85,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
             endpoint += `&type_=${state.currentLemmyFeed}`;
         }
 
-        const response = await apiFetch(lemmyInstance, jwt, endpoint);
+        const response = await apiFetch(lemmyInstance, null, endpoint, {}, 'lemmy');
         const posts = response.data.posts;
 
         if (!loadMore) {
