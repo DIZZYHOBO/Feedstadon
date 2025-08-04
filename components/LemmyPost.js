@@ -240,9 +240,7 @@ export async function renderLemmyPostPage(state, post, actions) {
 
         threadContainer.innerHTML = '';
         if (commentsData && commentsData.length > 0) {
-            // Build the comment tree from a potentially flat list
             const commentMap = new Map(commentsData.map(c => [c.comment.id, { ...c, replies: [] }]));
-            
             const rootComments = [];
 
             for (const commentView of commentMap.values()) {
