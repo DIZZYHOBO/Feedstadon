@@ -19,11 +19,15 @@ export async function renderLemmyProfilePage(state, userAcct, actions) {
             return dateB - dateA;
         });
 
+        // Add a check for null or undefined banner/avatar
+        const bannerUrl = user.person_view.person.banner || '';
+        const avatarUrl = user.person_view.person.avatar || '';
+
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
-                     <img class="banner" src="${user.person_view.person.banner || ''}" alt="${user.person_view.person.display_name || user.person_view.person.name} banner">
-                     <img class="avatar" src="${user.person_view.person.avatar || ''}" alt="${user.person_view.person.display_name || user.person_view.person.name} avatar">
+                     <img class="banner" src="${bannerUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} banner">
+                     <img class="avatar" src="${avatarUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} avatar">
                 </div>
                  <div class="profile-info">
                     <h2 class="display-name">${user.person_view.person.display_name || user.person_view.person.name}</h2>
@@ -66,7 +70,7 @@ export async function renderLemmyProfilePage(state, userAcct, actions) {
 
 
 // --- Mastodon Profile ---
-export async function renderProfilePage(state, accountId) {
+export async function renderProfilePage(state, accountId, actions) {
     const container = document.getElementById('profile-page-view');
     
     try {
@@ -116,7 +120,7 @@ export async function renderProfilePage(state, accountId) {
         const feedContainer = container.querySelector('.profile-feed');
         if (statuses.length > 0) {
             statuses.forEach(status => {
-                const statusEl = renderStatus(status, state, state.actions);
+                const statusEl = renderStatus(status, state, actions);
                 if (statusEl) feedContainer.appendChild(statusEl);
             });
         } else {
