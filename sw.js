@@ -10,6 +10,7 @@ const ASSETS_TO_CACHE = [
     './components/icons.js',
     './components/Lemmy.js',
     './components/LemmyPost.js',
+    './components/LemmySocket.js',
     './components/Notifications.js',
     './components/Post.js',
     './components/Profile.js',
