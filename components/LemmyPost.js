@@ -4,11 +4,10 @@ import { formatTimestamp } from './utils.js';
 
 // --- Helper function to show the reply box ---
 function showReplyBox(commentDiv, comment, actions, level) {
-    // Prevent multiple reply boxes
-    const existingReplyBox = commentDiv.querySelector('.lemmy-reply-box');
+    // Prevent multiple reply boxes by removing any that might already be open
+    const existingReplyBox = document.querySelector('.lemmy-reply-box');
     if (existingReplyBox) {
         existingReplyBox.remove();
-        return;
     }
 
     const replyBox = document.createElement('div');
@@ -42,25 +41,30 @@ function showReplyBox(commentDiv, comment, actions, level) {
             });
             
             // Replace the reply box with the new comment
-            const newCommentEl = renderLemmyComment(newComment.comment_view, actions, level);
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions, level);
             repliesContainer.prepend(newCommentEl);
             replyBox.remove();
 
-        } catch (err) {
+        } catch (err)
             alert('Failed to post reply.');
         }
     });
 }
 
 
-function renderLemmyComment(comment, actions, level = 0) {
+function renderCommentNode(commentView, actions, level = 0) {
+    const comment = commentView.comment;
+    const creator = commentView.creator;
+    const counts = commentView.counts;
+    const post = commentView.post;
+
     const commentDiv = document.createElement('div');
     commentDiv.className = 'lemmy-comment';
-    commentDiv.style.marginLeft = `${level * 25}px`; // Increased indent for clarity
-    commentDiv.dataset.commentId = comment.comment.id;
+    commentDiv.style.setProperty('--nest-level', level); // Use CSS variable for styling
+    commentDiv.dataset.commentId = comment.id;
 
-    const timestamp = formatTimestamp(comment.comment.published);
-    const isOwnComment = localStorage.getItem('lemmy_username') === comment.creator.name;
+    const timestamp = formatTimestamp(comment.published);
+    const isOwnComment = localStorage.getItem('lemmy_username') === creator.name;
 
     let userActionsHTML = '';
     if (isOwnComment) {
@@ -72,13 +76,13 @@ function renderLemmyComment(comment, actions, level = 0) {
 
     commentDiv.innerHTML = `
         <div class="comment-header">
-            <span class="lemmy-user">${comment.creator.name}</span>
+            <span class="lemmy-user">${creator.name}</span>
             <span class="timestamp">· ${timestamp}</span>
         </div>
-        <div class="comment-content">${comment.comment.content}</div>
+        <div class="comment-content">${comment.content}</div>
         <div class="comment-footer">
             <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-            <span class="lemmy-score">${comment.counts.score}</span>
+            <span class="lemmy-score">${counts.score}</span>
             <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
             <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
             ${userActionsHTML}
@@ -89,9 +93,9 @@ function renderLemmyComment(comment, actions, level = 0) {
     // Set initial vote status
     const upvoteBtn = commentDiv.querySelector('[data-action="upvote"]');
     const downvoteBtn = commentDiv.querySelector('[data-action="downvote"]');
-    if (comment.my_vote === 1) {
+    if (commentView.my_vote === 1) {
         upvoteBtn.classList.add('active');
-    } else if (comment.my_vote === -1) {
+    } else if (commentView.my_vote === -1) {
         downvoteBtn.classList.add('active');
     }
 
@@ -104,10 +108,10 @@ function renderLemmyComment(comment, actions, level = 0) {
                 case 'upvote':
                 case 'downvote':
                     const score = parseInt(e.currentTarget.dataset.score, 10);
-                    actions.lemmyCommentVote(comment.comment.id, score, commentDiv);
+                    actions.lemmyCommentVote(comment.id, score, commentDiv);
                     break;
                 case 'reply':
-                    showReplyBox(commentDiv, comment, actions, level + 1);
+                    showReplyBox(commentDiv, commentView, actions, level + 1);
                     break;
                 case 'edit-comment':
                     alert('Editing comments coming soon!');
@@ -120,10 +124,9 @@ function renderLemmyComment(comment, actions, level = 0) {
     });
 
     const repliesContainer = commentDiv.querySelector('.lemmy-replies');
-    if (comment.replies && comment.replies.length > 0) {
-        comment.replies.forEach(reply => {
-            // The 'reply' object is the full comment_view, so we pass it directly
-            repliesContainer.appendChild(renderLemmyComment(reply, actions, level + 1));
+    if (commentView.replies && commentView.replies.length > 0) {
+        commentView.replies.forEach(replyView => {
+            repliesContainer.appendChild(renderCommentNode(replyView, actions, level + 1));
         });
     }
 
@@ -218,7 +221,7 @@ export async function renderLemmyPostPage(state, post, actions) {
                 content: content,
                 post_id: post.post.id,
             });
-            const newCommentEl = renderLemmyComment(newComment.comment_view, actions, 0);
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions, 0);
             document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
             textarea.value = '';
         } catch (err) {
@@ -232,13 +235,13 @@ export async function renderLemmyPostPage(state, post, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const jwt = localStorage.getItem('lemmy_jwt');
-        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8`);
+        const response = await apiFetch(lemmyInstance, jwt, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort_type=New`);
         const comments = response.data.comments;
 
         threadContainer.innerHTML = '';
         if (comments && comments.length > 0) {
-            comments.forEach(comment => {
-                threadContainer.appendChild(renderLemmyComment(comment, actions));
+            comments.forEach(commentView => {
+                threadContainer.appendChild(renderCommentNode(commentView, actions));
             });
         } else {
             threadContainer.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
