@@ -122,6 +122,7 @@ function renderLemmyComment(comment, actions, level = 0) {
     const repliesContainer = commentDiv.querySelector('.lemmy-replies');
     if (comment.replies && comment.replies.length > 0) {
         comment.replies.forEach(reply => {
+            // The 'reply' object is the full comment_view, so we pass it directly
             repliesContainer.appendChild(renderLemmyComment(reply, actions, level + 1));
         });
     }
