@@ -1,282 +1,221 @@
-import { apiFetch } from './api.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+// components/LemmyPost.js
 
-// --- Helper function to show the reply box ---
-function showReplyBox(commentDiv, comment, actions) {
-    // Prevent multiple reply boxes by removing any that might already be open
-    const existingReplyBox = document.querySelector('.lemmy-reply-box');
-    if (existingReplyBox) {
-        existingReplyBox.remove();
+// Assuming apiFetch is available globally 
+
+// ====================================================================
+// Main Post Rendering
+// ====================================================================
+
+/**
+ * Main function to render the entire Post Page (Post details + comments).
+ * This function is likely called by app.js (showLemmyPostDetail).
+ */
+async function renderLemmyPostPage(postId, instanceUrl) {
+    // Assuming 'app-content' is your main container, adjust if necessary
+    const container = document.getElementById('app-content') || document.body; 
+    container.innerHTML = '<p>Loading post and comments...</p>';
+
+    // --- FIX FOR HTTP 400: Validate postId early ---
+    const postIdInt = parseInt(postId, 10);
+    if (isNaN(postIdInt) || !instanceUrl) {
+        container.innerHTML = `<p class="error">Invalid Post ID or Instance URL.</p>`;
+        return;
     }
+    // -----------------------------------------------
 
-    const replyBox = document.createElement('div');
-    replyBox.className = 'lemmy-reply-box';
-    replyBox.innerHTML = `
-        <textarea class="reply-textarea" placeholder="Write your reply..."></textarea>
-        <div class="reply-actions">
-            <button class="cancel-reply-btn button-secondary">Cancel</button>
-            <button class="submit-reply-btn">Reply</button>
-        </div>
-    `;
-
-    // Append it after the comment's content but before any nested replies
-    const mainCommentContainer = commentDiv.querySelector('.comment-main');
-    mainCommentContainer.insertAdjacentElement('afterend', replyBox);
-
-    replyBox.querySelector('.cancel-reply-btn').addEventListener('click', () => {
-        replyBox.remove();
-    });
-
-    replyBox.querySelector('.submit-reply-btn').addEventListener('click', async () => {
-        const textarea = replyBox.querySelector('.reply-textarea');
-        const content = textarea.value.trim();
-        if (!content) return;
-
-        try {
-            const newComment = await actions.lemmyPostComment({
-                content: content,
-                post_id: comment.post.id,
-                parent_id: comment.comment.id
-            });
-
-            // Add the new comment to the replies container
-            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
-            commentDiv.querySelector('.lemmy-replies').prepend(newCommentEl);
-            replyBox.remove();
-
-        } catch (err) {
-            alert('Failed to post reply.');
-        }
-    });
-}
-
-
-function renderCommentNode(commentView, actions) {
-    const comment = commentView.comment;
-    const creator = commentView.creator;
-    const counts = commentView.counts;
-
-    const commentWrapper = document.createElement('div');
-    commentWrapper.className = 'lemmy-comment-wrapper';
-    // Add a unique ID to the wrapper for easy DOM manipulation
-    commentWrapper.id = `comment-wrapper-${comment.id}`;
-
-
-    let userActionsHTML = '';
-    const isOwnComment = localStorage.getItem('lemmy_username') === creator.name;
-    if (isOwnComment) {
-        userActionsHTML = `
-            <button class="status-action" data-action="edit-comment">${ICONS.edit}</button>
-            <button class="status-action" data-action="delete-comment">${ICONS.delete}</button>
-        `;
-    }
-
-    commentWrapper.innerHTML = `
-        <div class="lemmy-comment" data-comment-id="${comment.id}">
-            <div class="comment-main">
-                <div class="comment-header">
-                    <span class="lemmy-user">${creator.name}</span>
-                    <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
-                </div>
-                <div class="comment-content">${comment.content}</div>
-                <div class="comment-footer">
-                    <button class="status-action lemmy-comment-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                    <span class="lemmy-score">${counts.score}</span>
-                    <button class="status-action lemmy-comment-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                    <button class="status-action reply-to-comment-btn" data-action="reply">${ICONS.reply}</button>
-                    ${userActionsHTML}
-                </div>
-            </div>
-        </div>
-        <div class="lemmy-replies"></div>
-    `;
-
-    const commentDiv = commentWrapper.querySelector('.lemmy-comment');
-
-    // Set initial vote status
-    const upvoteBtn = commentDiv.querySelector('[data-action="upvote"]');
-    const downvoteBtn = commentDiv.querySelector('[data-action="downvote"]');
-    if (commentView.my_vote === 1) upvoteBtn.classList.add('active');
-    if (commentView.my_vote === -1) downvoteBtn.classList.add('active');
-
-    // Add event listeners
-    commentDiv.querySelectorAll('.status-action').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = e.currentTarget.dataset.action;
-            switch(action) {
-                case 'upvote':
-                case 'downvote':
-                    const score = parseInt(e.currentTarget.dataset.score, 10);
-                    actions.lemmyCommentVote(comment.id, score, commentDiv);
-                    break;
-                case 'reply':
-                    showReplyBox(commentDiv, commentView, actions);
-                    break;
-                case 'edit-comment':
-                case 'delete-comment':
-                    alert('Coming soon!');
-                    break;
-            }
-        });
-    });
-
-    return commentWrapper;
-}
-
-async function fetchAndRenderComments(state, postId, sortType, container, actions) {
-    container.innerHTML = `<p>Loading comments...</p>`;
+    // 1. Fetch the Post Details
     try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        
-        const params = {
-            post_id: postId,
-            sort: sortType,
-            type_: 'All',
-            limit: 100
-        };
+        // Endpoint: /api/v3/post/get
+        const postResponse = await apiFetch('/api/v3/post/get', { id: postIdInt }, instanceUrl);
+        const postView = postResponse.post_view;
 
-        const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
-        const commentsData = response.data.comments;
-
-        container.innerHTML = '';
-        if (commentsData && commentsData.length > 0) {
-            // Render all comments first and add top-level class
-            commentsData.forEach(commentView => {
-                const commentElement = renderCommentNode(commentView, actions);
-                commentElement.classList.add('top-level-comment');
-                container.appendChild(commentElement);
-            });
-
-            // Then, iterate again to move replies to their parents
-            commentsData.forEach(commentView => {
-                const parentId = commentView.comment.parent_id;
-                if (parentId) {
-                    const parentWrapper = document.getElementById(`comment-wrapper-${parentId}`);
-                    if (parentWrapper) {
-                        const replyContainer = parentWrapper.querySelector('.lemmy-replies');
-                        const commentWrapper = document.getElementById(`comment-wrapper-${commentView.comment.id}`);
-                        if (replyContainer && commentWrapper) {
-                            // It's a reply, remove top-level class, add reply class, and move it
-                            commentWrapper.classList.remove('top-level-comment');
-                            commentWrapper.classList.add('reply-comment');
-                            replyContainer.appendChild(commentWrapper);
-                        }
-                    }
-                }
-            });
-
-        } else {
-            container.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
+        if (!postView) {
+            container.innerHTML = '<p class="error">Post not found.</p>';
+            return;
         }
-    } catch (err) {
-        console.error("Failed to load Lemmy comments:", err);
-        container.innerHTML = '<p>Could not load comments.</p>';
+
+        // 2. Render Post Details (Customize this HTML to fit your existing style)
+        container.innerHTML = `
+            <div class="lemmy-post-detail">
+                <h1>${escapeHtml(postView.post.name)}</h1>
+                <div class="post-meta">
+                    Posted by ${escapeHtml(postView.creator.display_name || postView.creator.name)} 
+                    in !${escapeHtml(postView.community.name)} • Score: ${postView.counts.score}
+                </div>
+                <div class="post-body">
+                    ${postView.post.body ? escapeHtml(postView.post.body) : ''}
+                </div>
+                <hr>
+                <h2>Comments</h2>
+                <!-- Container required for the comment rendering logic -->
+                <div id="lemmy-comments-section">
+                    <p>Loading comments...</p>
+                </div>
+            </div>
+        `;
+
+        // 3. Fetch and Render Comments
+        // We pass the validated integer ID
+        fetchAndRenderComments(postIdInt, instanceUrl);
+
+    } catch (error) {
+        console.error("Error rendering Lemmy post page:", error);
+        container.innerHTML = `<p class="error">Failed to load post details. ${error.message}</p>`;
     }
 }
 
+// ====================================================================
+// Comment Fetching and Rendering
+// ====================================================================
 
-export async function renderLemmyPostPage(state, post, actions) {
-    const container = document.getElementById('lemmy-post-view');
-    container.innerHTML = `<p>Loading post...</p>`;
+/**
+ * Fetches comments for a given post and initiates the rendering process.
+ */
+async function fetchAndRenderComments(postIdInt, instanceUrl) {
+    // postIdInt is already validated by renderLemmyPostPage
+    const commentsContainer = document.getElementById('lemmy-comments-section');
 
-    let thumbnailHTML = '';
-    if (post.post.thumbnail_url) {
-        thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+    if (!commentsContainer) {
+        console.error("Comments container not found in the DOM.");
+        return;
     }
 
-    const isOwnPost = localStorage.getItem('lemmy_username') === post.creator.name;
-    let userActionsHTML = '';
-    if(isOwnPost) {
-        userActionsHTML = `
-            <button class="status-action" data-action="edit-post">${ICONS.edit}</button>
-            <button class="status-action" data-action="delete-post">${ICONS.delete}</button>
-        `;
+    try {
+        // Correct parameters for GET /api/v3/comment/list
+        const response = await apiFetch('/api/v3/comment/list', {
+            post_id: postIdInt, // This is required, fixing the HTTP 400
+            sort: 'Hot',        // Adjust sorting as needed (Hot, Top, New)
+            max_depth: 10       // Crucial for fetching nested comments
+        }, instanceUrl);
+
+        const comments = response.comments;
+
+        if (!comments || comments.length === 0) {
+            commentsContainer.innerHTML = '<p>No comments yet.</p>';
+            return;
+        }
+
+        // Transform the flat list into a hierarchical structure
+        const commentTree = buildCommentTree(comments);
+        
+        // Render the tree
+        commentsContainer.innerHTML = ''; // Clear "Loading comments..."
+        renderCommentTree(commentTree, commentsContainer);
+
+    } catch (error) {
+        // This catches the error thrown by the improved apiFetch
+        console.error('Failed to load Lemmy comments:', error);
+        if (commentsContainer) {
+            commentsContainer.innerHTML = `<p class="error">Failed to load comments. Check console for details. Error: ${error.message}</p>`;
+        }
     }
+}
 
-    const postHTML = `
-        <div class="status lemmy-card" data-post-id="${post.post.id}">
-            <div class="status-body-content">
-                <div class="status-header">
-                    <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar">
-                    <div>
-                        <span class="display-name">${post.community.name}</span>
-                        <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
-                    </div>
-                </div>
-                <div class="status-content">
-                    <h3 class="lemmy-title">${post.post.name}</h3>
-                    <p>${post.post.body || ''}</p>
-                </div>
-                ${thumbnailHTML}
-                <div class="status-footer">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                    <span class="lemmy-score">${post.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                    <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
-                    <button class="status-action" data-action="save">${ICONS.bookmark}</button>
-                    ${userActionsHTML}
-                </div>
-            </div>
-        </div>
-        <div class="lemmy-comment-box-container">
-            <textarea id="lemmy-new-comment" placeholder="Add a comment..."></textarea>
-            <button id="submit-new-lemmy-comment" class="button-primary">Post</button>
-        </div>
-        <div class="filter-bar lemmy-comment-filter-bar">
-             <select class="lemmy-comment-sort-select">
-                <option value="Old">Oldest First</option>
-                <option value="New">Newest First</option>
-                <option value="Hot">Hot</option>
-                <option value="Top">Top</option>
-            </select>
-        </div>
-        <div class="lemmy-comment-thread"></div>
-    `;
+/**
+ * Transforms Lemmy's flat list of CommentViews into a hierarchical tree using the 'path' property.
+ */
+function buildCommentTree(comments) {
+    const map = {};
+    const roots = [];
 
-    container.innerHTML = postHTML;
-    const postCard = container.querySelector('.lemmy-card');
-
-    postCard.querySelectorAll('.status-action').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = e.currentTarget.dataset.action;
-            switch(action) {
-                case 'upvote':
-                case 'downvote':
-                     const score = parseInt(e.currentTarget.dataset.score, 10);
-                     actions.lemmyVote(post.post.id, score, postCard);
-                     break;
-                case 'save':
-                     actions.lemmySave(post.post.id, e.currentTarget);
-                     break;
-            }
-        });
+    // 1. Initialize map and 'children' property for all comments.
+    comments.forEach(commentView => {
+        // Add a 'children' array to the object structure
+        commentView.children = []; 
+        map[commentView.comment.id] = commentView;
     });
 
-    document.getElementById('submit-new-lemmy-comment').addEventListener('click', async () => {
-        const textarea = document.getElementById('lemmy-new-comment');
-        const content = textarea.value.trim();
-        if (!content) return;
+    // 2. Build the hierarchy based on the 'path' property.
+    comments.forEach(commentView => {
+        // Path format: "0.id1.id2.id3" (0 is the root, followed by comment IDs)
+        const pathIds = commentView.comment.path.split('.');
+        
+        // Path "0.id" means it's a top-level comment (replying directly to the post).
+        if (pathIds.length <= 2) {
+            roots.push(commentView);
+        } else {
+            // The parent is the second to last ID in the path.
+            // Example: Path 0.100.150. Comment 150's parent is 100.
+            const parentId = pathIds[pathIds.length - 2];
+            const parent = map[parentId];
 
-        try {
-            const newComment = await actions.lemmyPostComment({ content: content, post_id: post.post.id });
-            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
-            document.querySelector('.lemmy-comment-thread').prepend(newCommentEl);
-            textarea.value = '';
-        } catch (err) {
-            alert('Failed to post comment.');
+            if (parent) {
+                parent.children.push(commentView);
+            } else {
+                // This might happen if the parent was deleted or not included in the API response
+                console.warn("Orphan comment detected (parent not found):", commentView.comment.id);
+            }
         }
     });
 
-    const threadContainer = container.querySelector('.lemmy-comment-thread');
-    const sortSelect = container.querySelector('.lemmy-comment-sort-select');
+    return roots;
+}
 
-    sortSelect.addEventListener('change', () => {
-        fetchAndRenderComments(state, post.post.id, sortSelect.value, threadContainer, actions);
+/**
+ * Recursively renders the comment tree into the specified container.
+ */
+function renderCommentTree(comments, container) {
+    comments.forEach(commentView => {
+        const commentElement = createCommentElement(commentView);
+        container.appendChild(commentElement);
+
+        // Check if this comment has replies (children)
+        if (commentView.children && commentView.children.length > 0) {
+            // Create a container for the replies
+            const repliesContainer = document.createElement('div');
+            // This class is crucial for the nested styling (indentation)
+            repliesContainer.className = 'comment-replies-container'; 
+            commentElement.appendChild(repliesContainer);
+            
+            // Recursive call to render the children into the replies container
+            renderCommentTree(commentView.children, repliesContainer);
+        }
     });
+}
 
-    // Initial comment load
-    fetchAndRenderComments(state, post.post.id, sortSelect.value, threadContainer, actions);
+/**
+ * Creates the HTML element for a single comment.
+ * IMPORTANT: Customize this HTML structure to match your application's existing style/theme.
+ */
+function createCommentElement(commentView) {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'lemmy-comment';
+    commentDiv.id = `comment-${commentView.comment.id}`;
+
+    const author = commentView.creator.display_name || commentView.creator.name;
+    const content = commentView.comment.content; 
+    const score = commentView.counts.score;
+    const published = new Date(commentView.comment.published).toLocaleString();
+
+    // Basic structure (Integrate your own styling/classes here)
+    // We use escapeHtml for safety. A Markdown parser is recommended for production.
+    commentDiv.innerHTML = `
+        <div class="comment-header">
+            <strong class="comment-author">${escapeHtml(author)}</strong>
+            <span class="comment-meta">Score: ${score} • ${published}</span>
+        </div>
+        <div class="comment-body">
+            ${escapeHtml(content)} 
+        </div>
+    `;
+
+    return commentDiv;
+}
+
+// ====================================================================
+// Utilities
+// ====================================================================
+
+/**
+ * Utility function to prevent XSS when inserting user content.
+ * If you integrate a Markdown parser later, use its sanitizer instead.
+ */
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
 }
