@@ -519,12 +519,14 @@ textarea:focus {
     padding-top: 15px;
     border-top: 1px solid var(--border-color);
 }
+
 .lemmy-comment {
-    margin-top: 15px;
+    margin-top: 10px;
 }
+
 .lemmy-replies {
-    margin-left: 20px;
-    padding-left: 15px;
+    padding-left: 20px;
+    margin-left: 10px;
     border-left: 2px solid var(--border-color);
 }
 
