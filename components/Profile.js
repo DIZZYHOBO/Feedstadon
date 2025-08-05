@@ -1,147 +1,124 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+import { renderLemmyCard } from './Lemmy.js';
 
-// --- Lemmy Profile ---
-export async function renderLemmyProfilePage(state, userAcct, actions) {
-    const container = document.getElementById('profile-page-view');
-    container.innerHTML = `<p>Loading Lemmy profile...</p>`;
+export async function renderProfilePage(state, accountId, actions) {
+    const profileView = document.getElementById('profile-page-view');
+    profileView.innerHTML = `<p>Loading profile...</p>`;
 
     try {
-        const [username, instance] = userAcct.split('@');
-        const userResponse = await apiFetch(instance, null, `/api/v3/user?username=${username}`);
-        const user = userResponse.data;
+        const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`);
+        const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses`);
 
-        const combinedFeed = [...user.posts, ...user.comments].sort((a, b) => {
-            const dateA = new Date(a.post?.published || a.comment?.published);
-            const dateB = new Date(b.post?.published || b.comment?.published);
-            return dateB - dateA;
-        });
+        const banner = account.header_static || '';
+        const displayName = account.display_name;
+        const username = account.username;
+        const avatar = account.avatar_static;
+        const note = account.note;
+        const followers = account.followers_count;
+        const following = account.following_count;
+        const postCount = account.statuses_count;
 
-        const bannerUrl = user.person_view.person.banner || './images/phb.png';
-        const avatarUrl = user.person_view.person.avatar || './images/php.png';
-
-        container.innerHTML = `
+        profileView.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
-                     <img class="banner" src="${bannerUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} banner" onerror="this.onerror=null;this.src='./images/phb.png';">
-                     <img class="avatar" src="${avatarUrl}" alt="${user.person_view.person.display_name || user.person_view.person.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <img class="banner" src="${banner}" alt="${displayName}'s banner">
+                    <img class="avatar" src="${avatar}" alt="${displayName}'s avatar">
                 </div>
-                 <div class="profile-info">
-                    <h2 class="display-name">${user.person_view.person.display_name || user.person_view.person.name}</h2>
-                    <p class="acct">@${user.person_view.person.name}@${instance}</p>
-                    <div class="note">${user.person_view.person.bio || ''}</div>
+                <div class="profile-actions">
+                    <button class="follow-btn">Follow</button>
+                    <button class="block-btn">Block</button>
+                </div>
+                <div class="profile-info">
+                    <h2 class="display-name">${displayName}</h2>
+                    <p class="acct">@${username}</p>
+                    <div class="note">${note}</div>
+                    <div class="stats">
+                        <span><strong>${following}</strong> Following</span>
+                        <span><strong>${followers}</strong> Followers</span>
+                    </div>
                 </div>
             </div>
             <div class="profile-tabs">
-                <button class="tab-button active" data-tab="lemmy">Lemmy</button>
-                <button class="tab-button" data-tab="mastodon">Mastodon</button>
+                <button class="tab-button active">${postCount} Posts</button>
             </div>
             <div class="profile-feed"></div>
         `;
 
-        const feedContainer = container.querySelector('.profile-feed');
-        if(combinedFeed.length > 0) {
-            combinedFeed.forEach(item => {
-                if(item.post) { // It's a post
-                    const postCard = document.createElement('div');
-                    postCard.className = 'status';
-                    postCard.innerHTML = `<div class="status-body-content">Posted in <a href="#" class="lemmy-community-link" data-community="${item.community.name}@${new URL(item.community.actor_id).hostname}">${item.community.name}</a>: <strong>${item.post.name}</strong></div>`;
-                    feedContainer.appendChild(postCard);
-                } else { // It's a comment
-                    const commentCard = document.createElement('div');
-                    commentCard.className = 'status';
-                    commentCard.innerHTML = `<div class="status-body-content">Commented on <strong>${item.post.name}</strong> in <a href="#" class="lemmy-community-link" data-community="${item.community.name}@${new URL(item.community.actor_id).hostname}">${item.community.name}</a>: <p>${item.comment.content}</p></div>`;
-                    feedContainer.appendChild(commentCard);
-                }
-            });
-        } else {
-            feedContainer.innerHTML = '<p>This user has no Lemmy activity.</p>';
-        }
+        const feed = profileView.querySelector('.profile-feed');
+        statuses.forEach(status => {
+            feed.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+        });
 
-    } catch (err) {
-        console.error('Could not load Lemmy profile:', err);
-        container.innerHTML = '<p>Could not load Lemmy profile.</p>';
+    } catch (error) {
+        profileView.innerHTML = `<p>Error loading profile: ${error.message}</p>`;
     }
 }
 
-
-// --- Mastodon Profile ---
-export async function renderProfilePage(state, accountId, actions) {
-    const container = document.getElementById('profile-page-view');
+export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProfile) {
+    const profileView = document.getElementById('profile-page-view');
+    profileView.innerHTML = `<p>Loading Lemmy profile...</p>`;
+    
+    const [username, instance] = userAcct.split('@');
     
     try {
-        const [accountResponse, relationshipsResponse, statusesResponse] = await Promise.all([
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`),
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/relationships?id[]=${accountId}`),
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses?limit=20`)
+        const { data: userData } = await apiFetch(instance, null, `/api/v3/user?username=${username}`, {}, 'lemmy');
+        const { person_view } = userData;
+
+        // Fetch posts and comments concurrently
+        const [postsResponse, commentsResponse] = await Promise.all([
+            apiFetch(instance, null, `/api/v3/user?username=${username}&sort=New&limit=50`, {}, 'lemmy'),
+            apiFetch(instance, null, `/api/v3/user?username=${username}&sort=New&limit=50&view=comments`, {}, 'lemmy')
         ]);
+        
+        const posts = postsResponse.data.posts.map(p => ({ ...p, type: 'post', date: p.post.published }));
+        const comments = commentsResponse.data.comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }));
 
-        const account = accountResponse.data;
-        const relationship = relationshipsResponse.data[0];
-        const statuses = statusesResponse.data;
-        
-        const isOwnProfile = state.currentUser && accountId === state.currentUser.id;
-        
-        let actionsHTML = '';
-        if (!isOwnProfile) {
-            actionsHTML = `
-                <button class="mute-btn button-secondary">${relationship.muting ? 'Unmute' : 'Mute'}</button>
-                <button class="block-btn">${relationship.blocking ? 'Unblock' : 'Block'}</button>
-                <button class="follow-btn">${relationship.following ? 'Unfollow' : 'Follow'}</button>
-            `;
-        }
-        
-        const bannerUrl = account.header_static || './images/phb.png';
-        const avatarUrl = account.avatar_static || './images/php.png';
+        // Merge and sort posts and comments
+        const combinedFeed = [...posts, ...comments].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        container.innerHTML = `
+        profileView.innerHTML = `
             <div class="profile-card">
-                <div class="profile-header">
-                    <img class="banner" src="${bannerUrl}" alt="${account.display_name} banner" onerror="this.onerror=null;this.src='./images/phb.png';">
-                    <img class="avatar" src="${avatarUrl}" alt="${account.display_name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
-                </div>
-                <div class="profile-actions">
-                    ${actionsHTML}
+                 <div class="profile-header">
+                    <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner">
+                    <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar">
                 </div>
                 <div class="profile-info">
-                    <h2 class="display-name">${account.display_name}</h2>
-                    <p class="acct">@${account.acct}</p>
-                    <div class="note">${account.note}</div>
+                    <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
+                    <p class="acct">@${person_view.person.name}@${instance}</p>
+                    <div class="note">${person_view.person.bio || ''}</div>
                 </div>
             </div>
             <div class="profile-tabs">
-                <button class="tab-button" data-tab="lemmy">Lemmy</button>
-                <button class="tab-button active" data-tab="mastodon">Mastodon</button>
+                <button class="tab-button active">Activity</button>
             </div>
             <div class="profile-feed"></div>
         `;
-
-        const feedContainer = container.querySelector('.profile-feed');
-        if (statuses.length > 0) {
-            statuses.forEach(status => {
-                const statusEl = renderStatus(status, state, actions);
-                if (statusEl) feedContainer.appendChild(statusEl);
-            });
-        } else {
-            feedContainer.innerHTML = '<p>This user has not posted anything yet.</p>';
+        
+        const feed = profileView.querySelector('.profile-feed');
+        if (combinedFeed.length === 0) {
+            feed.innerHTML = '<p>No activity yet.</p>';
+            return;
         }
 
-        if (!isOwnProfile) {
-            container.querySelector('.follow-btn').addEventListener('click', async () => {
-                // Follow/unfollow logic
-            });
-            container.querySelector('.block-btn').addEventListener('click', async () => {
-                // Block/unblock logic
-            });
-             container.querySelector('.mute-btn').addEventListener('click', async () => {
-                // Mute/unmute logic
-            });
-        }
+        combinedFeed.forEach(item => {
+            if (item.type === 'post') {
+                feed.appendChild(renderLemmyCard(item, actions));
+            } else {
+                // Simplified comment rendering for profile
+                const commentCard = document.createElement('div');
+                commentCard.className = 'status lemmy-card';
+                commentCard.innerHTML = `
+                    <div class="status-body-content">
+                        <p><strong>${item.creator.name}</strong> commented on <strong>${item.post.name}</strong> in ${item.community.name}</p>
+                        <div class="status-content">${item.comment.content}</div>
+                    </div>`;
+                feed.appendChild(commentCard);
+            }
+        });
 
-    } catch(err) {
-        console.error('Could not load profile:', err);
-        container.innerHTML = '<p>Could not load profile.</p>';
+    } catch (error) {
+        console.error("Failed to load Lemmy profile:", error);
+        profileView.innerHTML = `<p>Error loading Lemmy profile: ${error.message}</p>`;
     }
 }
