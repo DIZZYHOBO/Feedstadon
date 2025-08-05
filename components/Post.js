@@ -2,253 +2,192 @@ import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 import { apiFetch } from './api.js';
 
-export function renderPollHTML(poll) {
-    const totalVotes = poll.votes_count;
-    const canVote = !poll.voted && !poll.expired;
+function renderPoll(poll, statusId, actions) {
+    const container = document.createElement('div');
+    container.className = 'poll-container';
 
-    const optionsHTML = poll.options.map((option, index) => {
-        if (canVote) {
-            return `<div class="poll-option" data-choice="${index}">${option.title}</div>`;
-        } else {
-            const percent = totalVotes > 0 ? ((option.votes_count / totalVotes) * 100).toFixed(1) : 0;
-            const isVoted = poll.own_votes && poll.own_votes.includes(index);
-            return `
-                <div class="poll-result ${isVoted ? 'voted' : ''}">
-                    <div class="poll-result-bar" style="width: ${percent}%;"></div>
-                    <span class="poll-result-label">${option.title}</span>
-                    <span class="poll-result-percent">${percent}%</span>
-                </div>
+    if (poll.voted) {
+        // Render results
+        poll.options.forEach((option, index) => {
+            const percentage = poll.votes_count > 0 ? (option.votes_count / poll.votes_count * 100).toFixed(1) : 0;
+            const result = document.createElement('div');
+            result.className = 'poll-result';
+            if (poll.own_votes.includes(index)) {
+                result.classList.add('voted');
+            }
+            result.innerHTML = `
+                <div class="poll-result-bar" style="width: ${percentage}%;"></div>
+                <span class="poll-result-label">${option.title}</span>
+                <span class="poll-result-percent">${percentage}%</span>
             `;
-        }
-    }).join('');
+            container.appendChild(result);
+        });
+    } else {
+        // Render options
+        poll.options.forEach((option, index) => {
+            const optionEl = document.createElement('button');
+            optionEl.className = 'poll-option';
+            optionEl.textContent = option.title;
+            optionEl.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const updatedPoll = await actions.voteInPoll(poll.id, [index]);
+                    // Re-render the poll with results
+                    const pollContainer = e.target.closest('.poll-container');
+                    const newPoll = renderPoll(updatedPoll, statusId, actions);
+                    pollContainer.replaceWith(newPoll);
+                } catch (error) {
+                    console.error('Failed to vote:', error);
+                }
+            });
+            container.appendChild(optionEl);
+        });
+    }
+    
+    const info = document.createElement('div');
+    info.className = 'poll-info';
+    info.textContent = `${poll.votes_count} votes · ${poll.expired ? 'Final results' : 'Poll ends soon'}`;
+    container.appendChild(info);
 
-    const infoText = poll.expired ? `Poll ended · ${totalVotes} votes` : `${totalVotes} votes · Poll ends soon`;
-
-    return `
-        <div class="poll-container" data-poll-id="${poll.id}">
-            ${optionsHTML}
-            <div class="poll-info">${infoText}</div>
-        </div>
-    `;
+    return container;
 }
 
 
-export function renderStatus(status, state, actions, isThreadContext = false) {
-    const originalPost = status.reblog || status;
-
-    if (state.settings.hideNsfw && originalPost.sensitive) {
-        return null;
-    }
+export function renderStatus(status, currentUser, actions, settings) {
+    const post = status.reblog || status;
+    const author = post.account;
+    const isOwnPost = currentUser && currentUser.id === author.id;
     
-    const statusDiv = document.createElement('div');
-    statusDiv.className = 'status';
-    statusDiv.dataset.id = originalPost.id;
+    if (settings && settings.hideNsfw && post.sensitive) {
+        return document.createDocumentFragment(); // Return an empty fragment to hide the post
+    }
+
+    const card = document.createElement('div');
+    card.className = 'status';
+    card.dataset.id = post.id;
 
     let boosterInfo = '';
-    if (status.reblog && !isThreadContext) {
-        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
+    if (status.reblog) {
+        boosterInfo = `<div class="booster-info">${ICONS.reblog} Boosted by ${status.account.display_name}</div>`;
     }
-
-    let replyInfo = '';
-    if (originalPost.in_reply_to_id && !isThreadContext) {
-        replyInfo = `<div class="reply-info" data-action="view-parent" data-parent-id="${originalPost.in_reply_to_id}">
-                        ${ICONS.reply} Replying to thread
-                     </div>`;
-    }
-
-    let optionsMenuHTML = '';
-    if (state.currentUser && originalPost.account.id !== state.currentUser.id) {
-        optionsMenuHTML = `
-            <button class="post-options-btn">${ICONS.more}</button>
-            <div class="post-options-menu">
-                <button data-action="mute">Mute @${originalPost.account.acct}</button>
-            </div>
-        `;
-    } else if (state.currentUser && originalPost.account.id === state.currentUser.id) {
-        optionsMenuHTML = `
-            <button class="post-options-btn">${ICONS.more}</button>
-            <div class="post-options-menu">
-                <button data-action="edit">Edit</button>
-                <button data-action="delete">Delete</button>
-            </div>
-        `;
+    
+    let inReplyToInfo = '';
+    if (post.in_reply_to_account_id) {
+        inReplyToInfo = `<div class="reply-info" data-action="view-thread">${ICONS.reply} Replying to some folks...</div>`;
     }
 
     let mediaHTML = '';
-    if (originalPost.media_attachments && originalPost.media_attachments.length > 0) {
-        mediaHTML += '<div class="status-media">';
-        originalPost.media_attachments.forEach(attachment => {
-            if (attachment.type === 'image') {
-                mediaHTML += `<img src="${attachment.url}" alt="${attachment.description || 'Post image'}" loading="lazy">`;
-            } else if (attachment.type === 'video' || attachment.type === 'gifv') {
-                mediaHTML += `<video src="${attachment.url}" controls loop muted playsinline></video>`;
-            }
-        });
-        mediaHTML += '</div>';
+    if (post.media_attachments.length > 0) {
+        const attachment = post.media_attachments[0];
+        if (attachment.type === 'image') {
+            mediaHTML = `<div class="status-media"><img src="${attachment.url}" alt="${attachment.description || 'Post media'}" loading="lazy"></div>`;
+        } else if (attachment.type === 'video') {
+            mediaHTML = `<div class="status-media"><video src="${attachment.url}" controls></video></div>`;
+        }
     }
-
+    
     let pollHTML = '';
-    if (originalPost.poll) {
-        pollHTML = renderPollHTML(originalPost.poll);
+    if (post.poll) {
+        pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
     }
 
-    const timestamp = formatTimestamp(originalPost.created_at);
-
-    statusDiv.innerHTML = `
-        ${boosterInfo}
-        ${replyInfo}
-        <div class="status-body-content">
-            <div class="status-header">
-                <img class="avatar" src="${originalPost.account.avatar_static}" alt="${originalPost.account.display_name} avatar">
-                <div>
-                    <span class="display-name">${originalPost.account.display_name}</span>
-                    <span class="acct">@${originalPost.account.acct}</span>
-                    <span class="timestamp">· ${timestamp}</span>
-                </div>
-                ${optionsMenuHTML}
-            </div>
-            <div class="status-content">${originalPost.content}</div>
-            ${pollHTML}
-            ${mediaHTML}
-            <div class="status-footer">
-                <button class="status-action" data-action="reply">${ICONS.reply} ${originalPost.replies_count}</button>
-                <button class="status-action ${originalPost.reblogged ? 'active' : ''}" data-action="boost">${ICONS.boost} ${originalPost.reblogs_count}</button>
-                <button class="status-action ${originalPost.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${originalPost.favourites_count}</button>
-                <button class="status-action ${originalPost.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
-            </div>
+    let optionsMenuHTML = `
+        <button class="post-options-btn">${ICONS.more}</button>
+        <div class="post-options-menu">
+            <button data-action="mention">Mention @${author.acct}</button>
+            ${isOwnPost ? `<button data-action="edit">Edit</button><button data-action="delete">Delete</button>` : ''}
+            <button data-action="mute">Mute @${author.acct}</button>
+            <button data-action="block">Block @${author.acct}</button>
         </div>
     `;
 
-    // --- Event Listeners ---
+    card.innerHTML = `
+        ${boosterInfo}
+        <div class="status-body-content">
+            ${inReplyToInfo}
+            <div class="status-header">
+                <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
+                <div>
+                    <span class="display-name">${author.display_name}</span>
+                    <span class="acct">@${author.acct}</span>
+                    <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
+                </div>
+                ${optionsMenuHTML}
+            </div>
+            <div class="status-content">${post.content}</div>
+            ${mediaHTML}
+            ${pollHTML}
+            <div class="status-footer">
+                <button class="status-action" data-action="reply">${ICONS.reply} ${post.replies_count}</button>
+                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.reblog} ${post.reblogs_count}</button>
+                <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${post.favourites_count}</button>
+                <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+            </div>
+        </div>
+    `;
     
-    statusDiv.addEventListener('click', (e) => {
-        const link = e.target.closest('a');
-        if (link && link.classList.contains('hashtag')) {
-            e.preventDefault();
-            const tagName = link.getAttribute('href').split('/tags/')[1];
-            if (tagName) actions.showHashtagTimeline(tagName);
-            return;
-        }
-
-        const pollOption = e.target.closest('.poll-option');
-        if (pollOption) {
-            e.preventDefault();
-            const pollContainer = pollOption.closest('.poll-container');
-            const pollId = pollContainer.dataset.pollId;
-            const choice = parseInt(pollOption.dataset.choice, 10);
-            actions.voteOnPoll(pollId, [choice], statusDiv);
-            return;
-        }
-
-        const replyBanner = e.target.closest('.reply-info');
-        if (replyBanner) {
-            e.preventDefault();
-            const parentId = replyBanner.dataset.parentId;
-            if (parentId) actions.showStatusDetail(parentId);
-            return;
-        }
+    // --- Event Listeners ---
+    card.querySelector('.status-body-content').addEventListener('click', () => {
+        actions.showStatusDetail(post.id);
     });
-
-    const avatar = statusDiv.querySelector('.avatar');
-    const displayName = statusDiv.querySelector('.display-name');
-    if (avatar) avatar.onclick = () => actions.showProfile(originalPost.account.id);
-    if (displayName) displayName.onclick = () => actions.showProfile(originalPost.account.id);
-
-    statusDiv.querySelectorAll('.status-action').forEach(button => {
-        button.addEventListener('click', (e) => {
+    
+    card.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', e => {
             e.stopPropagation();
-            const action = button.dataset.action;
-            actions.toggleAction(action, originalPost, button);
+            const action = e.target.closest('.status-action').dataset.action;
+            switch(action) {
+                case 'reply':
+                    // Open compose modal with reply context
+                    break;
+                case 'reblog':
+                case 'favorite':
+                case 'bookmark':
+                    actions.toggleAction(action, status, e.target.closest('.status-action'));
+                    break;
+            }
         });
     });
 
-    const optionsBtn = statusDiv.querySelector('.post-options-btn');
+    const optionsBtn = card.querySelector('.post-options-btn');
     if (optionsBtn) {
-        const menu = statusDiv.querySelector('.post-options-menu');
+        const menu = card.querySelector('.post-options-menu');
         optionsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            document.querySelectorAll('.post-options-menu').forEach(m => {
-                if (m !== menu) m.style.display = 'none';
-            });
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
-        
-        const muteBtn = menu.querySelector('[data-action="mute"]');
-        if (muteBtn) {
-            muteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menu.style.display = 'none';
-                actions.muteAccount(originalPost.account.id);
-            });
-        }
-
-        const editBtn = menu.querySelector('[data-action="edit"]');
-        if (editBtn) {
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menu.style.display = 'none';
-                actions.showEditModal(originalPost);
-            });
-        }
-
-        const deleteBtn = menu.querySelector('[data-action="delete"]');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menu.style.display = 'none';
-                actions.showDeleteModal(originalPost.id);
-            });
-        }
+        menu.addEventListener('click', (e) => e.stopPropagation());
     }
 
-    return statusDiv;
+    return card;
 }
 
-export async function renderStatusDetail(state, statusId) {
+export async function renderStatusDetail(state, statusId, actions) {
     const container = document.getElementById('status-detail-view');
-    container.innerHTML = '<p>Loading status...</p>';
+    container.innerHTML = '<p>Loading post...</p>';
 
     try {
-        const context = (await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`)).data;
-        container.innerHTML = ''; // Clear loading message
-
-        const statusList = document.createElement('div');
-        statusList.className = 'status-list';
-
-        // Render ancestors
-        if (context.ancestors && context.ancestors.length > 0) {
-            context.ancestors.forEach(ancestor => {
-                const statusEl = renderStatus(ancestor, state, state.actions, true);
-                if (statusEl) {
-                    statusList.appendChild(statusEl);
-                }
+        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+        const { data: mainStatus } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        
+        container.innerHTML = '';
+        
+        if (context.ancestors) {
+            context.ancestors.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
             });
         }
-
-        // Render the main status
-        const mainStatusResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
-        const mainStatus = mainStatusResponse.data;
-        const mainStatusEl = renderStatus(mainStatus, state, state.actions, true);
-        if (mainStatusEl) {
-            mainStatusEl.classList.add('main-thread-post');
-            statusList.appendChild(mainStatusEl);
-        }
-
-
-        // Render descendants
-        if (context.descendants && context.descendants.length > 0) {
-            context.descendants.forEach(descendant => {
-                const statusEl = renderStatus(descendant, state, state.actions, true);
-                if (statusEl) {
-                    statusList.appendChild(statusEl);
-                }
+        
+        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings);
+        mainPost.classList.add('main-thread-post');
+        container.appendChild(mainPost);
+        
+        if (context.descendants) {
+            context.descendants.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
             });
         }
-        container.appendChild(statusList);
-
-
-    } catch (err) {
-        console.error('Failed to load status detail:', err);
-        container.innerHTML = '<p>Could not load status details.</p>';
+        
+    } catch (error) {
+        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
     }
 }
