@@ -3,7 +3,6 @@ import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
-import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
@@ -38,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         instanceUrl: null,
         accessToken: null,
         currentUser: null,
-        currentView: 'login',
+        currentView: null,
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: 'New',
@@ -67,8 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = (viewName, pushToHistory = true) => {
-        if (pushToHistory && state.currentView !== viewName) {
-            state.history.push(state.currentView);
+        if (state.currentView === viewName) return;
+
+        if (pushToHistory) {
+            history.pushState({view: viewName}, '', `#${viewName}`);
         }
         state.currentView = viewName;
 
@@ -92,8 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (views[viewName]) {
             views[viewName].style.display = 'flex';
         }
-        
-        document.getElementById('back-btn').style.display = state.history.length > 0 ? 'block' : 'none';
     };
 
     const showToast = (message) => {
@@ -243,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     state.actions = actions;
 
-    const onMastodonLoginSuccess = async (instanceUrl, accessToken, callback) => {
+    const onMastodonLoginSuccess = async (instanceUrl, accessToken) => {
         const success = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
             .then(response => {
                 if (!response || !response.data || !response.data.id) {
@@ -256,8 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('fediverse-token', accessToken);
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 showToast('Mastodon login successful!');
-                if (callback) callback();
-                else actions.showMastodonTimeline('home');
+                // On success, go to the home (subscribed) timeline.
+                actions.showMastodonTimeline('home');
                 return true;
             })
             .catch(() => {
@@ -267,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return success;
     };
 
-    const onLemmyLoginSuccess = (instance, username, password, callback) => {
+    const onLemmyLoginSuccess = (instance, username, password) => {
         apiFetch(instance, null, '/api/v3/user/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -279,8 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
                 showToast('Lemmy login successful!');
-                if (callback) callback();
-                else actions.showLemmyFeed(state.currentLemmyFeed || 'All');
+                // On success, go to the Subscribed feed.
+                actions.showLemmyFeed('Subscribed');
             } else {
                 alert('Lemmy login failed.');
             }
@@ -293,13 +292,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initDropdowns();
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
     
-    switchView('timeline');
-    if (localStorage.getItem('lemmy_jwt')) {
-        actions.showLemmyFeed('All');
-    } else {
-        actions.showMastodonTimeline('home');
+    // Initial App Load
+    const initialView = location.hash.substring(1) || 'timeline';
+    switchView(initialView, false);
+    
+    if (initialView === 'timeline') {
+        if (localStorage.getItem('lemmy_jwt')) {
+            actions.showLemmyFeed('All');
+        } else {
+            actions.showMastodonTimeline('home');
+        }
     }
-
+    
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
         e.preventDefault();
@@ -398,15 +402,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Browser Back Button Handling ---
     window.addEventListener('popstate', (event) => {
-        if (state.history.length > 1) {
-            state.history.pop();
-            const previousView = state.history[state.history.length - 1];
-            switchView(previousView, false);
-        } else {
-            history.pushState({view: state.currentView}, '', `#${state.currentView}`);
+        if (event.state && event.state.view) {
+            // Navigate to the view from the history state without pushing a new state
+            switchView(event.state.view, false);
         }
     });
 
+    // Set the initial state in the browser's history
     history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
 });
