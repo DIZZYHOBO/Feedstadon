@@ -76,7 +76,12 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
 
 
     try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        // ** THE FIX IS HERE **: Prevent API call if instance is missing.
+        if (!lemmyInstance) {
+            throw new Error("Lemmy instance not found. Please log in.");
+        }
+
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
@@ -120,6 +125,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
     } catch (error) {
         console.error('Failed to fetch Lemmy feed:', error);
         actions.showToast(`Could not load Lemmy feed: ${error.message}`);
+        state.timelineDiv.innerHTML = `<p>Error loading feed.</p>`;
     } finally {
         state.isLoadingMore = false;
         if (loadMore) state.scrollLoader.classList.remove('loading');
