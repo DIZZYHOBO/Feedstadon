@@ -116,8 +116,8 @@ export function renderStatus(status, currentUser, actions, settings) {
                     </div>
                 </div>
                 <div class="status-header-side">
-                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
                     ${optionsMenuHTML}
+                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
                 </div>
             </div>
             <div class="status-content">${post.content}</div>
