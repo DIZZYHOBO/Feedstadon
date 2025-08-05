@@ -84,7 +84,11 @@ body {
     gap: 20px;
 }
 
-textarea {
+textarea,
+input[type="text"],
+input[type="password"],
+input[type="search"],
+input[type="url"] {
     font-family: 'Inter', sans-serif;
     font-size: 1rem;
     color: var(--font-color);
@@ -96,7 +100,11 @@ textarea {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-textarea:focus {
+textarea:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus {
     outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2);
@@ -155,14 +163,7 @@ textarea:focus {
     gap: 15px;
 }
 .login-form-section input {
-    font-family: 'Inter', sans-serif;
-    font-size: 1rem;
-    color: var(--font-color);
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
     padding: 12px;
-    width: 100%;
 }
 .connect-btn {
     background-color: var(--primary-color);
@@ -260,15 +261,7 @@ textarea:focus {
 .dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
 .dropdown-content a:hover { background-color: var(--accent-color); }
 .dropdown.active .dropdown-content { display: block; }
-.dropdown-divider {
-    padding: 8px 16px;
-    font-size: 0.8em;
-    font-weight: bold;
-    color: var(--font-color-muted);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-color);
-}
+
 .main-feed-link {
     font-weight: bold !important;
     color: var(--accent-color) !important;
@@ -301,20 +294,8 @@ textarea:focus {
 }
 
 #search-input {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.9rem;
-    color: var(--font-color);
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 8px 12px;
-    width: 100%;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-#search-input:focus {
-    outline: none;
-    border-color: var(--accent-color);
 }
 
 #search-suggestions-container {
@@ -332,6 +313,36 @@ textarea:focus {
     overflow: hidden;
     z-index: 2000;
 }
+
+/* --- Timeline Sub-Nav --- */
+.timeline-sub-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background-color: var(--card-color);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.timeline-sub-nav-btn {
+    flex-grow: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+.timeline-sub-nav-btn:hover {
+    background-color: var(--primary-color);
+}
+.timeline-sub-nav-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
 
 /* --- Main App Views --- */
 #timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed, #lemmy-discover-view, #lemmy-community-view {
@@ -379,16 +390,30 @@ textarea:focus {
 
 .status-header { 
     display: flex; 
-    align-items: center; 
+    justify-content: space-between;
+    align-items: flex-start;
     gap: 12px; 
     margin-bottom: 15px; 
-    position: relative; 
+}
+.status-header-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-grow: 1;
+    min-width: 0;
+}
+.status-header-side {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
 }
 .status-header .avatar { 
     width: 44px; 
     height: 44px; 
     border-radius: 50%; 
     cursor: pointer; 
+    flex-shrink: 0;
 }
 .status-header .display-name { 
     font-weight: 700; 
@@ -397,6 +422,9 @@ textarea:focus {
 .status-header .acct { 
     color: var(--font-color-muted);
     font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .status-header .timestamp { 
     color: var(--font-color-muted); 
@@ -485,10 +513,10 @@ textarea:focus {
 }
 
 /* --- Post Options Menu --- */
+.post-options-container {
+    position: relative;
+}
 .post-options-btn {
-    position: absolute;
-    top: 0;
-    right: 0;
     background: none;
     border: none;
     color: var(--font-color-muted);
@@ -502,7 +530,7 @@ textarea:focus {
 .post-options-menu {
     display: none;
     position: absolute;
-    top: 30px;
+    top: 100%;
     right: 0;
     background-color: var(--primary-color);
     border: 1px solid var(--border-color);
@@ -814,6 +842,26 @@ textarea:focus {
     font-size: 1em;
 }
 
+/* --- Compose Modal --- */
+.compose-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin: -25px -25px 20px -25px;
+}
+.compose-tabs .tab-button {
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+}
+.compose-tabs .tab-button.active {
+    border-bottom-color: var(--accent-color);
+}
+.compose-tab-content {
+    display: none;
+}
+.compose-tab-content.active {
+    display: block;
+}
+
 .compose-options {
     display: flex;
     align-items: center;
@@ -897,6 +945,35 @@ textarea:focus {
     border-radius: 5px;
 }
 
+/* --- Lemmy Compose Form --- */
+#lemmy-compose-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.lemmy-post-type-selector {
+    display: flex;
+    gap: 10px;
+}
+.lemmy-post-type-btn {
+    flex-grow: 1;
+    background-color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    color: var(--font-color);
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.lemmy-post-type-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+#lemmy-body-textarea {
+    min-height: 120px;
+}
+
+
 /* --- Settings Page --- */
 .settings-container {
     display: flex;
@@ -935,10 +1012,6 @@ textarea:focus {
 .form-group textarea,
 .form-group select {
     padding: 12px;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    border-radius: 8px;
     width: 100%;
 }
 
@@ -1204,16 +1277,9 @@ textarea:focus {
 }
 .message-reply-form input {
     flex-grow: 1;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 10px 15px;
-    color: var(--font-color);
     font-size: 1em;
-}
-.message-reply-form input:focus {
-    outline: none;
-    border-color: var(--accent-color);
 }
 .message-reply-form button {
     border-radius: 20px;
@@ -1273,16 +1339,11 @@ textarea:focus {
 }
 
 /* --- Lemmy Integration Styles --- */
-.status-header {
-    position: relative;
-    flex-grow: 1; /* Allow header to take space */
-}
+.platform-icon-indicator,
 .lemmy-icon-indicator {
-    position: absolute;
-    top: 0;
-    right: 0;
     color: var(--font-color-muted);
     opacity: 0.5;
+    flex-shrink: 0;
 }
 
 .lemmy-card .status-header a {
