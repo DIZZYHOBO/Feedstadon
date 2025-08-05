@@ -123,6 +123,20 @@ export async function renderNotificationsPage(state, actions) {
 // let avatarUrl = `https://.../${notification.creator.id}`;
 
 // Do this:
+// Declare a variable in the outer scope
+let lastNotification = null;
+
+notificationsList.forEach(notification => {
+  process(notification);
+  // Assign the current notification to the outer-scope variable on each iteration
+  lastNotification = notification;
+});
+
+// Now, you can safely access the information using the variable you declared
+if (lastNotification) {
+  console.log("Last notification ID:", lastNotification.id);
+}
+
 if (notification && notification.creator && notification.creator.id) {
   let avatarUrl = `https://.../${notification.creator.id}`;
   // ... proceed to fetch ...
