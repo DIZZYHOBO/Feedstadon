@@ -21,6 +21,7 @@ export function renderLemmyCard(post, actions) {
                     <a href="#" class="display-name" data-action="view-community">${post.community.name}</a>
                     <span class="acct">posted by <a href="#" data-action="view-creator">${post.creator.name}</a> · ${formatTimestamp(post.post.published)}</span>
                 </div>
+                <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
             </div>
             <div class="status-content">
                 <h3 class="lemmy-title">${post.post.name}</h3>
