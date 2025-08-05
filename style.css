@@ -316,7 +316,7 @@ input[type="url"]:focus {
 
 /* --- Timeline Sub-Nav --- */
 .timeline-sub-nav {
-    display: flex;
+    display: none;
     gap: 10px;
     margin-bottom: 20px;
     background-color: var(--card-color);
