@@ -714,14 +714,16 @@ button:disabled {
 
 
 /* --- Profile Page --- */
+.profile-header-container {
+    position: sticky;
+    top: 60px;
+    z-index: 100;
+}
 .profile-card {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
-    position: sticky;
-    top: 60px;
-    z-index: 100;
 }
 
 .profile-header { position: relative; height: 200px; }
