@@ -31,9 +31,9 @@ export function renderLoginPrompt(container, platform, onLoginSuccess, onSeconda
     }
 }
 
-export async function fetchTimeline(state, actions, loadMore = false) {
+export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess) {
     if (!state.accessToken && !localStorage.getItem('lemmy_jwt')) {
-        renderLoginPrompt(state.timelineDiv, 'mastodon', actions.onMastodonLoginSuccess);
+        renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
         return;
     }
     
@@ -65,7 +65,7 @@ export async function fetchTimeline(state, actions, loadMore = false) {
         const [mastodonResponse, lemmyResponse] = await Promise.all([mastodonPromise, lemmyPromise]);
         
         const mastodonPosts = mastodonResponse.data.map(p => ({ ...p, platform: 'mastodon', date: p.created_at }));
-        const lemmyPosts = lemmyResponse.data.posts.map(p => ({ ...p, platform: 'lemmy', date: p.post.published }));
+        const lemmyPosts = (lemmyResponse.data.posts || []).map(p => ({ ...p, platform: 'lemmy', date: p.post.published }));
 
         allPosts = [...mastodonPosts, ...lemmyPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
 
