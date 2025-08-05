@@ -71,6 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchView = (viewName, pushToHistory = true) => {
         if (pushToHistory && state.currentView !== viewName) {
             state.history.push(state.currentView);
+            // Push a state to the browser's history API
+            history.pushState({view: viewName}, '', `#${viewName}`);
         }
         state.currentView = viewName;
 
@@ -440,9 +442,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Browser Back Button Handling ---
+    window.addEventListener('popstate', (event) => {
+        if (state.history.length > 1) {
+            // Pop the current view from our history
+            state.history.pop();
+            // Get the previous view
+            const previousView = state.history[state.history.length - 1];
+            // Switch to it without pushing to history again
+            switchView(previousView, false);
+        } else {
+            // If there's no more history, prevent exiting the app
+            // by pushing the current state back into the browser history.
+            history.pushState({view: state.currentView}, '', `#${state.currentView}`);
+        }
+    });
+
     if (localStorage.getItem('fediverse-token') || localStorage.getItem('lemmy_jwt')) {
         onEnterApp();
     } else {
         switchView('login');
     }
+
+    // Set the initial state in the browser's history
+    history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
 });
