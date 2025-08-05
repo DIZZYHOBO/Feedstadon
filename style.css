@@ -1,15 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root, [data-theme="feedstodon"] {
-    --bg-color: #161617;
-    --card-color: #1D1E1F;
-    --primary-color: #2A2C2E;
+    --bg-color: #101010;
+    --card-color: #1a1a1a;
+    --primary-color: #2a2a2a;
     --accent-color: #5A94F1;
-    --font-color: #DEDEDE;
-    --font-color-muted: #8E8F90;
+    --font-color: #e0e0e0;
+    --font-color-muted: #8e8f90;
     --border-color: #333435;
     --link-color: #88C0D0;
     --notification-dot-color: #ff3d3d;
+    --border-radius: 12px;
 }
 
 [data-theme="purple"] {
@@ -61,31 +62,26 @@
     box-sizing: border-box;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+html {
+    scroll-behavior: smooth;
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-color);
     color: var(--font-color);
     margin: 0;
+    font-size: 16px;
 }
 
 .container {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px 10px;
+    padding: 20px 15px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 20px;
 }
 
 textarea {
@@ -187,16 +183,19 @@ textarea:focus {
 
 /* --- Navigation --- */
 .top-nav {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     width: 100%;
     height: 50px;
-    background-color: var(--card-color);
+    background-color: rgba(16, 16, 16, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
+    padding: 0 15px;
     z-index: 2000;
 }
 
@@ -224,7 +223,7 @@ textarea:focus {
     color: var(--font-color);
     padding: 8px 10px;
     border-radius: 8px;
-    font-weight: bold;
+    font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
     font-size: 0.9em;
@@ -364,57 +363,50 @@ textarea:focus {
 }
 
 
-/* --- Status / Post --- */
+/* --- Status / Post Cards --- */
 .status {
     background-color: var(--card-color);
-    border-radius: 8px;
+    border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
 }
 
-.booster-info, .reply-info {
-    padding: 8px 15px;
-    background-color: var(--primary-color);
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.reply-info {
-    cursor: pointer;
-}
-.reply-info:hover {
-    background-color: #3e4042;
-}
-.booster-info .icon, .reply-info .icon {
-    width: 16px;
-    height: 16px;
-}
 .status-body-content {
-    padding: 15px;
+    padding: 20px;
 }
 
-.status.newly-added {
-    animation: fadeIn 0.5s ease-out;
+.status-header { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    margin-bottom: 15px; 
+    position: relative; 
 }
-
-.status.fading-out {
-    animation: fadeOut 0.5s ease-out forwards;
+.status-header .avatar { 
+    width: 44px; 
+    height: 44px; 
+    border-radius: 50%; 
+    cursor: pointer; 
 }
-
-.status-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; position: relative; }
-.status-header .avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
-.status-header .display-name { font-weight: bold; cursor: pointer; }
-.status-header .acct { color: var(--font-color-muted); }
-.status-header .timestamp { color: var(--font-color-muted); font-size: 0.9em; }
+.status-header .display-name { 
+    font-weight: 700; 
+    cursor: pointer; 
+}
+.status-header .acct { 
+    color: var(--font-color-muted);
+    font-weight: 400;
+}
+.status-header .timestamp { 
+    color: var(--font-color-muted); 
+    font-size: 0.9em; 
+}
 
 .status-content {
     margin-bottom: 15px;
-    line-height: 1.5;
+    line-height: 1.6;
+    font-size: 1.05em;
     overflow-wrap: break-word;
 }
 .status-content a, .profile-info .note a {
@@ -440,21 +432,21 @@ textarea:focus {
     object-fit: cover;
 }
 
-.status-footer { display: flex; justify-content: space-around; color: var(--font-color-muted); font-weight: bold; font-size: 0.9em; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; }
+.status-footer { 
+    display: flex; 
+    justify-content: space-between; 
+    color: var(--font-color-muted); 
+    font-weight: 500; 
+    font-size: 0.9em; 
+    border-top: 1px solid var(--border-color); 
+    padding: 10px 20px; 
+    margin: 15px -20px -20px;
+}
 
 .status-action {
-    background: none;
-    border: none;
     color: var(--font-color-muted);
-    cursor: pointer;
-    padding: 5px 8px;
-    border-radius: 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: inherit;
-    font-family: inherit;
     transition: color 0.2s ease;
+    padding: 8px;
 }
 .status-action:hover {
     color: var(--accent-color);
@@ -530,22 +522,30 @@ textarea:focus {
 
 /* --- Comment Thread --- */
 .lemmy-comment-thread {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
+    margin-top: 20px;
 }
 
 .lemmy-comment {
-    margin-bottom: 10px;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    margin-bottom: 15px;
+    padding-left: 0;
+}
+
+.lemmy-comment > .status-body-content {
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
 }
 
 .top-level-comment {
-    border-left: 2px solid #5A94F1 !important; /* Blue for parent */
+    border-left: 3px solid #5A94F1 !important;
 }
 
 .comment-replies-container {
-    margin-left: 15px;
-    padding-left: 15px;
+    margin-left: 20px;
+    padding-left: 20px;
     border-left: 2px solid var(--border-color);
 }
 
@@ -565,6 +565,26 @@ textarea:focus {
     justify-content: flex-end;
     gap: 10px;
 }
+
+/* --- Inline Login Prompt --- */
+.login-prompt-container {
+    padding: 40px 20px;
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    margin-top: 20px;
+    text-align: center;
+}
+.login-prompt-form-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+}
+.login-prompt-form-container h4 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
 
 /* --- Polls --- */
 .poll-container {
