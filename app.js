@@ -62,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = {
         app: document.getElementById('app-view'),
         timeline: document.getElementById('timeline'),
-        notifications: document.getElementById('notifications-view'),
         profile: document.getElementById('profile-page-view'),
         search: document.getElementById('search-results-view'),
         settings: document.getElementById('settings-view'),
@@ -219,11 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTimelineSubNav(null); // Hide sub-nav
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
-        showNotificationsPage: () => {
-            renderTimelineSubNav(null); // Hide timeline sub-nav
-            switchView('notifications');
-            renderNotificationsPage(state, actions);
-        },
         replyToStatus: (post) => {
             showComposeModalWithReply(state, post);
         },
@@ -347,8 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initDropdowns();
-    document.getElementById('notifications-btn').innerHTML = ICONS.notifications;
-    document.getElementById('notifications-btn').addEventListener('click', actions.showNotificationsPage);
     initComposeModal(state, () => actions.showHomeTimeline());
     
     const initialView = location.hash.substring(1) || 'timeline';
