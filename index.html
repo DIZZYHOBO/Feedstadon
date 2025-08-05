@@ -100,10 +100,68 @@
     </template>
 
     <div id="compose-modal" class="modal-overlay">
-       </div>
+       <div class="modal-content">
+            <h3>New Post</h3>
+            <form id="compose-form">
+                <div id="cw-creator-container" style="display: none;">
+                    <input type="text" id="spoiler-text-input" placeholder="Content Warning (e.g., spoilers, politics)">
+                </div>
+                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+                <div id="poll-creator-container" style="display: none;">
+                    <div id="poll-options-container">
+                        <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
+                        <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
+                    </div>
+                    <button type="button" id="add-poll-option-btn" class="button-secondary">Add Choice</button>
+                    <div class="poll-settings">
+                        <div class="form-group">
+                            <label for="poll-duration-select">Poll duration</label>
+                            <select id="poll-duration-select">
+                                <option value="300">5 minutes</option>
+                                <option value="1800">30 minutes</option>
+                                <option value="3600">1 hour</option>
+                                <option value="21600">6 hours</option>
+                                <option value="86400" selected>1 day</option>
+                                <option value="259200">3 days</option>
+                                <option value="604800">7 days</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><input type="checkbox" id="poll-multiple-choice-check"> Multiple choices</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <div class="compose-options">
+                        <input type="file" id="media-attachment-input" accept="image/*, video/*" style="display: none;">
+                        <button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media"></button>
+                        <button type="button" id="add-poll-btn" class="button-secondary icon-button" title="Add Poll"></button>
+                        <button type="button" id="add-cw-btn" class="button-secondary icon-button" title="Add Content Warning"></button>
+                        <span id="media-filename-preview"></span>
+                    </div>
+                    <div>
+                        <button type="button" class="button-secondary" id="cancel-compose-btn">Cancel</button>
+                        <button type="submit">Post</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div id="logout-modal" class="modal-overlay">
-       </div>
+       <div class="modal-content">
+            <h3>Logout</h3>
+            <p>Choose which account to log out from.</p>
+            <div class="logout-options">
+                <button id="mastodon-logout-btn" class="button-secondary">Mastodon Logout</button>
+                <button id="lemmy-logout-btn" class="button-secondary">Lemmy Logout</button>
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-logout-btn" class="button-secondary">Cancel</button>
+                <button id="logout-all-btn" class="button-danger">Logout All</button>
+            </div>
+        </div>
+    </div>
 
     <div id="toast-notification"></div>
 
