@@ -67,6 +67,7 @@ export async function renderNotificationsPage(state, actions) {
     
     try {
         let mastodonNotifs = [];
+        // Only fetch if logged into Mastodon
         if (state.instanceUrl && state.accessToken) {
             const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
             mastodonNotifs = response.data;
