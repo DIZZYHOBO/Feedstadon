@@ -181,7 +181,7 @@ export function initComposeModal(state, onPostSuccess) {
             
             lemmyLinkForm.style.display = 'none';
             lemmyImageForm.style.display = 'none';
-
+            
             if (currentLemmyPostType === 'Link') {
                 lemmyLinkForm.style.display = 'block';
             } else if (currentLemmyPostType === 'Image') {
@@ -203,7 +203,7 @@ export function initComposeModal(state, onPostSuccess) {
         const postBody = {
             name: title,
             body: document.getElementById('lemmy-body-textarea').value.trim(),
-            community_id: null // This needs to be resolved from the community name
+            community_id: null 
         };
         
         alert("Lemmy posting is not fully implemented. Community name needs to be resolved to an ID.");
