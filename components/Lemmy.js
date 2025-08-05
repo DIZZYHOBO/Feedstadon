@@ -64,9 +64,9 @@ export function renderLemmyCard(post, actions) {
     return card;
 }
 
-export async function fetchLemmyFeed(state, actions, loadMore = false) {
-    if (!localStorage.getItem('lemmy_jwt')) {
-        renderLoginPrompt(state.timelineDiv, 'lemmy', state, actions);
+export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySuccess) {
+    if (!localStorage.getItem('lemmy_jwt') && !loadMore) {
+        renderLoginPrompt(state.timelineDiv, 'lemmy', null, onLemmySuccess);
         return;
     }
 
