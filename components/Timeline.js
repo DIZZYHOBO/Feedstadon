@@ -33,11 +33,60 @@ export function renderLoginPrompt(container, service, state, actions) {
 
 
 export async function fetchTimeline(state, timelineType, loadMore = false) {
-    // ** THE FIX IS HERE **: Check for login first.
     if (!state.accessToken) {
         renderLoginPrompt(state.timelineDiv, 'mastodon', state, state.actions);
         return;
     }
     
-    // ... (rest of fetchTimeline logic remains the same)
+    if (state.isLoadingMore) return;
+
+    if (!loadMore) {
+        window.scrollTo(0, 0);
+        state.timelineDiv.innerHTML = '<p>Loading...</p>';
+    }
+
+    state.isLoadingMore = true;
+    if (loadMore) state.scrollLoader.classList.add('loading');
+    else document.getElementById('refresh-btn').classList.add('loading');
+
+    try {
+        const endpoint = loadMore ? state.nextPageUrl : `/api/v1/timelines/${timelineType}`;
+        if (!endpoint) return;
+
+        const { data, linkHeader } = await apiFetch(state.instanceUrl, state.accessToken, endpoint, {}, 'mastodon', null, loadMore);
+
+        if (!loadMore) {
+            state.timelineDiv.innerHTML = '';
+        }
+
+        data.forEach(status => {
+            const statusCard = renderStatus(status, state.currentUser, actions);
+            state.timelineDiv.appendChild(statusCard);
+        });
+
+        // Parse the Link header for the next page URL
+        if (linkHeader) {
+            const links = linkHeader.split(',').map(link => link.trim());
+            const nextLink = links.find(link => link.includes('rel="next"'));
+            if (nextLink) {
+                state.nextPageUrl = nextLink.substring(nextLink.indexOf('<') + 1, nextLink.indexOf('>'));
+            } else {
+                state.nextPageUrl = null;
+                state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+            }
+        } else {
+            state.nextPageUrl = null;
+            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+        }
+
+    } catch (error) {
+        console.error('Failed to fetch timeline:', error);
+        if (!loadMore) {
+            state.timelineDiv.innerHTML = `<p>Could not load timeline. ${error.message}</p>`;
+        }
+    } finally {
+        state.isLoadingMore = false;
+        if (loadMore) state.scrollLoader.classList.remove('loading');
+        else document.getElementById('refresh-btn').classList.remove('loading');
+    }
 }
