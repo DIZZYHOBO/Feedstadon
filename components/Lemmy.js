@@ -13,15 +13,29 @@ export function renderLemmyCard(post, actions) {
         thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
     }
 
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="block-community">Block Community</button>
+            </div>
+        </div>
+    `;
+
     card.innerHTML = `
         <div class="status-body-content" data-action="view-post">
             <div class="status-header">
-                <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar" data-action="view-community">
-                <div>
-                    <a href="#" class="display-name" data-action="view-community">${post.community.name}</a>
-                    <span class="acct">posted by <a href="#" data-action="view-creator">${post.creator.name}</a> · ${formatTimestamp(post.post.published)}</span>
+                <div class="status-header-main">
+                    <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar" data-action="view-community">
+                    <div>
+                        <a href="#" class="display-name" data-action="view-community">${post.community.name}</a>
+                        <span class="acct">posted by <a href="#" data-action="view-creator">${post.creator.name}</a> · ${formatTimestamp(post.post.published)}</span>
+                    </div>
                 </div>
-                <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
+                <div class="status-header-side">
+                    ${optionsMenuHTML}
+                    <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
+                </div>
             </div>
             <div class="status-content">
                 <h3 class="lemmy-title">${post.post.name}</h3>
@@ -29,9 +43,11 @@ export function renderLemmyCard(post, actions) {
             </div>
         </div>
         <div class="status-footer">
-            <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-            <span class="lemmy-score">${post.counts.score}</span>
-            <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+            <div class="lemmy-vote-cluster">
+                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                <span class="lemmy-score">${post.counts.score}</span>
+                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+            </div>
             <button class="status-action" data-action="view-post">${ICONS.reply} ${post.counts.comments}</button>
             <button class="status-action" data-action="save">${ICONS.bookmark}</button>
         </div>
@@ -61,6 +77,16 @@ export function renderLemmyCard(post, actions) {
                 break;
         }
     });
+
+    const optionsBtn = card.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = card.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        menu.addEventListener('click', (e) => e.stopPropagation());
+    }
 
     return card;
 }
