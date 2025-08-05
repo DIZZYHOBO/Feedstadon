@@ -68,7 +68,7 @@ export function renderStatus(status, currentUser, actions, settings) {
 
     let boosterInfo = '';
     if (status.reblog) {
-        boosterInfo = `<div class="booster-info">${ICONS.reblog} Boosted by ${status.account.display_name}</div>`;
+        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
     }
     
     let inReplyToInfo = '';
@@ -95,7 +95,7 @@ export function renderStatus(status, currentUser, actions, settings) {
         <button class="post-options-btn">${ICONS.more}</button>
         <div class="post-options-menu">
             <button data-action="mention">Mention @${author.acct}</button>
-            ${isOwnPost ? `<button data-action="edit">Edit</button><button data-action="delete">Delete</button>` : ''}
+            ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
             <button data-action="mute">Mute @${author.acct}</button>
             <button data-action="block">Block @${author.acct}</button>
         </div>
@@ -119,7 +119,7 @@ export function renderStatus(status, currentUser, actions, settings) {
             ${pollHTML}
             <div class="status-footer">
                 <button class="status-action" data-action="reply">${ICONS.reply} ${post.replies_count}</button>
-                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.reblog} ${post.reblogs_count}</button>
+                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.boost} ${post.reblogs_count}</button>
                 <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${post.favourites_count}</button>
                 <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
             </div>
