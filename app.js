@@ -1,4 +1,3 @@
-import { initLogin } from './components/Login.js';
 import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
 import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
