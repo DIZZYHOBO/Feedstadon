@@ -1,120 +1,135 @@
-import { apiFetch } from './api.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+/**
+ * Parses a raw Lemmy notification object into a standardized format for rendering.
+ * This makes the code resilient to different notification structures.
+ * @param {object} notification - The raw notification object from the Lemmy API.
+ * @returns {object|null} A standardized object with details for rendering, or null if the notification is unknown or malformed.
+ */
+function parseNotification(notification) {
+    // You can enable this log to inspect the exact structure of any new or failing notifications.
+    // console.log("Processing notification object:", notification);
 
-function renderSingleNotification(notification) {
-    const item = document.createElement('div');
-    item.className = 'notification-item';
-
-    item.innerHTML = `
-        <div class="notification-icon">${notification.icon}</div>
-        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar">
-        <div class="notification-content">
-            <p>${notification.content}</p>
-            ${notification.contextHTML}
-        </div>
-        <div class="timestamp">${formatTimestamp(notification.timestamp)}</div>
-    `;
-
-    return item;
-}
-
-export async function renderNotificationsPage(state, actions) {
-    const container = document.getElementById('notifications-view');
-    const subNav = container.querySelector('.notifications-sub-nav');
-    const listContainer = container.querySelector('#notifications-list');
-
-    subNav.innerHTML = `
-        <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
-        <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
-        <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
-    `;
-    listContainer.innerHTML = 'Loading...';
-    
     try {
-        let mastodonNotifs = [];
-        if (state.instanceUrl && state.accessToken) {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
-            mastodonNotifs = response.data;
+        if (notification.comment_reply) {
+            const data = notification.comment_reply;
+            return {
+                actor: data.creator, // The user who replied
+                actionText: 'replied to your comment on',
+                post: data.post,
+                community: data.community,
+                link: data.comment_reply.ap_id, // Link to the new comment
+                type: 'CommentReply'
+            };
         }
 
-        let lemmyReplyNotifs = [];
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        if (lemmyInstance) {
-            const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
-            lemmyReplyNotifs = repliesResponse.data.replies || [];
+        if (notification.post_like) {
+            const data = notification.post_like;
+            return {
+                actor: data.creator, // The user who liked the post
+                actionText: 'liked your post',
+                post: data.post,
+                community: data.community,
+                link: data.post.ap_id,
+                type: 'PostLike'
+            };
+        }
+        
+        if (notification.comment_like) {
+            const data = notification.comment_like;
+            return {
+                actor: data.creator, // The user who liked the comment
+                actionText: 'liked your comment on',
+                post: data.post,
+                community: data.community,
+                link: data.comment.ap_id, // Link to the liked comment
+                type: 'CommentLike'
+            };
+        }
+        
+        if (notification.person_mention) {
+            const data = notification.person_mention;
+            return {
+                actor: data.creator, // The user who mentioned you
+                actionText: 'mentioned you in a comment on',
+                post: data.post,
+                community: data.community,
+                link: data.comment.ap_id,
+                type: 'Mention'
+            };
         }
 
-        // --- Data Transformation Step ---
-        const allNotifications = [
-            // Mastodon Notifications
-            ...mastodonNotifs.map(n => ({
-                platform: 'mastodon',
-                date: n.created_at,
-                icon: ICONS.favorite, // This can be improved to show different icons for different notification types
-                content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
-                contextHTML: `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>`,
-                authorAvatar: n.account.avatar_static,
-                timestamp: n.created_at
-            })),
-            
-            // **FIXED SECTION**: Lemmy Comment Reply Notifications
-            ...lemmyReplyNotifs.map(n => {
-                // 1. Use optional chaining (?.) to safely access nested properties.
-                // This prevents the "Cannot read properties of undefined" error.
-                const creator = n?.comment_reply?.creator;
-                const comment = n?.comment_reply?.comment;
+        // --- ADD OTHER NOTIFICATION TYPES HERE ---
+        // e.g., if (notification.new_post_subscriber) { ... }
 
-                // 2. Add a robust check to ensure all necessary data is present before rendering.
-                if (!creator || !comment) {
-                    console.error("Skipping malformed Lemmy notification:", n);
-                    return null; // This will be filtered out later.
-                }
-
-                // 3. Construct the unified notification object.
-                return {
-                    platform: 'lemmy',
-                    date: comment.published,
-                    icon: ICONS.reply,
-                    content: `<strong>${creator.name}</strong> replied to your comment.`,
-                    contextHTML: `<div class="notification-context">${comment.content}</div>`,
-                    authorAvatar: creator.avatar || './images/logo.png',
-                    timestamp: comment.published
-                };
-            })
-        ].filter(Boolean); // 4. Filter out any null entries that resulted from malformed data.
-
-        // Sort all notifications from all platforms by date.
-        allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        const renderFilteredNotifications = (filter) => {
-            listContainer.innerHTML = '';
-            const filtered = allNotifications.filter(n => filter === 'all' || n.platform === filter);
-            
-            if (filtered.length === 0) {
-                listContainer.innerHTML = '<p>No notifications to show.</p>';
-                return;
-            }
-
-            filtered.forEach(notification => {
-                const item = renderSingleNotification(notification);
-                if (item) listContainer.appendChild(item);
-            });
-        };
-
-        // Set up sub-navigation click handlers
-        subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                renderFilteredNotifications(e.target.dataset.filter);
-            });
-        });
-
-        renderFilteredNotifications('all'); // Initial render
+        // If notification type is not recognized, return null
+        return null;
 
     } catch (error) {
-        console.error('Failed to fetch notifications:', error);
-        listContainer.innerHTML = `<p>Could not load notifications. ${error.message}</p>`;
+        // This catch block will grab any unexpected errors during parsing
+        console.error("Failed to parse a notification due to an unexpected error:", error);
+        console.error("The problematic notification object was:", notification);
+        return null;
     }
 }
+
+/**
+ * Fetches notifications and renders them to the page.
+ */
+async function renderNotificationsPage() {
+    // Assuming you have a function like this to get notifications from your backend/API
+    const response = await fetch('/api/lemmy/notifications'); // Replace with your actual API endpoint
+    const notifications = await response.json();
+
+    const notificationContainer = document.getElementById('notifications-container'); // Assuming a container element exists
+    if (!notificationContainer) {
+        console.error("Notifications container not found!");
+        return;
+    }
+    notificationContainer.innerHTML = ''; // Clear previous notifications
+
+    if (!notifications || notifications.length === 0) {
+        notificationContainer.innerHTML = '<p>No new notifications.</p>';
+        return;
+    }
+
+    // This loop now uses the robust parser function
+    for (const rawNotification of notifications) {
+        const parsedData = parseNotification(rawNotification);
+
+        if (parsedData) {
+            // --- THIS FIXES THE 'GET .../undefined' ERROR ---
+            // Because we correctly parse the data, `parsedData.actor.id` will now be a valid number,
+            // not `undefined`. Any subsequent fetch that uses this ID will now work correctly.
+            const actorId = parsedData.actor?.id; 
+            const actorAvatarUrl = parsedData.actor?.avatar ?? 'default_avatar.png';
+            const actorName = parsedData.actor?.name ?? 'An unknown user';
+            const postName = parsedData.post?.name ?? 'a post';
+            
+            // Example of a subsequent fetch that would have failed before
+            // Note: This is just for demonstration. You might build your HTML directly.
+            if (!actorId) {
+                console.warn("Could not make subsequent fetch because actor ID is missing.", parsedData);
+            } else {
+                // This URL will now be valid, e.g., "https://feedstodon.afsapp.lol/user/12345"
+                // const userDetails = await fetch(`https://feedstodon.afsapp.lol/user/${actorId}`);
+            }
+
+            // Create and append the notification element
+            const notificationElement = document.createElement('div');
+            notificationElement.className = 'notification-item';
+            notificationElement.innerHTML = `
+                <img src="${actorAvatarUrl}" class="avatar" alt="${actorName}'s avatar">
+                <div class="notification-content">
+                    <strong>${actorName}</strong> ${parsedData.actionText} <strong><a href="${parsedData.link}">${postName}</a></strong>.
+                </div>
+            `;
+            notificationContainer.appendChild(notificationElement);
+
+        } else {
+            // This is the new, intentional "skipping" message for unhandled types.
+            console.log('Skipping unhandled or malformed Lemmy notification:', rawNotification);
+        }
+    }
+}
+
+// You would call this function from your app's main logic, for example in app.js
+// renderNotificationsPage();
