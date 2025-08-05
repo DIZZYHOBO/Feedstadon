@@ -40,16 +40,17 @@ export async function renderProfilePage(state, accountId, actions) {
                     </div>
                 </div>
             </div>
-            <div class="profile-tabs">
-                <button class="tab-button active">${postCount} Posts</button>
-            </div>
             <div class="profile-feed"></div>
         `;
 
         const feed = profileView.querySelector('.profile-feed');
-        statuses.forEach(status => {
-            feed.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
-        });
+        if (statuses.length === 0) {
+            feed.innerHTML = '<p>No posts yet.</p>';
+        } else {
+            statuses.forEach(status => {
+                feed.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
 
     } catch (error) {
         profileView.innerHTML = `<p>Error loading profile: ${error.message}</p>`;
@@ -82,9 +83,6 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
                     <p class="acct">@${person_view.person.name}@${instance}</p>
                     <div class="note">${person_view.person.bio || ''}</div>
                 </div>
-            </div>
-            <div class="profile-tabs">
-                <button class="tab-button active">Activity</button>
             </div>
             <div class="profile-feed"></div>
         `;
