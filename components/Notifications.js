@@ -126,7 +126,7 @@ export async function renderNotificationsPage(state, actions) {
 // Declare a variable in the outer scope
 let lastNotification = null;
 
-notificationsList.forEach(notification => {
+notifications.forEach(notification => {
   process(notification);
   // Assign the current notification to the outer-scope variable on each iteration
   lastNotification = notification;
