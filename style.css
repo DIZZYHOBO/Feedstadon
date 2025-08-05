@@ -366,7 +366,7 @@ button:disabled {
     flex-direction: column;
     gap: 15px;
 }
-#status-detail-view, #notifications-view {
+#status-detail-view, #notifications-view, #profile-page-view {
     flex-direction: column;
 }
 #status-detail-view .status {
@@ -719,6 +719,9 @@ button:disabled {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
+    position: sticky;
+    top: 60px;
+    z-index: 100;
 }
 
 .profile-header { position: relative; height: 200px; }
@@ -745,12 +748,6 @@ button:disabled {
 }
 .profile-info .stats strong {
     color: var(--font-color);
-}
-.profile-tabs {
-    display: flex;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
 }
 .profile-feed {
     margin-top: 15px;
@@ -861,5 +858,14 @@ button:disabled {
     .comment-replies-container {
         margin-left: 5px;
         padding-left: 10px;
+    }
+
+    .notification-item {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .notification-item .timestamp {
+        display: none; /* Hide timestamp on very small screens to save space */
     }
 }
