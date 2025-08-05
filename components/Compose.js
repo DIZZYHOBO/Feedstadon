@@ -9,7 +9,6 @@ let currentLemmyPostType = 'Text';
 export function showComposeModal(state) {
     const composeModal = document.getElementById('compose-modal');
     
-    // Reset Mastodon tab
     document.getElementById('mastodon-compose-form').reset();
     document.getElementById('poll-creator-container').style.display = 'none';
     document.getElementById('cw-creator-container').style.display = 'none';
@@ -18,7 +17,6 @@ export function showComposeModal(state) {
     isPollActive = false;
     isCwActive = false;
 
-    // Reset Lemmy tab
     document.getElementById('lemmy-compose-form').reset();
     document.getElementById('lemmy-link-input-container').style.display = 'none';
     document.getElementById('lemmy-image-input-container').style.display = 'none';
@@ -28,11 +26,25 @@ export function showComposeModal(state) {
         btn.classList.toggle('active', btn.dataset.type === 'Text');
     });
 
-    // Set default tab
     document.querySelector('.compose-tabs .tab-button[data-tab="mastodon"]').click();
 
     composeModal.classList.add('visible');
     document.getElementById('compose-textarea').focus();
+}
+
+export function showComposeModalWithReply(state, post) {
+    showComposeModal(state); // First, open and reset the modal
+
+    const textarea = document.getElementById('compose-textarea');
+    const mentions = [`@${post.account.acct}`];
+    post.mentions.forEach(mention => {
+        if(mention.acct !== state.currentUser.acct) {
+            mentions.push(`@${mention.acct}`);
+        }
+    });
+    
+    textarea.value = `${[...new Set(mentions)].join(' ')} `;
+    textarea.focus();
 }
 
 export function initComposeModal(state, onPostSuccess) {
@@ -169,7 +181,6 @@ export function initComposeModal(state, onPostSuccess) {
             
             lemmyLinkForm.style.display = 'none';
             lemmyImageForm.style.display = 'none';
-            lemmyBodyTextarea.style.display = 'block'; // Body is available for all types
 
             if (currentLemmyPostType === 'Link') {
                 lemmyLinkForm.style.display = 'block';
@@ -182,49 +193,22 @@ export function initComposeModal(state, onPostSuccess) {
     lemmyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const title = document.getElementById('lemmy-title-input').value.trim();
-        if (!title) {
-            alert('A title is required for Lemmy posts.');
+        const community = document.getElementById('lemmy-community-input').value.trim();
+        
+        if (!title || !community) {
+            alert('A title and community are required for Lemmy posts.');
             return;
         }
 
         const postBody = {
             name: title,
             body: document.getElementById('lemmy-body-textarea').value.trim(),
-            // You'll need a way to select a community, for now, this is a placeholder
-            community_id: 1 // Placeholder - replace with actual community ID
+            community_id: null // This needs to be resolved from the community name
         };
+        
+        alert("Lemmy posting is not fully implemented. Community name needs to be resolved to an ID.");
+        console.log("Lemmy Post Body:", postBody);
 
-        if (currentLemmyPostType === 'Link') {
-            postBody.url = document.getElementById('lemmy-url-input').value.trim();
-        } else if (currentLemmyPostType === 'Image') {
-            // Lemmy image posting is more complex, often requiring an upload to an image host first
-            // This is a simplified placeholder
-            alert("Direct image uploads to Lemmy are not supported in this version.");
-            return;
-        }
-
-        try {
-            const postButton = lemmyForm.querySelector('button[type="submit"]');
-            postButton.disabled = true;
-            postButton.textContent = 'Posting...';
-
-            // You will need to implement the Lemmy post creation API call here
-            // e.g., await apiFetch(lemmyInstance, jwt, '/api/v3/post', { method: 'POST', body: JSON.stringify(postBody) }, 'lemmy');
-            
-            console.log("Lemmy Post Body:", postBody);
-            alert("Lemmy posting is not fully implemented yet.");
-
-
-            postButton.disabled = false;
-            postButton.textContent = 'Post';
-            // composeModal.classList.remove('visible');
-            // onPostSuccess(); // Or a lemmy-specific success function
-        } catch(err) {
-            console.error("Failed to post to Lemmy:", err);
-            alert("Could not create Lemmy post.");
-            lemmyForm.querySelector('button[type="submit"]').disabled = false;
-            lemmyForm.querySelector('button[type="submit"]').textContent = 'Post';
-        }
     });
 
 
