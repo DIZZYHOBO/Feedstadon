@@ -6,7 +6,6 @@ import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
 import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
-// ** THE FIX IS HERE **: Removed renderSubscribedFeed and renderUnifiedFeed from the import.
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
@@ -169,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('timeline');
             fetchTimeline(state, timelineType);
         },
-        // ** THE FIX IS HERE **: Removed actions that called non-existent functions.
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
                 actions.showProfile(account.id);
@@ -304,13 +302,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const onEnterApp = async () => {
         const mastodonToken = localStorage.getItem('fediverse-token');
         const lemmyJwt = localStorage.getItem('lemmy_jwt');
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
 
         if (!mastodonToken && !lemmyJwt) {
             showToast("Please log in to at least one service.");
             return;
         }
         
-        if (lemmyJwt) {
+        // ** THE FIX IS HERE **: Check for both JWT and instance before showing feed.
+        if (lemmyJwt && lemmyInstance) {
             actions.showLemmyFeed('All');
             return;
         }
