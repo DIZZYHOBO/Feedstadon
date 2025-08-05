@@ -714,14 +714,12 @@ button:disabled {
 
 
 /* --- Profile Page --- */
-.profile-header-container {
-    position: relative;
-}
 .profile-card {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
+    margin-bottom: 20px;
 }
 
 .profile-header { position: relative; height: 150px; }
@@ -754,18 +752,20 @@ button:disabled {
 }
 .lemmy-comment-on-profile {
     border-left: 3px solid var(--accent-color) !important;
+    cursor: pointer;
+}
+.lemmy-comment-on-profile:hover {
+    border-color: var(--accent-color);
 }
 .lemmy-comment-on-profile .comment-context {
     font-size: 0.9em;
     color: var(--font-color-muted);
     margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 .lemmy-comment-on-profile .post-title {
     font-weight: bold;
     margin-bottom: 10px;
+    font-size: 1.1em;
 }
 
 
