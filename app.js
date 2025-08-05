@@ -185,6 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTimelineSubNav('mastodon');
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
+         showHomeTimeline: () => {
+            state.currentLemmyFeed = null;
+            state.currentTimeline = 'home';
+            switchView('timeline');
+            document.getElementById('lemmy-filter-container').style.display = 'none';
+            renderTimelineSubNav(null); // Hide sub-nav
+            fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+        },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
                 actions.showProfile(account.id);
@@ -305,18 +313,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initDropdowns();
-    initComposeModal(state, () => actions.showMastodonTimeline('home'));
+    initComposeModal(state, () => actions.showHomeTimeline());
     
     const initialView = location.hash.substring(1) || 'timeline';
     switchView(initialView, false);
     
     if (initialView === 'timeline') {
         if (localStorage.getItem('fediverse-token')) {
-            actions.showMastodonTimeline('home');
+            actions.showHomeTimeline();
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
-            actions.showMastodonTimeline('home'); // Default to Mastodon login prompt
+            actions.showHomeTimeline(); 
         }
     }
 
@@ -329,8 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
             actions.showLemmyFeed('Subscribed');
         } else if (target.id === 'mastodon-main-link') {
             actions.showMastodonTimeline('home');
-        } else if (target.dataset.timeline) {
-            actions.showMastodonTimeline(target.dataset.timeline);
+        } else if (target.dataset.timeline === 'home') {
+            actions.showHomeTimeline();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
