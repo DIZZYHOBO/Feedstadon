@@ -69,13 +69,19 @@ export async function renderNotificationsPage(state, actions) {
     const listContainer = document.getElementById('notifications-list');
     
     try {
-        const mastodonNotifs = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+        let mastodonNotifs = [];
+        // Only fetch if logged into Mastodon
+        if (state.instanceUrl && state.accessToken) {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+            mastodonNotifs = response.data;
+        }
+
         // const lemmyNotifs = await apiFetch(...) // Placeholder for Lemmy API call
 
         const allNotifications = [
-            ...mastodonNotifs.data.map(n => ({ ...n, platform: 'mastodon' }))
+            ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon' }))
             // ...lemmyNotifs.data.map(n => ({ ...n, platform: 'lemmy' }))
-        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Assuming similar timestamp fields
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
