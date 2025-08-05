@@ -33,6 +33,10 @@ function initDropdowns() {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Apply saved theme on startup
+    const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+    document.body.dataset.theme = savedTheme;
+
     const state = {
         history: [],
         instanceUrl: localStorage.getItem('fediverse-instance') || null,
