@@ -82,7 +82,8 @@ body {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    padding: 70px 10px 20px;
+    /* Adjusted padding to account for sticky nav */
+    padding: 20px 10px;
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -114,6 +115,7 @@ textarea:focus {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 .login-card {
     background-color: var(--card-color);
@@ -122,7 +124,7 @@ textarea:focus {
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     overflow: hidden;
     position: relative;
-    width: 90%;
+    width: 100%;
     max-width: 700px;
 }
 #enter-app-btn {
