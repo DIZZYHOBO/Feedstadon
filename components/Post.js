@@ -32,7 +32,6 @@ function renderPoll(poll, statusId, actions) {
                 e.stopPropagation();
                 try {
                     const updatedPoll = await actions.voteInPoll(poll.id, [index]);
-                    // Re-render the poll with results
                     const pollContainer = e.target.closest('.poll-container');
                     const newPoll = renderPoll(updatedPoll, statusId, actions);
                     pollContainer.replaceWith(newPoll);
@@ -59,7 +58,7 @@ export function renderStatus(status, currentUser, actions, settings) {
     const isOwnPost = currentUser && currentUser.id === author.id;
     
     if (settings && settings.hideNsfw && post.sensitive) {
-        return document.createDocumentFragment(); // Return an empty fragment to hide the post
+        return document.createDocumentFragment();
     }
 
     const card = document.createElement('div');
@@ -106,11 +105,13 @@ export function renderStatus(status, currentUser, actions, settings) {
         <div class="status-body-content">
             ${inReplyToInfo}
             <div class="status-header">
-                <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
-                <div>
-                    <span class="display-name">${author.display_name}</span>
-                    <span class="acct">@${author.acct}</span>
-                    <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
+                <div class="status-header-main">
+                    <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
+                    <div>
+                        <span class="display-name">${author.display_name}</span>
+                        <span class="acct">@${author.acct}</span>
+                        <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
+                    </div>
                 </div>
                 <div class="platform-icon-indicator">${ICONS.mastodon}</div>
                 ${optionsMenuHTML}
@@ -127,7 +128,6 @@ export function renderStatus(status, currentUser, actions, settings) {
         </div>
     `;
     
-    // --- Event Listeners ---
     card.querySelector('.status-body-content').addEventListener('click', () => {
         actions.showStatusDetail(post.id);
     });
@@ -138,7 +138,6 @@ export function renderStatus(status, currentUser, actions, settings) {
             const action = e.target.closest('.status-action').dataset.action;
             switch(action) {
                 case 'reply':
-                    // Open compose modal with reply context
                     break;
                 case 'reblog':
                 case 'favorite':
