@@ -123,7 +123,6 @@ function renderCommentNode(commentView, actions) {
     commentWrapper.className = 'status lemmy-comment';
     commentWrapper.id = `comment-wrapper-${comment.id}`;
     
-    // Add top-level-comment class to root comments for styling
     if (comment.path.split('.').length === 2) {
         commentWrapper.classList.add('top-level-comment');
     }
@@ -131,8 +130,8 @@ function renderCommentNode(commentView, actions) {
     let optionsMenuHTML = `
         <button class="post-options-btn">${ICONS.more}</button>
         <div class="post-options-menu">
-            <button data-action="edit-comment">Edit</button>
-            <button data-action="delete-comment">Delete</button>
+            <button data-action="edit-comment">${ICONS.edit} Edit</button>
+            <button data-action="delete-comment">${ICONS.delete} Delete</button>
         </div>
     `;
 
@@ -181,7 +180,7 @@ function renderCommentNode(commentView, actions) {
             e.stopPropagation();
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
-        menu.addEventListener('click', (e) => e.stopPropagation()); // Prevent menu from closing when clicking inside
+        menu.addEventListener('click', (e) => e.stopPropagation());
     }
 
     return commentWrapper;
@@ -212,6 +211,7 @@ export async function renderLemmyPostPage(state, post, actions) {
                         <span class="display-name">${post.community.name}</span>
                         <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
                     </div>
+                     <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
                 </div>
                 <div class="status-content">
                     <h3 class="lemmy-title">${post.post.name}</h3>
