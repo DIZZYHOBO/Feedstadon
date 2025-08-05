@@ -48,8 +48,15 @@ export function renderLemmyCard(post, actions) {
                 <span class="lemmy-score">${post.counts.score}</span>
                 <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
             </div>
-            <button class="status-action" data-action="view-post">${ICONS.reply} ${post.counts.comments}</button>
+            <button class="status-action" data-action="quick-reply">${ICONS.reply}</button>
+            <button class="status-action" data-action="view-post">${ICONS.comments} ${post.counts.comments}</button>
             <button class="status-action" data-action="save">${ICONS.bookmark}</button>
+        </div>
+        <div class="quick-reply-container">
+            <div class="quick-reply-box">
+                <textarea placeholder="Add a comment..."></textarea>
+                <button class="button-primary">Post</button>
+            </div>
         </div>
     `;
 
@@ -75,6 +82,24 @@ export function renderLemmyCard(post, actions) {
             case 'save':
                 actions.lemmySave(post.post.id, e.target.closest('button'));
                 break;
+            case 'quick-reply':
+                card.querySelector('.quick-reply-container').style.display = 'block';
+                break;
+        }
+    });
+    
+    card.querySelector('.quick-reply-box button').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const textarea = card.querySelector('.quick-reply-box textarea');
+        const content = textarea.value.trim();
+        if(!content) return;
+
+        try {
+            await actions.lemmyPostComment({ content: content, post_id: post.post.id });
+            textarea.value = '';
+            card.querySelector('.quick-reply-container').style.display = 'none';
+        } catch(err) {
+            alert('Failed to post comment.');
         }
     });
 
