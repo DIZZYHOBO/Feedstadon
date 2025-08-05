@@ -85,11 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             lemmyFilter.style.display = 'none';
         }
-
-        document.body.style.paddingTop = '50px';
-        views.app.style.display = 'block';
-        document.querySelector('.top-nav').style.display = 'flex';
         
+        document.querySelector('.top-nav').style.display = 'flex';
+        views.app.style.display = 'block';
         if (views[viewName]) {
             views[viewName].style.display = 'flex';
         }
@@ -403,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.state && event.state.view) {
             switchView(event.state.view, false);
         } else {
-             // Fallback for initial page load or when state is null
             switchView('timeline', false);
         }
     });
