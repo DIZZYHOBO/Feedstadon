@@ -6,7 +6,8 @@ import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
 import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
-import { renderLemmyDiscoverPage, renderLemmyCommunityPage, renderSubscribedFeed, renderUnifiedFeed, fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
+// ** THE FIX IS HERE **: Removed renderLemmyCommunityPage as it's no longer exported or used.
+import { renderLemmyDiscoverPage, renderSubscribedFeed, renderUnifiedFeed, fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
@@ -148,9 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('lemmyDiscover');
             renderLemmyDiscoverPage(state, actions);
         },
+        // ** THE FIX IS HERE **: Removed the call to the non-existent function.
         showLemmyCommunity: (communityAcct) => {
-            switchView('lemmyCommunity');
-            renderLemmyCommunityPage(state, communityAcct, actions);
+            // This can be re-implemented later if needed. For now, it prevents the crash.
+            alert(`Community view for ${communityAcct} is not yet implemented.`);
         },
         showLemmyPostDetail: (post) => {
             switchView('lemmyPost');
@@ -352,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
     initDropdowns(); 
 
-    // --- Logout Modal Logic ---
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
         e.preventDefault();
@@ -389,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload();
     });
     
-    // --- Other Event Listeners ---
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
         const target = e.target.closest('a');
@@ -416,8 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showComposeModal(state);
                 break;
             case 'profile-link':
-                // Logic to decide which profile to show
-                if (state.currentUser) { // Prioritize Mastodon profile
+                if (state.currentUser) {
                     actions.showProfile(state.currentUser.id);
                 } else if (localStorage.getItem('lemmy_username')) {
                     const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
@@ -442,7 +441,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore) return;
 
-        // Trigger near the bottom of the page
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
             if (state.currentView === 'timeline' && state.currentLemmyFeed && state.lemmyHasMore) {
                 fetchLemmyFeed(state, actions, true);
@@ -452,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initial check on load
     if (localStorage.getItem('fediverse-token') || localStorage.getItem('lemmy_jwt')) {
         onEnterApp();
     } else {
