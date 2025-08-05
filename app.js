@@ -30,6 +30,51 @@ function initDropdowns() {
     });
 }
 
+function initPullToRefresh(state, actions) {
+    const ptrIndicator = document.getElementById('pull-to-refresh-indicator');
+    let startY = 0;
+    let isPulling = false;
+
+    document.body.addEventListener('touchstart', (e) => {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].pageY;
+            isPulling = true;
+        }
+    });
+
+    document.body.addEventListener('touchmove', (e) => {
+        if (!isPulling) return;
+
+        const currentY = e.touches[0].pageY;
+        const diffY = currentY - startY;
+
+        if (diffY > 0) {
+            e.preventDefault();
+            ptrIndicator.style.transform = `translateY(${Math.min(diffY, 100) - 50}px)`;
+        }
+    });
+
+    document.body.addEventListener('touchend', (e) => {
+        if (!isPulling) return;
+        isPulling = false;
+        
+        const currentY = e.changedTouches[0].pageY;
+        const diffY = currentY - startY;
+
+        ptrIndicator.style.transform = 'translateY(-150%)';
+
+        if (diffY > 80) { // Threshold to trigger refresh
+            if (state.currentView === 'timeline') {
+                if (state.currentTimeline) {
+                    actions.showHomeTimeline();
+                } else if (state.currentLemmyFeed) {
+                    actions.showLemmyFeed(state.currentLemmyFeed);
+                }
+            }
+        }
+    });
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // Apply saved theme on startup
@@ -341,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initDropdowns();
+    initPullToRefresh(state, actions);
     initComposeModal(state, () => actions.showHomeTimeline());
     
     const initialView = location.hash.substring(1) || 'timeline';
