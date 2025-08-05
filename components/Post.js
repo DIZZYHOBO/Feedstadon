@@ -112,6 +112,7 @@ export function renderStatus(status, currentUser, actions, settings) {
                     <span class="acct">@${author.acct}</span>
                     <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
                 </div>
+                <div class="platform-icon-indicator">${ICONS.mastodon}</div>
                 ${optionsMenuHTML}
             </div>
             <div class="status-content">${post.content}</div>
