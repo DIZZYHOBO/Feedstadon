@@ -8,7 +8,7 @@ function renderSingleNotification(notification, platform) {
     let icon = '';
     let content = '';
     let contextHTML = '';
-    let authorAvatar = './images/php.png'; // default avatar
+    let authorAvatar = './images/logo.png'; // A safe default avatar
     let timestamp = new Date().toISOString();
 
     if (platform === 'mastodon') {
@@ -44,14 +44,14 @@ function renderSingleNotification(notification, platform) {
             icon = ICONS.reply;
             content = `<strong>${reply.creator.name}</strong> replied to your comment.`;
             contextHTML = `<div class="notification-context">${reply.comment.content}</div>`;
-            authorAvatar = reply.creator.avatar;
+            authorAvatar = reply.creator.avatar || authorAvatar; // Use default if avatar is missing
             timestamp = reply.comment.published;
         } else if (notification.person_mention) {
             const mention = notification.person_mention;
             icon = ICONS.reply; // Using reply icon for mentions
             content = `<strong>${mention.creator.name}</strong> mentioned you in a comment.`;
             contextHTML = `<div class="notification-context">${mention.comment.content}</div>`;
-            authorAvatar = mention.creator.avatar;
+            authorAvatar = mention.creator.avatar || authorAvatar; // Use default if avatar is missing
             timestamp = mention.comment.published;
         } else {
             return null; // For other Lemmy notification types we don't handle yet
@@ -93,8 +93,9 @@ export async function renderNotificationsPage(state, actions) {
         let lemmyNotifs = [];
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
-            const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
-            const mentionsResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/mentions?sort=New&unread_only=false', {}, 'lemmy');
+            // Corrected API endpoints to singular form
+            const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/reply?sort=New&unread_only=false', {}, 'lemmy');
+            const mentionsResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/mention?sort=New&unread_only=false', {}, 'lemmy');
             
             lemmyNotifs = [
                 ...repliesResponse.data.replies.map(r => ({...r, type: 'reply'})),
