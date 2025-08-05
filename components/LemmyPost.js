@@ -128,29 +128,37 @@ function renderCommentNode(commentView, actions) {
     }
 
     let optionsMenuHTML = `
-        <button class="post-options-btn">${ICONS.more}</button>
-        <div class="post-options-menu">
-            <button data-action="edit-comment">${ICONS.edit} Edit</button>
-            <button data-action="delete-comment">${ICONS.delete} Delete</button>
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="edit-comment">${ICONS.edit} Edit</button>
+                <button data-action="delete-comment">${ICONS.delete} Delete</button>
+            </div>
         </div>
     `;
 
     commentWrapper.innerHTML = `
         <div class="status-body-content">
             <div class="status-header">
-                <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
-                <div>
-                    <span class="display-name">${creator.display_name || creator.name}</span>
-                    <span class="acct">@${creator.name}</span>
-                    <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
+                <div class="status-header-main">
+                    <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <div>
+                        <span class="display-name">${creator.display_name || creator.name}</span>
+                        <span class="acct">@${creator.name}</span>
+                        <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
+                    </div>
                 </div>
-                ${optionsMenuHTML}
+                <div class="status-header-side">
+                    ${optionsMenuHTML}
+                </div>
             </div>
             <div class="status-content">${comment.content}</div>
             <div class="status-footer">
-                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                <span class="lemmy-score">${counts.score}</span>
-                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                <div class="lemmy-vote-cluster">
+                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${counts.score}</span>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                </div>
                 <button class="status-action" data-action="reply">${ICONS.reply}</button>
             </div>
         </div>
@@ -206,12 +214,16 @@ export async function renderLemmyPostPage(state, post, actions) {
         <div class="status lemmy-card" data-post-id="${validatedPostId}">
             <div class="status-body-content">
                 <div class="status-header">
-                    <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar">
-                    <div>
-                        <span class="display-name">${post.community.name}</span>
-                        <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
+                     <div class="status-header-main">
+                        <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar">
+                        <div>
+                            <span class="display-name">${post.community.name}</span>
+                            <span class="acct">posted by ${post.creator.name} · ${formatTimestamp(post.post.published)}</span>
+                        </div>
                     </div>
-                     <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
+                    <div class="status-header-side">
+                        <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
+                    </div>
                 </div>
                 <div class="status-content">
                     <h3 class="lemmy-title">${post.post.name}</h3>
@@ -219,9 +231,11 @@ export async function renderLemmyPostPage(state, post, actions) {
                 </div>
                 ${thumbnailHTML}
                 <div class="status-footer">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                    <span class="lemmy-score">${post.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                    <div class="lemmy-vote-cluster">
+                        <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                        <span class="lemmy-score">${post.counts.score}</span>
+                        <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                    </div>
                     <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
                     <button class="status-action" data-action="save">${ICONS.bookmark}</button>
                 </div>
