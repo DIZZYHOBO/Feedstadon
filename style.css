@@ -538,10 +538,6 @@ textarea:focus {
     margin-bottom: 10px;
 }
 
-.lemmy-comment-wrapper {
-    margin-top: 10px;
-}
-
 .top-level-comment {
     border-left: 2px solid #5A94F1 !important; /* Blue for parent */
 }
