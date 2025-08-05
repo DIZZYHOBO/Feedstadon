@@ -5,6 +5,7 @@ let isPollActive = false;
 let isCwActive = false;
 let attachedFile = null;
 let currentLemmyPostType = 'Text';
+let resolvedLemmyCommunityId = null;
 
 export function showComposeModal(state) {
     const composeModal = document.getElementById('compose-modal');
@@ -22,6 +23,7 @@ export function showComposeModal(state) {
     document.getElementById('lemmy-image-input-container').style.display = 'none';
     document.getElementById('lemmy-body-textarea').style.display = 'block';
     currentLemmyPostType = 'Text';
+    resolvedLemmyCommunityId = null;
      document.querySelectorAll('.lemmy-post-type-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.type === 'Text');
     });
@@ -168,10 +170,33 @@ export function initComposeModal(state, onPostSuccess) {
 
     // --- Lemmy Form ---
     const lemmyForm = document.getElementById('lemmy-compose-form');
+    const lemmyCommunityInput = document.getElementById('lemmy-community-input');
     const lemmyPostTypeBtns = document.querySelectorAll('.lemmy-post-type-btn');
     const lemmyLinkForm = document.getElementById('lemmy-link-input-container');
     const lemmyImageForm = document.getElementById('lemmy-image-input-container');
     const lemmyBodyTextarea = document.getElementById('lemmy-body-textarea');
+    
+    lemmyCommunityInput.addEventListener('blur', async () => {
+        const communityName = lemmyCommunityInput.value.trim().replace(/^!/, '');
+        if (!communityName) return;
+
+        try {
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            const response = await apiFetch(lemmyInstance, null, `/api/v3/community?name=${communityName}`, {}, 'lemmy');
+            if (response.data.community_view) {
+                resolvedLemmyCommunityId = response.data.community_view.community.id;
+                lemmyCommunityInput.style.borderColor = 'green';
+            } else {
+                resolvedLemmyCommunityId = null;
+                lemmyCommunityInput.style.borderColor = 'red';
+                alert('Community not found.');
+            }
+        } catch (err) {
+            resolvedLemmyCommunityId = null;
+            lemmyCommunityInput.style.borderColor = 'red';
+            alert('Failed to resolve community.');
+        }
+    });
     
     lemmyPostTypeBtns.forEach(button => {
         button.addEventListener('click', () => {
@@ -193,20 +218,18 @@ export function initComposeModal(state, onPostSuccess) {
     lemmyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const title = document.getElementById('lemmy-title-input').value.trim();
-        const community = document.getElementById('lemmy-community-input').value.trim();
-        
-        if (!title || !community) {
-            alert('A title and community are required for Lemmy posts.');
+        if (!title || !resolvedLemmyCommunityId) {
+            alert('A title and a valid, resolved community are required.');
             return;
         }
 
         const postBody = {
             name: title,
             body: document.getElementById('lemmy-body-textarea').value.trim(),
-            community_id: null 
+            community_id: resolvedLemmyCommunityId
         };
         
-        alert("Lemmy posting is not fully implemented. Community name needs to be resolved to an ID.");
+        alert("Lemmy posting is not fully implemented. Check console for post body.");
         console.log("Lemmy Post Body:", postBody);
 
     });
