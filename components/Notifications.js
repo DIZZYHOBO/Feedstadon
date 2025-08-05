@@ -2,67 +2,18 @@ import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
-function renderSingleNotification(notification, platform) {
+function renderSingleNotification(notification) {
     const item = document.createElement('div');
     item.className = 'notification-item';
-    let icon = '';
-    let content = '';
-    let contextHTML = '';
-    let authorAvatar = './images/logo.png'; // A safe default avatar
-    let timestamp = new Date().toISOString();
-
-    if (platform === 'mastodon') {
-        if (notification.account && notification.account.avatar_static) {
-            authorAvatar = notification.account.avatar_static;
-        }
-        timestamp = notification.created_at;
-        switch (notification.type) {
-            case 'favourite':
-                icon = ICONS.favorite;
-                content = `<strong>${notification.account.display_name}</strong> favourited your post.`;
-                contextHTML = `<div class="notification-context">${notification.status.content.replace(/<[^>]*>/g, "")}</div>`;
-                break;
-            case 'reblog':
-                icon = ICONS.boost;
-                content = `<strong>${notification.account.display_name}</strong> boosted your post.`;
-                contextHTML = `<div class="notification-context">${notification.status.content.replace(/<[^>]*>/g, "")}</div>`;
-                break;
-            case 'mention':
-                icon = ICONS.reply;
-                content = `<strong>${notification.account.display_name}</strong> mentioned you.`;
-                contextHTML = `<div class="notification-context">${notification.status.content.replace(/<[^>]*>/g, "")}</div>`;
-                break;
-            case 'follow':
-                icon = '👤';
-                content = `<strong>${notification.account.display_name}</strong> followed you.`;
-                break;
-            default:
-                return null;
-        }
-    } 
-    else if (platform === 'lemmy') {
-        if (notification.comment_reply) {
-            const reply = notification.comment_reply;
-            icon = ICONS.reply;
-            content = `<strong>${reply.creator.name}</strong> replied to your comment.`;
-            contextHTML = `<div class="notification-context">${reply.comment.content}</div>`;
-            if (reply.creator.avatar) {
-                authorAvatar = reply.creator.avatar;
-            }
-            timestamp = reply.comment.published;
-        } else {
-            return null; // Ignore other notification types for now
-        }
-    }
 
     item.innerHTML = `
-        <div class="notification-icon">${icon}</div>
-        <img class="notification-avatar" src="${authorAvatar}" alt="avatar">
+        <div class="notification-icon">${notification.icon}</div>
+        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar">
         <div class="notification-content">
-            <p>${content}</p>
-            ${contextHTML}
+            <p>${notification.content}</p>
+            ${notification.contextHTML}
         </div>
-        <div class="timestamp">${formatTimestamp(timestamp)}</div>
+        <div class="timestamp">${formatTimestamp(notification.timestamp)}</div>
     `;
 
     return item;
@@ -87,17 +38,46 @@ export async function renderNotificationsPage(state, actions) {
             mastodonNotifs = response.data;
         }
 
-        let lemmyNotifs = [];
+        let lemmyReplyNotifs = [];
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
             const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
-            lemmyNotifs = repliesResponse.data.replies.map(r => ({...r, type: 'reply'}));
+            lemmyReplyNotifs = repliesResponse.data.replies || [];
         }
 
+        // --- Data Transformation Step ---
+        // Transform the raw API data into a simple, consistent format.
         const allNotifications = [
-            ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon', date: n.created_at })),
-            ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply.comment.published }))
-        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Mastodon Notifications
+            ...mastodonNotifs.map(n => ({
+                platform: 'mastodon',
+                date: n.created_at,
+                icon: ICONS.favorite, // Placeholder, can be improved
+                content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
+                contextHTML: `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>`,
+                authorAvatar: n.account.avatar_static,
+                timestamp: n.created_at
+            })),
+            // Lemmy Comment Reply Notifications
+            ...lemmyReplyNotifs.map(n => {
+                // Defensive check to ensure data exists before creating the object
+                if (!n.comment_reply || !n.comment_reply.creator || !n.comment_reply.comment) {
+                    return null;
+                }
+                const reply = n.comment_reply;
+                return {
+                    platform: 'lemmy',
+                    date: reply.comment.published,
+                    icon: ICONS.reply,
+                    content: `<strong>${reply.creator.name}</strong> replied to your comment.`,
+                    contextHTML: `<div class="notification-context">${reply.comment.content}</div>`,
+                    authorAvatar: reply.creator.avatar || './images/logo.png',
+                    timestamp: reply.comment.published
+                };
+            })
+        ].filter(Boolean); // Filter out any null entries from failed transformations
+
+        allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
@@ -109,7 +89,7 @@ export async function renderNotificationsPage(state, actions) {
             }
 
             filtered.forEach(notification => {
-                const item = renderSingleNotification(notification, notification.platform);
+                const item = renderSingleNotification(notification);
                 if (item) listContainer.appendChild(item);
             });
         };
