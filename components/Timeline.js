@@ -1,95 +1,91 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
+import { renderLemmyCard } from './Lemmy.js';
 
-export function renderLoginPrompt(container, service, onMastodonSuccess, onLemmySuccess) {
+export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
     container.innerHTML = '';
     const template = document.getElementById('login-prompt-template');
-    const prompt = template.content.cloneNode(true);
+    const clone = template.content.cloneNode(true);
+    container.appendChild(clone);
     
-    const mastodonSection = prompt.querySelector('#mastodon-login-section');
-    const lemmySection = prompt.querySelector('#lemmy-login-section');
+    const mastodonSection = container.querySelector('#mastodon-login-section');
+    const lemmySection = container.querySelector('#lemmy-login-section');
 
-    if (service === 'mastodon') {
-        lemmySection.remove();
-        const mastodonForm = mastodonSection.querySelector('form');
-        mastodonForm.addEventListener('submit', (e) => {
+    if (platform === 'mastodon') {
+        lemmySection.style.display = 'none';
+        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const instanceUrl = mastodonForm.querySelector('.instance-url').value.trim();
-            const accessToken = mastodonForm.querySelector('.access-token').value.trim();
-            if (instanceUrl && accessToken) {
-                onMastodonSuccess(instanceUrl, accessToken);
-            }
+            const instance = e.target.querySelector('.instance-url').value;
+            const token = e.target.querySelector('.access-token').value;
+            onLoginSuccess(instance, token);
         });
-    } else {
-        mastodonSection.remove();
-        const lemmyForm = lemmySection.querySelector('form');
-        lemmyForm.addEventListener('submit', (e) => {
+    } else if (platform === 'lemmy') {
+        mastodonSection.style.display = 'none';
+        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const instance = lemmyForm.querySelector('.lemmy-instance-input').value.trim();
-            const username = lemmyForm.querySelector('.lemmy-username-input').value.trim();
-            const password = lemmyForm.querySelector('.lemmy-password-input').value.trim();
-            if(instance && username && password) {
-                onLemmySuccess(instance, username, password);
-            }
+            const instance = e.target.querySelector('.lemmy-instance-input').value;
+            const username = e.target.querySelector('.lemmy-username-input').value;
+            const password = e.target.querySelector('.lemmy-password-input').value;
+            onSecondarySuccess(instance, username, password);
         });
     }
-
-    container.appendChild(prompt);
 }
 
-
-export async function fetchTimeline(state, actions, loadMore = false, onMastodonSuccess) {
-    if (!state.accessToken && !loadMore) {
-        renderLoginPrompt(state.timelineDiv, 'mastodon', onMastodonSuccess, null);
+export async function fetchTimeline(state, actions, loadMore = false) {
+    if (!state.accessToken && !localStorage.getItem('lemmy_jwt')) {
+        renderLoginPrompt(state.timelineDiv, 'mastodon', actions.onMastodonLoginSuccess);
         return;
     }
     
     if (state.isLoadingMore) return;
-
+    
     if (!loadMore) {
         window.scrollTo(0, 0);
-        state.timelineDiv.innerHTML = '<p>Loading...</p>';
+        state.timelineDiv.innerHTML = '';
     }
-
+    
     state.isLoadingMore = true;
     if (loadMore) state.scrollLoader.classList.add('loading');
     else document.getElementById('refresh-btn').classList.add('loading');
-
+    
     try {
-        const endpoint = loadMore ? state.nextPageUrl : `/api/v1/timelines/${state.currentTimeline}`;
-        if (!endpoint) return;
+        let allPosts = [];
 
-        const { data, linkHeader } = await apiFetch(state.instanceUrl, state.accessToken, endpoint, {}, 'mastodon', null, loadMore);
+        // Fetch Mastodon posts
+        const mastodonPromise = state.accessToken 
+            ? apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home')
+            : Promise.resolve({ data: [] });
 
-        if (!loadMore) {
-            state.timelineDiv.innerHTML = '';
-        }
+        // Fetch Lemmy posts for merged feed
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const lemmyPromise = lemmyInstance 
+            ? apiFetch(lemmyInstance, null, '/api/v3/post/list', { type_: 'Subscribed' }, 'lemmy')
+            : Promise.resolve({ data: { posts: [] } });
 
-        data.forEach(status => {
-            // ** THE FIX IS HERE **: Pass state.settings directly.
-            const statusCard = renderStatus(status, state.currentUser, actions, state.settings);
-            state.timelineDiv.appendChild(statusCard);
-        });
+        const [mastodonResponse, lemmyResponse] = await Promise.all([mastodonPromise, lemmyPromise]);
+        
+        const mastodonPosts = mastodonResponse.data.map(p => ({ ...p, platform: 'mastodon', date: p.created_at }));
+        const lemmyPosts = lemmyResponse.data.posts.map(p => ({ ...p, platform: 'lemmy', date: p.post.published }));
 
-        if (linkHeader) {
-            const links = linkHeader.split(',').map(link => link.trim());
-            const nextLink = links.find(link => link.includes('rel="next"'));
-            if (nextLink) {
-                state.nextPageUrl = nextLink.substring(nextLink.indexOf('<') + 1, nextLink.indexOf('>'));
-            } else {
-                state.nextPageUrl = null;
-                state.scrollLoader.innerHTML = '<p>No more posts.</p>';
-            }
+        allPosts = [...mastodonPosts, ...lemmyPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (allPosts.length > 0) {
+            allPosts.forEach(post => {
+                let postCard;
+                if (post.platform === 'mastodon') {
+                    postCard = renderStatus(post, state.currentUser, actions, state.settings);
+                } else {
+                    postCard = renderLemmyCard(post, actions);
+                }
+                state.timelineDiv.appendChild(postCard);
+            });
         } else {
-            state.nextPageUrl = null;
-            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+            state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
         }
 
     } catch (error) {
         console.error('Failed to fetch timeline:', error);
-        if (!loadMore) {
-            state.timelineDiv.innerHTML = `<p>Could not load timeline. ${error.message}</p>`;
-        }
+        state.timelineDiv.innerHTML = `<p>Error loading feed. ${error.message}</p>`;
     } finally {
         state.isLoadingMore = false;
         if (loadMore) state.scrollLoader.classList.remove('loading');
