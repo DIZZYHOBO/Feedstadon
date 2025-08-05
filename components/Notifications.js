@@ -55,22 +55,18 @@ function renderSingleNotification(notification, platform) {
 
 export async function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
-    container.innerHTML = `
-        <div class="notifications-sub-nav">
-            <div class="notifications-sub-nav-tabs">
-                <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
-                <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
-                <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
-            </div>
-        </div>
-        <div id="notifications-list">Loading...</div>
-    `;
+    const subNav = container.querySelector('.notifications-sub-nav');
+    const listContainer = container.querySelector('#notifications-list');
 
-    const listContainer = document.getElementById('notifications-list');
+    subNav.innerHTML = `
+        <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
+        <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
+        <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
+    `;
+    listContainer.innerHTML = 'Loading...';
     
     try {
         let mastodonNotifs = [];
-        // Only fetch if logged into Mastodon
         if (state.instanceUrl && state.accessToken) {
             const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
             mastodonNotifs = response.data;
@@ -98,9 +94,9 @@ export async function renderNotificationsPage(state, actions) {
             });
         };
 
-        container.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
+        subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
             button.addEventListener('click', (e) => {
-                container.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
+                subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 renderFilteredNotifications(e.target.dataset.filter);
             });
