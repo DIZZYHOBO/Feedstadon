@@ -1,168 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Feedstodon</title>
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#1D1E1F">
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="./images/logo.png" type="image/png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JS Module Example</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; }
+    header { background-color: #333; padding: 1rem; }
+    nav a { color: white; text-decoration: none; margin-right: 1.5rem; font-size: 1.1rem; }
+    nav a:hover { text-decoration: underline; }
+    main { padding: 1rem 2rem; }
+    .page-container { animation: fadeIn 0.5s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
 </head>
 <body>
 
-    <nav class="top-nav" style="display: none;">
-        <div class="nav-left">
-            <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
-            <button class="nav-button icon-button" id="notifications-btn" title="Notifications"></button>
-            <div class="dropdown" id="feeds-dropdown">
-                <button class="nav-button">Feeds</button>
-                <div class="dropdown-content">
-                    <a href="#" data-timeline="home" class="main-feed-link">Home</a>
-                    <a href="#" id="lemmy-main-link">Lemmy</a>
-                    <a href="#" id="mastodon-main-link">Mastodon</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="nav-center">
-            <form id="search-form" style="display: none;">
-                <input type="search" id="search-input" placeholder="Search accounts and hashtags..." autocomplete="off">
-                <div id="search-suggestions-container"></div>
-            </form>
-        </div>
-
-        <div class="nav-right">
-            <button class="nav-button" id="search-toggle-btn">Search</button>
-            <div class="dropdown" id="user-dropdown">
-                <button class="nav-button" id="user-display-btn">Menu</button>
-                <div class="dropdown-content">
-                    <a href="#" id="new-post-link">New Post</a>
-                    <a href="#" id="profile-link">Profile</a>
-                    <a href="#" id="settings-link">Settings</a>
-                    <a href="#" id="logout-link">Logout</a>
-                </div>
-            </div>
-        </div>
+  <header>
+    <nav>
+      <a href="#home">Home</a>
+      <a href="#notifications">Notifications</a>
+      <a href="#settings">Settings</a>
     </nav>
+  </header>
 
-    <div class="container">
-        <div id="app-view">
-            <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
-            <div id="notifications-view" style="display: none;">
-                <div class="notifications-sub-nav"></div>
-                <div id="notifications-list"></div>
-            </div>
-            <div id="timeline"></div>
-            <div id="profile-page-view" style="display: none;"></div>
-            <div id="search-results-view" style="display: none;"></div>
-            <div id="status-detail-view" style="display: none;"></div>
-            <div id="settings-view" style="display: none;"></div>
-            <div id="lemmy-post-view" style="display: none;"></div>
-            <div id="scroll-loader"><p>Loading more...</p></div>
-        </div>
-    </div>
-    
-    <template id="login-prompt-template">
-        <div class="login-prompt-container">
-            <div class="login-prompt-form-container">
-                <div class="login-form-section" id="mastodon-login-section">
-                     <h4>Log in to Mastodon</h4>
-                     <form class="mastodon-login-form">
-                        <input type="text" class="instance-url" placeholder="your-instance.social">
-                        <input type="password" class="access-token" placeholder="Paste your access token">
-                        <button type="submit" class="connect-btn">Log In</button>
-                    </form>
-                </div>
-                <div class="login-form-section" id="lemmy-login-section">
-                    <h4>Log in to Lemmy</h4>
-                    <form class="lemmy-login-form">
-                        <input type="text" class="lemmy-instance-input" value="leminal.space">
-                        <input type="text" class="lemmy-username-input" placeholder="Your Lemmy Username">
-                        <input type="password" class="lemmy-password-input" placeholder="Your Lemmy Password">
-                        <button type="submit" class="connect-btn">Log In</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </template>
+  <main id="app">
+    </main>
 
-    <div id="compose-modal" class="modal-overlay">
-       <div class="modal-content">
-            <div class="compose-tabs">
-                <button class="tab-button active" data-tab="mastodon">Mastodon</button>
-                <button class="tab-button" data-tab="lemmy">Lemmy</button>
-            </div>
-            
-            <div class="compose-tab-content active" id="mastodon-compose-tab">
-                <form id="mastodon-compose-form">
-                    <div id="cw-creator-container" style="display: none;">
-                        <input type="text" id="spoiler-text-input" placeholder="Content Warning (e.g., spoilers, politics)">
-                    </div>
-                    <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                    <div id="poll-creator-container" style="display: none;">
-                        <div id="poll-options-container">
-                            <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
-                            <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
-                        </div>
-                        <button type="button" id="add-poll-option-btn" class="button-secondary">Add Choice</button>
-                        <div class="poll-settings">
-                            <div class="form-group"><label for="poll-duration-select">Poll duration</label><select id="poll-duration-select"><option value="300">5 minutes</option><option value="1800">30 minutes</option><option value="3600">1 hour</option><option value="21600">6 hours</option><option value="86400" selected>1 day</option><option value="259200">3 days</option><option value="604800">7 days</option></select></div>
-                            <div class="form-group"><label><input type="checkbox" id="poll-multiple-choice-check"> Multiple choices</label></div>
-                        </div>
-                    </div>
-                    <div class="modal-actions">
-                        <div class="compose-options">
-                            <input type="file" id="media-attachment-input" accept="image/*,video/*,image/svg+xml" style="display: none;"><button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media"></button><button type="button" id="add-poll-btn" class="button-secondary icon-button" title="Add Poll"></button><button type="button" id="add-cw-btn" class="button-secondary icon-button" title="Add Content Warning"></button><span id="media-filename-preview"></span>
-                        </div>
-                        <div><button type="button" class="button-secondary cancel-compose-btn">Cancel</button><button type="submit">Post</button></div>
-                    </div>
-                </form>
-            </div>
+  <script type="module" src="./app.js"></script>
 
-            <div class="compose-tab-content" id="lemmy-compose-tab">
-                <form id="lemmy-compose-form">
-                    <input type="text" id="lemmy-title-input" placeholder="Title (required)" required>
-                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., !main@lemmy.world)" required>
-                    <div class="lemmy-post-type-selector">
-                        <button type="button" class="lemmy-post-type-btn active" data-type="Text">Text</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="Link">Link</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="Image">Image</button>
-                    </div>
-                    <div id="lemmy-link-input-container" style="display: none;">
-                        <input type="url" id="lemmy-url-input" placeholder="https://example.com">
-                    </div>
-                    <div id="lemmy-image-input-container" style="display: none;">
-                        <input type="file" id="lemmy-image-input" accept="image/*">
-                        <span id="lemmy-image-preview"></span>
-                    </div>
-                    <textarea id="lemmy-body-textarea" placeholder="Body (optional)"></textarea>
-                    <div class="modal-actions">
-                        <div><button type="button" class="button-secondary cancel-compose-btn">Cancel</button><button type="submit">Post</button></div>
-                    </div>
-                </form>
-            </div>
-
-        </div>
-    </div>
-
-    <div id="logout-modal" class="modal-overlay">
-       <div class="modal-content">
-            <h3>Logout</h3>
-            <p>Choose which account to log out from.</p>
-            <div class="logout-options">
-                <button id="mastodon-logout-btn" class="button-secondary">Mastodon Logout</button>
-                <button id="lemmy-logout-btn" class="button-secondary">Lemmy Logout</button>
-            </div>
-            <div class="modal-actions">
-                <button id="cancel-logout-btn" class="button-secondary">Cancel</button>
-                <button id="logout-all-btn" class="button-danger">Logout All</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast-notification"></div>
-
-    <script type="module" src="app.js"></script>
 </body>
 </html>
