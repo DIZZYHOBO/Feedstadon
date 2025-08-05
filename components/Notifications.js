@@ -87,16 +87,16 @@ export async function renderNotificationsPage(state, actions) {
             mastodonNotifs = response.data;
         }
 
-        let lemmyNotifs = [];
+        let lemmyReplyNotifs = [];
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
             const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
-            lemmyNotifs = repliesResponse.data.replies.map(r => ({...r, type: 'reply'}));
+            lemmyReplyNotifs = repliesResponse.data.replies || [];
         }
 
         const allNotifications = [
             ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon', date: n.created_at })),
-            ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply.comment.published }))
+            ...lemmyReplyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply.comment.published }))
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const renderFilteredNotifications = (filter) => {
