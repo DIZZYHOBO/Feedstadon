@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('fediverse-token', accessToken);
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 showToast('Mastodon login successful!');
-                actions.showMastodonTimeline('home');
+                actions.showHomeTimeline();
                 return true;
             })
             .catch(() => {
