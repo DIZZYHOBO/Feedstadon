@@ -350,7 +350,7 @@ button:disabled {
     flex-direction: column;
     gap: 15px;
 }
-#status-detail-view {
+#status-detail-view, #notifications-view {
     flex-direction: column;
 }
 #status-detail-view .status {
@@ -698,9 +698,6 @@ button:disabled {
 
 
 /* --- Notifications Page --- */
-#notifications-view {
-    flex-direction: column;
-}
 .notification-item {
     display: flex;
     gap: 15px;
@@ -812,5 +809,10 @@ button:disabled {
     .comment-replies-container {
         margin-left: 5px;
         padding-left: 10px;
+    }
+
+    .notification-item {
+        padding: 10px;
+        gap: 10px;
     }
 }
