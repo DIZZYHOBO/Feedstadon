@@ -35,8 +35,8 @@ function initDropdowns() {
 document.addEventListener('DOMContentLoaded', () => {
     const state = {
         history: [],
-        instanceUrl: null,
-        accessToken: null,
+        instanceUrl: localStorage.getItem('fediverse-instance') || null,
+        accessToken: localStorage.getItem('fediverse-token') || null,
         currentUser: null,
         currentView: null,
         currentTimeline: 'home',
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView(initialView, false);
     
     if (initialView === 'timeline') {
-        if (localStorage.getItem('fediverse-token')) {
+        if (state.accessToken) { // Corrected check for Mastodon login
             actions.showHomeTimeline();
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
