@@ -350,6 +350,9 @@ button:disabled {
     flex-direction: column;
     gap: 15px;
 }
+#status-detail-view {
+    flex-direction: column;
+}
 #status-detail-view .status {
     border-left: 2px solid var(--border-color);
     border-radius: 0;
