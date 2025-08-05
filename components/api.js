@@ -94,6 +94,26 @@ export async function apiUploadMedia(state, file) {
     return response.json();
 }
 
+export async function apiUploadLemmyImage(instanceUrl, token, file) {
+    const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const url = `https://${cleanInstanceUrl}/pictrs/image/upload`;
+    
+    const formData = new FormData();
+    formData.append('images[]', file);
+
+    const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+        throw new Error(`Lemmy image upload failed: HTTP ${response.status}`);
+    }
+
+    return response.json();
+}
+
 
 /**
  * A helper function to update user profile credentials.
