@@ -50,8 +50,17 @@ function renderSingleNotification(notification, platform) {
                 authorAvatar = reply.creator.avatar;
             }
             timestamp = reply.comment.published;
+        } else if (notification.person_mention) {
+            const mention = notification.person_mention;
+            icon = ICONS.reply;
+            content = `<strong>${mention.creator.name}</strong> mentioned you in a comment.`;
+            contextHTML = `<div class="notification-context">${mention.comment.content}</div>`;
+            if(mention.creator.avatar) {
+                authorAvatar = mention.creator.avatar;
+            }
+            timestamp = mention.comment.published;
         } else {
-            return null; // For other Lemmy notification types we don't handle yet
+            return null;
         }
     }
 
@@ -91,12 +100,17 @@ export async function renderNotificationsPage(state, actions) {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
             const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
-            lemmyNotifs = repliesResponse.data.replies.map(r => ({...r, type: 'reply'}));
+            const mentionsResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/mentions?sort=New&unread_only=false', {}, 'lemmy');
+            
+            lemmyNotifs = [
+                ...repliesResponse.data.replies.map(r => ({...r, type: 'reply'})),
+                ...mentionsResponse.data.mentions.map(m => ({...m, type: 'mention'}))
+            ];
         }
 
         const allNotifications = [
             ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon', date: n.created_at })),
-            ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply.comment.published }))
+            ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply ? n.comment_reply.comment.published : n.person_mention.comment.published }))
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const renderFilteredNotifications = (filter) => {
