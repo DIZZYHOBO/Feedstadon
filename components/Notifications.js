@@ -8,8 +8,12 @@ function renderSingleNotification(notification, platform) {
     let icon = '';
     let content = '';
     let contextHTML = '';
+    let authorAvatar = './images/php.png'; // default avatar
+    let timestamp = new Date().toISOString();
 
     if (platform === 'mastodon') {
+        authorAvatar = notification.account.avatar_static;
+        timestamp = notification.created_at;
         switch (notification.type) {
             case 'favourite':
                 icon = ICONS.favorite;
@@ -33,22 +37,36 @@ function renderSingleNotification(notification, platform) {
             default:
                 return null;
         }
-        
-        item.innerHTML = `
-            <div class="notification-icon">${icon}</div>
-            <img class="notification-avatar" src="${notification.account.avatar_static}" alt="${notification.account.display_name}">
-            <div class="notification-content">
-                <p>${content}</p>
-                ${contextHTML}
-            </div>
-            <div class="timestamp">${formatTimestamp(notification.created_at)}</div>
-        `;
     } 
-    // Placeholder for Lemmy notifications
     else if (platform === 'lemmy') {
-        // This part needs to be implemented based on Lemmy's notification API structure
-        item.innerHTML = `<div class="notification-icon">${ICONS.lemmy}</div><div class="notification-content"><p>Lemmy notification placeholder</p></div>`;
+        if (notification.comment_reply) {
+            const reply = notification.comment_reply;
+            icon = ICONS.reply;
+            content = `<strong>${reply.creator.name}</strong> replied to your comment.`;
+            contextHTML = `<div class="notification-context">${reply.comment.content}</div>`;
+            authorAvatar = reply.creator.avatar;
+            timestamp = reply.comment.published;
+        } else if (notification.person_mention) {
+            const mention = notification.person_mention;
+            icon = ICONS.reply; // Using reply icon for mentions
+            content = `<strong>${mention.creator.name}</strong> mentioned you in a comment.`;
+            contextHTML = `<div class="notification-context">${mention.comment.content}</div>`;
+            authorAvatar = mention.creator.avatar;
+            timestamp = mention.comment.published;
+        } else {
+            return null; // For other Lemmy notification types we don't handle yet
+        }
     }
+
+    item.innerHTML = `
+        <div class="notification-icon">${icon}</div>
+        <img class="notification-avatar" src="${authorAvatar}" alt="avatar">
+        <div class="notification-content">
+            <p>${content}</p>
+            ${contextHTML}
+        </div>
+        <div class="timestamp">${formatTimestamp(timestamp)}</div>
+    `;
 
     return item;
 }
@@ -67,18 +85,27 @@ export async function renderNotificationsPage(state, actions) {
     
     try {
         let mastodonNotifs = [];
-        // Only fetch if logged into Mastodon
         if (state.instanceUrl && state.accessToken) {
             const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
             mastodonNotifs = response.data;
         }
 
-        // const lemmyNotifs = await apiFetch(...) // Placeholder for Lemmy API call
+        let lemmyNotifs = [];
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        if (lemmyInstance) {
+            const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
+            const mentionsResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/mentions?sort=New&unread_only=false', {}, 'lemmy');
+            
+            lemmyNotifs = [
+                ...repliesResponse.data.replies.map(r => ({...r, type: 'reply'})),
+                ...mentionsResponse.data.mentions.map(m => ({...m, type: 'mention'}))
+            ];
+        }
 
         const allNotifications = [
-            ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon' }))
-            // ...lemmyNotifs.data.map(n => ({ ...n, platform: 'lemmy' }))
-        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon', date: n.created_at })),
+            ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply ? n.comment_reply.comment.published : n.person_mention.comment.published }))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
