@@ -23,7 +23,7 @@ export function renderLemmyCard(post, actions) {
     `;
 
     card.innerHTML = `
-        <div class="status-body-content" data-action="view-post">
+        <div class="status-body-content">
             <div class="status-header">
                 <div class="status-header-main">
                     <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar" data-action="view-community">
@@ -43,16 +43,32 @@ export function renderLemmyCard(post, actions) {
             </div>
         </div>
         <div class="status-footer">
-            <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote} ${post.counts.upvotes}</button>
-            <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote} ${post.counts.downvotes}</button>
+            <div class="lemmy-vote-cluster">
+                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                <span class="lemmy-score">${post.counts.score}</span>
+                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+            </div>
+            <button class="status-action" data-action="quick-reply">${ICONS.reply}</button>
             <button class="status-action" data-action="view-post">${ICONS.comments} ${post.counts.comments}</button>
             <button class="status-action" data-action="save">${ICONS.bookmark}</button>
+        </div>
+        <div class="quick-reply-container">
+            <div class="quick-reply-box">
+                <textarea placeholder="Add a comment..."></textarea>
+                <button class="button-primary">Post</button>
+            </div>
         </div>
     `;
 
     card.addEventListener('click', (e) => {
         e.stopPropagation();
-        const action = e.target.closest('[data-action]')?.dataset.action;
+        const actionTarget = e.target.closest('[data-action]');
+        if (!actionTarget) return;
+        
+        const action = actionTarget.dataset.action;
+
+        // Clicks inside the quick reply box should not navigate away
+        if (action === 'quick-reply-area') return;
 
         switch (action) {
             case 'view-post':
@@ -72,8 +88,41 @@ export function renderLemmyCard(post, actions) {
             case 'save':
                 actions.lemmySave(post.post.id, e.target.closest('button'));
                 break;
+            case 'quick-reply':
+                const replyContainer = card.querySelector('.quick-reply-container');
+                const isVisible = replyContainer.style.display === 'block';
+
+                // Close all other open reply boxes
+                document.querySelectorAll('.quick-reply-container').forEach(container => {
+                    container.style.display = 'none';
+                });
+
+                // Toggle the current one
+                replyContainer.style.display = isVisible ? 'none' : 'block';
+                if (!isVisible) {
+                    replyContainer.querySelector('textarea').focus();
+                }
+                break;
         }
     });
+    
+    card.querySelector('.quick-reply-box button').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const textarea = card.querySelector('.quick-reply-box textarea');
+        const content = textarea.value.trim();
+        if(!content) return;
+
+        try {
+            await actions.lemmyPostComment({ content: content, post_id: post.post.id });
+            textarea.value = '';
+            card.querySelector('.quick-reply-container').style.display = 'none';
+        } catch(err) {
+            alert('Failed to post comment.');
+        }
+    });
+    
+    card.querySelector('.quick-reply-box textarea').addEventListener('click', (e) => e.stopPropagation());
+
 
     const optionsBtn = card.querySelector('.post-options-btn');
     if (optionsBtn) {
