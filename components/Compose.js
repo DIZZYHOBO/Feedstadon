@@ -45,11 +45,11 @@ export function initComposeModal(state, onPostSuccess) {
     const composeModal = document.getElementById('compose-modal');
     const composeForm = document.getElementById('compose-form');
     const composeTextarea = document.getElementById('compose-textarea');
-    const cancelBtn = document.getElementById('cancel-compose-btn'); // Correctly select by ID
+    const cancelBtn = document.getElementById('cancel-compose-btn');
     
     const mediaInput = document.getElementById('media-attachment-input');
     const addMediaBtn = document.getElementById('add-media-btn');
-    addMediaBtn.innerHTML = ICONS.media; // Set media icon
+    addMediaBtn.innerHTML = ICONS.media;
     const mediaPreview = document.getElementById('media-filename-preview');
     
     const addPollBtn = document.getElementById('add-poll-btn');
@@ -59,7 +59,7 @@ export function initComposeModal(state, onPostSuccess) {
     const addPollOptionBtn = document.getElementById('add-poll-option-btn');
 
     const addCwBtn = document.getElementById('add-cw-btn');
-    addCwBtn.innerHTML = ICONS.warning; // Set warning icon
+    addCwBtn.innerHTML = ICONS.warning;
     const cwCreator = document.getElementById('cw-creator-container');
     
     addMediaBtn.addEventListener('click', () => mediaInput.click());
