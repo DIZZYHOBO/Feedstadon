@@ -1,6 +1,7 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
+import { ICONS } from './icons.js';
 
 export async function renderProfilePage(state, accountId, actions) {
     const profileView = document.getElementById('profile-page-view');
@@ -22,8 +23,8 @@ export async function renderProfilePage(state, accountId, actions) {
         profileView.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
-                    <img class="banner" src="${banner}" alt="${displayName}'s banner">
-                    <img class="avatar" src="${avatar}" alt="${displayName}'s avatar">
+                    <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.display='none'">
+                    <img class="avatar" src="${avatar}" alt="${displayName}'s avatar" onerror="this.src='./images/logo.png'">
                 </div>
                 <div class="profile-actions">
                     <button class="follow-btn">Follow</button>
@@ -65,7 +66,6 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user?username=${username}`, {}, 'lemmy');
         const { person_view, posts, comments } = userData;
 
-        // Merge and sort posts and comments
         const combinedFeed = [
             ...posts.map(p => ({ ...p, type: 'post', date: p.post.published })),
             ...comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }))
@@ -74,8 +74,8 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
         profileView.innerHTML = `
             <div class="profile-card">
                  <div class="profile-header">
-                    <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner">
-                    <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar">
+                    <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
+                    <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
                 </div>
                 <div class="profile-info">
                     <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
