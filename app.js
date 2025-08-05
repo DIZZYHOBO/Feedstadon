@@ -151,13 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentLemmySort = sortType;
             switchView('timeline');
             document.getElementById('lemmy-sort-select').value = sortType;
-            fetchLemmyFeed(state, actions);
+            fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
         },
         showMastodonTimeline: (timelineType) => {
             state.currentLemmyFeed = null;
             state.currentTimeline = timelineType;
             switchView('timeline');
-            fetchTimeline(state, actions);
+            fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
@@ -297,10 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView('timeline');
     if (localStorage.getItem('lemmy_jwt')) {
         actions.showLemmyFeed('All');
-    } else if (localStorage.getItem('fediverse-token')) {
-        actions.showMastodonTimeline('home');
     } else {
-        actions.showLemmyFeed('All');
+        actions.showMastodonTimeline('home');
     }
 
     const logoutModal = document.getElementById('logout-modal');
