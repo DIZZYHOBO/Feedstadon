@@ -705,7 +705,7 @@ button:disabled {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    align-items: flex-start;
+    align-items: center; /* Vertically align items */
 }
 .notification-icon {
     color: var(--font-color-muted);
@@ -721,6 +721,10 @@ button:disabled {
 }
 .notification-content {
     flex-grow: 1;
+    min-width: 0;
+}
+.notification-content p {
+    margin: 0;
 }
 .notification-content strong {
     color: var(--font-color);
@@ -736,6 +740,12 @@ button:disabled {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.notification-item .timestamp {
+    flex-shrink: 0;
+    margin-left: auto;
+    color: var(--font-color-muted);
+    font-size: 0.9em;
 }
 
 
@@ -814,5 +824,9 @@ button:disabled {
     .notification-item {
         padding: 10px;
         gap: 10px;
+    }
+
+    .notification-item .timestamp {
+        display: none; /* Hide timestamp on very small screens to save space */
     }
 }
