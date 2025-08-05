@@ -1,81 +1,109 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
+import { formatTimestamp } from './utils.js';
 
-export function renderNotification(notification, state) {
+function renderSingleNotification(notification, platform) {
     const item = document.createElement('div');
     item.className = 'notification-item';
     let icon = '';
     let content = '';
+    let contextHTML = '';
 
-    switch (notification.type) {
-        case 'favourite':
-        case 'reblog':
-        case 'mention':
-            icon = ICONS[notification.type === 'favourite' ? 'favorite' : notification.type === 'reblog' ? 'boost' : 'reply'];
-            content = `<strong>${notification.account.display_name}</strong> ${notification.type}d your post.`;
-            item.addEventListener('click', () => {
-                state.actions.showStatusDetail(notification.status.id);
-            });
-            break;
-        case 'follow':
-            icon = '👤';
-            content = `<strong>${notification.account.display_name}</strong> followed you.`;
-            item.addEventListener('click', () => {
-                state.actions.showProfile(notification.account.id);
-            });
-            break;
-        default:
-            return null;
+    if (platform === 'mastodon') {
+        switch (notification.type) {
+            case 'favourite':
+                icon = ICONS.favorite;
+                content = `<strong>${notification.account.display_name}</strong> favourited your post.`;
+                contextHTML = `<div class="notification-context">${notification.status.content.replace(/<[^>]*>/g, "")}</div>`;
+                break;
+            case 'reblog':
+                icon = ICONS.boost;
+                content = `<strong>${notification.account.display_name}</strong> boosted your post.`;
+                contextHTML = `<div class="notification-context">${notification.status.content.replace(/<[^>]*>/g, "")}</div>`;
+                break;
+            case 'mention':
+                icon = ICONS.reply;
+                content = `<strong>${notification.account.display_name}</strong> mentioned you.`;
+                contextHTML = `<div class="notification-context">${notification.status.content.replace(/<[^>]*>/g, "")}</div>`;
+                break;
+            case 'follow':
+                icon = '👤';
+                content = `<strong>${notification.account.display_name}</strong> followed you.`;
+                break;
+            default:
+                return null;
+        }
+        
+        item.innerHTML = `
+            <div class="notification-icon">${icon}</div>
+            <img class="notification-avatar" src="${notification.account.avatar_static}" alt="${notification.account.display_name}">
+            <div class="notification-content">
+                <p>${content}</p>
+                ${contextHTML}
+            </div>
+            <div class="timestamp">${formatTimestamp(notification.created_at)}</div>
+        `;
+    } 
+    // Placeholder for Lemmy notifications
+    else if (platform === 'lemmy') {
+        // This part needs to be implemented based on Lemmy's notification API structure
+        item.innerHTML = `<div class="notification-icon">${ICONS.lemmy}</div><div class="notification-content"><p>Lemmy notification placeholder</p></div>`;
     }
-    
-    item.innerHTML = `
-        <div class="notification-icon">${icon}</div>
-        <img class="notification-avatar" src="${notification.account.avatar_static}" alt="${notification.account.display_name}">
-        <div class="notification-content">${content}</div>
-    `;
+
     return item;
 }
 
+export async function renderNotificationsPage(state, actions) {
+    const container = document.getElementById('notifications-view');
+    container.innerHTML = `
+        <div class="notifications-sub-nav">
+            <div class="notifications-sub-nav-tabs">
+                <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
+                <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
+                <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
+            </div>
+        </div>
+        <div id="notifications-list">Loading...</div>
+    `;
 
-export async function fetchNotifications(state) {
-    const container = document.getElementById('notifications-list');
-    container.innerHTML = '<div class="notification-item">Loading...</div>';
-
+    const listContainer = document.getElementById('notifications-list');
+    
     try {
-        const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
-        const notifications = response.data;
-        container.innerHTML = '';
+        const mastodonNotifs = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+        // const lemmyNotifs = await apiFetch(...) // Placeholder for Lemmy API call
 
-        if (notifications.length === 0) {
-            container.innerHTML = '<div class="notification-item">You have no new notifications.</div>';
-            return;
-        }
+        const allNotifications = [
+            ...mastodonNotifs.data.map(n => ({ ...n, platform: 'mastodon' }))
+            // ...lemmyNotifs.data.map(n => ({ ...n, platform: 'lemmy' }))
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Assuming similar timestamp fields
 
-        const recentNotifications = notifications.slice(0, 10);
-
-        recentNotifications.forEach(notification => {
-            const item = renderNotification(notification, state);
-            if (item) {
-                 item.addEventListener('click', () => {
-                    document.getElementById('notifications-dropdown').classList.remove('active');
-                });
-                container.appendChild(item);
+        const renderFilteredNotifications = (filter) => {
+            listContainer.innerHTML = '';
+            const filtered = allNotifications.filter(n => filter === 'all' || n.platform === filter);
+            
+            if (filtered.length === 0) {
+                listContainer.innerHTML = '<p>No notifications to show.</p>';
+                return;
             }
+
+            filtered.forEach(notification => {
+                const item = renderSingleNotification(notification, notification.platform);
+                if (item) listContainer.appendChild(item);
+            });
+        };
+
+        container.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                container.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                renderFilteredNotifications(e.target.dataset.filter);
+            });
         });
 
-        if (notifications.length > 10) {
-            const viewAllBtn = document.createElement('button');
-            viewAllBtn.className = 'view-all-button';
-            viewAllBtn.textContent = 'View All';
-            viewAllBtn.onclick = () => {
-                state.actions.showAllNotifications();
-                document.getElementById('notifications-dropdown').classList.remove('active');
-            };
-            container.appendChild(viewAllBtn);
-        }
+        renderFilteredNotifications('all'); // Initial render
 
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
-        container.innerHTML = '<div class="notification-item">Could not load notifications.</div>';
+        listContainer.innerHTML = `<p>Could not load notifications. ${error.message}</p>`;
     }
 }
