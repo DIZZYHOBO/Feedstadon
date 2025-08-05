@@ -255,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('fediverse-token', accessToken);
                 document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
                 showToast('Mastodon login successful!');
-                // On success, go to the home (subscribed) timeline.
                 actions.showMastodonTimeline('home');
                 return true;
             })
@@ -278,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
                 showToast('Lemmy login successful!');
-                // On success, go to the Subscribed feed.
                 actions.showLemmyFeed('Subscribed');
             } else {
                 alert('Lemmy login failed.');
@@ -292,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initDropdowns();
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
     
-    // Initial App Load
     const initialView = location.hash.substring(1) || 'timeline';
     switchView(initialView, false);
     
@@ -303,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
             actions.showMastodonTimeline('home');
         }
     }
-    
+
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
         e.preventDefault();
@@ -402,14 +399,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Browser Back Button Handling ---
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.view) {
-            // Navigate to the view from the history state without pushing a new state
             switchView(event.state.view, false);
+        } else {
+             // Fallback for initial page load or when state is null
+            switchView('timeline', false);
         }
     });
 
-    // Set the initial state in the browser's history
     history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
 });
