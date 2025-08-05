@@ -6,8 +6,8 @@ import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
 import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
-// ** THE FIX IS HERE **: Removed renderLemmyDiscoverPage as it's no longer exported or used.
-import { renderSubscribedFeed, renderUnifiedFeed, fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
+// ** THE FIX IS HERE **: Removed renderSubscribedFeed and renderUnifiedFeed from the import.
+import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
@@ -145,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('settings');
             renderSettingsPage(state);
         },
-        // ** THE FIX IS HERE **: Removed the call to the non-existent function.
         showLemmyDiscover: () => {
             alert('Discover page is not yet implemented.');
         },
@@ -170,15 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('timeline');
             fetchTimeline(state, timelineType);
         },
-        showLemmySubscribedFeed: () => {
-            actions.showLemmyFeed('Subscribed');
-        },
-        showUnifiedFeed: () => {
-            state.currentTimeline = null;
-            state.currentLemmyFeed = null;
-            switchView('unifiedFeed');
-            renderUnifiedFeed(state, actions);
-        },
+        // ** THE FIX IS HERE **: Removed actions that called non-existent functions.
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
                 actions.showProfile(account.id);
