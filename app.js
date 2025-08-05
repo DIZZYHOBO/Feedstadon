@@ -3,11 +3,12 @@ import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
-import { initComposeModal, showComposeModal } from './components/Compose.js';
+import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
+import { renderNotificationsPage } from './components/Notifications.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = {
         app: document.getElementById('app-view'),
         timeline: document.getElementById('timeline'),
+        notifications: document.getElementById('notifications-view'),
         profile: document.getElementById('profile-page-view'),
         search: document.getElementById('search-results-view'),
         settings: document.getElementById('settings-view'),
@@ -105,6 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let items = [];
         let currentFeed = '';
+        const tabs = document.createElement('div');
+        tabs.className = 'timeline-sub-nav-tabs';
 
         if (platform === 'lemmy') {
             items = [
@@ -136,8 +140,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     actions.showMastodonTimeline(item.feed);
                 }
             });
-            subNavContainer.appendChild(button);
+            tabs.appendChild(button);
         });
+        
+        subNavContainer.appendChild(tabs);
+
+        if (platform === 'lemmy') {
+            const filterContainer = document.createElement('div');
+            filterContainer.id = 'lemmy-filter-container';
+            filterContainer.innerHTML = `
+                 <select id="lemmy-sort-select">
+                    <option value="New">New</option>
+                    <option value="Active">Active</option>
+                    <option value="Hot">Hot</option>
+                    <option value="TopHour">Top Hour</option>
+                    <option value="TopSixHour">Top Six Hour</option>
+                    <option value="TopTwelveHour">Top Twelve Hour</option>
+                    <option value="TopDay">Top Day</option>
+                </select>
+            `;
+            filterContainer.querySelector('#lemmy-sort-select').value = state.currentLemmySort;
+            filterContainer.querySelector('#lemmy-sort-select').addEventListener('change', (e) => {
+                actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
+            });
+            subNavContainer.appendChild(filterContainer);
+        }
         
         subNavContainer.style.display = 'flex';
     };
@@ -172,8 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentTimeline = null;
             state.currentLemmySort = sortType;
             switchView('timeline');
-            document.getElementById('lemmy-sort-select').value = sortType;
-            document.getElementById('lemmy-filter-container').style.display = 'block';
             renderTimelineSubNav('lemmy');
             fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
         },
@@ -181,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentLemmyFeed = null;
             state.currentTimeline = timelineType;
             switchView('timeline');
-            document.getElementById('lemmy-filter-container').style.display = 'none';
             renderTimelineSubNav('mastodon');
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
@@ -189,9 +213,15 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentLemmyFeed = null;
             state.currentTimeline = 'home';
             switchView('timeline');
-            document.getElementById('lemmy-filter-container').style.display = 'none';
             renderTimelineSubNav(null); // Hide sub-nav
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+        },
+        showNotificationsPage: () => {
+            switchView('notifications');
+            renderNotificationsPage(state, actions);
+        },
+        replyToStatus: (post) => {
+            showComposeModalWithReply(state, post);
         },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
@@ -313,6 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initDropdowns();
+    document.getElementById('notifications-btn').innerHTML = ICONS.notifications;
+    document.getElementById('notifications-btn').addEventListener('click', actions.showNotificationsPage);
     initComposeModal(state, () => actions.showHomeTimeline());
     
     const initialView = location.hash.substring(1) || 'timeline';
@@ -365,11 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
         document.getElementById('user-dropdown').classList.remove('active');
-    });
-
-
-    document.getElementById('lemmy-sort-select').addEventListener('change', (e) => {
-        actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
     });
 
     window.addEventListener('scroll', () => {
