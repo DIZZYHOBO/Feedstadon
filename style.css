@@ -78,7 +78,7 @@ body {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px 15px;
+    padding: 70px 15px 20px 15px; /* Added padding-top */
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -444,9 +444,16 @@ textarea:focus {
 }
 
 .status-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     color: var(--font-color-muted);
     transition: color 0.2s ease;
     padding: 8px;
+    font-size: 1rem;
 }
 .status-action:hover {
     color: var(--accent-color);
@@ -1266,6 +1273,18 @@ textarea:focus {
 }
 
 /* --- Lemmy Integration Styles --- */
+.status-header {
+    position: relative;
+    flex-grow: 1; /* Allow header to take space */
+}
+.lemmy-icon-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: var(--font-color-muted);
+    opacity: 0.5;
+}
+
 .lemmy-card .status-header a {
     text-decoration: none;
     color: inherit;
@@ -1371,7 +1390,7 @@ textarea:focus {
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
     .container {
-        padding: 10px 5px;
+        padding: 60px 5px 10px 5px; /* Adjust padding for mobile */
     }
 
     .nav-left, .nav-right {
