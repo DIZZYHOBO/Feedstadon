@@ -298,7 +298,7 @@ button:disabled {
 }
 
 /* --- Timeline & Notifications Sub-Nav --- */
-.timeline-sub-nav, .notifications-sub-nav {
+.timeline-sub-nav {
     display: none;
     gap: 10px;
     margin-bottom: 20px;
@@ -308,11 +308,11 @@ button:disabled {
     border: 1px solid var(--border-color);
     align-items: center;
 }
-.timeline-sub-nav-tabs, .notifications-sub-nav-tabs {
+.timeline-sub-nav-tabs {
     display: flex;
     flex-grow: 1;
 }
-.timeline-sub-nav-btn, .notifications-sub-nav-btn {
+.timeline-sub-nav-btn {
     flex-grow: 1;
     padding: 8px;
     background: none;
@@ -323,11 +323,11 @@ button:disabled {
     border-radius: 6px;
     transition: background-color 0.2s, color 0.2s;
 }
-.timeline-sub-nav-btn:hover, .notifications-sub-nav-btn:hover {
+.timeline-sub-nav-btn:hover {
     background-color: var(--primary-color);
     color: var(--font-color);
 }
-.timeline-sub-nav-btn.active, .notifications-sub-nav-btn.active {
+.timeline-sub-nav-btn.active {
     background-color: var(--accent-color);
     color: white;
 }
@@ -341,6 +341,32 @@ button:disabled {
     border-radius: 5px;
     padding: 8px;
     font-size: 0.9em;
+}
+
+.notifications-sub-nav {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+.notifications-sub-nav-btn {
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 15px;
+    position: relative;
+}
+.notifications-sub-nav-btn:not(:last-child)::after {
+    content: '|';
+    position: absolute;
+    right: -2px;
+    color: var(--border-color);
+}
+.notifications-sub-nav-btn.active {
+    background-color: var(--primary-color);
+    border-radius: 8px;
+    color: var(--font-color);
 }
 
 
