@@ -50,17 +50,8 @@ function renderSingleNotification(notification, platform) {
                 authorAvatar = reply.creator.avatar;
             }
             timestamp = reply.comment.published;
-        } else if (notification.person_mention) {
-            const mention = notification.person_mention;
-            icon = ICONS.reply;
-            content = `<strong>${mention.creator.name}</strong> mentioned you in a comment.`;
-            contextHTML = `<div class="notification-context">${mention.comment.content}</div>`;
-            if(mention.creator.avatar) {
-                authorAvatar = mention.creator.avatar;
-            }
-            timestamp = mention.comment.published;
         } else {
-            return null;
+            return null; // Ignore other notification types for now
         }
     }
 
@@ -91,51 +82,22 @@ export async function renderNotificationsPage(state, actions) {
     
     try {
         let mastodonNotifs = [];
+        if (state.instanceUrl && state.accessToken) {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+            mastodonNotifs = response.data;
+        }
+
         let lemmyNotifs = [];
-
-        const mastodonPromise = (state.instanceUrl && state.accessToken)
-            ? apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications')
-            : Promise.resolve({ data: [] });
-            
         const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const lemmyRepliesPromise = lemmyInstance
-            ? apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy')
-            : Promise.resolve({ data: { replies: [] } });
-
-        const lemmyMentionsPromise = lemmyInstance
-            ? apiFetch(lemmyInstance, null, '/api/v3/user/mentions?sort=New&unread_only=false', {}, 'lemmy')
-            : Promise.resolve({ data: { mentions: [] } });
-
-        const results = await Promise.allSettled([mastodonPromise, lemmyRepliesPromise, lemmyMentionsPromise]);
-
-        if (results[0].status === 'fulfilled') {
-            mastodonNotifs = results[0].value.data;
-        } else {
-            console.error("Failed to fetch Mastodon notifications:", results[0].reason);
-        }
-
-        if (results[1].status === 'fulfilled') {
-            const replies = results[1].value.data.replies || [];
-            lemmyNotifs.push(...replies.map(r => ({...r, type: 'reply'})));
-        } else {
-            console.error("Failed to fetch Lemmy replies:", results[1].reason);
-        }
-        
-        if (results[2].status === 'fulfilled') {
-            const mentions = results[2].value.data.mentions || [];
-            lemmyNotifs.push(...mentions.map(m => ({...m, type: 'mention'})));
-        } else {
-             console.error("Failed to fetch Lemmy mentions:", results[2].reason);
+        if (lemmyInstance) {
+            const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
+            lemmyNotifs = repliesResponse.data.replies.map(r => ({...r, type: 'reply'}));
         }
 
         const allNotifications = [
             ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon', date: n.created_at })),
-            ...lemmyNotifs.map(n => {
-                const date = n.comment_reply?.comment.published || n.person_mention?.comment.published;
-                return { ...n, platform: 'lemmy', date: date };
-            })
-        ].filter(n => n.date) // Ensure items with no date are filtered out
-         .sort((a, b) => new Date(b.date) - new Date(a.date));
+            ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy', date: n.comment_reply.comment.published }))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
