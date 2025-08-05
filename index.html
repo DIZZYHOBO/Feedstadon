@@ -14,6 +14,7 @@
     <nav class="top-nav" style="display: none;">
         <div class="nav-left">
             <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
+            <button class="nav-button icon-button" id="notifications-btn" title="Notifications"></button>
             <div class="dropdown" id="feeds-dropdown">
                 <button class="nav-button">Feeds</button>
                 <div class="dropdown-content">
@@ -21,17 +22,6 @@
                     <a href="#" id="lemmy-main-link">Lemmy</a>
                     <a href="#" id="mastodon-main-link">Mastodon</a>
                 </div>
-            </div>
-            <div id="lemmy-filter-container" class="filter-bar" style="display: none;">
-                 <select id="lemmy-sort-select">
-                    <option value="New">New</option>
-                    <option value="Active">Active</option>
-                    <option value="Hot">Hot</option>
-                    <option value="TopHour">Top Hour</option>
-                    <option value="TopSixHour">Top Six Hour</option>
-                    <option value="TopTwelveHour">Top Twelve Hour</option>
-                    <option value="TopDay">Top Day</option>
-                </select>
             </div>
         </div>
         
@@ -60,6 +50,7 @@
         <div id="app-view">
             <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
             <div id="timeline"></div>
+            <div id="notifications-view" style="display: none;"></div>
             <div id="profile-page-view" style="display: none;"></div>
             <div id="search-results-view" style="display: none;"></div>
             <div id="status-detail-view" style="display: none;"></div>
@@ -129,6 +120,7 @@
             <div class="compose-tab-content" id="lemmy-compose-tab">
                 <form id="lemmy-compose-form">
                     <input type="text" id="lemmy-title-input" placeholder="Title (required)" required>
+                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., !main@lemmy.world)" required>
                     <div class="lemmy-post-type-selector">
                         <button type="button" class="lemmy-post-type-btn active" data-type="Text">Text</button>
                         <button type="button" class="lemmy-post-type-btn" data-type="Link">Link</button>
