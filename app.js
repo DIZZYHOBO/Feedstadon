@@ -309,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // ** THE FIX IS HERE **: Check for both JWT and instance before showing feed.
         if (lemmyJwt && lemmyInstance) {
             actions.showLemmyFeed('All');
             return;
