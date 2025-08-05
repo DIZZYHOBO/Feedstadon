@@ -352,31 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
     initDropdowns(); 
 
+    // --- Logout Modal Logic ---
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
         e.preventDefault();
         logoutModal.classList.add('visible');
         document.getElementById('user-dropdown').classList.remove('active');
     });
-    
-    // ** THE FIX IS HERE **
-    // More specific event listener for dropdown content
-    document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = e.target.closest('a');
-        if (!target) return;
-
-        const timeline = target.dataset.timeline;
-        const lemmyFeed = target.dataset.lemmyFeed;
-
-        if (timeline) {
-            actions.showMastodonTimeline(timeline);
-        } else if (lemmyFeed) {
-            actions.showLemmyFeed(lemmyFeed);
-        }
-        document.getElementById('feeds-dropdown').classList.remove('active');
-    });
-
 
     document.getElementById('cancel-logout-btn').addEventListener('click', () => {
         logoutModal.classList.remove('visible');
@@ -407,10 +389,70 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload();
     });
     
+    // --- Other Event Listeners ---
+    document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+
+        const timeline = target.dataset.timeline;
+        const lemmyFeed = target.dataset.lemmyFeed;
+
+        if (timeline) {
+            actions.showMastodonTimeline(timeline);
+        } else if (lemmyFeed) {
+            actions.showLemmyFeed(lemmyFeed);
+        }
+        document.getElementById('feeds-dropdown').classList.remove('active');
+    });
+
+    document.getElementById('user-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+        
+        switch (target.id) {
+            case 'new-post-link':
+                showComposeModal(state);
+                break;
+            case 'profile-link':
+                // Logic to decide which profile to show
+                if (state.currentUser) { // Prioritize Mastodon profile
+                    actions.showProfile(state.currentUser.id);
+                } else if (localStorage.getItem('lemmy_username')) {
+                    const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
+                    actions.showLemmyProfile(lemmyUser, true);
+                }
+                break;
+            case 'settings-link':
+                actions.showSettings();
+                break;
+            case 'logout-link':
+                logoutModal.classList.add('visible');
+                break;
+        }
+        document.getElementById('user-dropdown').classList.remove('active');
+    });
+
+
     document.getElementById('lemmy-sort-select').addEventListener('change', (e) => {
         actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
     });
 
+    window.addEventListener('scroll', () => {
+        if (state.isLoadingMore) return;
+
+        // Trigger near the bottom of the page
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+            if (state.currentView === 'timeline' && state.currentLemmyFeed && state.lemmyHasMore) {
+                fetchLemmyFeed(state, actions, true);
+            } else if (state.currentView === 'timeline' && state.currentTimeline && state.nextPageUrl) {
+                fetchTimeline(state, state.currentTimeline, true);
+            }
+        }
+    });
+
+    // Initial check on load
     if (localStorage.getItem('fediverse-token') || localStorage.getItem('lemmy_jwt')) {
         onEnterApp();
     } else {
