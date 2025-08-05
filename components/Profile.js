@@ -63,19 +63,13 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
     
     try {
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user?username=${username}`, {}, 'lemmy');
-        const { person_view } = userData;
-
-        // Fetch posts and comments concurrently
-        const [postsResponse, commentsResponse] = await Promise.all([
-            apiFetch(instance, null, `/api/v3/user?username=${username}&sort=New&limit=50`, {}, 'lemmy'),
-            apiFetch(instance, null, `/api/v3/user?username=${username}&sort=New&limit=50&view=comments`, {}, 'lemmy')
-        ]);
-        
-        const posts = postsResponse.data.posts.map(p => ({ ...p, type: 'post', date: p.post.published }));
-        const comments = commentsResponse.data.comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }));
+        const { person_view, posts, comments } = userData;
 
         // Merge and sort posts and comments
-        const combinedFeed = [...posts, ...comments].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const combinedFeed = [
+            ...posts.map(p => ({ ...p, type: 'post', date: p.post.published })),
+            ...comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         profileView.innerHTML = `
             <div class="profile-card">
@@ -105,12 +99,13 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
             if (item.type === 'post') {
                 feed.appendChild(renderLemmyCard(item, actions));
             } else {
-                // Simplified comment rendering for profile
                 const commentCard = document.createElement('div');
-                commentCard.className = 'status lemmy-card';
+                commentCard.className = 'status lemmy-comment-on-profile';
                 commentCard.innerHTML = `
                     <div class="status-body-content">
-                        <p><strong>${item.creator.name}</strong> commented on <strong>${item.post.name}</strong> in ${item.community.name}</p>
+                        <div class="comment-context">
+                            ${ICONS.reply} <strong>${item.creator.name}</strong> commented on <strong>${item.post.name}</strong> in ${item.community.name}
+                        </div>
                         <div class="status-content">${item.comment.content}</div>
                     </div>`;
                 feed.appendChild(commentCard);
