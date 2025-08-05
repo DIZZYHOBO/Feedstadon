@@ -1,837 +1,199 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-
-:root, [data-theme="feedstodon"] {
-    --bg-color: #101010;
-    --card-color: #1a1a1a;
-    --primary-color: #2a2a2a;
-    --accent-color: #5A94F1;
-    --font-color: #e0e0e0;
-    --font-color-muted: #8e8f90;
-    --border-color: #333435;
-    --link-color: #88C0D0;
-    --notification-dot-color: #ff3d3d;
-    --border-radius: 12px;
-}
-
-[data-theme="purple"] {
-    --bg-color: #1a102c;
-    --card-color: #2a1a45;
-    --primary-color: #3c2a61;
-    --accent-color: #9d72ff;
-    --font-color: #e6e0ff;
-    --font-color-muted: #a192c7;
-    --border-color: #4a3a70;
-    --link-color: #bca2f7;
-}
-
-[data-theme="tube"] {
-    --bg-color: #0f0f0f;
-    --card-color: #272727;
-    --primary-color: #3f3f3f;
-    --accent-color: #FF0000;
-    --font-color: #f1f1f1;
-    --font-color-muted: #aaa;
-    --border-color: #3f3f3f;
-    --link-color: #3ea6ff;
-}
-
-[data-theme="readit"] {
-    --bg-color: #030303;
-    --card-color: #1a1a1b;
-    --primary-color: #272729;
-    --accent-color: #d93a00;
-    --font-color: #d7dadc;
-    --font-color-muted: #818384;
-    --border-color: #343536;
-    --link-color: #4fbcff;
-}
-
-[data-theme="git"] {
-    --bg-color: #0d1117;
-    --card-color: #161b22;
-    --primary-color: #21262d;
-    --accent-color: #58a6ff;
-    --font-color: #c9d1d9;
-    --font-color-muted: #8b949e;
-    --border-color: #30363d;
-    --link-color: #58a6ff;
-}
-
-
-*, *::before, *::after {
-    box-sizing: border-box;
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--font-color);
-    margin: 0;
-    font-size: 16px;
-}
-
-.container {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 70px 15px 20px 15px; /* Added padding-top */
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-textarea,
-input[type="text"],
-input[type="password"],
-input[type="search"],
-input[type="url"] {
-    font-family: 'Inter', sans-serif;
-    font-size: 1rem;
-    color: var(--font-color);
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    width: 100%;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-textarea:focus,
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="search"]:focus,
-input[type="url"]:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2);
-}
-
-/* --- Buttons --- */
-button, .button {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color-muted);
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 0.9em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-}
-button:hover, .button:hover {
-    background-color: var(--card-color);
-    border-color: var(--font-color-muted);
-    color: var(--font-color);
-}
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.connect-btn, .modal-actions button[type="submit"] {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-.connect-btn:hover, .modal-actions button[type="submit"]:hover {
-    background-color: #4a80d3; /* Darker accent */
-    border-color: #4a80d3;
-    color: white;
-}
-
-
-/* --- Login Page --- */
-#login-view {
-    width: 100%;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-.login-card {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    overflow: hidden;
-    position: relative;
-    width: 100%;
-    max-width: 700px;
-}
-.login-forms-container {
-    display: flex;
-}
-.login-form-section {
-    flex: 1;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-}
-.vertical-divider {
-    width: 1px;
-    background-color: var(--border-color);
-}
-.login-form-section form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-
-/* --- Navigation --- */
-.top-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 50px;
-    background-color: rgba(16, 16, 16, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 15px;
-    z-index: 2000;
-}
-
-.nav-left, .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.nav-center {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    padding: 0 20px;
-    position: relative;
-}
-
-.nav-button {
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    position: relative;
-}
-.nav-button:hover {
-    background-color: var(--primary-color);
-}
-
-
-.icon-button {
-    border: none;
-    font-size: 1.5em;
-    padding: 6px;
-}
-#notifications-btn.has-unread {
-    color: var(--notification-dot-color);
-}
-
-.dropdown { position: relative; }
-
-.dropdown-content {
-    display: none; position: absolute; top: 100%;
-    background-color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 8px;
-    min-width: 200px;
-    max-width: 350px;
-    z-index: 1; overflow: hidden; margin-top: 10px;
-}
-
-.nav-left .dropdown-content { left: 0; right: auto; }
-.nav-right .dropdown-content { right: 0; left: auto; }
-
-.dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
-.dropdown-content a:hover { background-color: var(--accent-color); }
-.dropdown.active .dropdown-content { display: block; }
-
-.main-feed-link {
-    font-weight: bold !important;
-    color: var(--accent-color) !important;
-}
-
-/* --- Search Bar --- */
-#search-form {
-    width: 100%;
-    max-width: 500px;
-}
-
-#search-input {
-    border-radius: 20px;
-    padding: 8px 12px;
-}
-
-#search-suggestions-container {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 500px;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    overflow: hidden;
-    z-index: 2000;
-}
-
-/* --- Timeline & Notifications Sub-Nav --- */
-.timeline-sub-nav, .notifications-sub-nav {
-    display: none;
-    gap: 10px;
-    margin-bottom: 20px;
-    background-color: var(--card-color);
-    padding: 5px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    align-items: center;
-}
-.timeline-sub-nav-tabs, .notifications-sub-nav-tabs {
-    display: flex;
-    flex-grow: 1;
-}
-.timeline-sub-nav-btn, .notifications-sub-nav-btn {
-    flex-grow: 1;
-    padding: 8px;
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background-color 0.2s, color 0.2s;
-}
-.timeline-sub-nav-btn:hover, .notifications-sub-nav-btn:hover {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-}
-.timeline-sub-nav-btn.active, .notifications-sub-nav-btn.active {
-    background-color: var(--accent-color);
-    color: white;
-}
-#lemmy-filter-container {
-    margin-left: auto;
-}
-#lemmy-sort-select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 8px;
-    font-size: 0.9em;
-}
-
-
-/* --- Main App Views --- */
-#timeline, #notifications-list, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed, #lemmy-discover-view, #lemmy-community-view {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-#status-detail-view, #notifications-view {
-    flex-direction: column;
-}
-#status-detail-view .status {
-    border-left: 2px solid var(--border-color);
-    border-radius: 0;
-}
-#status-detail-view .status.main-thread-post {
-    border-left-color: var(--accent-color);
-}
-
-/* --- Scroll Loader --- */
-#scroll-loader {
-    text-align: center;
-    padding: 20px;
-    height: 60px;
-    display: none;
-}
-#scroll-loader p {
-    color: var(--font-color-muted);
-    visibility: hidden;
-}
-#scroll-loader.loading p {
-    visibility: visible;
-}
-
-
-/* --- Status / Post Cards --- */
-.status {
-    background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-.status-body-content {
-    padding: 20px;
-}
-
-.status-header { 
-    display: flex; 
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px; 
-    margin-bottom: 15px; 
-}
-.status-header-main {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-grow: 1;
-    min-width: 0;
-}
-.status-header-side {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-}
-.status-header .avatar { 
-    width: 44px; 
-    height: 44px; 
-    border-radius: 50%; 
-    cursor: pointer; 
-    flex-shrink: 0;
-}
-.status-header .display-name { 
-    font-weight: 700; 
-    cursor: pointer; 
-}
-.status-header .acct { 
-    color: var(--font-color-muted);
-    font-weight: 400;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.status-header .timestamp { 
-    color: var(--font-color-muted); 
-    font-size: 0.9em; 
-}
-
-.status-content {
-    margin-bottom: 15px;
-    line-height: 1.6;
-    font-size: 1.05em;
-    overflow-wrap: break-word;
-}
-.status-content a, .profile-info .note a {
-    color: var(--link-color);
-    text-decoration: none;
-    word-break: break-all;
-}
-.status-content a:hover, .profile-info .note a:hover {
-    text-decoration: underline;
-}
-
-
-.status-media {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 10px;
-}
-.status-media img, .status-media video {
-    max-width: 100%;
-    max-height: 500px;
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-.status-footer { 
-    display: flex; 
-    justify-content: space-between; 
-    color: var(--font-color-muted); 
-    font-weight: 500; 
-    font-size: 0.9em; 
-    border-top: 1px solid var(--border-color); 
-    padding: 10px 20px; 
-    margin: 15px -20px -20px;
-}
-
-.status-action {
-    background: none;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--font-color-muted);
-    transition: color 0.2s ease;
-    padding: 8px;
-    font-size: 1rem;
-}
-.status-action:hover {
-    color: var(--accent-color);
-}
-.icon { width: 22px; height: 22px; flex-shrink: 0; }
-
-.status-action.active {
-    color: var(--accent-color);
-}
-
-/* --- Post Options Menu --- */
-.post-options-container {
-    position: relative;
-}
-.post-options-btn {
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 50%;
-}
-.post-options-btn:hover {
-    background-color: var(--primary-color);
-}
-.post-options-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    min-width: 120px;
-    z-index: 10;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-.post-options-menu button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 12px 16px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-.post-options-menu button:hover {
-    background-color: var(--accent-color);
-}
-
-/* --- Modals --- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 3000;
-}
-
-.modal-overlay.visible {
-    display: flex;
-}
-.modal-content {
-    background: var(--card-color);
-    padding: 25px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-}
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-.modal-actions button {
-    border-radius: 8px;
-}
-.button-secondary {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-}
-.button-danger {
-    background-color: #d9534f;
-    color: white;
-}
-.logout-options {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin: 20px 0;
-}
-.logout-options button {
-    flex-grow: 1;
-}
-
-/* --- Compose Modal --- */
-.compose-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    margin: -25px -25px 20px -25px;
-}
-.compose-tabs .tab-button {
-    border-radius: 0;
-    border-bottom: 3px solid transparent;
-}
-.compose-tabs .tab-button.active {
-    border-bottom-color: var(--accent-color);
-}
-.compose-tab-content {
-    display: none;
-}
-.compose-tab-content.active {
-    display: block;
-}
-
-.compose-options {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#media-filename-preview {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-}
-
-#poll-creator-container {
-    border-top: 1px solid var(--border-color);
-    margin-top: 15px;
-    padding-top: 15px;
-}
-
-#poll-options-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.poll-option-input {
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.poll-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-.poll-settings .form-group {
-    margin: 0;
-}
-.poll-settings label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: normal;
-}
-.poll-settings select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 5px;
-}
-
-#cw-creator-container {
-    margin-bottom: 10px;
-}
-
-/* --- Lemmy Compose Form --- */
-#lemmy-compose-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.lemmy-post-type-selector {
-    display: flex;
-    gap: 10px;
-}
-.lemmy-post-type-btn {
-    flex-grow: 1;
-}
-.lemmy-post-type-btn.active {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-#lemmy-body-textarea {
-    min-height: 120px;
-}
-
-
-/* --- Notifications Page --- */
-.notification-item {
-    display: flex;
-    gap: 15px;
-    padding: 15px;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    align-items: center; /* Vertically align items */
-}
-.notification-icon {
-    color: var(--font-color-muted);
-    font-size: 1.2em;
-    flex-shrink: 0;
-    width: 30px;
-    text-align: center;
-}
-.notification-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-}
-.notification-content {
-    flex-grow: 1;
-    min-width: 0;
-}
-.notification-content p {
-    margin: 0;
-}
-.notification-content strong {
-    color: var(--font-color);
-}
-.notification-context {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    margin-top: 8px;
-    padding: 10px;
-    background-color: var(--primary-color);
-    border-radius: 8px;
-    border-left: 3px solid var(--border-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.notification-item .timestamp {
-    flex-shrink: 0;
-    margin-left: auto;
-    color: var(--font-color-muted);
-    font-size: 0.9em;
-}
-
-
-/* --- Lemmy Integration Styles --- */
-.platform-icon-indicator,
-.lemmy-icon-indicator {
-    color: var(--font-color-muted);
-    opacity: 0.5;
-    flex-shrink: 0;
-}
-
-.lemmy-card .status-header a {
-    text-decoration: none;
-    color: inherit;
-}
-.lemmy-card .status-header a:hover {
-    color: var(--accent-color);
-}
-
-.lemmy-card .status-header .avatar {
-    border-radius: 8px; /* Lemmy community icons are often square */
-}
-
-.lemmy-card .lemmy-title {
-    font-size: 1.1em;
-    font-weight: bold;
-    margin: 0 0 10px 0;
-}
-
-.lemmy-card .status-footer {
-    justify-content: space-between;
-    align-items: center;
-}
-
-.lemmy-vote-cluster {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.lemmy-vote-btn {
-    font-size: 1.2em;
-}
-
-.lemmy-vote-btn.active {
-    color: var(--accent-color);
-}
-
-.lemmy-score {
-    font-weight: bold;
-    color: var(--font-color);
-}
-
-
-/* --- Mobile Responsiveness --- */
-@media (max-width: 600px) {
-    .container {
-        padding: 60px 5px 10px 5px; /* Adjust padding for mobile */
-    }
-
-    .nav-left, .nav-right {
-        gap: 5px;
+import { ICONS } from './icons.js';
+import { formatTimestamp } from './utils.js';
+import { apiFetch } from './api.js';
+
+function renderPoll(poll, statusId, actions) {
+    const container = document.createElement('div');
+    container.className = 'poll-container';
+
+    if (poll.voted) {
+        // Render results
+        poll.options.forEach((option, index) => {
+            const percentage = poll.votes_count > 0 ? (option.votes_count / poll.votes_count * 100).toFixed(1) : 0;
+            const result = document.createElement('div');
+            result.className = 'poll-result';
+            if (poll.own_votes.includes(index)) {
+                result.classList.add('voted');
+            }
+            result.innerHTML = `
+                <div class="poll-result-bar" style="width: ${percentage}%;"></div>
+                <span class="poll-result-label">${option.title}</span>
+                <span class="poll-result-percent">${percentage}%</span>
+            `;
+            container.appendChild(result);
+        });
+    } else {
+        // Render options
+        poll.options.forEach((option, index) => {
+            const optionEl = document.createElement('button');
+            optionEl.className = 'poll-option';
+            optionEl.textContent = option.title;
+            optionEl.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const updatedPoll = await actions.voteInPoll(poll.id, [index]);
+                    const pollContainer = e.target.closest('.poll-container');
+                    const newPoll = renderPoll(updatedPoll, statusId, actions);
+                    pollContainer.replaceWith(newPoll);
+                } catch (error) {
+                    console.error('Failed to vote:', error);
+                }
+            });
+            container.appendChild(optionEl);
+        });
     }
     
-    .status-footer {
-        flex-wrap: wrap;
-        justify-content: space-around;
-        gap: 10px !important;
+    const info = document.createElement('div');
+    info.className = 'poll-info';
+    info.textContent = `${poll.votes_count} votes · ${poll.expired ? 'Final results' : 'Poll ends soon'}`;
+    container.appendChild(info);
+
+    return container;
+}
+
+
+export function renderStatus(status, currentUser, actions, settings) {
+    const post = status.reblog || status;
+    const author = post.account;
+    const isOwnPost = currentUser && currentUser.id === author.id;
+    
+    if (settings && settings.hideNsfw && post.sensitive) {
+        return document.createDocumentFragment();
     }
 
-    .status-action {
-        padding: 6px 12px;
-        font-size: 0.8em;
+    const card = document.createElement('div');
+    card.className = 'status';
+    card.dataset.id = post.id;
+
+    let boosterInfo = '';
+    if (status.reblog) {
+        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
     }
     
-    .comment-replies-container {
-        margin-left: 5px;
-        padding-left: 10px;
+    let inReplyToInfo = '';
+    if (post.in_reply_to_account_id) {
+        inReplyToInfo = `<div class="reply-info" data-action="view-thread">${ICONS.reply} Replying to some folks...</div>`;
     }
 
-    .notification-item {
-        padding: 10px;
-        gap: 10px;
+    let mediaHTML = '';
+    if (post.media_attachments.length > 0) {
+        const attachment = post.media_attachments[0];
+        if (attachment.type === 'image') {
+            mediaHTML = `<div class="status-media"><img src="${attachment.url}" alt="${attachment.description || 'Post media'}" loading="lazy"></div>`;
+        } else if (attachment.type === 'video') {
+            mediaHTML = `<div class="status-media"><video src="${attachment.url}" controls></video></div>`;
+        }
+    }
+    
+    let pollHTML = '';
+    if (post.poll) {
+        pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
     }
 
-    .notification-item .timestamp {
-        display: none; /* Hide timestamp on very small screens to save space */
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="mention">Mention @${author.acct}</button>
+                ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
+                <button data-action="mute">Mute @${author.acct}</button>
+                <button data-action="block">Block @${author.acct}</button>
+            </div>
+        </div>
+    `;
+
+    card.innerHTML = `
+        ${boosterInfo}
+        <div class="status-body-content">
+            ${inReplyToInfo}
+            <div class="status-header">
+                <div class="status-header-main">
+                    <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
+                    <div>
+                        <span class="display-name">${author.display_name}</span>
+                        <span class="acct">@${author.acct}</span>
+                        <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
+                    </div>
+                </div>
+                <div class="status-header-side">
+                    ${optionsMenuHTML}
+                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
+                </div>
+            </div>
+            <div class="status-content">${post.content}</div>
+            ${mediaHTML}
+            ${pollHTML}
+            <div class="status-footer">
+                <button class="status-action" data-action="reply">${ICONS.reply} ${post.replies_count}</button>
+                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.boost} ${post.reblogs_count}</button>
+                <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${post.favourites_count}</button>
+                <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+            </div>
+        </div>
+    `;
+    
+    card.querySelector('.status-body-content').addEventListener('click', () => {
+        actions.showStatusDetail(post.id);
+    });
+    
+    card.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.target.closest('.status-action').dataset.action;
+            switch(action) {
+                case 'reply':
+                    actions.replyToStatus(post);
+                    break;
+                case 'reblog':
+                case 'favorite':
+                case 'bookmark':
+                    actions.toggleAction(action, status, e.target.closest('.status-action'));
+                    break;
+            }
+        });
+    });
+
+    const optionsBtn = card.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = card.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        menu.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    return card;
+}
+
+
+export async function renderStatusDetail(state, statusId, actions) {
+    const container = document.getElementById('status-detail-view');
+    container.innerHTML = '<p>Loading post...</p>';
+
+    try {
+        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+        const { data: mainStatus } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        
+        container.innerHTML = '';
+        
+        if (context.ancestors) {
+            context.ancestors.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
+        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings);
+        mainPost.classList.add('main-thread-post');
+        container.appendChild(mainPost);
+        
+        if (context.descendants) {
+            context.descendants.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
+    } catch (error) {
+        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
     }
 }
