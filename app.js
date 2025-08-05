@@ -217,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
         showNotificationsPage: () => {
+            renderTimelineSubNav(null); // Hide timeline sub-nav
             switchView('notifications');
             renderNotificationsPage(state, actions);
         },
