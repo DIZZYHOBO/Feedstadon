@@ -17,16 +17,9 @@
             <div class="dropdown" id="feeds-dropdown">
                 <button class="nav-button">Feeds</button>
                 <div class="dropdown-content">
-                    <a href="#" data-timeline="home" class="main-feed-link">Home Feed</a>
-                    <div class="dropdown-divider">Lemmy</div>
-                    <a href="#" data-lemmy-feed="Subscribed">Subscribed</a>
-                    <a href="#" data-lemmy-feed="Local">Local</a>
-                    <a href="#" data-lemmy-feed="All">All</a>
-                     <a href="#" id="discover-lemmy-link">Discover</a>
-                    <div class="dropdown-divider">Mastodon</div>
-                    <a href="#" data-timeline="public?local=true">Local</a>
-                    <a href="#" data-timeline="public">All</a>
-                    <a href="#" data-timeline="bookmarks">Saved</a>
+                    <a href="#" data-timeline="home" class="main-feed-link">Home</a>
+                    <a href="#" id="lemmy-main-link">Lemmy</a>
+                    <a href="#" id="mastodon-main-link">Mastodon</a>
                 </div>
             </div>
             <div id="lemmy-filter-container" class="filter-bar" style="display: none;">
@@ -65,6 +58,7 @@
 
     <div class="container">
         <div id="app-view">
+            <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
             <div id="timeline"></div>
             <div id="profile-page-view" style="display: none;"></div>
             <div id="search-results-view" style="display: none;"></div>
@@ -101,50 +95,59 @@
 
     <div id="compose-modal" class="modal-overlay">
        <div class="modal-content">
-            <h3>New Post</h3>
-            <form id="compose-form">
-                <div id="cw-creator-container" style="display: none;">
-                    <input type="text" id="spoiler-text-input" placeholder="Content Warning (e.g., spoilers, politics)">
-                </div>
-                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                <div id="poll-creator-container" style="display: none;">
-                    <div id="poll-options-container">
-                        <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
-                        <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
+            <div class="compose-tabs">
+                <button class="tab-button active" data-tab="mastodon">Mastodon</button>
+                <button class="tab-button" data-tab="lemmy">Lemmy</button>
+            </div>
+            
+            <div class="compose-tab-content active" id="mastodon-compose-tab">
+                <form id="mastodon-compose-form">
+                    <div id="cw-creator-container" style="display: none;">
+                        <input type="text" id="spoiler-text-input" placeholder="Content Warning (e.g., spoilers, politics)">
                     </div>
-                    <button type="button" id="add-poll-option-btn" class="button-secondary">Add Choice</button>
-                    <div class="poll-settings">
-                        <div class="form-group">
-                            <label for="poll-duration-select">Poll duration</label>
-                            <select id="poll-duration-select">
-                                <option value="300">5 minutes</option>
-                                <option value="1800">30 minutes</option>
-                                <option value="3600">1 hour</option>
-                                <option value="21600">6 hours</option>
-                                <option value="86400" selected>1 day</option>
-                                <option value="259200">3 days</option>
-                                <option value="604800">7 days</option>
-                            </select>
+                    <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+                    <div id="poll-creator-container" style="display: none;">
+                        <div id="poll-options-container">
+                            <input type="text" class="poll-option-input" placeholder="Choice 1" maxlength="25">
+                            <input type="text" class="poll-option-input" placeholder="Choice 2" maxlength="25">
                         </div>
-                        <div class="form-group">
-                            <label><input type="checkbox" id="poll-multiple-choice-check"> Multiple choices</label>
+                        <button type="button" id="add-poll-option-btn" class="button-secondary">Add Choice</button>
+                        <div class="poll-settings">
+                            <div class="form-group"><label for="poll-duration-select">Poll duration</label><select id="poll-duration-select"><option value="300">5 minutes</option><option value="1800">30 minutes</option><option value="3600">1 hour</option><option value="21600">6 hours</option><option value="86400" selected>1 day</option><option value="259200">3 days</option><option value="604800">7 days</option></select></div>
+                            <div class="form-group"><label><input type="checkbox" id="poll-multiple-choice-check"> Multiple choices</label></div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-actions">
-                    <div class="compose-options">
-                        <input type="file" id="media-attachment-input" accept="image/*, video/*" style="display: none;">
-                        <button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media"></button>
-                        <button type="button" id="add-poll-btn" class="button-secondary icon-button" title="Add Poll"></button>
-                        <button type="button" id="add-cw-btn" class="button-secondary icon-button" title="Add Content Warning"></button>
-                        <span id="media-filename-preview"></span>
+                    <div class="modal-actions">
+                        <div class="compose-options">
+                            <input type="file" id="media-attachment-input" accept="image/*,video/*,image/svg+xml" style="display: none;"><button type="button" id="add-media-btn" class="button-secondary icon-button" title="Add Media"></button><button type="button" id="add-poll-btn" class="button-secondary icon-button" title="Add Poll"></button><button type="button" id="add-cw-btn" class="button-secondary icon-button" title="Add Content Warning"></button><span id="media-filename-preview"></span>
+                        </div>
+                        <div><button type="button" class="button-secondary cancel-compose-btn">Cancel</button><button type="submit">Post</button></div>
                     </div>
-                    <div>
-                        <button type="button" class="button-secondary" id="cancel-compose-btn">Cancel</button>
-                        <button type="submit">Post</button>
+                </form>
+            </div>
+
+            <div class="compose-tab-content" id="lemmy-compose-tab">
+                <form id="lemmy-compose-form">
+                    <input type="text" id="lemmy-title-input" placeholder="Title (required)" required>
+                    <div class="lemmy-post-type-selector">
+                        <button type="button" class="lemmy-post-type-btn" data-type="Text">Text</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="Link">Link</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="Image">Image</button>
                     </div>
-                </div>
-            </form>
+                    <div id="lemmy-link-input-container" style="display: none;">
+                        <input type="url" id="lemmy-url-input" placeholder="https://example.com">
+                    </div>
+                    <div id="lemmy-image-input-container" style="display: none;">
+                        <input type="file" id="lemmy-image-input" accept="image/*">
+                        <span id="lemmy-image-preview"></span>
+                    </div>
+                    <textarea id="lemmy-body-textarea" placeholder="Body (optional)"></textarea>
+                    <div class="modal-actions">
+                        <div><button type="button" class="button-secondary cancel-compose-btn">Cancel</button><button type="submit">Post</button></div>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 
