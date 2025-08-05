@@ -91,12 +91,14 @@ export function renderStatus(status, currentUser, actions, settings) {
     }
 
     let optionsMenuHTML = `
-        <button class="post-options-btn">${ICONS.more}</button>
-        <div class="post-options-menu">
-            <button data-action="mention">Mention @${author.acct}</button>
-            ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
-            <button data-action="mute">Mute @${author.acct}</button>
-            <button data-action="block">Block @${author.acct}</button>
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="mention">Mention @${author.acct}</button>
+                ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
+                <button data-action="mute">Mute @${author.acct}</button>
+                <button data-action="block">Block @${author.acct}</button>
+            </div>
         </div>
     `;
 
@@ -113,8 +115,10 @@ export function renderStatus(status, currentUser, actions, settings) {
                         <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
                     </div>
                 </div>
-                <div class="platform-icon-indicator">${ICONS.mastodon}</div>
-                ${optionsMenuHTML}
+                <div class="status-header-side">
+                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
+                    ${optionsMenuHTML}
+                </div>
             </div>
             <div class="status-content">${post.content}</div>
             ${mediaHTML}
@@ -138,6 +142,7 @@ export function renderStatus(status, currentUser, actions, settings) {
             const action = e.target.closest('.status-action').dataset.action;
             switch(action) {
                 case 'reply':
+                    actions.replyToStatus(post);
                     break;
                 case 'reblog':
                 case 'favorite':
@@ -160,6 +165,7 @@ export function renderStatus(status, currentUser, actions, settings) {
 
     return card;
 }
+
 
 export async function renderStatusDetail(state, statusId, actions) {
     const container = document.getElementById('status-detail-view');
