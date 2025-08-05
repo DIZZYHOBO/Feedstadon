@@ -231,11 +231,8 @@ export async function renderLemmyPostPage(state, post, actions) {
                 </div>
                 ${thumbnailHTML}
                 <div class="status-footer">
-                    <div class="lemmy-vote-cluster">
-                        <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                        <span class="lemmy-score">${post.counts.score}</span>
-                        <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                    </div>
+                     <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote} ${post.counts.upvotes}</button>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote} ${post.counts.downvotes}</button>
                     <button class="status-action" data-action="view-comments">${ICONS.comments} ${post.counts.comments}</button>
                     <button class="status-action" data-action="save">${ICONS.bookmark}</button>
                 </div>
