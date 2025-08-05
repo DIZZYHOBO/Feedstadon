@@ -18,27 +18,24 @@ export async function renderProfilePage(state, accountId, actions) {
         const note = account.note;
         const followers = account.followers_count;
         const following = account.following_count;
-        const postCount = account.statuses_count;
 
         profileView.innerHTML = `
-            <div class="profile-header-container">
-                <div class="profile-card">
-                    <div class="profile-header">
-                        <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.display='none'">
-                        <img class="avatar" src="${avatar}" alt="${displayName}'s avatar" onerror="this.src='./images/logo.png'">
-                    </div>
-                    <div class="profile-actions">
-                        <button class="follow-btn">Follow</button>
-                        <button class="block-btn">Block</button>
-                    </div>
-                    <div class="profile-info">
-                        <h2 class="display-name">${displayName}</h2>
-                        <p class="acct">@${username}</p>
-                        <div class="note">${note}</div>
-                        <div class="stats">
-                            <span><strong>${following}</strong> Following</span>
-                            <span><strong>${followers}</strong> Followers</span>
-                        </div>
+            <div class="profile-card">
+                <div class="profile-header">
+                    <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.display='none'">
+                    <img class="avatar" src="${avatar}" alt="${displayName}'s avatar" onerror="this.src='./images/logo.png'">
+                </div>
+                <div class="profile-actions">
+                    <button class="follow-btn">Follow</button>
+                    <button class="block-btn">Block</button>
+                </div>
+                <div class="profile-info">
+                    <h2 class="display-name">${displayName}</h2>
+                    <p class="acct">@${username}</p>
+                    <div class="note">${note}</div>
+                    <div class="stats">
+                        <span><strong>${following}</strong> Following</span>
+                        <span><strong>${followers}</strong> Followers</span>
                     </div>
                 </div>
             </div>
@@ -75,17 +72,15 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         profileView.innerHTML = `
-            <div class="profile-header-container">
-                <div class="profile-card">
-                     <div class="profile-header">
-                        <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
-                        <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
-                    </div>
-                    <div class="profile-info">
-                        <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
-                        <p class="acct">@${person_view.person.name}@${instance}</p>
-                        <div class="note">${person_view.person.bio || ''}</div>
-                    </div>
+            <div class="profile-card">
+                 <div class="profile-header">
+                    <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
+                    <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
+                </div>
+                <div class="profile-info">
+                    <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
+                    <p class="acct">@${person_view.person.name}@${instance}</p>
+                    <div class="note">${person_view.person.bio || ''}</div>
                 </div>
             </div>
             <div class="profile-feed"></div>
@@ -108,8 +103,9 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
                 commentCard.innerHTML = `
                     <div class="status-body-content">
                         <div class="comment-context">
-                            ${ICONS.reply} <strong>${item.creator.name}</strong> commented on <strong>${item.post.name}</strong> in ${item.community.name}
+                            <span class="display-name">${item.creator.name}</span> commented on:
                         </div>
+                        <h4 class="post-title">${item.post.name}</h4>
                         <div class="status-content">${item.comment.content}</div>
                         <div class="status-footer">
                             <div class="lemmy-vote-cluster">
@@ -119,6 +115,15 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
                             </div>
                         </div>
                     </div>`;
+                
+                commentCard.querySelectorAll('.lemmy-vote-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const score = parseInt(e.currentTarget.dataset.score, 10);
+                        actions.lemmyCommentVote(item.comment.id, score, commentCard);
+                    });
+                });
+
                 feed.appendChild(commentCard);
             }
         });
