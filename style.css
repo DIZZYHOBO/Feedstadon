@@ -210,10 +210,6 @@ button:disabled {
     gap: 15px;
 }
 
-#lemmy-filter-container {
-    margin-left: 10px;
-}
-
 .nav-center {
     flex-grow: 1;
     display: flex;
@@ -248,6 +244,9 @@ button:disabled {
     font-size: 1.5em;
     padding: 6px;
 }
+#notifications-btn.has-unread {
+    color: var(--notification-dot-color);
+}
 
 .dropdown { position: relative; }
 
@@ -269,19 +268,6 @@ button:disabled {
 .main-feed-link {
     font-weight: bold !important;
     color: var(--accent-color) !important;
-}
-
-
-#user-display-btn.has-unread::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 9px;
-    height: 9px;
-    background-color: var(--notification-dot-color);
-    border-radius: 50%;
-    border: 2px solid var(--primary-color);
 }
 
 /* --- Search Bar --- */
@@ -311,28 +297,55 @@ button:disabled {
     z-index: 2000;
 }
 
-/* --- Timeline Sub-Nav --- */
-.timeline-sub-nav {
+/* --- Timeline & Notifications Sub-Nav --- */
+.timeline-sub-nav, .notifications-sub-nav {
     display: none;
     gap: 10px;
     margin-bottom: 20px;
     background-color: var(--card-color);
-    padding: 10px;
-    border-radius: 8px;
+    padding: 5px;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
+    align-items: center;
 }
-.timeline-sub-nav-btn {
+.timeline-sub-nav-tabs, .notifications-sub-nav-tabs {
+    display: flex;
     flex-grow: 1;
 }
-.timeline-sub-nav-btn.active {
+.timeline-sub-nav-btn, .notifications-sub-nav-btn {
+    flex-grow: 1;
+    padding: 8px;
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+.timeline-sub-nav-btn:hover, .notifications-sub-nav-btn:hover {
+    background-color: var(--primary-color);
+    color: var(--font-color);
+}
+.timeline-sub-nav-btn.active, .notifications-sub-nav-btn.active {
     background-color: var(--accent-color);
-    border-color: var(--accent-color);
     color: white;
+}
+#lemmy-filter-container {
+    margin-left: auto;
+}
+#lemmy-sort-select {
+    background-color: var(--primary-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 8px;
+    font-size: 0.9em;
 }
 
 
 /* --- Main App Views --- */
-#timeline, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #notifications-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed, #lemmy-discover-view, #lemmy-community-view {
+#timeline, #notifications-list, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed, #lemmy-discover-view, #lemmy-community-view {
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -479,26 +492,6 @@ button:disabled {
     color: var(--accent-color);
 }
 
-.spoiler-text {
-    font-weight: bold;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.status-content.hidden {
-    display: none;
-}
-.show-more-btn {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-size: 0.8em;
-    cursor: pointer;
-}
-
 /* --- Post Options Menu --- */
 .post-options-container {
     position: relative;
@@ -542,181 +535,6 @@ button:disabled {
     background-color: var(--accent-color);
 }
 
-/* --- Comment Thread --- */
-.lemmy-comment-thread {
-    margin-top: 20px;
-}
-
-.lemmy-comment {
-    background-color: transparent;
-    border: none;
-    box-shadow: none;
-    margin-bottom: 15px;
-    padding-left: 0;
-}
-
-.lemmy-comment > .status-body-content {
-    background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
-.top-level-comment {
-    border-left: 3px solid #5A94F1 !important;
-}
-
-.comment-replies-container {
-    margin-left: 20px;
-    padding-left: 20px;
-    border-left: 2px solid var(--border-color);
-}
-
-.lemmy-reply-box {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid var(--border-color);
-}
-
-.lemmy-reply-box textarea {
-    min-height: 80px;
-    margin-bottom: 10px;
-}
-
-.reply-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-/* --- Inline Login Prompt --- */
-.login-prompt-container {
-    padding: 40px 20px;
-    background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    margin-top: 20px;
-    text-align: center;
-}
-.login-prompt-form-container {
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-}
-.login-prompt-form-container h4 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 1.2em;
-}
-
-
-/* --- Polls --- */
-.poll-container {
-    margin-top: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.poll-option, .poll-result {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-.poll-option:hover {
-    background-color: var(--accent-color);
-}
-.poll-result {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    overflow: hidden;
-    cursor: default;
-}
-.poll-result-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: var(--accent-color);
-    opacity: 0.4;
-    transition: width 0.5s ease-in-out;
-}
-.poll-result-label, .poll-result-percent {
-    position: relative;
-    z-index: 1;
-}
-.poll-result.voted {
-    border-color: var(--accent-color);
-    font-weight: bold;
-}
-.poll-info {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    margin-top: 10px;
-}
-
-/* --- Profile Page --- */
-#profile-page-view {
-    flex-direction: column;
-}
-.profile-card {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.profile-header { position: relative; height: 200px; }
-.profile-header .banner { width: 100%; height: 100%; object-fit: cover; }
-.profile-header .avatar { position: absolute; width: 120px; height: 120px; border-radius: 50%; bottom: -60px; left: 20px; border: 4px solid var(--card-color); }
-.profile-header .banner, .profile-header .avatar {
-    background-color: var(--primary-color); /* Add a background for placeholders */
-}
-
-.profile-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; }
-
-.profile-info { padding: 75px 20px 20px 20px; }
-.profile-info .display-name { font-size: 1.5rem; font-weight: bold; margin: 0; }
-.profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
-.profile-info .note {
-    line-height: 1.5;
-    overflow-wrap: break-word;
-}
-.profile-tabs {
-    display: flex;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-}
-.tab-button {
-    flex-grow: 1;
-    padding: 15px;
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    font-size: 1em;
-    font-weight: bold;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-}
-.tab-button.active {
-    color: var(--font-color);
-    border-bottom-color: var(--accent-color);
-}
-.profile-feed {
-    margin-top: 15px;
-}
-
-/* --- Search Results Page --- */
-#search-results-view { display: flex; flex-direction: column; gap: 10px; }
-.search-result-item { display: flex; align-items: center; gap: 15px; padding: 10px; background-color: var(--card-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
-.search-result-item:hover { background-color: var(--primary-color); }
-.search-result-item img { width: 50px; height: 50px; border-radius: 50%; }
-.search-result-item .display-name { font-weight: bold; font-size: 1.1em; }
-.search-result-item .acct { color: var(--font-color-muted); }
-
 /* --- Modals --- */
 .modal-overlay {
     position: fixed;
@@ -747,7 +565,18 @@ button:disabled {
     gap: 10px;
     margin-top: 20px;
 }
-
+.modal-actions button {
+    border-radius: 8px;
+}
+.button-secondary {
+    background-color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    color: var(--font-color);
+}
+.button-danger {
+    background-color: #d9534f;
+    color: white;
+}
 .logout-options {
     display: flex;
     gap: 15px;
@@ -842,10 +671,6 @@ button:disabled {
     margin-bottom: 10px;
 }
 
-#spoiler-text-input {
-    width: 100%;
-}
-
 /* --- Lemmy Compose Form --- */
 #lemmy-compose-form {
     display: flex;
@@ -868,70 +693,48 @@ button:disabled {
     min-height: 120px;
 }
 
-
-/* --- Settings Page --- */
-.settings-container {
-    display: flex;
+/* --- Notifications Page --- */
+#notifications-view {
     flex-direction: column;
-    gap: 20px;
 }
-
-.settings-section {
+.notification-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: var(--border-radius);
+    align-items: flex-start;
 }
-
-.settings-section h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    font-size: 0.9em;
+.notification-icon {
     color: var(--font-color-muted);
+    font-size: 1.2em;
+    flex-shrink: 0;
+    width: 30px;
+    text-align: center;
 }
-
-.form-group input[type="file"] {
-    font-size: 0.9em;
+.notification-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
 }
-
-.file-status {
-    display: inline-block;
-    margin-left: 10px;
-    font-size: 0.8em;
-    color: var(--font-color-muted);
+.notification-content {
+    flex-grow: 1;
 }
-
-/* --- Toast Notifications --- */
-#toast-notification {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: var(--primary-color);
+.notification-content strong {
     color: var(--font-color);
-    padding: 12px 20px;
-    border-radius: 20px;
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
-    pointer-events: none;
 }
-#toast-notification.visible {
-    opacity: 1;
-    visibility: visible;
+.notification-context {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+    margin-top: 8px;
+    padding: 10px;
+    background-color: var(--primary-color);
+    border-radius: 8px;
+    border-left: 3px solid var(--border-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 
@@ -980,6 +783,7 @@ button:disabled {
     color: var(--font-color);
 }
 
+
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
     .container {
@@ -988,22 +792,6 @@ button:disabled {
 
     .nav-left, .nav-right {
         gap: 5px;
-    }
-
-    #search-toggle-btn {
-        font-size: 1.2em;
-        padding: 6px;
-    }
-    .nav-button {
-        font-size: 0.8em;
-        padding: 6px 8px;
-    }
-    #lemmy-filter-container {
-        margin-left: 5px;
-    }
-    #lemmy-sort-select {
-        padding: 6px;
-        font-size: 0.8em;
     }
     
     .status-footer {
@@ -1015,14 +803,6 @@ button:disabled {
     .status-action {
         padding: 6px 12px;
         font-size: 0.8em;
-    }
-
-    .login-forms-container {
-        flex-direction: column;
-    }
-    .vertical-divider {
-        width: auto;
-        height: 1px;
     }
     
     .comment-replies-container {
