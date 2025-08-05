@@ -97,7 +97,7 @@ async function fetchAndRenderComments(state, postId, container, actions) {
     container.innerHTML = `<p>Loading comments...</p>`;
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const params = { post_id: postId, max_depth: 15, sort: 'Hot', type_: 'All' };
+        const params = { post_id: postId, max_depth: 15, sort: 'New', type_: 'All' };
         const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
         const commentsData = response.data.comments;
 
@@ -236,7 +236,7 @@ export async function renderLemmyPostPage(state, post, actions) {
                         <span class="lemmy-score">${post.counts.score}</span>
                         <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                     </div>
-                    <button class="status-action" data-action="view-comments">${ICONS.reply} ${post.counts.comments}</button>
+                    <button class="status-action" data-action="view-comments">${ICONS.comments} ${post.counts.comments}</button>
                     <button class="status-action" data-action="save">${ICONS.bookmark}</button>
                 </div>
             </div>
