@@ -245,7 +245,7 @@ export function initComposeModal(state, onPostSuccess) {
                     const uploadResponse = await apiUploadLemmyImage(lemmyInstance, lemmyToken, imageFile);
                     if (uploadResponse.files && uploadResponse.files.length > 0) {
                         const uploadedFile = uploadResponse.files[0];
-                        postBody.url = `${lemmyInstance}/pictrs/image/${uploadedFile.file}`;
+                        postBody.url = `https://${lemmyInstance}/pictrs/image/${uploadedFile.file}`;
                     } else {
                         throw new Error("Image upload failed to return a valid URL.");
                     }
