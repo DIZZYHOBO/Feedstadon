@@ -3,6 +3,10 @@
  * It now filters out null/undefined params and provides detailed error messages.
  */
 export async function apiFetch(instanceUrl, token, endpoint, options = {}, authType = 'mastodon', params = null) {
+    if (!instanceUrl) {
+        throw new Error("Instance URL is not provided.");
+    }
+    
     let url;
     const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     
@@ -66,6 +70,7 @@ export async function apiFetch(instanceUrl, token, endpoint, options = {}, authT
  * A helper function to upload media files for posts.
  */
 export async function apiUploadMedia(state, file) {
+    if (!state.instanceUrl) throw new Error("Instance URL not configured.");
     const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const url = `https://${cleanInstanceUrl}/api/v2/media`;
 
@@ -94,6 +99,7 @@ export async function apiUploadMedia(state, file) {
  * A helper function to update user profile credentials.
  */
 export async function apiUpdateCredentials(state, formData) {
+    if (!state.instanceUrl) throw new Error("Instance URL not configured.");
     const cleanInstanceUrl = state.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const url = `https://${cleanInstanceUrl}/api/v1/accounts/update_credentials`;
 
