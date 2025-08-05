@@ -234,4 +234,182 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
                 method: 'POST',
-                headers: { 'Content
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(commentData)
+            }, 'lemmy');
+            return response.data;
+        }
+    };
+    state.actions = actions;
+
+    const onMastodonLoginSuccess = async (instanceUrl, accessToken, callback) => {
+        const success = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
+            .then(response => {
+                if (!response || !response.data || !response.data.id) {
+                    showToast('Mastodon login failed.'); return false;
+                }
+                state.instanceUrl = instanceUrl;
+                state.accessToken = accessToken;
+                state.currentUser = response.data;
+                localStorage.setItem('fediverse-instance', instanceUrl);
+                localStorage.setItem('fediverse-token', accessToken);
+                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
+                showToast('Mastodon login successful!');
+                if (callback) callback();
+                else actions.showMastodonTimeline('home');
+                return true;
+            })
+            .catch(() => {
+                showToast('Mastodon login failed.');
+                return false;
+            });
+        return success;
+    };
+
+    const onLemmyLoginSuccess = (instance, username, password, callback) => {
+        apiFetch(instance, null, '/api/v3/user/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username_or_email: username, password: password })
+        }, 'none')
+        .then(response => {
+            if (response.data.jwt) {
+                localStorage.setItem('lemmy_jwt', response.data.jwt);
+                localStorage.setItem('lemmy_username', username);
+                localStorage.setItem('lemmy_instance', instance);
+                showToast('Lemmy login successful!');
+                if (callback) callback();
+                else actions.showLemmyFeed(state.currentLemmyFeed || 'All');
+            } else {
+                alert('Lemmy login failed.');
+            }
+        })
+        .catch(err => {
+             alert('Lemmy login error.');
+        });
+    };
+    
+    initDropdowns();
+    initComposeModal(state, () => actions.showMastodonTimeline('home'));
+    
+    // Initial app load
+    switchView('timeline');
+    if (localStorage.getItem('lemmy_jwt')) {
+        actions.showLemmyFeed('All');
+    } else if (localStorage.getItem('fediverse-token')) {
+        actions.showMastodonTimeline('home');
+    } else {
+        actions.showLemmyFeed('All');
+    }
+    
+
+    // --- Logout Modal Logic ---
+    const logoutModal = document.getElementById('logout-modal');
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        logoutModal.classList.add('visible');
+        document.getElementById('user-dropdown').classList.remove('active');
+    });
+
+    document.getElementById('cancel-logout-btn').addEventListener('click', () => {
+        logoutModal.classList.remove('visible');
+    });
+
+    document.getElementById('mastodon-logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('fediverse-instance');
+        localStorage.removeItem('fediverse-token');
+        state.instanceUrl = null;
+        state.accessToken = null;
+        state.currentUser = null;
+        showToast("Logged out from Mastodon.");
+        logoutModal.classList.remove('visible');
+        actions.showMastodonTimeline('home'); // Refresh view
+    });
+
+    document.getElementById('lemmy-logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('lemmy_jwt');
+        localStorage.removeItem('lemmy_username');
+        localStorage.removeItem('lemmy_instance');
+        showToast("Logged out from Lemmy.");
+        logoutModal.classList.remove('visible');
+        actions.showLemmyFeed('All'); // Refresh view
+    });
+
+    document.getElementById('logout-all-btn').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.reload();
+    });
+    
+    // --- Other Event Listeners ---
+    document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+
+        const timeline = target.dataset.timeline;
+        const lemmyFeed = target.dataset.lemmyFeed;
+
+        if (timeline) {
+            actions.showMastodonTimeline(timeline);
+        } else if (lemmyFeed) {
+            actions.showLemmyFeed(lemmyFeed);
+        } else if (target.id === 'discover-lemmy-link') {
+            actions.showLemmyDiscover();
+        }
+        document.getElementById('feeds-dropdown').classList.remove('active');
+    });
+
+    document.getElementById('user-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+        
+        switch (target.id) {
+            case 'new-post-link':
+                showComposeModal(state);
+                break;
+            case 'profile-link':
+                if (state.currentUser) {
+                    actions.showProfile(state.currentUser.id);
+                } else if (localStorage.getItem('lemmy_username')) {
+                    const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
+                    actions.showLemmyProfile(lemmyUser, true);
+                }
+                break;
+            case 'settings-link':
+                actions.showSettings();
+                break;
+            case 'logout-link':
+                logoutModal.classList.add('visible');
+                break;
+        }
+        document.getElementById('user-dropdown').classList.remove('active');
+    });
+
+
+    document.getElementById('lemmy-sort-select').addEventListener('change', (e) => {
+        actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
+    });
+
+    window.addEventListener('scroll', () => {
+        if (state.isLoadingMore) return;
+
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+            if (state.currentView === 'timeline' && state.currentLemmyFeed && state.lemmyHasMore) {
+                fetchLemmyFeed(state, actions, true);
+            } else if (state.currentView === 'timeline' && state.currentTimeline && state.nextPageUrl) {
+                fetchTimeline(state, state.currentTimeline, true);
+            }
+        }
+    });
+
+    window.addEventListener('popstate', (event) => {
+        if (state.history.length > 1) {
+            state.history.pop();
+            const previousView = state.history[state.history.length - 1];
+            switchView(previousView, false);
+        } else {
+            history.pushState({view: state.currentView}, '', `#${state.currentView}`);
+        }
+    });
+});
