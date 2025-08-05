@@ -696,6 +696,7 @@ button:disabled {
     min-height: 120px;
 }
 
+
 /* --- Notifications Page --- */
 #notifications-view {
     flex-direction: column;
