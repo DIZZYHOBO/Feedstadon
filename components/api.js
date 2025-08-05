@@ -96,7 +96,7 @@ export async function apiUploadMedia(state, file) {
 
 export async function apiUploadLemmyImage(instanceUrl, token, file) {
     const cleanInstanceUrl = instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const url = `https://${cleanInstanceUrl}/pictrs/image/upload`;
+    const url = `https://${cleanInstanceUrl}/pictrs/image`;
     
     const formData = new FormData();
     formData.append('images[]', file);
