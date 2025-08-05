@@ -35,7 +35,6 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
-    // --- Event Listeners for the Card ---
     card.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = e.target.closest('[data-action]')?.dataset.action;
@@ -91,7 +90,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
         const posts = response.data.posts;
 
         if (!loadMore) {
-            state.timelineDiv.innerHTML = ''; // Clear content *after* successful fetch
+            state.timelineDiv.innerHTML = '';
         }
 
         if (posts && posts.length > 0) {
@@ -126,30 +125,4 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
         if (loadMore) state.scrollLoader.classList.remove('loading');
         else document.getElementById('refresh-btn').classList.remove('loading');
     }
-}
-
-export async function renderSubscribedFeed(state, actions) {
-    const container = document.getElementById('subscribed-feed');
-    container.innerHTML = '<h2>Subscribed Lemmy Communities</h2>';
-    // Implementation to fetch and render subscribed Lemmy communities
-}
-
-export async function renderUnifiedFeed(state, actions, loadMore = false) {
-    const container = document.getElementById('unified-feed');
-    if (!loadMore) {
-        container.innerHTML = '<h2>Unified Feed</h2>';
-    }
-    // Implementation for the unified feed
-}
-
-export async function renderLemmyDiscoverPage(state, actions) {
-    const container = document.getElementById('lemmy-discover-view');
-    container.innerHTML = '<h2>Discover Lemmy Communities</h2>';
-    // Implementation to discover and render Lemmy communities
-}
-
-export async function renderLemmyCommunityPage(state, communityAcct, actions) {
-    const container = document.getElementById('lemmy-community-view');
-    container.innerHTML = `<h2>Lemmy Community: ${communityAcct}</h2>`;
-    // Implementation for rendering a specific Lemmy community page
 }
