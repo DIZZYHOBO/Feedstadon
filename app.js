@@ -78,13 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 views[key].style.display = 'none';
             }
         });
-
-        const lemmyFilter = document.getElementById('lemmy-filter-container');
-        if (state.currentLemmyFeed) {
-            lemmyFilter.style.display = 'block';
-        } else {
-            lemmyFilter.style.display = 'none';
-        }
         
         document.querySelector('.top-nav').style.display = 'flex';
         views.app.style.display = 'block';
@@ -100,6 +93,53 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toast.classList.remove('visible');
         }, 3000);
+    };
+    
+    const renderTimelineSubNav = (platform) => {
+        const subNavContainer = document.getElementById('timeline-sub-nav');
+        subNavContainer.innerHTML = '';
+        if (!platform) {
+            subNavContainer.style.display = 'none';
+            return;
+        }
+
+        let items = [];
+        let currentFeed = '';
+
+        if (platform === 'lemmy') {
+            items = [
+                { label: 'Subbed', feed: 'Subscribed' },
+                { label: 'Local', feed: 'Local' },
+                { label: 'All', feed: 'All' }
+            ];
+            currentFeed = state.currentLemmyFeed;
+        } else if (platform === 'mastodon') {
+             items = [
+                { label: 'Subbed', feed: 'home' },
+                { label: 'Local', feed: 'public?local=true' },
+                { label: 'All', feed: 'public' }
+            ];
+            currentFeed = state.currentTimeline;
+        }
+
+        items.forEach(item => {
+            const button = document.createElement('button');
+            button.className = 'timeline-sub-nav-btn';
+            button.textContent = item.label;
+            if (item.feed === currentFeed) {
+                button.classList.add('active');
+            }
+            button.addEventListener('click', () => {
+                if (platform === 'lemmy') {
+                    actions.showLemmyFeed(item.feed);
+                } else {
+                    actions.showMastodonTimeline(item.feed);
+                }
+            });
+            subNavContainer.appendChild(button);
+        });
+        
+        subNavContainer.style.display = 'flex';
     };
 
     const actions = {
@@ -119,23 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('search');
             renderSearchResults(state, `#${tagName}`);
         },
-        showConversations: () => {
-            switchView('conversations');
-            renderConversationsList(state, actions);
-        },
-        showConversationDetail: (conversationId, participants) => {
-            switchView('conversations');
-            renderConversationDetail(state, conversationId, participants);
-        },
         showSettings: () => {
             switchView('settings');
             renderSettingsPage(state);
-        },
-        showLemmyDiscover: () => {
-            alert('Discover page is not yet implemented.');
-        },
-        showLemmyCommunity: (communityAcct) => {
-            alert(`Community view for ${communityAcct} is not yet implemented.`);
         },
         showLemmyPostDetail: (post) => {
             switchView('lemmyPost');
@@ -147,12 +173,16 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentLemmySort = sortType;
             switchView('timeline');
             document.getElementById('lemmy-sort-select').value = sortType;
+            document.getElementById('lemmy-filter-container').style.display = 'block';
+            renderTimelineSubNav('lemmy');
             fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
         },
         showMastodonTimeline: (timelineType) => {
             state.currentLemmyFeed = null;
             state.currentTimeline = timelineType;
             switchView('timeline');
+            document.getElementById('lemmy-filter-container').style.display = 'none';
+            renderTimelineSubNav('mastodon');
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
         handleSearchResultClick: (account) => {
@@ -172,17 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`Failed to ${action} post.`);
             }
         },
-        muteAccount: async (accountId) => {
-            try {
-                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/mute`, { method: 'POST' });
-                showToast('User muted successfully.');
-                fetchTimeline(state, state.currentTimeline);
-            } catch (err) {
-                showToast('Failed to mute user.');
-            }
-        },
-        showEditModal: (post) => {},
-        showDeleteModal: (postId) => {},
         lemmyVote: async (postId, score, card) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -292,63 +311,26 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView(initialView, false);
     
     if (initialView === 'timeline') {
-        if (localStorage.getItem('lemmy_jwt')) {
-            actions.showLemmyFeed('All');
-        } else {
+        if (localStorage.getItem('fediverse-token')) {
             actions.showMastodonTimeline('home');
+        } else if (localStorage.getItem('lemmy_jwt')) {
+            actions.showLemmyFeed('Subscribed');
+        } else {
+            actions.showMastodonTimeline('home'); // Default to Mastodon login prompt
         }
     }
 
-    const logoutModal = document.getElementById('logout-modal');
-    document.getElementById('logout-link').addEventListener('click', (e) => {
-        e.preventDefault();
-        logoutModal.classList.add('visible');
-        document.getElementById('user-dropdown').classList.remove('active');
-    });
-
-    document.getElementById('cancel-logout-btn').addEventListener('click', () => {
-        logoutModal.classList.remove('visible');
-    });
-
-    document.getElementById('mastodon-logout-btn').addEventListener('click', () => {
-        localStorage.removeItem('fediverse-instance');
-        localStorage.removeItem('fediverse-token');
-        state.instanceUrl = null;
-        state.accessToken = null;
-        state.currentUser = null;
-        showToast("Logged out from Mastodon.");
-        logoutModal.classList.remove('visible');
-        actions.showMastodonTimeline('home');
-    });
-
-    document.getElementById('lemmy-logout-btn').addEventListener('click', () => {
-        localStorage.removeItem('lemmy_jwt');
-        localStorage.removeItem('lemmy_username');
-        localStorage.removeItem('lemmy_instance');
-        showToast("Logged out from Lemmy.");
-        logoutModal.classList.remove('visible');
-        actions.showLemmyFeed('All');
-    });
-
-    document.getElementById('logout-all-btn').addEventListener('click', () => {
-        localStorage.clear();
-        window.location.reload();
-    });
-    
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
         const target = e.target.closest('a');
         if (!target) return;
 
-        const timeline = target.dataset.timeline;
-        const lemmyFeed = target.dataset.lemmyFeed;
-
-        if (timeline) {
-            actions.showMastodonTimeline(timeline);
-        } else if (lemmyFeed) {
-            actions.showLemmyFeed(lemmyFeed);
-        } else if (target.id === 'discover-lemmy-link') {
-            actions.showLemmyDiscover();
+        if (target.id === 'lemmy-main-link') {
+            actions.showLemmyFeed('Subscribed');
+        } else if (target.id === 'mastodon-main-link') {
+            actions.showMastodonTimeline('home');
+        } else if (target.dataset.timeline) {
+            actions.showMastodonTimeline(target.dataset.timeline);
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
@@ -372,9 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'settings-link':
                 actions.showSettings();
-                break;
-            case 'logout-link':
-                logoutModal.classList.add('visible');
                 break;
         }
         document.getElementById('user-dropdown').classList.remove('active');
