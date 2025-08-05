@@ -776,9 +776,14 @@ button:disabled {
 }
 
 .lemmy-card .status-footer {
-    justify-content: flex-start;
-    gap: 15px;
+    justify-content: space-between;
     align-items: center;
+}
+
+.lemmy-vote-cluster {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .lemmy-vote-btn {
