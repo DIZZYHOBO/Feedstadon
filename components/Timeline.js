@@ -66,8 +66,8 @@ export async function fetchTimeline(state, actions, loadMore = false, onMastodon
         }
 
         data.forEach(status => {
-            // ** THE FIX IS HERE **: Added 'state' as the fourth argument.
-            const statusCard = renderStatus(status, state.currentUser, actions, state);
+            // ** THE FIX IS HERE **: Pass state.settings directly.
+            const statusCard = renderStatus(status, state.currentUser, actions, state.settings);
             state.timelineDiv.appendChild(statusCard);
         });
 
