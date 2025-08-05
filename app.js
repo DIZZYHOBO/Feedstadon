@@ -1,8 +1,10 @@
+import { initLogin } from './components/Login.js';
 import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
 import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
+import { renderConversationsList, renderConversationDetail } from './components/Conversations.js';
 import { initComposeModal, showComposeModal } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
@@ -292,7 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initDropdowns();
     initComposeModal(state, () => actions.showMastodonTimeline('home'));
     
-    // Initial app load
     switchView('timeline');
     if (localStorage.getItem('lemmy_jwt')) {
         actions.showLemmyFeed('All');
@@ -301,9 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         actions.showLemmyFeed('All');
     }
-    
 
-    // --- Logout Modal Logic ---
     const logoutModal = document.getElementById('logout-modal');
     document.getElementById('logout-link').addEventListener('click', (e) => {
         e.preventDefault();
@@ -323,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentUser = null;
         showToast("Logged out from Mastodon.");
         logoutModal.classList.remove('visible');
-        actions.showMastodonTimeline('home'); // Refresh view
+        actions.showMastodonTimeline('home');
     });
 
     document.getElementById('lemmy-logout-btn').addEventListener('click', () => {
@@ -332,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('lemmy_instance');
         showToast("Logged out from Lemmy.");
         logoutModal.classList.remove('visible');
-        actions.showLemmyFeed('All'); // Refresh view
+        actions.showLemmyFeed('All');
     });
 
     document.getElementById('logout-all-btn').addEventListener('click', () => {
@@ -340,7 +339,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload();
     });
     
-    // --- Other Event Listeners ---
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
         const target = e.target.closest('a');
@@ -412,4 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
             history.pushState({view: state.currentView}, '', `#${state.currentView}`);
         }
     });
+
+    history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
 });
