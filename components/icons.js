@@ -13,5 +13,7 @@ export const ICONS = {
     lemmyUpvote: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2L2,12H7V22H17V12H22L12,2Z" /></svg>`,
     lemmyDownvote: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,22L22,12H17V2H7V12H2L12,22Z" /></svg>`,
     edit: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg>`,
-    delete: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>`
+    delete: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>`,
+    // --- NEW ICON ADDED HERE ---
+    lemmy: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M21.9,8.9C21.8,8.8,21.6,8.8,21.5,8.8H17.2V5.1C17.2,5,17.2,4.8,17.1,4.7C17,4.6,16.8,4.6,16.7,4.6H7.3C7.2,4.6,7,4.6,6.9,4.7C6.8,4.8,6.8,5,6.8,5.1V8.8H2.5C2.4,8.8,2.2,8.8,2.1,8.9C2,9,2,9.2,2,9.3L4.9,19C4.9,19.1,5,19.2,5.1,19.3C5.2,19.4,5.4,19.4,5.5,19.4H18.5C18.6,19.4,18.8,19.4,18.9,19.3C19,19.2,19.1,19.1,19.1,19L22,9.3C22,9.2,22,9,21.9,8.9M15.2,8.8H8.8V6.6H15.2V8.8Z" /></svg>`
 };
