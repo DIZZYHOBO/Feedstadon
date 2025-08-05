@@ -46,37 +46,45 @@ export async function renderNotificationsPage(state, actions) {
         }
 
         // --- Data Transformation Step ---
-        // Transform the raw API data into a simple, consistent format.
         const allNotifications = [
             // Mastodon Notifications
             ...mastodonNotifs.map(n => ({
                 platform: 'mastodon',
                 date: n.created_at,
-                icon: ICONS.favorite, // Placeholder, can be improved
+                icon: ICONS.favorite, // This can be improved to show different icons for different notification types
                 content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
                 contextHTML: `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>`,
                 authorAvatar: n.account.avatar_static,
                 timestamp: n.created_at
             })),
-            // Lemmy Comment Reply Notifications
+            
+            // **FIXED SECTION**: Lemmy Comment Reply Notifications
             ...lemmyReplyNotifs.map(n => {
-                // Defensive check to ensure data exists before creating the object
-                if (!n.comment_reply || !n.comment_reply.creator || !n.comment_reply.comment) {
-                    return null;
+                // 1. Use optional chaining (?.) to safely access nested properties.
+                // This prevents the "Cannot read properties of undefined" error.
+                const creator = n?.comment_reply?.creator;
+                const comment = n?.comment_reply?.comment;
+
+                // 2. Add a robust check to ensure all necessary data is present before rendering.
+                if (!creator || !comment) {
+                    console.error("Skipping malformed Lemmy notification:", n);
+                    return null; // This will be filtered out later.
                 }
-                const reply = n.comment_reply;
+
+                // 3. Construct the unified notification object.
                 return {
                     platform: 'lemmy',
-                    date: reply.comment.published,
+                    date: comment.published,
                     icon: ICONS.reply,
-                    content: `<strong>${reply.creator.name}</strong> replied to your comment.`,
-                    contextHTML: `<div class="notification-context">${reply.comment.content}</div>`,
-                    authorAvatar: reply.creator.avatar || './images/logo.png',
-                    timestamp: reply.comment.published
+                    content: `<strong>${creator.name}</strong> replied to your comment.`,
+                    contextHTML: `<div class="notification-context">${comment.content}</div>`,
+                    authorAvatar: creator.avatar || './images/logo.png',
+                    timestamp: comment.published
                 };
             })
-        ].filter(Boolean); // Filter out any null entries from failed transformations
+        ].filter(Boolean); // 4. Filter out any null entries that resulted from malformed data.
 
+        // Sort all notifications from all platforms by date.
         allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const renderFilteredNotifications = (filter) => {
@@ -94,6 +102,7 @@ export async function renderNotificationsPage(state, actions) {
             });
         };
 
+        // Set up sub-navigation click handlers
         subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
