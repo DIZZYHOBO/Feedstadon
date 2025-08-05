@@ -67,6 +67,7 @@ export async function renderNotificationsPage(state, actions) {
 
                 // 2. Add a robust check to ensure all necessary data is present before rendering.
                 if (!creator || !comment) {
+                    Vonsole.log(JSON.stringify(notificationObject, null, 2));
                     console.error("Skipping malformed Lemmy notification:", n);
                     return null; // This will be filtered out later.
                 }
@@ -117,4 +118,15 @@ export async function renderNotificationsPage(state, actions) {
         console.error('Failed to fetch notifications:', error);
         listContainer.innerHTML = `<p>Could not load notifications. ${error.message}</p>`;
     }
+}
+// Instead of this:
+// let avatarUrl = `https://.../${notification.creator.id}`;
+
+// Do this:
+if (notification && notification.creator && notification.creator.id) {
+  let avatarUrl = `https://.../${notification.creator.id}`;
+  // ... proceed to fetch ...
+} else {
+  console.error("Cannot construct avatar URL, creator or creator.id is missing.", notification);
+  // Use a default avatar or skip rendering this part
 }
