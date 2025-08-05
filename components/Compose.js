@@ -1,4 +1,4 @@
-import { apiFetch, apiUploadMedia } from './api.js';
+import { apiFetch, apiUploadMedia, apiUploadLemmyImage } from './api.js';
 import { ICONS } from './icons.js';
 
 let isPollActive = false;
@@ -225,13 +225,48 @@ export function initComposeModal(state, onPostSuccess) {
 
         const postBody = {
             name: title,
-            body: document.getElementById('lemmy-body-textarea').value.trim(),
-            community_id: resolvedLemmyCommunityId
+            community_id: resolvedLemmyCommunityId,
+            body: document.getElementById('lemmy-body-textarea').value.trim()
         };
         
-        alert("Lemmy posting is not fully implemented. Check console for post body.");
-        console.log("Lemmy Post Body:", postBody);
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const lemmyToken = localStorage.getItem('lemmy_jwt');
 
+        try {
+            const postButton = lemmyForm.querySelector('button[type="submit"]');
+            postButton.disabled = true;
+            postButton.textContent = 'Posting...';
+
+            if (currentLemmyPostType === 'Link') {
+                postBody.url = document.getElementById('lemmy-url-input').value.trim();
+            } else if (currentLemmyPostType === 'Image') {
+                const imageFile = document.getElementById('lemmy-image-input').files[0];
+                if (imageFile) {
+                    const uploadResponse = await apiUploadLemmyImage(lemmyInstance, lemmyToken, imageFile);
+                    if (uploadResponse.files && uploadResponse.files.length > 0) {
+                        postBody.url = `${lemmyInstance}/pictrs/image/${uploadResponse.files[0].file}`;
+                    } else {
+                        throw new Error("Image upload failed to return a valid URL.");
+                    }
+                }
+            }
+            
+            await apiFetch(lemmyInstance, null, '/api/v3/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postBody)
+            }, 'lemmy');
+
+            postButton.disabled = false;
+            postButton.textContent = 'Post';
+            composeModal.classList.remove('visible');
+            state.actions.showLemmyFeed('Subscribed'); // Refresh feed on success
+        } catch (err) {
+            console.error("Failed to post to Lemmy:", err);
+            alert("Could not create Lemmy post.");
+            lemmyForm.querySelector('button[type="submit"]').disabled = false;
+            lemmyForm.querySelector('button[type="submit"]').textContent = 'Post';
+        }
     });
 
 
