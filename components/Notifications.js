@@ -47,12 +47,10 @@ export async function updateNotificationBell() {
     }
 }
 
-/*
-async function markAllAsRead(lemmyInstance) {
+async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
     try {
         // Mark all mentions as read
-        const { data: unreadMentions } = await apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy');
-        for(const mention of unreadMentions.mentions) {
+        for(const mention of unreadMentions) {
             try {
                 await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
                      method: 'POST',
@@ -65,8 +63,7 @@ async function markAllAsRead(lemmyInstance) {
         }
 
         // Mark all private messages as read
-        const { data: unreadPms } = await apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy');
-        for(const pm of unreadPms.private_messages) {
+        for(const pm of unreadPms) {
             try {
                  await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
                      method: 'POST',
@@ -82,7 +79,6 @@ async function markAllAsRead(lemmyInstance) {
         console.error("Failed to mark notifications as read:", error);
     }
 }
-*/
 
 export async function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
@@ -100,11 +96,6 @@ export async function renderNotificationsPage(state, actions) {
     
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
-        /*
-        if (lemmyInstance) {
-           markAllAsRead(lemmyInstance);
-        }
-        */
 
         let mastodonNotifs = [];
         if (state.instanceUrl && state.accessToken) {
@@ -124,6 +115,11 @@ export async function renderNotificationsPage(state, actions) {
             lemmyReplyNotifs = repliesResponse.data.replies || [];
             lemmyMentionNotifs = mentionsResponse.data.mentions || [];
             lemmyPrivateMessages = messagesResponse.data.private_messages || [];
+            
+            // Now that we have the data, find the unread ones and mark them as read in the background
+            const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
+            const unreadPms = lemmyPrivateMessages.filter(p => !p.private_message.read);
+            markItemsAsRead(lemmyInstance, unreadMentions, unreadPms);
         }
 
         const allNotifications = [
