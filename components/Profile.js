@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, apiUpdateCredentials } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { ICONS } from './icons.js';
@@ -16,6 +16,9 @@ async function renderMastodonProfile(state, actions, container, accountId) {
         const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}`);
         const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}/statuses`);
 
+        const isOwnProfile = account.id === state.currentUser?.id;
+        const editButtonHTML = isOwnProfile ? `<button class="button-secondary" id="edit-profile-btn">${ICONS.edit} Edit Profile</button>` : '';
+
         const banner = account.header_static || '';
         const displayName = account.display_name;
         const username = account.username;
@@ -31,6 +34,7 @@ async function renderMastodonProfile(state, actions, container, accountId) {
                     <img class="avatar" src="${avatar}" alt="${displayName}'s avatar" onerror="this.src='./images/logo.png'">
                 </div>
                 <div class="profile-actions">
+                    ${editButtonHTML}
                     <button class="follow-btn">Follow</button>
                     <button class="block-btn">Block</button>
                 </div>
@@ -53,6 +57,12 @@ async function renderMastodonProfile(state, actions, container, accountId) {
         } else {
             statuses.forEach(status => {
                 feed.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
+        if (isOwnProfile) {
+            container.querySelector('#edit-profile-btn').addEventListener('click', () => {
+                actions.showEditProfile();
             });
         }
 
@@ -187,4 +197,94 @@ export function renderProfilePage(state, actions, platform, accountId, userAcct)
 
     // Set initial tab
     switchTab(platform);
+}
+
+export function renderEditProfilePage(state, actions) {
+    const view = document.getElementById('edit-profile-view');
+    view.innerHTML = '';
+    
+    if (!state.currentUser) {
+        view.innerHTML = `<p>You must be logged in to edit your profile.</p>`;
+        return;
+    }
+    
+    const container = document.createElement('div');
+    container.className = 'edit-profile-container';
+    
+    container.innerHTML = `
+        <div class="edit-profile-header">
+            <h2>Edit Mastodon Profile</h2>
+            <button class="button-secondary" id="cancel-edit-profile-btn">Cancel</button>
+        </div>
+        <form id="edit-profile-form">
+            <div class="profile-image-previews">
+                <img id="avatar-preview" src="${state.currentUser.avatar_static}" alt="Avatar preview">
+                <img id="header-preview" src="${state.currentUser.header_static}" alt="Header preview">
+            </div>
+            <div class="form-group">
+                <label for="avatar-upload">Upload new avatar</label>
+                <input type="file" id="avatar-upload" name="avatar" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label for="header-upload">Upload new header</label>
+                <input type="file" id="header-upload" name="header" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label for="display-name">Display Name</label>
+                <input type="text" id="display-name" name="display_name" value="${state.currentUser.display_name}">
+            </div>
+            <div class="form-group">
+                <label for="bio">Bio</label>
+                <textarea id="bio" name="note" rows="4">${state.currentUser.note}</textarea>
+            </div>
+            <button type="submit" class="button-primary">Save Changes</button>
+        </form>
+    `;
+    
+    view.appendChild(container);
+    
+    const form = view.querySelector('#edit-profile-form');
+    const avatarInput = view.querySelector('#avatar-upload');
+    const headerInput = view.querySelector('#header-upload');
+    const avatarPreview = view.querySelector('#avatar-preview');
+    const headerPreview = view.querySelector('#header-preview');
+    
+    avatarInput.addEventListener('change', () => {
+        if (avatarInput.files[0]) {
+            avatarPreview.src = URL.createObjectURL(avatarInput.files[0]);
+        }
+    });
+    
+    headerInput.addEventListener('change', () => {
+        if (headerInput.files[0]) {
+            headerPreview.src = URL.createObjectURL(headerInput.files[0]);
+        }
+    });
+
+    view.querySelector('#cancel-edit-profile-btn').addEventListener('click', () => {
+        actions.showProfilePage('mastodon');
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const saveButton = form.querySelector('button[type="submit"]');
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+
+        try {
+            const formData = new FormData(e.target);
+            await apiUpdateCredentials(state, formData);
+            alert("Profile updated successfully!");
+            // Refresh the user state after update
+            const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
+            state.currentUser = account;
+            actions.showProfilePage('mastodon');
+        } catch (error) {
+            console.error("Failed to update profile", error);
+            alert("Failed to update profile.");
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+    });
 }
