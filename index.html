@@ -50,7 +50,14 @@
         <div id="app-view">
             <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
             <div id="timeline"></div>
-            <div id="profile-page-view" style="display: none;"></div>
+            <div id="profile-page-view" style="display: none;">
+                <div class="profile-tabs">
+                    <button class="tab-button active" data-tab="mastodon-profile">Mastodon</button>
+                    <button class="tab-button" data-tab="lemmy-profile">Lemmy</button>
+                </div>
+                <div class="profile-tab-content active" id="mastodon-profile-content"></div>
+                <div class="profile-tab-content" id="lemmy-profile-content"></div>
+            </div>
             <div id="search-results-view" style="display: none;"></div>
             <div id="status-detail-view" style="display: none;"></div>
             <div id="settings-view" style="display: none;"></div>
