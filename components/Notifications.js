@@ -23,7 +23,7 @@ export async function updateNotificationBell() {
     if (!lemmyInstance) {
         notifBtn.classList.remove('unread');
         return;
-    };
+    }
 
     try {
         const [mentions, pms, replies] = await Promise.all([
@@ -47,6 +47,21 @@ export async function updateNotificationBell() {
     }
 }
 
+async function markMentionsAsRead(lemmyInstance) {
+    try {
+        const { data: unreadMentions } = await apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy');
+        for(const mention of unreadMentions.mentions) {
+            await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
+            }, 'lemmy');
+        }
+        updateNotificationBell();
+    } catch (error) {
+        console.error("Failed to mark mentions as read:", error);
+    }
+}
 
 export async function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
@@ -55,7 +70,7 @@ export async function renderNotificationsPage(state, actions) {
 
     subNav.innerHTML = `
         <div class="notifications-sub-nav-tabs">
-            <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
+            <button class="notifications-sub-nav-btn" data-filter="all">All</button>
             <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
             <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
         </div>
@@ -65,25 +80,7 @@ export async function renderNotificationsPage(state, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
-            // Mark all mentions as read by fetching them
-            const { data: unreadMentions } = await apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy');
-            for(const mention of unreadMentions.mentions) {
-                await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
-                }, 'lemmy');
-            }
-            // Mark all private messages as read
-            const { data: unreadPms } = await apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy');
-            for(const pm of unreadPms.private_messages) {
-                 await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ private_message_id: pm.private_message.id, read: true })
-                }, 'lemmy');
-            }
-            updateNotificationBell();
+           markMentionsAsRead(lemmyInstance);
         }
 
         let mastodonNotifs = [];
@@ -110,7 +107,7 @@ export async function renderNotificationsPage(state, actions) {
             ...mastodonNotifs.map(n => ({
                 platform: 'mastodon',
                 date: n.created_at,
-                icon: n.type === 'mention' ? ICONS.reply : ICONS.favorite, // Simplified icon logic
+                icon: n.type === 'mention' ? ICONS.reply : ICONS.favorite,
                 content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
                 contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
                 authorAvatar: n.account.avatar_static,
@@ -178,8 +175,7 @@ export async function renderNotificationsPage(state, actions) {
                 renderFilteredNotifications(e.target.dataset.filter);
             });
         });
-
-        // Show the lemmy tab by default if there's a lemmy user
+        
         const defaultTab = lemmyInstance ? 'lemmy' : 'all';
         subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`).classList.add('active');
         renderFilteredNotifications(defaultTab);
