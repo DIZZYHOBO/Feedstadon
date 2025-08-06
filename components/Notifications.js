@@ -48,28 +48,24 @@ export async function updateNotificationBell() {
 }
 
 async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
-    // This function runs independently and won't block rendering.
+    // This function now runs independently and won't block rendering.
     try {
-        // Mark all mentions as read
         for(const mention of unreadMentions) {
             try {
                 await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
                      method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
+                     body: { person_mention_id: mention.person_mention.id, read: true }
                 }, 'lemmy');
             } catch (err) {
                 console.error(`Failed to mark mention ${mention.person_mention.id} as read`, err);
             }
         }
 
-        // Mark all private messages as read
         for(const pm of unreadPms) {
             try {
                  await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
                      method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ private_message_id: pm.private_message.id, read: true })
+                     body: { private_message_id: pm.private_message.id, read: true }
                 }, 'lemmy');
             } catch (err) {
                  console.error(`Failed to mark private message ${pm.private_message.id} as read`, err);
