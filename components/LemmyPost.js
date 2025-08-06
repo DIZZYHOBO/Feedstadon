@@ -159,9 +159,9 @@ function renderCommentNode(commentView, actions) {
             <div class="status-content">${comment.content}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                    <button class="status-action lemmy-vote-btn ${commentView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
                     <span class="lemmy-score">${counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                    <button class="status-action lemmy-vote-btn ${commentView.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                 </div>
                 <button class="status-action" data-action="reply">${ICONS.reply}</button>
             </div>
