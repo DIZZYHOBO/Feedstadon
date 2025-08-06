@@ -23,7 +23,7 @@ export function renderLemmyCard(post, actions) {
         <div class="post-options-container">
             <button class="post-options-btn">${ICONS.more}</button>
             <div class="post-options-menu">
-                <button data-action="block-community">Block Community</button>
+                <button data-action="block-community" data-community-id="${post.community.id}">Block Community</button>
             </div>
         </div>
     `;
@@ -144,7 +144,18 @@ export function renderLemmyCard(post, actions) {
             e.stopPropagation();
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
-        menu.addEventListener('click', (e) => e.stopPropagation());
+
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            if (action === 'block-community') {
+                const communityId = parseInt(e.target.dataset.communityId, 10);
+                if (confirm('Are you sure you want to block this community?')) {
+                    actions.lemmyBlockCommunity(communityId, true);
+                }
+            }
+            menu.style.display = 'none';
+        });
     }
 
     return card;
