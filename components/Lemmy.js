@@ -63,13 +63,13 @@ export function renderLemmyCard(post, actions) {
         </div>
         <div class="status-footer">
             <div class="lemmy-vote-cluster">
-                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                <button class="status-action lemmy-vote-btn ${post.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
                 <span class="lemmy-score">${post.counts.score}</span>
-                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                <button class="status-action lemmy-vote-btn ${post.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
             </div>
             <button class="status-action" data-action="quick-reply">${ICONS.reply}</button>
             <button class="status-action" data-action="view-post">${ICONS.comments} ${post.counts.comments}</button>
-            <button class="status-action" data-action="save">${ICONS.bookmark}</button>
+            <button class="status-action ${post.saved ? 'active' : ''}" data-action="save">${ICONS.bookmark}</button>
         </div>
         <div class="quick-reply-container">
             <div class="quick-reply-box">
