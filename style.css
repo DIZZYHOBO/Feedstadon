@@ -826,6 +826,40 @@ button:disabled {
 
 
 /* --- Profile Page --- */
+.profile-tabs {
+    display: flex;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    padding: 5px;
+}
+.profile-tabs .tab-button {
+    flex-grow: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+.profile-tabs .tab-button:hover {
+    background-color: var(--primary-color);
+    color: var(--font-color);
+}
+.profile-tabs .tab-button.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+.profile-tab-content {
+    display: none;
+}
+.profile-tab-content.active {
+    display: block;
+}
+
 .profile-header-container {
     position: sticky;
     top: 60px;
