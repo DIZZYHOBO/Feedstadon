@@ -88,8 +88,11 @@ function renderCommentTree(comments, container, actions) {
         if (commentView.children && commentView.children.length > 0) {
             const repliesContainer = document.createElement('div');
             repliesContainer.className = 'comment-replies-container';
-            commentElement.appendChild(repliesContainer);
-            renderCommentTree(commentView.children, repliesContainer, actions);
+            const body = commentElement.querySelector('.status-body-content');
+            if (body) {
+                body.appendChild(repliesContainer);
+                renderCommentTree(commentView.children, repliesContainer, actions);
+            }
         }
     });
 }
