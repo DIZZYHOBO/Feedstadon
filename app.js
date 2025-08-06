@@ -6,6 +6,7 @@ import { renderStatusDetail } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 
@@ -70,6 +71,8 @@ function initPullToRefresh(state, actions) {
                 } else if (state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 }
+            } else if (state.currentView === 'notifications') {
+                actions.showNotifications();
             }
         }
     });
@@ -80,6 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply saved theme on startup
     const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
     document.body.dataset.theme = savedTheme;
+
+    // Setup UI Elements
+    const notificationsBtn = document.getElementById('notifications-btn');
+    notificationsBtn.innerHTML = ICONS.notifications + '<div class="notification-dot"></div>';
+
 
     const state = {
         history: [],
@@ -107,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = {
         app: document.getElementById('app-view'),
         timeline: document.getElementById('timeline'),
+        notifications: document.getElementById('notifications-view'),
         profile: document.getElementById('profile-page-view'),
         search: document.getElementById('search-results-view'),
         settings: document.getElementById('settings-view'),
@@ -115,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = (viewName, pushToHistory = true) => {
-        if (state.currentView === viewName) return;
+        if (state.currentView === viewName && viewName !== 'notifications') return;
 
         if (pushToHistory) {
             history.pushState({view: viewName}, '', `#${viewName}`);
@@ -236,6 +245,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showSettings: () => {
             switchView('settings');
             renderSettingsPage(state);
+        },
+        showNotifications: () => {
+            switchView('notifications');
+            renderNotificationsPage(state, actions);
         },
         showLemmyPostDetail: (post) => {
             switchView('lemmyPost');
@@ -375,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
                 showToast('Lemmy login successful!');
+                updateNotificationBell();
                 actions.showLemmyFeed('Subscribed');
             } else {
                 alert('Lemmy login failed.');
@@ -389,18 +403,28 @@ document.addEventListener('DOMContentLoaded', () => {
     initPullToRefresh(state, actions);
     initComposeModal(state, () => actions.showHomeTimeline());
     
+    notificationsBtn.addEventListener('click', () => {
+        actions.showNotifications();
+    });
+
     const initialView = location.hash.substring(1) || 'timeline';
-    switchView(initialView, false);
     
+    if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
+        updateNotificationBell();
+    }
+
     if (initialView === 'timeline') {
-        if (state.accessToken) { // Corrected check for Mastodon login
+        if (state.accessToken) { 
             actions.showHomeTimeline();
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
             actions.showHomeTimeline(); 
         }
+    } else {
+        switchView(initialView, false);
     }
+
 
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
