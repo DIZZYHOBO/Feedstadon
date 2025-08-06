@@ -6,6 +6,7 @@ import { renderStatusDetail } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderNotificationsPage } from './components/Notifications.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 
@@ -107,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = {
         app: document.getElementById('app-view'),
         timeline: document.getElementById('timeline'),
+        notifications: document.getElementById('notifications-view'),
         profile: document.getElementById('profile-page-view'),
         search: document.getElementById('search-results-view'),
         settings: document.getElementById('settings-view'),
@@ -236,6 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showSettings: () => {
             switchView('settings');
             renderSettingsPage(state);
+        },
+        showNotifications: () => {
+            switchView('notifications');
+            renderNotificationsPage(state, actions);
         },
         showLemmyPostDetail: (post) => {
             switchView('lemmyPost');
@@ -389,6 +395,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initPullToRefresh(state, actions);
     initComposeModal(state, () => actions.showHomeTimeline());
     
+    document.getElementById('notifications-btn').addEventListener('click', () => {
+        actions.showNotifications();
+    });
+
     const initialView = location.hash.substring(1) || 'timeline';
     switchView(initialView, false);
     
