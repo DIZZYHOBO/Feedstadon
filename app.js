@@ -137,6 +137,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
+        // Hide sub-nav by default on every view change
+        document.getElementById('timeline-sub-nav').style.display = 'none';
+        
         document.querySelector('.top-nav').style.display = 'flex';
         views.app.style.display = 'block';
         if (views[viewName]) {
@@ -273,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentLemmyFeed = null;
             state.currentTimeline = 'home';
             switchView('timeline');
-            renderTimelineSubNav(null); // Hide sub-nav
             fetchTimeline(state, actions, false, onMastodonLoginSuccess);
         },
         replyToStatus: (post) => {
@@ -412,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
         updateNotificationBell();
     }
-
+    
     if (initialView === 'timeline') {
         if (state.accessToken) { 
             actions.showHomeTimeline();
