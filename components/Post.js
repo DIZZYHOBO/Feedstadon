@@ -1,6 +1,7 @@
 import { ICONS } from './icons.js';
 import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
 import { apiFetch } from './api.js';
+import { showImageModal } from './ui.js';
 
 function renderPoll(poll, statusId, actions) {
     const container = document.createElement('div');
@@ -137,6 +138,16 @@ export function renderStatus(status, currentUser, actions, settings) {
         </div>
     `;
     
+    // Attach image click listener
+    const mediaImg = card.querySelector('.status-media img');
+    if (mediaImg) {
+        mediaImg.style.cursor = 'pointer';
+        mediaImg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImageModal(mediaImg.src);
+        });
+    }
+
     card.querySelector('.status-body-content').addEventListener('click', () => {
         actions.showStatusDetail(post.id);
     });
