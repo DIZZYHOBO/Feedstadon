@@ -31,30 +31,30 @@ export function initImageModal() {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.classList.remove('visible');
+            // If the modal was opened via history, go back
+            if (history.state && history.state.imageModal) {
+                history.back();
+            }
         }
     });
 
-    saveBtn.addEventListener('click', async () => {
+    saveBtn.addEventListener('click', () => {
         const image = document.getElementById('fullscreen-image');
         const imageUrl = image.src;
-        try {
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            // Create a filename
-            const filename = imageUrl.split('/').pop().split('#')[0].split('?')[0] || 'image.jpg';
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-        } catch (err) {
-            console.error('Failed to save image:', err);
-            alert('Could not save image.');
-        }
+        
+        // Create a temporary anchor element to trigger the download
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = imageUrl;
+        
+        // Suggest a filename for the download
+        const filename = imageUrl.split('/').pop().split('#')[0].split('?')[0] || 'image.jpg';
+        a.download = filename;
+        
+        // Append to the body, click, and then remove
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
     });
 }
 
@@ -63,4 +63,5 @@ export function showImageModal(imageUrl) {
     const image = document.getElementById('fullscreen-image');
     image.src = imageUrl;
     modal.classList.add('visible');
+    history.pushState({ imageModal: true }, "Image View");
 }
