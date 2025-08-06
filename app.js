@@ -1,14 +1,14 @@
-import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
-import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
-import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
-import { renderSettingsPage } from './components/Settings.js';
-import { renderStatusDetail } from './components/Post.js';
-import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
-import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
-import { renderLemmyPostPage } from './components/LemmyPost.js';
-import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
-import { ICONS } from './components/icons.js';
-import { apiFetch } from './components/api.js';
+import { fetchTimeline, renderLoginPrompt } from '/components/Timeline.js';
+import { renderProfilePage, renderLemmyProfilePage } from '/components/Profile.js';
+import { renderSearchResults, renderHashtagSuggestions } from '/components/Search.js';
+import { renderSettingsPage } from '/components/Settings.js';
+import { renderStatusDetail } from '/components/Post.js';
+import { initComposeModal, showComposeModal, showComposeModalWithReply } from '/components/Compose.js';
+import { fetchLemmyFeed, renderLemmyCard } from '/components/Lemmy.js';
+import { renderLemmyPostPage } from '/components/LemmyPost.js';
+import { renderNotificationsPage, updateNotificationBell } from '/components/Notifications.js';
+import { ICONS } from '/components/icons.js';
+import { apiFetch } from '/components/api.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
