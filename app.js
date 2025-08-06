@@ -9,7 +9,7 @@ import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
-import { showLoadingBar, hideLoadingBar } from './components/ui.js';
+import { showLoadingBar, hideLoadingBar, initImageModal } from './components/ui.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -475,6 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDropdowns();
     initPullToRefresh(state, actions);
     initComposeModal(state, () => actions.showHomeTimeline());
+    initImageModal();
     
     notificationsBtn.addEventListener('click', () => {
         actions.showNotifications();
