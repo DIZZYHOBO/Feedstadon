@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
-import { renderLoginPrompt } from './Timeline.js'; 
+import { renderLoginPrompt } from './Timeline.js';
 
 export function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
@@ -170,7 +170,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 6
+            limit: 4
         };
         if (state.currentLemmyFeed !== 'All') {
             params.type_ = state.currentLemmyFeed;
