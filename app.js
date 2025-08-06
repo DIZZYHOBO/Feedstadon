@@ -324,6 +324,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actions.showLemmyCommunity(account.acct);
             }
         },
+        deleteStatus: async (statusId) => {
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
+                document.querySelector(`.status[data-id="${statusId}"]`)?.remove();
+                showToast("Post deleted successfully.");
+            } catch (err) {
+                showToast("Failed to delete post.");
+            }
+        },
+        editStatus: async (statusId, newContent) => {
+            try {
+                const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, {
+                    method: 'PUT',
+                    body: { status: newContent }
+                });
+                // Update the post in the UI
+                const postCard = document.querySelector(`.status[data-id="${statusId}"]`);
+                if (postCard) {
+                    const contentDiv = postCard.querySelector('.status-content');
+                    contentDiv.innerHTML = response.data.content;
+                }
+                showToast("Post updated successfully.");
+            } catch (err) {
+                showToast("Failed to update post.");
+            }
+        },
         toggleAction: async (action, status, button) => {
             const isToggled = button.classList.contains('active');
             const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
