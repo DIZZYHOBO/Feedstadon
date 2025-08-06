@@ -6,6 +6,9 @@ function renderSingleNotification(notification) {
     const item = document.createElement('div');
     item.className = 'notification-item';
     item.innerHTML = `
+        <div class="notification-platform-icon">
+            ${notification.platform === 'lemmy' ? ICONS.lemmy : ICONS.mastodon}
+        </div>
         <div class="notification-icon">${notification.icon}</div>
         <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
         <div class="notification-content">
@@ -91,7 +94,7 @@ export async function renderNotificationsPage(state, actions) {
             <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
         </div>
     `;
-    listContainer.innerHTML = 'Loading...';
+    listContainer.innerHTML = '';
     
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
