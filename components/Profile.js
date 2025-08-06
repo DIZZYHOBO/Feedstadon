@@ -4,7 +4,7 @@ import { renderLemmyCard } from './Lemmy.js';
 import { ICONS } from './icons.js';
 
 async function renderMastodonProfile(state, actions, container, accountId) {
-    container.innerHTML = `<p>Loading Mastodon profile...</p>`;
+    container.innerHTML = ``;
 
     try {
         const idToFetch = accountId || state.currentUser?.id;
@@ -72,7 +72,7 @@ async function renderMastodonProfile(state, actions, container, accountId) {
 }
 
 async function renderLemmyProfile(state, actions, container, userAcct) {
-    container.innerHTML = `<p>Loading Lemmy profile...</p>`;
+    container.innerHTML = ``;
     
     let username, instance;
     if (userAcct) {
