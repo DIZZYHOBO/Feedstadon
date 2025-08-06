@@ -1,7 +1,7 @@
-import { apiFetch } from '/components/api.js';
-import { ICONS } from '/components/icons.js';
-import { formatTimestamp } from '/components/utils.js';
-import { renderLoginPrompt } from '/components/Timeline.js'; 
+import { apiFetch } from './api.js';
+import { ICONS } from './icons.js';
+import { formatTimestamp } from './utils.js';
+import { renderLoginPrompt } from './Timeline.js'; 
 
 export function renderLemmyCard(post, actions) {
     const card = document.createElement('div');

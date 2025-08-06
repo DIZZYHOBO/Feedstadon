@@ -1,25 +1,23 @@
 const CACHE_NAME = 'feedstodon-cache-v1';
 const ASSETS_TO_CACHE = [
     '/',
-    '/index.html',
-    '/style.css',
-    '/app.js',
-    '/components/api.js',
-    '/components/Compose.js',
-    '/components/Conversations.js',
-    '/components/icons.js',
-    '/components/Lemmy.js',
-    '/components/LemmyPost.js',
-    '/components/Notifications.js',
-    '/components/Post.js',
-    '/components/Profile.js',
-    '/components/Search.js',
-    '/components/Settings.js',
-    '/components/Timeline.js',
-    '/components/ui.js',
-    '/components/utils.js',
-    '/images/logo.png',
-    '/images/login.png'
+    './index.html',
+    './style.css',
+    './app.js',
+    './components/api.js',
+    './components/Compose.js',
+    './components/Conversations.js',
+    './components/icons.js',
+    './components/Lemmy.js',
+    './components/LemmyPost.js',
+    './components/Notifications.js',
+    './components/Post.js',
+    './components/Profile.js',
+    './components/Search.js',
+    './components/Settings.js',
+    './components/utils.js',
+    './images/logo.png',
+    './images/login.png'
 ];
 
 // --- Install Event ---

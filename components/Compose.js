@@ -1,5 +1,5 @@
-import { apiFetch, apiUploadMedia, apiUploadLemmyImage } from '/components/api.js';
-import { ICONS } from '/components/icons.js';
+import { apiFetch, apiUploadMedia, apiUploadLemmyImage } from './api.js';
+import { ICONS } from './icons.js';
 
 let isPollActive = false;
 let isCwActive = false;

@@ -1,6 +1,6 @@
-import { apiFetch } from '/components/api.js';
-import { renderStatus } from '/components/Post.js';
-import { renderLemmyCard } from '/components/Lemmy.js';
+import { apiFetch } from './api.js';
+import { renderStatus } from './Post.js';
+import { renderLemmyCard } from './Lemmy.js';
 
 export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
     container.innerHTML = '';

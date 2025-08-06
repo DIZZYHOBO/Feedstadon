@@ -1,5 +1,5 @@
-import { apiFetch } from '/components/api.js';
-import { renderStatus } from '/components/Post.js'; // We can reuse some parts if needed, but we'll mostly use custom rendering
+import { apiFetch } from './api.js';
+import { renderStatus } from './Post.js'; // We can reuse some parts if needed, but we'll mostly use custom rendering
 
 function renderMessage(status, currentUser) {
     const messageDiv = document.createElement('div');
