@@ -1,6 +1,6 @@
-import { apiFetch } from './api.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+import { apiFetch } from '/components/api.js';
+import { ICONS } from '/components/icons.js';
+import { formatTimestamp } from '/components/utils.js';
 
 function renderSingleNotification(notification) {
     const item = document.createElement('div');
