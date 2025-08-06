@@ -555,7 +555,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     window.addEventListener('popstate', (event) => {
-        if (event.state && event.state.view) {
+        const imageModal = document.getElementById('image-modal');
+        if (imageModal && imageModal.classList.contains('visible')) {
+            imageModal.classList.remove('visible');
+            // Don't switch view, just close modal
+            history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
+        } else if (event.state && event.state.view) {
             switchView(event.state.view, false);
         } else {
             switchView('timeline', false);
