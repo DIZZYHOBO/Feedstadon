@@ -169,7 +169,7 @@ export function renderStatus(status, currentUser, actions, settings) {
 
 export async function renderStatusDetail(state, statusId, actions) {
     const container = document.getElementById('status-detail-view');
-    container.innerHTML = '<p>Loading post...</p>';
+    container.innerHTML = '';
 
     try {
         const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
