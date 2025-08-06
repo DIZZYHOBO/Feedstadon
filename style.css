@@ -319,7 +319,7 @@ button:disabled {
 }
 
 /* --- Timeline & Notifications Sub-Nav --- */
-.timeline-sub-nav {
+.timeline-sub-nav, .notifications-sub-nav {
     display: none;
     gap: 10px;
     margin-bottom: 20px;
@@ -329,11 +329,11 @@ button:disabled {
     border: 1px solid var(--border-color);
     align-items: center;
 }
-.timeline-sub-nav-tabs {
+.timeline-sub-nav-tabs, .notifications-sub-nav-tabs {
     display: flex;
     flex-grow: 1;
 }
-.timeline-sub-nav-btn {
+.timeline-sub-nav-btn, .notifications-sub-nav-btn {
     flex-grow: 1;
     padding: 8px;
     background: none;
@@ -344,11 +344,11 @@ button:disabled {
     border-radius: 6px;
     transition: background-color 0.2s, color 0.2s;
 }
-.timeline-sub-nav-btn:hover {
+.timeline-sub-nav-btn:hover, .notifications-sub-nav-btn:hover {
     background-color: var(--primary-color);
     color: var(--font-color);
 }
-.timeline-sub-nav-btn.active {
+.timeline-sub-nav-btn.active, .notifications-sub-nav-btn.active {
     background-color: var(--accent-color);
     color: white;
 }
