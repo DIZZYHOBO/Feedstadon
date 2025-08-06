@@ -541,6 +541,62 @@ button:disabled {
     color: var(--accent-color);
 }
 
+/* --- Notifications --- */
+#notifications-list {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 10px 0;
+}
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+}
+.notification-item:last-child {
+    border-bottom: none;
+}
+.notification-item:hover {
+    background-color: var(--primary-color);
+}
+.notification-icon {
+    font-size: 1.5em;
+    color: var(--font-color-muted);
+    flex-shrink: 0;
+    width: 30px;
+    text-align: right;
+}
+.notification-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+.notification-content {
+    flex-grow: 1;
+    line-height: 1.5;
+}
+.notification-content p {
+    margin: 0 0 8px 0;
+}
+.notification-context {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+    border-left: 3px solid var(--border-color);
+    padding-left: 10px;
+    max-height: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.notification-item .timestamp {
+    color: var(--font-color-muted);
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+
 /* --- Post Options Menu --- */
 .post-options-container {
     position: relative;
@@ -898,7 +954,7 @@ button:disabled {
     }
 
     .notification-item {
-        padding: 10px;
+        padding: 15px 10px;
         gap: 10px;
     }
 
