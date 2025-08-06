@@ -47,6 +47,42 @@ export async function updateNotificationBell() {
     }
 }
 
+async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
+    // This function runs independently and won't block rendering.
+    try {
+        // Mark all mentions as read
+        for(const mention of unreadMentions) {
+            try {
+                await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
+                }, 'lemmy');
+            } catch (err) {
+                console.error(`Failed to mark mention ${mention.person_mention.id} as read`, err);
+            }
+        }
+
+        // Mark all private messages as read
+        for(const pm of unreadPms) {
+            try {
+                 await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ private_message_id: pm.private_message.id, read: true })
+                }, 'lemmy');
+            } catch (err) {
+                 console.error(`Failed to mark private message ${pm.private_message.id} as read`, err);
+            }
+        }
+        
+        // Update the bell's status after attempting to mark items as read.
+        updateNotificationBell();
+    } catch (error) {
+        console.error("An error occurred while marking items as read:", error);
+    }
+}
+
 export async function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
     const subNav = container.querySelector('.notifications-sub-nav');
@@ -74,6 +110,7 @@ export async function renderNotificationsPage(state, actions) {
         let lemmyMentionNotifs = [];
         let lemmyPrivateMessages = [];
         if (lemmyInstance) {
+            // STEP 1: Fetch all data first.
             const [repliesResponse, mentionsResponse, messagesResponse] = await Promise.all([
                 apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
                 apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy'),
@@ -84,6 +121,7 @@ export async function renderNotificationsPage(state, actions) {
             lemmyPrivateMessages = messagesResponse.data.private_messages || [];
         }
 
+        // STEP 2: Process and render the notifications immediately.
         const allNotifications = [
             ...mastodonNotifs.map(n => ({
                 platform: 'mastodon',
@@ -160,6 +198,13 @@ export async function renderNotificationsPage(state, actions) {
         const defaultTab = lemmyInstance ? 'lemmy' : 'all';
         subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`).classList.add('active');
         renderFilteredNotifications(defaultTab);
+        
+        // STEP 3: Mark items as read in the background, *after* everything is visible.
+        if (lemmyInstance) {
+            const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
+            const unreadPms = lemmyPrivateMessages.filter(p => !p.private_message.read);
+            markItemsAsRead(lemmyInstance, unreadMentions, unreadPms);
+        }
 
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
