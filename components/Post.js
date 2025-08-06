@@ -1,5 +1,5 @@
 import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
 import { apiFetch } from './api.js';
 
 function renderPoll(poll, statusId, actions) {
@@ -58,6 +58,11 @@ export function renderStatus(status, currentUser, actions, settings) {
     const isOwnPost = currentUser && currentUser.id === author.id;
     
     if (settings && settings.hideNsfw && post.sensitive) {
+        return document.createDocumentFragment();
+    }
+    
+    const filterList = getWordFilter();
+    if (shouldFilterContent(post.content, filterList)) {
         return document.createDocumentFragment();
     }
 
