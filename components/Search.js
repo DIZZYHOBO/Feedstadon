@@ -1,6 +1,6 @@
-import { apiFetch } from './api.js';
-import { ICONS } from './icons.js';
-import { renderStatus } from './Post.js';
+import { apiFetch } from '/components/api.js';
+import { ICONS } from '/components/icons.js';
+import { renderStatus } from '/components/Post.js';
 
 export async function renderHashtagSuggestions(state, query) {
     const suggestionsContainer = document.getElementById('search-suggestions-container');
