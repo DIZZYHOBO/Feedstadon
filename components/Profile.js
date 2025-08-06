@@ -7,7 +7,12 @@ async function renderMastodonProfile(state, actions, container, accountId) {
     container.innerHTML = `<p>Loading Mastodon profile...</p>`;
 
     try {
-        const idToFetch = accountId || state.currentUser.id;
+        const idToFetch = accountId || state.currentUser?.id;
+        if (!idToFetch) {
+            container.innerHTML = `<p>Could not find Mastodon user ID.</p>`;
+            return;
+        }
+        
         const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}`);
         const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}/statuses`);
 
