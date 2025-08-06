@@ -1,4 +1,4 @@
-import { apiFetch, apiUpdateCredentials } from './api.js';
+import { apiFetch, apiUpdateCredentials } from '/components/api.js';
 
 export function renderSettingsPage(state) {
     const settingsView = document.getElementById('settings-view');
