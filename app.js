@@ -1,5 +1,5 @@
 import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
-import { renderProfilePage } from './components/Profile.js';
+import { renderProfilePage, renderEditProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
@@ -118,6 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         timeline: document.getElementById('timeline'),
         notifications: document.getElementById('notifications-view'),
         profile: document.getElementById('profile-page-view'),
+        editProfile: document.getElementById('edit-profile-view'),
         search: document.getElementById('search-results-view'),
         settings: document.getElementById('settings-view'),
         statusDetail: document.getElementById('status-detail-view'),
@@ -254,6 +255,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderProfilePage(state, actions, platform, accountId, userAcct);
             hideLoadingBar();
         },
+        showEditProfile: () => {
+            switchView('editProfile');
+            renderEditProfilePage(state, actions);
+        },
         showStatusDetail: async (statusId) => {
             showLoadingBar();
             switchView('statusDetail');
@@ -334,11 +339,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
                 const response = await apiFetch(lemmyInstance, null, '/api/v3/post/like', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_id: postId, score: score })
+                    body: { post_id: postId, score: score }
                 }, 'lemmy');
+                
+                const postView = response.data.post_view;
                 const scoreSpan = card.querySelector('.lemmy-score');
-                scoreSpan.textContent = response.data.post.counts.score;
+                scoreSpan.textContent = postView.counts.score;
+
+                const upvoteBtn = card.querySelector('[data-action="upvote"]');
+                const downvoteBtn = card.querySelector('[data-action="downvote"]');
+                upvoteBtn.classList.remove('active');
+                downvoteBtn.classList.remove('active');
+                if (postView.my_vote === 1) {
+                    upvoteBtn.classList.add('active');
+                } else if (postView.my_vote === -1) {
+                    downvoteBtn.classList.add('active');
+                }
             } catch (err) {
                 showToast('Failed to vote on post.');
             }
@@ -348,10 +364,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
                 const response = await apiFetch(lemmyInstance, null, '/api/v3/post/save', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_id: postId, save: !button.classList.contains('active') })
+                    body: { post_id: postId, save: !button.classList.contains('active') }
                 }, 'lemmy');
-                button.classList.toggle('active');
+                button.classList.toggle('active', response.data.post_view.saved);
             } catch (err) {
                 showToast('Failed to save post.');
             }
@@ -361,11 +376,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
                 const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/like', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ comment_id: commentId, score: score })
+                    body: { comment_id: commentId, score: score }
                 }, 'lemmy');
+
+                const commentView = response.data.comment_view;
                 const scoreSpan = commentDiv.querySelector('.lemmy-score');
-                scoreSpan.textContent = response.data.comment.counts.score;
+                scoreSpan.textContent = commentView.counts.score;
+
+                const upvoteBtn = commentDiv.querySelector('[data-action="upvote"]');
+                const downvoteBtn = commentDiv.querySelector('[data-action="downvote"]');
+                upvoteBtn.classList.remove('active');
+                downvoteBtn.classList.remove('active');
+                if (commentView.my_vote === 1) {
+                    upvoteBtn.classList.add('active');
+                } else if (commentView.my_vote === -1) {
+                    downvoteBtn.classList.add('active');
+                }
             } catch (err) {
                 showToast('Failed to vote on comment.');
             }
@@ -378,8 +404,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(commentData)
+                body: commentData
             }, 'lemmy');
             return response.data;
         }
@@ -410,8 +435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const onLemmyLoginSuccess = (instance, username, password) => {
         apiFetch(instance, null, '/api/v3/user/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username_or_email: username, password: password })
+            body: { username_or_email: username, password: password }
         }, 'none')
         .then(response => {
             if (response.data.jwt) {
