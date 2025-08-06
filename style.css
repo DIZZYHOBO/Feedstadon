@@ -917,6 +917,40 @@ button:disabled {
 }
 
 
+/* --- Settings Page --- */
+.settings-section {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.settings-section h3 {
+    margin-top: 0;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+#word-filter-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 15px;
+}
+#word-filter-list li {
+    background-color: var(--primary-color);
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
 /* --- Lemmy Integration Styles --- */
 .platform-icon-indicator,
 .lemmy-icon-indicator {
