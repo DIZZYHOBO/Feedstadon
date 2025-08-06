@@ -1,6 +1,6 @@
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
-import { apiFetch } from './api.js';
+import { ICONS } from '/components/icons.js';
+import { formatTimestamp } from '/components/utils.js';
+import { apiFetch } from '/components/api.js';
 
 function renderPoll(poll, statusId, actions) {
     const container = document.createElement('div');
