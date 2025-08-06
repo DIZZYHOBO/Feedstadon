@@ -57,7 +57,14 @@
                 <div class="notifications-sub-nav"></div>
                 <div id="notifications-list"></div>
             </div>
-            <div id="profile-page-view" style="display: none;"></div>
+            <div id="profile-page-view" style="display: none;">
+                 <div class="profile-tabs">
+                    <button class="tab-button" data-profile-tab="mastodon">Mastodon</button>
+                    <button class="tab-button" data-profile-tab="lemmy">Lemmy</button>
+                </div>
+                <div class="profile-tab-content" id="mastodon-profile-content"></div>
+                <div class="profile-tab-content" id="lemmy-profile-content"></div>
+            </div>
             <div id="search-results-view" style="display: none;"></div>
             <div id="status-detail-view" style="display: none;"></div>
             <div id="settings-view" style="display: none;"></div>
