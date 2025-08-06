@@ -3,13 +3,13 @@ import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { ICONS } from './icons.js';
 
-export async function renderProfilePage(state, accountId, actions) {
-    const profileView = document.getElementById('profile-page-view');
-    profileView.innerHTML = `<p>Loading profile...</p>`;
+async function renderMastodonProfile(state, actions, container, accountId) {
+    container.innerHTML = `<p>Loading Mastodon profile...</p>`;
 
     try {
-        const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`);
-        const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses`);
+        const idToFetch = accountId || state.currentUser.id;
+        const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}`);
+        const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}/statuses`);
 
         const banner = account.header_static || '';
         const displayName = account.display_name;
@@ -19,7 +19,7 @@ export async function renderProfilePage(state, accountId, actions) {
         const followers = account.followers_count;
         const following = account.following_count;
 
-        profileView.innerHTML = `
+        container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
                     <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.display='none'">
@@ -42,7 +42,7 @@ export async function renderProfilePage(state, accountId, actions) {
             <div class="profile-feed"></div>
         `;
 
-        const feed = profileView.querySelector('.profile-feed');
+        const feed = container.querySelector('.profile-feed');
         if (statuses.length === 0) {
             feed.innerHTML = '<p>No posts yet.</p>';
         } else {
@@ -52,16 +52,26 @@ export async function renderProfilePage(state, accountId, actions) {
         }
 
     } catch (error) {
-        profileView.innerHTML = `<p>Error loading profile: ${error.message}</p>`;
+        container.innerHTML = `<p>Error loading Mastodon profile: ${error.message}</p>`;
     }
 }
 
-export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProfile) {
-    const profileView = document.getElementById('profile-page-view');
-    profileView.innerHTML = `<p>Loading Lemmy profile...</p>`;
+async function renderLemmyProfile(state, actions, container, userAcct) {
+    container.innerHTML = `<p>Loading Lemmy profile...</p>`;
     
-    const [username, instance] = userAcct.split('@');
+    let username, instance;
+    if (userAcct) {
+        [username, instance] = userAcct.split('@');
+    } else {
+        username = localStorage.getItem('lemmy_username');
+        instance = localStorage.getItem('lemmy_instance');
+    }
     
+    if (!username || !instance) {
+        container.innerHTML = `<p>Not logged into Lemmy.</p>`;
+        return;
+    }
+
     try {
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user?username=${username}`, {}, 'lemmy');
         const { person_view, posts, comments } = userData;
@@ -71,7 +81,7 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
             ...comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }))
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        profileView.innerHTML = `
+        container.innerHTML = `
             <div class="profile-card">
                  <div class="profile-header">
                     <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
@@ -86,7 +96,7 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
             <div class="profile-feed"></div>
         `;
         
-        const feed = profileView.querySelector('.profile-feed');
+        const feed = container.querySelector('.profile-feed');
         if (combinedFeed.length === 0) {
             feed.innerHTML = '<p>No activity yet.</p>';
             return;
@@ -130,6 +140,46 @@ export async function renderLemmyProfilePage(state, userAcct, actions, isOwnProf
 
     } catch (error) {
         console.error("Failed to load Lemmy profile:", error);
-        profileView.innerHTML = `<p>Error loading Lemmy profile: ${error.message}</p>`;
+        container.innerHTML = `<p>Error loading Lemmy profile: ${error.message}</p>`;
     }
+}
+
+export function renderProfilePage(state, actions, platform, accountId, userAcct) {
+    const view = document.getElementById('profile-page-view');
+    const tabs = view.querySelectorAll('.profile-tabs .tab-button');
+    const mastodonContent = view.querySelector('#mastodon-profile-content');
+    const lemmyContent = view.querySelector('#lemmy-profile-content');
+    
+    function switchTab(targetPlatform) {
+        tabs.forEach(t => t.classList.remove('active'));
+        mastodonContent.classList.remove('active');
+        lemmyContent.classList.remove('active');
+        
+        const activeTab = view.querySelector(`.tab-button[data-profile-tab="${targetPlatform}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active');
+        }
+
+        if (targetPlatform === 'mastodon') {
+            mastodonContent.classList.add('active');
+            if (state.currentUser) {
+                renderMastodonProfile(state, actions, mastodonContent, accountId);
+            } else {
+                mastodonContent.innerHTML = `<p>Not logged into Mastodon.</p>`;
+            }
+        } else if (targetPlatform === 'lemmy') {
+            lemmyContent.classList.add('active');
+            renderLemmyProfile(state, actions, lemmyContent, userAcct);
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            const targetPlatform = e.target.dataset.profileTab;
+            switchTab(targetPlatform);
+        });
+    });
+
+    // Set initial tab
+    switchTab(platform);
 }
