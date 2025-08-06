@@ -1,20 +1,487 @@
-export const ICONS = {
-    reply: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10,9V5L3,12L10,19V14.9C15,14.9 18.5,16.5 21,20C20,15 17,10 10,9Z" /></svg>`,
-    boost: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7,7H17V2L22,9L17,16V11H9V13L7,11V7M17,17H7V22L2,15L7,8V13H15V11L17,13V17Z" /></svg>`,
-    favorite: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" /></svg>`,
-    bookmark: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17,3H7A2,2 0 0,0 5,5V21L12,18L19,21V5C19,3.89 18.1,3 17,3Z" /></svg>`,
-    more: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z" /></svg>`,
-    poll: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3,22V8H7V22H3M10,22V2H14V22H10M17,22V14H21V22H17Z" /></svg>`,
-    refresh: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" /></svg>`,
-    media: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z" /></svg>`,
-    warning: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2L1,21H23M12,6L19.53,19H4.47M11,10V14H13V10M11,16V18H13V16" /></svg>`,
-    message: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2Z" /></svg>`,
-    notifications: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9m-4.27 13a2 2 0 0 1-3.46 0"></path></svg>`,
-    comments: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2Z" /></svg>`,
-    lemmyUpvote: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2L2,12H7V22H17V12H22L12,2Z" /></svg>`,
-    lemmyDownvote: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12,22L22,12H17V2H7V12H2L12,22Z" /></svg>`,
-    edit: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg>`,
-    delete: `<svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>`,
-    lemmy: `<svg class="icon" viewBox="2.52 90.79 506.7 330.65"><g fill="currentColor" transform="translate(-36.38 -256.786)"><path d="M104.9 350.2h-1.5c-2.3 0-4.7.2-7 .5-18.4 2.1-34.9 11.9-45 29-9.9 16.7-12.4 35.1-7.3 52.2s17.3 32.6 35.5 44.9c.1.1.2.1.3.2 15.6 9.4 31.1 15.7 47.7 19-.4 6.9-.4 13.9 0 21.1 1.3 21.8 9 41.9 20.7 59.6l-41.8 17.1c-4.5 1.8-6.7 6.9-4.9 11.4s7 6.6 11.4 4.7l46-18.8c8.5 10.2 18.3 19.4 28.9 27.5l1.2.9-27 35.7c-3 3.8-2.2 9.3 1.6 12.3s9.4 2.1 12.2-1.8l27.4-36.3c15 9.5 31 17 46.8 21.9 8.1 14.8 23.9 24.3 42.2 24.3 18.4 0 34.3-10.2 42.3-24.7 15.6-5 31.4-12.5 46.3-22l27.8 36.8c2.9 3.9 8.4 4.7 12.2 1.8 3.9-2.9 4.6-8.4 1.6-12.3L395.1 619c.2-.1.4-.3.5-.4 10.4-8 20.1-17 28.6-27l44.9 18.3c4.5 1.9 9.6-.2 11.4-4.7s-.4-9.6-4.9-11.4l-40.5-16.5c12-17.8 20.1-38.1 21.8-60q.9-10.95.3-21.3c16.5-3.3 31.9-9.6 47.4-18.9.1-.1.2-.1.3-.2 18.2-12.3 30.4-27.8 35.5-44.9s2.6-35.5-7.3-52.2c-10.1-17.1-26.7-26.8-45-29-2.3-.3-4.6-.4-7-.5-16.4-.3-33.9 4.8-50.8 14.5-12.4 7.2-23.6 18.1-32.3 30.1-24.5-14-56.3-21.9-95.4-22.5-3.5-.1-7.1-.1-10.7 0-43.6.7-78.5 9-104.8 23.9-.1-.1-.1-.2-.2-.3-8.9-12.4-20.3-23.8-33.1-31.1-16-9.6-32.9-14.7-48.9-14.7" style="fill:none;stroke:currentColor;stroke-width:5.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"/><path d="M403.7 400.3c8.3-11.6 19.2-22.3 30.7-29 36.2-20.9 74.5-18.1 92.4 12.2 18 30.3 8.1 63.8-25.9 86.9-17.4 10.5-34.2 16.8-52.8 19.3m-267-89.4c-8.3-11.6-19.2-22.3-30.7-29-36.2-20.9-74.5-18.1-92.4 12.2-18 30.3-8.1 63.8 25.9 86.9 17.4 10.5 34.2 16.8 52.8 19.3" style="fill:currentColor;stroke:#000;stroke-width:5.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"/><path d="M449.6 516.5c6.3-81.4-43.8-138.5-157.2-136.7-113.4 1.9-162.1 55.8-157.2 136.7 4.7 77.2 96.1 133.9 156.6 133.9s151.8-56.8 157.8-133.9" style="fill:currentColor;stroke:#000;stroke-width:5.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"/><path d="M345.9 553.1c0 12.6 10.2 22.7 22.7 22.7s22.7-10.2 22.7-22.7c0-12.6-10.2-22.7-22.7-22.7s-22.7 10.2-22.7 22.7m-152.5 0c0 12.7 10.3 23 22.9 23 12.7 0 22.9-10.3 22.9-23s-10.3-23-22.9-23c-12.6.1-22.9 10.4-22.9 23"/><path d="m198.8 621-29.6 39.2M386 621l29.6 39.2m-258.2-78-47.7 19.5m315.2-19.5 47.7 19.5" style="fill:none;stroke:#000;stroke-width:6;stroke-linecap:round;stroke-miterlimit:10"/><path d="M292.4 590.5c-24.9 0-40.8 17.3-40.3 38.6.6 23.1 17.6 38.6 40.3 38.6s40.2-17.9 40.3-38.6c0-21.3-15.4-38.6-40.3-38.6" style="fill:currentColor;stroke:#000;stroke-width:5.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10"/></g></svg>`,
-    mastodon: `<svg class="icon" viewBox="0 0 48 48"><path fill="currentColor" d="M44.9955 16.2709c0 -9.76202 -6.3993 -12.62323 -6.3993 -12.62323 -3.2287 -1.4803 -8.7692 -2.10373 -14.5254 -2.1506h-0.1415c-5.7562 0.04687 -11.293 0.6703 -14.51985 2.1506 0 0 -6.40027 2.86121 -6.40027 12.62323 0 2.2359 -0.04312 4.9078 0.02719 7.7427 0.2325 9.5455 1.75123 18.9551 10.58333 21.2913 4.0715 1.0772 7.5683 1.3022 10.3836 1.1475 5.1065 -0.2812 7.9687 -1.8206 7.9687 -1.8206l-0.1679 -3.7031s-3.6496 1.1503 -7.7474 1.0097c-4.0602 -0.1387 -8.3436 -0.4378 -8.9998 -5.4196 -0.0634 -0.4629 -0.0947 -0.9296 -0.0938 -1.3969 2.9714 0.6634 5.995 1.0664 9.0365 1.2047 3.089 0.1416 5.9849 -0.1809 8.9267 -0.5316 5.6418 -0.6731 10.5543 -4.1474 11.1711 -7.3208 0.9769 -5.0005 0.8981 -12.2033 0.8981 -12.2033ZM37.445 28.8483h-4.6874V17.3762c0 -2.4187 -1.0181 -3.6459 -3.0544 -3.6459 -2.2499 0 -3.3805 1.456 -3.3805 4.335v6.2812h-4.6556v-6.2812c0 -2.879 -1.125 -4.335 -3.3806 -4.335 -2.0362 0 -3.0543 1.2272 -3.0543 3.6459v11.4721h-4.6875V17.0284c0 -2.4156 0.6172 -4.334 1.8516 -5.7552 1.275 -1.4203 2.9437 -2.14873 5.0165 -2.14873 2.3981 0 4.214 0.92063 5.414 2.76373l1.169 1.9546 1.1672 -1.9546c1.2009 -1.8431 3.0159 -2.76373 5.414 -2.76373 2.0728 0 3.7415 0.72843 5.0165 2.14873 1.2368 1.42 1.8539 3.3384 1.8515 5.7552v11.8199Z"></path></svg>`
-};
+import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
+import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
+import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
+import { renderSettingsPage } from './components/Settings.js';
+import { renderStatusDetail } from './components/Post.js';
+import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
+import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
+import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
+import { ICONS } from './components/icons.js';
+import { apiFetch } from './components/api.js';
+
+function initDropdowns() {
+    document.querySelectorAll('.dropdown').forEach(dropdown => {
+        const button = dropdown.querySelector('button');
+        if (button) {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown.active').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('active');
+                });
+                dropdown.classList.toggle('active');
+            });
+        }
+    });
+
+    window.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown.active').forEach(d => {
+            d.classList.remove('active');
+        });
+    });
+}
+
+function initPullToRefresh(state, actions) {
+    const ptrIndicator = document.getElementById('pull-to-refresh-indicator');
+    let startY = 0;
+    let isPulling = false;
+
+    document.body.addEventListener('touchstart', (e) => {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].pageY;
+            isPulling = true;
+        }
+    });
+
+    document.body.addEventListener('touchmove', (e) => {
+        if (!isPulling) return;
+
+        const currentY = e.touches[0].pageY;
+        const diffY = currentY - startY;
+
+        if (diffY > 0) {
+            e.preventDefault();
+            ptrIndicator.style.transform = `translateY(${Math.min(diffY, 100) - 50}px)`;
+        }
+    });
+
+    document.body.addEventListener('touchend', (e) => {
+        if (!isPulling) return;
+        isPulling = false;
+        
+        const currentY = e.changedTouches[0].pageY;
+        const diffY = currentY - startY;
+
+        ptrIndicator.style.transform = 'translateY(-150%)';
+
+        if (diffY > 80) { // Threshold to trigger refresh
+            if (state.currentView === 'timeline') {
+                if (state.currentTimeline) {
+                    actions.showHomeTimeline();
+                } else if (state.currentLemmyFeed) {
+                    actions.showLemmyFeed(state.currentLemmyFeed);
+                }
+            } else if (state.currentView === 'notifications') {
+                actions.showNotifications();
+            }
+        }
+    });
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Apply saved theme on startup
+    const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
+    document.body.dataset.theme = savedTheme;
+
+    // Setup UI Elements
+    const notificationsBtn = document.getElementById('notifications-btn');
+    notificationsBtn.innerHTML = ICONS.notifications + '<div class="notification-dot"></div>';
+
+
+    const state = {
+        history: [],
+        instanceUrl: localStorage.getItem('fediverse-instance') || null,
+        accessToken: localStorage.getItem('fediverse-token') || null,
+        currentUser: null,
+        currentView: null,
+        currentTimeline: 'home',
+        currentLemmyFeed: null,
+        currentLemmySort: 'New',
+        timelineDiv: document.getElementById('timeline'),
+        scrollLoader: document.getElementById('scroll-loader'),
+        isLoadingMore: false,
+        nextPageUrl: null,
+        lemmyPage: 1,
+        lemmyHasMore: true,
+        conversations: [],
+        lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'leminal.space'],
+        settings: {
+            hideNsfw: false,
+        },
+        actions: {}
+    };
+
+    const views = {
+        app: document.getElementById('app-view'),
+        timeline: document.getElementById('timeline'),
+        notifications: document.getElementById('notifications-view'),
+        profile: document.getElementById('profile-page-view'),
+        search: document.getElementById('search-results-view'),
+        settings: document.getElementById('settings-view'),
+        statusDetail: document.getElementById('status-detail-view'),
+        lemmyPost: document.getElementById('lemmy-post-view'),
+    };
+
+    const switchView = (viewName, pushToHistory = true) => {
+        if (state.currentView === viewName && viewName !== 'notifications') return;
+
+        if (pushToHistory) {
+            history.pushState({view: viewName}, '', `#${viewName}`);
+        }
+        state.currentView = viewName;
+
+        Object.keys(views).forEach(key => {
+            if (views[key] && views[key].style) {
+                views[key].style.display = 'none';
+            }
+        });
+        
+        document.querySelector('.top-nav').style.display = 'flex';
+        views.app.style.display = 'block';
+        if (views[viewName]) {
+            views[viewName].style.display = 'flex';
+        }
+    };
+
+    const showToast = (message) => {
+        const toast = document.getElementById('toast-notification');
+        toast.textContent = message;
+        toast.classList.add('visible');
+        setTimeout(() => {
+            toast.classList.remove('visible');
+        }, 3000);
+    };
+    
+    const renderTimelineSubNav = (platform) => {
+        const subNavContainer = document.getElementById('timeline-sub-nav');
+        subNavContainer.innerHTML = '';
+        if (!platform) {
+            subNavContainer.style.display = 'none';
+            return;
+        }
+
+        let items = [];
+        let currentFeed = '';
+        const tabs = document.createElement('div');
+        tabs.className = 'timeline-sub-nav-tabs';
+
+        if (platform === 'lemmy') {
+            items = [
+                { label: 'Subbed', feed: 'Subscribed' },
+                { label: 'Local', feed: 'Local' },
+                { label: 'All', feed: 'All' }
+            ];
+            currentFeed = state.currentLemmyFeed;
+        } else if (platform === 'mastodon') {
+             items = [
+                { label: 'Subbed', feed: 'home' },
+                { label: 'Local', feed: 'public?local=true' },
+                { label: 'All', feed: 'public' }
+            ];
+            currentFeed = state.currentTimeline;
+        }
+
+        items.forEach(item => {
+            const button = document.createElement('button');
+            button.className = 'timeline-sub-nav-btn';
+            button.textContent = item.label;
+            if (item.feed === currentFeed) {
+                button.classList.add('active');
+            }
+            button.addEventListener('click', () => {
+                if (platform === 'lemmy') {
+                    actions.showLemmyFeed(item.feed);
+                } else {
+                    actions.showMastodonTimeline(item.feed);
+                }
+            });
+            tabs.appendChild(button);
+        });
+        
+        subNavContainer.appendChild(tabs);
+
+        if (platform === 'lemmy') {
+            const filterContainer = document.createElement('div');
+            filterContainer.id = 'lemmy-filter-container';
+            filterContainer.innerHTML = `
+                 <select id="lemmy-sort-select">
+                    <option value="New">New</option>
+                    <option value="Active">Active</option>
+                    <option value="Hot">Hot</option>
+                    <option value="TopHour">Top Hour</option>
+                    <option value="TopSixHour">Top Six Hour</option>
+                    <option value="TopTwelveHour">Top Twelve Hour</option>
+                    <option value="TopDay">Top Day</option>
+                </select>
+            `;
+            filterContainer.querySelector('#lemmy-sort-select').value = state.currentLemmySort;
+            filterContainer.querySelector('#lemmy-sort-select').addEventListener('change', (e) => {
+                actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
+            });
+            subNavContainer.appendChild(filterContainer);
+        }
+        
+        subNavContainer.style.display = 'flex';
+    };
+
+    const actions = {
+        showProfile: (accountId) => {
+            switchView('profile');
+            renderProfilePage(state, accountId, actions);
+        },
+        showLemmyProfile: (userAcct, isOwnProfile = false) => {
+            switchView('profile');
+            renderLemmyProfilePage(state, userAcct, actions, isOwnProfile);
+        },
+        showStatusDetail: (statusId) => {
+            switchView('statusDetail');
+            renderStatusDetail(state, statusId, actions);
+        },
+        showHashtagTimeline: (tagName) => {
+            switchView('search');
+            renderSearchResults(state, `#${tagName}`);
+        },
+        showSettings: () => {
+            switchView('settings');
+            renderSettingsPage(state);
+        },
+        showNotifications: () => {
+            switchView('notifications');
+            renderNotificationsPage(state, actions);
+        },
+        showLemmyPostDetail: (post) => {
+            switchView('lemmyPost');
+            renderLemmyPostPage(state, post, actions);
+        },
+         showLemmyFeed: (feedType, sortType = 'New') => {
+            state.currentLemmyFeed = feedType;
+            state.currentTimeline = null;
+            state.currentLemmySort = sortType;
+            switchView('timeline');
+            renderTimelineSubNav('lemmy');
+            fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
+        },
+        showMastodonTimeline: (timelineType) => {
+            state.currentLemmyFeed = null;
+            state.currentTimeline = timelineType;
+            switchView('timeline');
+            renderTimelineSubNav('mastodon');
+            fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+        },
+         showHomeTimeline: () => {
+            state.currentLemmyFeed = null;
+            state.currentTimeline = 'home';
+            switchView('timeline');
+            renderTimelineSubNav(null); // Hide sub-nav
+            fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+        },
+        replyToStatus: (post) => {
+            showComposeModalWithReply(state, post);
+        },
+        handleSearchResultClick: (account) => {
+            if (account.acct.includes('@')) {
+                actions.showProfile(account.id);
+            } else {
+                actions.showLemmyCommunity(account.acct);
+            }
+        },
+        toggleAction: async (action, status, button) => {
+            const isToggled = button.classList.contains('active');
+            const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
+                button.classList.toggle('active');
+            } catch (err) {
+                showToast(`Failed to ${action} post.`);
+            }
+        },
+        lemmyVote: async (postId, score, card) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, score: score })
+                }, 'lemmy');
+                const scoreSpan = card.querySelector('.lemmy-score');
+                scoreSpan.textContent = response.data.post.counts.score;
+            } catch (err) {
+                showToast('Failed to vote on post.');
+            }
+        },
+        lemmySave: async (postId, button) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, save: !button.classList.contains('active') })
+                }, 'lemmy');
+                button.classList.toggle('active');
+            } catch (err) {
+                showToast('Failed to save post.');
+            }
+        },
+        lemmyCommentVote: async (commentId, score, commentDiv) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment_id: commentId, score: score })
+                }, 'lemmy');
+                const scoreSpan = commentDiv.querySelector('.lemmy-score');
+                scoreSpan.textContent = response.data.comment.counts.score;
+            } catch (err) {
+                showToast('Failed to vote on comment.');
+            }
+        },
+        lemmyPostComment: async (commentData) => {
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            if (!lemmyInstance) {
+                showToast('You must be logged in to comment.');
+                throw new Error('Not logged in');
+            }
+            const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(commentData)
+            }, 'lemmy');
+            return response.data;
+        }
+    };
+    state.actions = actions;
+
+    const onMastodonLoginSuccess = async (instanceUrl, accessToken) => {
+        const success = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
+            .then(response => {
+                if (!response || !response.data || !response.data.id) {
+                    showToast('Mastodon login failed.'); return false;
+                }
+                state.instanceUrl = instanceUrl;
+                state.accessToken = accessToken;
+                state.currentUser = response.data;
+                localStorage.setItem('fediverse-instance', instanceUrl);
+                localStorage.setItem('fediverse-token', accessToken);
+                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
+                showToast('Mastodon login successful!');
+                actions.showHomeTimeline();
+                return true;
+            })
+            .catch(() => {
+                showToast('Mastodon login failed.');
+                return false;
+            });
+        return success;
+    };
+
+    const onLemmyLoginSuccess = (instance, username, password) => {
+        apiFetch(instance, null, '/api/v3/user/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username_or_email: username, password: password })
+        }, 'none')
+        .then(response => {
+            if (response.data.jwt) {
+                localStorage.setItem('lemmy_jwt', response.data.jwt);
+                localStorage.setItem('lemmy_username', username);
+                localStorage.setItem('lemmy_instance', instance);
+                showToast('Lemmy login successful!');
+                updateNotificationBell();
+                actions.showLemmyFeed('Subscribed');
+            } else {
+                alert('Lemmy login failed.');
+            }
+        })
+        .catch(err => {
+             alert('Lemmy login error.');
+        });
+    };
+    
+    initDropdowns();
+    initPullToRefresh(state, actions);
+    initComposeModal(state, () => actions.showHomeTimeline());
+    
+    notificationsBtn.addEventListener('click', () => {
+        actions.showNotifications();
+    });
+
+    const initialView = location.hash.substring(1) || 'timeline';
+    switchView(initialView, false);
+    
+    if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
+        updateNotificationBell();
+    }
+
+    if (initialView === 'timeline') {
+        if (state.accessToken) { 
+            actions.showHomeTimeline();
+        } else if (localStorage.getItem('lemmy_jwt')) {
+            actions.showLemmyFeed('Subscribed');
+        } else {
+            actions.showHomeTimeline(); 
+        }
+    }
+
+    document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+
+        if (target.id === 'lemmy-main-link') {
+            actions.showLemmyFeed('Subscribed');
+        } else if (target.id === 'mastodon-main-link') {
+            actions.showMastodonTimeline('home');
+        } else if (target.dataset.timeline === 'home') {
+            actions.showHomeTimeline();
+        }
+        document.getElementById('feeds-dropdown').classList.remove('active');
+    });
+
+    document.getElementById('user-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (!target) return;
+        
+        switch (target.id) {
+            case 'new-post-link':
+                showComposeModal(state);
+                break;
+            case 'profile-link':
+                if (state.currentUser) {
+                    actions.showProfile(state.currentUser.id);
+                } else if (localStorage.getItem('lemmy_username')) {
+                    const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
+                    actions.showLemmyProfile(lemmyUser, true);
+                }
+                break;
+            case 'settings-link':
+                actions.showSettings();
+                break;
+        }
+        document.getElementById('user-dropdown').classList.remove('active');
+    });
+
+    window.addEventListener('scroll', () => {
+        if (state.isLoadingMore) return;
+
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+            if (state.currentView === 'timeline' && state.currentLemmyFeed && state.lemmyHasMore) {
+                fetchLemmyFeed(state, actions, true);
+            } else if (state.currentView === 'timeline' && state.currentTimeline && state.nextPageUrl) {
+                fetchTimeline(state, state.currentTimeline, true);
+            }
+        }
+    });
+
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.view) {
+            switchView(event.state.view, false);
+        } else {
+            switchView('timeline', false);
+        }
+    });
+
+    history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
+});
