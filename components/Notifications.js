@@ -47,8 +47,9 @@ export async function updateNotificationBell() {
     }
 }
 
-async function markMentionsAsRead(lemmyInstance) {
+async function markAllAsRead(lemmyInstance) {
     try {
+        // Mark all mentions as read
         const { data: unreadMentions } = await apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy');
         for(const mention of unreadMentions.mentions) {
             await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
@@ -57,9 +58,19 @@ async function markMentionsAsRead(lemmyInstance) {
                  body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
             }, 'lemmy');
         }
+
+        // Mark all private messages as read
+        const { data: unreadPms } = await apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy');
+        for(const pm of unreadPms.private_messages) {
+             await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ private_message_id: pm.private_message.id, read: true })
+            }, 'lemmy');
+        }
         updateNotificationBell();
     } catch (error) {
-        console.error("Failed to mark mentions as read:", error);
+        console.error("Failed to mark notifications as read:", error);
     }
 }
 
@@ -77,12 +88,12 @@ export async function renderNotificationsPage(state, actions) {
     `;
     listContainer.innerHTML = 'Loading...';
     
-    try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        if (lemmyInstance) {
-           markMentionsAsRead(lemmyInstance);
-        }
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (lemmyInstance) {
+       markAllAsRead(lemmyInstance);
+    }
 
+    try {
         let mastodonNotifs = [];
         if (state.instanceUrl && state.accessToken) {
             const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
@@ -112,7 +123,6 @@ export async function renderNotificationsPage(state, actions) {
                 contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
                 authorAvatar: n.account.avatar_static,
                 timestamp: n.created_at,
-                unread: n.unread
             })),
             ...lemmyReplyNotifs.map(n => {
                 if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) return null;
@@ -124,7 +134,6 @@ export async function renderNotificationsPage(state, actions) {
                     contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
                     authorAvatar: n.comment_reply.creator.avatar,
                     timestamp: n.comment_reply.comment.published,
-                    unread: !n.comment_reply.read // Correctly interpret the 'read' status
                 };
             }),
             ...lemmyMentionNotifs.map(n => {
@@ -137,7 +146,6 @@ export async function renderNotificationsPage(state, actions) {
                     contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
                     authorAvatar: n.person_mention.creator.avatar,
                     timestamp: n.person_mention.comment.published,
-                    unread: !n.person_mention.read
                 }
             }),
             ...lemmyPrivateMessages.map(n => {
@@ -150,7 +158,6 @@ export async function renderNotificationsPage(state, actions) {
                     contextHTML: `<div class="notification-context">${n.private_message.content}</div>`,
                     authorAvatar: n.private_message.creator.avatar,
                     timestamp: n.private_message.published,
-                    unread: !n.private_message.read
                 }
             })
         ].filter(Boolean);
