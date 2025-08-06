@@ -5,19 +5,36 @@ import { formatTimestamp } from './utils.js';
 function renderSingleNotification(notification) {
     const item = document.createElement('div');
     item.className = 'notification-item';
-
     item.innerHTML = `
         <div class="notification-icon">${notification.icon}</div>
-        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar">
+        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/logo.png';">
         <div class="notification-content">
             <p>${notification.content}</p>
             ${notification.contextHTML}
         </div>
         <div class="timestamp">${formatTimestamp(notification.timestamp)}</div>
     `;
-
     return item;
 }
+
+async function checkForUnreadNotifications(state) {
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (lemmyInstance) {
+        try {
+            const response = await apiFetch(lemmyInstance, null, '/api/v3/user/mention?sort=New&unread_only=true', {}, 'lemmy');
+            const unreadCount = response.data.mentions.length;
+            const notifBtn = document.getElementById('notifications-btn');
+            if (unreadCount > 0) {
+                notifBtn.classList.add('unread');
+            } else {
+                notifBtn.classList.remove('unread');
+            }
+        } catch (error) {
+            console.error('Failed to check for unread notifications:', error);
+        }
+    }
+}
+
 
 export async function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
@@ -25,9 +42,11 @@ export async function renderNotificationsPage(state, actions) {
     const listContainer = container.querySelector('#notifications-list');
 
     subNav.innerHTML = `
-        <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
-        <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
-        <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
+        <div class="notifications-sub-nav-tabs">
+            <button class="notifications-sub-nav-btn active" data-filter="all">All</button>
+            <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
+            <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
+        </div>
     `;
     listContainer.innerHTML = 'Loading...';
     
@@ -39,54 +58,87 @@ export async function renderNotificationsPage(state, actions) {
         }
 
         let lemmyReplyNotifs = [];
+        let lemmyMentionNotifs = [];
+        let lemmyPrivateMessages = [];
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
-            const repliesResponse = await apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy');
+            const [repliesResponse, mentionsResponse, messagesResponse] = await Promise.all([
+                apiFetch(lemmyInstance, null, '/api/v3/user/replies?sort=New&unread_only=false', {}, 'lemmy'),
+                apiFetch(lemmyInstance, null, '/api/v3/user/mention?sort=New&unread_only=false', {}, 'lemmy'),
+                apiFetch(lemmyInstance, null, '/api/v3/private_message/list?unread_only=false', {}, 'lemmy')
+            ]);
             lemmyReplyNotifs = repliesResponse.data.replies || [];
+            lemmyMentionNotifs = mentionsResponse.data.mentions || [];
+            lemmyPrivateMessages = messagesResponse.data.private_messages || [];
         }
 
-        // --- Data Transformation Step ---
         const allNotifications = [
-            // Mastodon Notifications
             ...mastodonNotifs.map(n => ({
                 platform: 'mastodon',
                 date: n.created_at,
-                icon: ICONS.favorite, // This can be improved to show different icons for different notification types
+                icon: n.type === 'mention' ? ICONS.reply : ICONS.favorite,
                 content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
                 contextHTML: `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>`,
                 authorAvatar: n.account.avatar_static,
-                timestamp: n.created_at
+                timestamp: n.created_at,
+                unread: n.unread
             })),
-            
-            // **FIXED SECTION**: Lemmy Comment Reply Notifications
             ...lemmyReplyNotifs.map(n => {
-                // 1. Use optional chaining (?.) to safely access nested properties.
-                // This prevents the "Cannot read properties of undefined" error.
-                const creator = n?.comment_reply?.creator;
-                const comment = n?.comment_reply?.comment;
-
-                // 2. Add a robust check to ensure all necessary data is present before rendering.
-                if (!creator || !comment) {
-                    Vonsole.log(JSON.stringify(notificationObject, null, 2));
-                    console.error("Skipping malformed Lemmy notification:", n);
-                    return null; // This will be filtered out later.
+                if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) {
+                    return null;
                 }
-
-                // 3. Construct the unified notification object.
                 return {
                     platform: 'lemmy',
-                    date: comment.published,
+                    date: n.comment_reply.comment.published,
                     icon: ICONS.reply,
-                    content: `<strong>${creator.name}</strong> replied to your comment.`,
-                    contextHTML: `<div class="notification-context">${comment.content}</div>`,
-                    authorAvatar: creator.avatar || './images/logo.png',
-                    timestamp: comment.published
+                    content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
+                    contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
+                    authorAvatar: n.comment_reply.creator.avatar || './images/logo.png',
+                    timestamp: n.comment_reply.comment.published,
+                    unread: n.comment_reply.read
                 };
+            }),
+            ...lemmyMentionNotifs.map(n => {
+                 if (!n?.person_mention?.creator || !n?.person_mention?.comment) {
+                    return null;
+                }
+                return {
+                    platform: 'lemmy',
+                    date: n.person_mention.comment.published,
+                    icon: ICONS.reply,
+                    content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
+                    contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
+                    authorAvatar: n.person_mention.creator.avatar || './images/logo.png',
+                    timestamp: n.person_mention.comment.published,
+                    unread: n.person_mention.read
+                }
+            }),
+            ...lemmyPrivateMessages.map(n => {
+                 if (!n?.private_message?.creator) {
+                    return null;
+                }
+                return {
+                    platform: 'lemmy',
+                    date: n.private_message.published,
+                    icon: ICONS.message,
+                    content: `<strong>${n.private_message.creator.name}</strong> sent you a private message.`,
+                    contextHTML: `<div class="notification-context">${n.private_message.content}</div>`,
+                    authorAvatar: n.private_message.creator.avatar || './images/logo.png',
+                    timestamp: n.private_message.published,
+                    unread: n.private_message.read
+                }
             })
-        ].filter(Boolean); // 4. Filter out any null entries that resulted from malformed data.
+        ].filter(Boolean);
 
-        // Sort all notifications from all platforms by date.
         allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        const unreadCount = allNotifications.filter(n => n.unread).length;
+        const notifBtn = document.getElementById('notifications-btn');
+        if (unreadCount > 0) {
+            notifBtn.classList.add('unread');
+        } else {
+            notifBtn.classList.remove('unread');
+        }
 
         const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
@@ -103,7 +155,6 @@ export async function renderNotificationsPage(state, actions) {
             });
         };
 
-        // Set up sub-navigation click handlers
         subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -112,35 +163,10 @@ export async function renderNotificationsPage(state, actions) {
             });
         });
 
-        renderFilteredNotifications('all'); // Initial render
+        renderFilteredNotifications('all');
 
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
         listContainer.innerHTML = `<p>Could not load notifications. ${error.message}</p>`;
     }
-}
-// Instead of this:
-// let avatarUrl = `https://.../${notification.creator.id}`;
-
-// Do this:
-// Declare a variable in the outer scope
-let lastNotification = null;
-
-notifications.forEach(notification => {
-  process(notification);
-  // Assign the current notification to the outer-scope variable on each iteration
-  lastNotification = notification;
-});
-
-// Now, you can safely access the information using the variable you declared
-if (lastNotification) {
-  console.log("Last notification ID:", lastNotification.id);
-}
-
-if (notification && notification.creator && notification.creator.id) {
-  let avatarUrl = `https://.../${notification.creator.id}`;
-  // ... proceed to fetch ...
-} else {
-  console.error("Cannot construct avatar URL, creator or creator.id is missing.", notification);
-  // Use a default avatar or skip rendering this part
 }
