@@ -1063,21 +1063,22 @@ button:disabled {
     color: var(--font-color);
 }
 
-.quick-reply-container {
+/* --- Quick Reply & Edit Containers --- */
+.quick-reply-container, .edit-post-container {
     padding: 15px 20px 20px;
     border-top: 1px solid var(--border-color);
     display: none;
 }
-.quick-reply-box {
+.quick-reply-box, .edit-post-box {
     display: flex;
     gap: 10px;
 }
-.quick-reply-box textarea {
+.quick-reply-box textarea, .edit-post-box textarea {
     flex-grow: 1;
     min-height: 40px;
     padding: 10px;
 }
-.quick-reply-box button {
+.quick-reply-box button, .edit-post-box button {
     flex-shrink: 0;
 }
 
