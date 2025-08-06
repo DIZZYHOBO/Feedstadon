@@ -98,7 +98,7 @@ function renderCommentTree(comments, container, actions) {
 }
 
 async function fetchAndRenderComments(state, postId, container, actions) {
-    container.innerHTML = `<p>Loading comments...</p>`;
+    container.innerHTML = ``;
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const params = { post_id: postId, max_depth: 15, sort: 'New', type_: 'All' };
@@ -200,7 +200,7 @@ function renderCommentNode(commentView, actions) {
 
 export async function renderLemmyPostPage(state, post, actions) {
     const container = document.getElementById('lemmy-post-view');
-    container.innerHTML = '<p>Loading post...</p>';
+    container.innerHTML = '';
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
