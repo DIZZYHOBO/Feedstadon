@@ -15,6 +15,8 @@ const ASSETS_TO_CACHE = [
     './components/Profile.js',
     './components/Search.js',
     './components/Settings.js',
+    './components/Timeline.js',
+    './components/ui.js',
     './components/utils.js',
     './images/logo.png',
     './images/login.png'
