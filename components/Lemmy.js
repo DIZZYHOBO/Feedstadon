@@ -60,50 +60,57 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
-    card.addEventListener('click', (e) => {
+    // Dedicated listener for opening the post detail view
+    card.querySelector('.status-body-content').addEventListener('click', (e) => {
         e.stopPropagation();
         const actionTarget = e.target.closest('[data-action]');
-        if (!actionTarget) return;
-        
-        const action = actionTarget.dataset.action;
-
-        // Clicks inside the quick reply box should not navigate away
-        if (action === 'quick-reply-area') return;
+        const action = actionTarget ? actionTarget.dataset.action : 'view-post';
 
         switch (action) {
-            case 'view-post':
-                actions.showLemmyPostDetail(post);
-                break;
             case 'view-community':
                 actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
                 break;
             case 'view-creator':
                 actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
                 break;
-            case 'upvote':
-            case 'downvote':
-                const score = parseInt(e.target.closest('[data-score]').dataset.score, 10);
-                actions.lemmyVote(post.post.id, score, card);
-                break;
-            case 'save':
-                actions.lemmySave(post.post.id, e.target.closest('button'));
-                break;
-            case 'quick-reply':
-                const replyContainer = card.querySelector('.quick-reply-container');
-                const isVisible = replyContainer.style.display === 'block';
-
-                // Close all other open reply boxes
-                document.querySelectorAll('.quick-reply-container').forEach(container => {
-                    container.style.display = 'none';
-                });
-
-                // Toggle the current one
-                replyContainer.style.display = isVisible ? 'none' : 'block';
-                if (!isVisible) {
-                    replyContainer.querySelector('textarea').focus();
-                }
+            default:
+                actions.showLemmyPostDetail(post);
                 break;
         }
+    });
+    
+    // Listeners for the action buttons in the footer
+    card.querySelectorAll('.status-footer .status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+            switch(action) {
+                case 'upvote':
+                case 'downvote':
+                    const score = parseInt(e.currentTarget.dataset.score, 10);
+                    actions.lemmyVote(post.post.id, score, card);
+                    break;
+                case 'save':
+                    actions.lemmySave(post.post.id, e.currentTarget);
+                    break;
+                case 'quick-reply':
+                    const replyContainer = card.querySelector('.quick-reply-container');
+                    const isVisible = replyContainer.style.display === 'block';
+
+                    document.querySelectorAll('.quick-reply-container').forEach(container => {
+                        container.style.display = 'none';
+                    });
+
+                    replyContainer.style.display = isVisible ? 'none' : 'block';
+                    if (!isVisible) {
+                        replyContainer.querySelector('textarea').focus();
+                    }
+                    break;
+                case 'view-post':
+                     actions.showLemmyPostDetail(post);
+                    break;
+            }
+        });
     });
     
     card.querySelector('.quick-reply-box button').addEventListener('click', async (e) => {
