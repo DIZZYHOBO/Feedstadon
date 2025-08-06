@@ -1,898 +1,228 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-
-:root, [data-theme="feedstodon"] {
-    --bg-color: #101010;
-    --card-color: #1a1a1a;
-    --primary-color: #2a2a2a;
-    --accent-color: #5A94F1;
-    --font-color: #e0e0e0;
-    --font-color-muted: #8e8f90;
-    --border-color: #333435;
-    --link-color: #88C0D0;
-    --notification-dot-color: #ff3d3d;
-    --border-radius: 12px;
-}
-
-[data-theme="purple"] {
-    --bg-color: #1a102c;
-    --card-color: #2a1a45;
-    --primary-color: #3c2a61;
-    --accent-color: #9d72ff;
-    --font-color: #e6e0ff;
-    --font-color-muted: #a192c7;
-    --border-color: #4a3a70;
-    --link-color: #bca2f7;
-}
-
-[data-theme="tube"] {
-    --bg-color: #0f0f0f;
-    --card-color: #272727;
-    --primary-color: #3f3f3f;
-    --accent-color: #FF0000;
-    --font-color: #f1f1f1;
-    --font-color-muted: #aaa;
-    --border-color: #3f3f3f;
-    --link-color: #3ea6ff;
-}
-
-[data-theme="readit"] {
-    --bg-color: #030303;
-    --card-color: #1a1a1b;
-    --primary-color: #272729;
-    --accent-color: #d93a00;
-    --font-color: #d7dadc;
-    --font-color-muted: #818384;
-    --border-color: #343536;
-    --link-color: #4fbcff;
-}
-
-[data-theme="git"] {
-    --bg-color: #0d1117;
-    --card-color: #161b22;
-    --primary-color: #21262d;
-    --accent-color: #58a6ff;
-    --font-color: #c9d1d9;
-    --font-color-muted: #8b949e;
-    --border-color: #30363d;
-    --link-color: #58a6ff;
-}
-
-
-*, *::before, *::after {
-    box-sizing: border-box;
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--font-color);
-    margin: 0;
-    font-size: 16px;
-}
-
-.container {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 70px 15px 20px 15px; /* Added padding-top */
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-#pull-to-refresh-indicator {
-    position: fixed;
-    top: 50px;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    text-align: center;
-    background-color: var(--primary-color);
-    padding: 10px;
-    border-radius: 0 0 8px 8px;
-    transform: translateY(-150%);
-    transition: transform 0.3s ease;
-    z-index: 1000;
-    width: fit-content;
-}
-#pull-to-refresh-indicator.holding {
-    transform: translateY(0);
-    transition: none;
-}
-
-
-textarea,
-input[type="text"],
-input[type="password"],
-input[type="search"],
-input[type="url"] {
-    font-family: 'Inter', sans-serif;
-    font-size: 1rem;
-    color: var(--font-color);
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    width: 100%;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-textarea:focus,
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="search"]:focus,
-input[type="url"]:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(90, 148, 241, 0.2);
-}
-
-/* --- Buttons --- */
-button, .button {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color-muted);
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 0.9em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-}
-button:hover, .button:hover {
-    background-color: var(--card-color);
-    border-color: var(--font-color-muted);
-    color: var(--font-color);
-}
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.connect-btn, .modal-actions button[type="submit"] {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-.connect-btn:hover, .modal-actions button[type="submit"]:hover {
-    background-color: #4a80d3; /* Darker accent */
-    border-color: #4a80d3;
-    color: white;
-}
-
-
-/* --- Login Page --- */
-#login-view {
-    width: 100%;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-.login-card {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    overflow: hidden;
-    position: relative;
-    width: 100%;
-    max-width: 700px;
-}
-.login-forms-container {
-    display: flex;
-}
-.login-form-section {
-    flex: 1;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-}
-.vertical-divider {
-    width: 1px;
-    background-color: var(--border-color);
-}
-.login-form-section form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-
-/* --- Navigation --- */
-.top-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 50px;
-    background-color: rgba(16, 16, 16, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 15px;
-    z-index: 2000;
-}
-
-.nav-left, .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.nav-center {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    padding: 0 20px;
-    position: relative;
-}
-
-.nav-button {
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    position: relative;
-}
-.nav-button:hover {
-    background-color: var(--primary-color);
-}
-
-
-.icon-button {
-    border: none;
-    font-size: 1.5em;
-    padding: 6px;
-}
-
-#notifications-btn.unread .notification-dot {
-    display: block;
-}
-
-.notification-dot {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 8px;
-    height: 8px;
-    background-color: var(--notification-dot-color);
-    border-radius: 50%;
-    display: none;
-}
-
-
-.dropdown { position: relative; }
-
-.dropdown-content {
-    display: none; position: absolute; top: 100%;
-    background-color: rgba(30, 30, 30, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color); border-radius: 8px;
-    min-width: 200px;
-    max-width: 350px;
-    z-index: 1; overflow: hidden; margin-top: 10px;
-}
-
-.nav-left .dropdown-content { left: 0; right: auto; }
-.nav-right .dropdown-content { right: 0; left: auto; }
-
-.dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
-.dropdown-content a:hover { background-color: var(--accent-color); }
-.dropdown.active .dropdown-content { display: block; }
-
-.main-feed-link {
-    font-weight: bold !important;
-    color: var(--accent-color) !important;
-}
-
-/* --- Search Bar --- */
-#search-form {
-    width: 100%;
-    max-width: 500px;
-}
-
-#search-input {
-    border-radius: 20px;
-    padding: 8px 12px;
-}
-
-#search-suggestions-container {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 500px;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    overflow: hidden;
-    z-index: 2000;
-}
-
-/* --- Timeline & Notifications Sub-Nav --- */
-.timeline-sub-nav, .notifications-sub-nav {
-    display: none;
-    gap: 10px;
-    margin-bottom: 20px;
-    background-color: var(--card-color);
-    padding: 5px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    align-items: center;
-}
-.timeline-sub-nav-tabs, .notifications-sub-nav-tabs {
-    display: flex;
-    flex-grow: 1;
-}
-.timeline-sub-nav-btn, .notifications-sub-nav-btn {
-    flex-grow: 1;
-    padding: 8px;
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background-color 0.2s, color 0.2s;
-}
-.timeline-sub-nav-btn:hover, .notifications-sub-nav-btn:hover {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-}
-.timeline-sub-nav-btn.active, .notifications-sub-nav-btn.active {
-    background-color: var(--accent-color);
-    color: white;
-}
-#lemmy-filter-container {
-    margin-left: auto;
-}
-#lemmy-sort-select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 8px;
-    font-size: 0.9em;
-}
-
-
-/* --- Main App Views --- */
-#timeline, #notifications-list, .profile-feed, #status-detail-view .status-list, #hashtag-timeline-view, #bookmarks-view, #lemmy-post-view, #subscribed-feed, #unified-feed, #lemmy-discover-view, #lemmy-community-view {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-#status-detail-view, #notifications-view, #profile-page-view {
-    flex-direction: column;
-}
-#status-detail-view .status {
-    border-left: 2px solid var(--border-color);
-    border-radius: 0;
-}
-#status-detail-view .status.main-thread-post {
-    border-left-color: var(--accent-color);
-}
-
-/* --- Scroll Loader --- */
-#scroll-loader {
-    text-align: center;
-    padding: 20px;
-    height: 60px;
-    display: none;
-}
-#scroll-loader p {
-    color: var(--font-color-muted);
-    visibility: hidden;
-}
-#scroll-loader.loading p {
-    visibility: visible;
-}
-
-
-/* --- Status / Post Cards --- */
-.status {
-    background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-.status-body-content {
-    padding: 20px;
-}
-
-.status-header { 
-    display: flex; 
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px; 
-    margin-bottom: 15px; 
-}
-.status-header-main {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-grow: 1;
-    min-width: 0;
-}
-.status-header-side {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-}
-.status-header .avatar { 
-    width: 44px; 
-    height: 44px; 
-    border-radius: 50%; 
-    cursor: pointer; 
-    flex-shrink: 0;
-}
-.status-header .display-name { 
-    font-weight: 700; 
-    cursor: pointer; 
-}
-.status-header .acct { 
-    color: var(--font-color-muted);
-    font-weight: 400;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.status-header .timestamp { 
-    color: var(--font-color-muted); 
-    font-size: 0.9em; 
-}
-
-.status-content {
-    margin-bottom: 15px;
-    line-height: 1.6;
-    font-size: 1.05em;
-    overflow-wrap: break-word;
-}
-.status-content a, .profile-info .note a {
-    color: var(--link-color);
-    text-decoration: none;
-    word-break: break-all;
-}
-.status-content a:hover, .profile-info .note a:hover {
-    text-decoration: underline;
-}
-
-
-.status-media {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 10px;
-}
-.status-media img, .status-media video {
-    max-width: 100%;
-    max-height: 500px;
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-.status-footer { 
-    display: flex; 
-    justify-content: space-between; 
-    color: var(--font-color-muted); 
-    font-weight: 500; 
-    font-size: 0.9em; 
-    border-top: 1px solid var(--border-color); 
-    padding: 10px 20px; 
-    margin: 15px -20px -20px;
-}
-
-.status-action {
-    background: none;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--font-color-muted);
-    transition: color 0.2s ease;
-    padding: 8px;
-    font-size: 1rem;
-}
-.status-action:hover {
-    color: var(--accent-color);
-}
-.icon { width: 22px; height: 22px; flex-shrink: 0; }
-
-.status-action.active {
-    color: var(--accent-color);
-}
-
-/* --- Post Options Menu --- */
-.post-options-container {
-    position: relative;
-}
-.post-options-btn {
-    background: none;
-    border: none;
-    color: var(--font-color-muted);
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 50%;
-}
-.post-options-btn:hover {
-    background-color: var(--primary-color);
-}
-.post-options-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    min-width: 120px;
-    z-index: 10;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-.post-options-menu button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 12px 16px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-.post-options-menu button:hover {
-    background-color: var(--accent-color);
-}
-
-/* --- Modals --- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 3000;
-}
-
-.modal-overlay.visible {
-    display: flex;
-}
-.modal-content {
-    background: var(--card-color);
-    padding: 25px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-}
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-.modal-actions button {
-    border-radius: 8px;
-}
-.button-secondary {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-}
-.button-danger {
-    background-color: #d9534f;
-    color: white;
-}
-.logout-options {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin: 20px 0;
-}
-.logout-options button {
-    flex-grow: 1;
-}
-
-/* --- Compose Modal --- */
-.compose-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    margin: -25px -25px 20px -25px;
-}
-.compose-tabs .tab-button {
-    border-radius: 0;
-    border-bottom: 3px solid transparent;
-}
-.compose-tabs .tab-button.active {
-    border-bottom-color: var(--accent-color);
-}
-.compose-tab-content {
-    display: none;
-}
-.compose-tab-content.active {
-    display: block;
-}
-
-.compose-options {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#media-filename-preview {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-}
-
-#poll-creator-container {
-    border-top: 1px solid var(--border-color);
-    margin-top: 15px;
-    padding-top: 15px;
-}
-
-#poll-options-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.poll-option-input {
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.poll-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-.poll-settings .form-group {
-    margin: 0;
-}
-.poll-settings label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: normal;
-}
-.poll-settings select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 5px;
-}
-
-#cw-creator-container {
-    margin-bottom: 10px;
-}
-
-/* --- Lemmy Compose Form --- */
-#lemmy-compose-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.lemmy-post-type-selector {
-    display: flex;
-    gap: 10px;
-}
-.lemmy-post-type-btn {
-    flex-grow: 1;
-}
-.lemmy-post-type-btn.active {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-#lemmy-body-textarea {
-    min-height: 120px;
-}
-
-
-/* --- Profile Page --- */
-.profile-header-container {
-    position: sticky;
-    top: 60px;
-    z-index: 100;
-}
-.profile-card {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.profile-header { position: relative; height: 150px; }
-.profile-header .banner { width: 100%; height: 100%; object-fit: cover; }
-.profile-header .avatar { position: absolute; width: 100px; height: 100px; border-radius: 50%; bottom: -50px; left: 20px; border: 4px solid var(--card-color); }
-.profile-header .banner, .profile-header .avatar {
-    background-color: var(--primary-color); /* Add a background for placeholders */
-}
-
-.profile-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; }
-
-.profile-info { padding: 60px 20px 20px 20px; }
-.profile-info .display-name { font-size: 1.5rem; font-weight: bold; margin: 0; }
-.profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
-.profile-info .note {
-    line-height: 1.5;
-    overflow-wrap: break-word;
-    margin-bottom: 15px;
-}
-.profile-info .stats {
-    display: flex;
-    gap: 20px;
-    color: var(--font-color-muted);
-}
-.profile-info .stats strong {
-    color: var(--font-color);
-}
-.profile-feed {
-    margin-top: 15px;
-}
-.lemmy-comment-on-profile {
-    border-left: 3px solid var(--accent-color) !important;
-}
-.lemmy-comment-on-profile .comment-context {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.lemmy-comment-on-profile .post-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-
-/* --- Lemmy Integration Styles --- */
-.platform-icon-indicator,
-.lemmy-icon-indicator {
-    color: var(--font-color-muted);
-    opacity: 0.5;
-    flex-shrink: 0;
-}
-
-.lemmy-card .status-header a {
-    text-decoration: none;
-    color: inherit;
-}
-.lemmy-card .status-header a:hover {
-    color: var(--accent-color);
-}
-
-.lemmy-card .status-header .avatar {
-    border-radius: 8px; /* Lemmy community icons are often square */
-}
-
-.lemmy-card .lemmy-title {
-    font-size: 1.1em;
-    font-weight: bold;
-    margin: 0 0 10px 0;
-}
-
-.lemmy-card .status-footer {
-    justify-content: space-between;
-    align-items: center;
-}
-
-.lemmy-vote-cluster {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.lemmy-vote-btn {
-    font-size: 1.2em;
-}
-
-.lemmy-vote-btn.active {
-    color: var(--accent-color);
-}
-
-.lemmy-score {
-    font-weight: bold;
-    color: var(--font-color);
-}
-
-.quick-reply-container {
-    padding: 15px 20px 20px;
-    border-top: 1px solid var(--border-color);
-    display: none;
-}
-.quick-reply-box {
-    display: flex;
-    gap: 10px;
-}
-.quick-reply-box textarea {
-    flex-grow: 1;
-    min-height: 40px;
-    padding: 10px;
-}
-.quick-reply-box button {
-    flex-shrink: 0;
-}
-
-
-/* --- Mobile Responsiveness --- */
-@media (max-width: 600px) {
-    .container {
-        padding: 60px 5px 10px 5px; /* Adjust padding for mobile */
+import { apiFetch } from './api.js';
+import { ICONS } from './icons.js';
+import { formatTimestamp } from './utils.js';
+import { renderLemmyCard } from './Lemmy.js'; // We can reuse the card from the timeline
+
+function showReplyBox(commentWrapper, comment, actions) {
+    const existingReplyBox = commentWrapper.querySelector('.lemmy-reply-box');
+    if (existingReplyBox) {
+        existingReplyBox.remove();
+        return;
     }
 
-    .nav-left, .nav-right {
-        gap: 5px;
+    const replyBox = document.createElement('div');
+    replyBox.className = 'lemmy-reply-box';
+    replyBox.innerHTML = `
+        <textarea class="reply-textarea" placeholder="Write your reply..."></textarea>
+        <div class="reply-actions">
+            <button class="cancel-reply-btn button-secondary">Cancel</button>
+            <button class="submit-reply-btn">Reply</button>
+        </div>
+    `;
+
+    commentWrapper.querySelector('.status-body-content').appendChild(replyBox);
+
+    replyBox.querySelector('.cancel-reply-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        replyBox.remove();
+    });
+
+    replyBox.querySelector('.submit-reply-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const textarea = replyBox.querySelector('.reply-textarea');
+        const content = textarea.value.trim();
+        if (!content) return;
+
+        try {
+            const newComment = await actions.lemmyPostComment({
+                content: content,
+                post_id: comment.post.id,
+                parent_id: comment.comment.id
+            });
+
+            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
+            let repliesContainer = commentWrapper.querySelector('.comment-replies-container');
+            if (!repliesContainer) {
+                repliesContainer = document.createElement('div');
+                repliesContainer.className = 'comment-replies-container';
+                commentWrapper.appendChild(repliesContainer);
+            }
+            repliesContainer.prepend(newCommentEl);
+            replyBox.remove();
+
+        } catch (err) {
+            alert('Failed to post reply.');
+        }
+    });
+}
+
+function buildCommentTree(comments) {
+    const commentMap = new Map();
+    const rootComments = [];
+
+    comments.forEach(commentView => {
+        commentView.children = [];
+        commentMap.set(commentView.comment.id, commentView);
+    });
+
+    comments.forEach(commentView => {
+        const pathParts = commentView.comment.path.split('.');
+        if (pathParts.length === 2) {
+            rootComments.push(commentView);
+        } else {
+            const parentId = parseInt(pathParts[pathParts.length - 2], 10);
+            if (commentMap.has(parentId)) {
+                const parent = commentMap.get(parentId);
+                parent.children.push(commentView);
+            }
+        }
+    });
+    return rootComments;
+}
+
+function renderCommentTree(comments, container, actions) {
+    comments.forEach(commentView => {
+        const commentElement = renderCommentNode(commentView, actions);
+        container.appendChild(commentElement);
+
+        if (commentView.children && commentView.children.length > 0) {
+            const repliesContainer = document.createElement('div');
+            repliesContainer.className = 'comment-replies-container';
+            const body = commentElement.querySelector('.status-body-content');
+            if (body) {
+                body.appendChild(repliesContainer);
+                renderCommentTree(commentView.children, repliesContainer, actions);
+            }
+        }
+    });
+}
+
+async function fetchAndRenderComments(state, postId, container, actions) {
+    container.innerHTML = `<p>Loading comments...</p>`;
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const params = { post_id: postId, max_depth: 15, sort: 'New', type_: 'All' };
+        const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
+        const commentsData = response.data.comments;
+
+        container.innerHTML = '';
+        if (commentsData && commentsData.length > 0) {
+            const commentTree = buildCommentTree(commentsData);
+            renderCommentTree(commentTree, container, actions);
+        } else {
+            container.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
+        }
+    } catch (err) {
+        console.error("Failed to load Lemmy comments:", err);
+        container.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
     }
+}
+
+function renderCommentNode(commentView, actions) {
+    const comment = commentView.comment;
+    const creator = commentView.creator;
+    const counts = commentView.counts;
+
+    const commentWrapper = document.createElement('div');
+    commentWrapper.className = 'status lemmy-comment';
+    commentWrapper.id = `comment-wrapper-${comment.id}`;
     
-    .status-footer {
-        flex-wrap: wrap;
-        justify-content: space-around;
-        gap: 10px !important;
+    if (comment.path.split('.').length === 2) {
+        commentWrapper.classList.add('top-level-comment');
     }
 
-    .status-action {
-        padding: 6px 12px;
-        font-size: 0.8em;
-    }
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="edit-comment">${ICONS.edit} Edit</button>
+                <button data-action="delete-comment">${ICONS.delete} Delete</button>
+            </div>
+        </div>
+    `;
+
+    commentWrapper.innerHTML = `
+        <div class="status-body-content">
+            <div class="status-header">
+                <div class="status-header-main">
+                    <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <div>
+                        <span class="display-name">${creator.display_name || creator.name}</span>
+                        <span class="acct">@${creator.name}</span>
+                        <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
+                    </div>
+                </div>
+                <div class="status-header-side">
+                    ${optionsMenuHTML}
+                </div>
+            </div>
+            <div class="status-content">${comment.content}</div>
+            <div class="status-footer">
+                <div class="lemmy-vote-cluster">
+                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${counts.score}</span>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                </div>
+                <button class="status-action" data-action="reply">${ICONS.reply}</button>
+            </div>
+        </div>
+    `;
     
-    .comment-replies-container {
-        margin-left: 5px;
-        padding-left: 10px;
+    // Event listeners
+    commentWrapper.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+            switch(action) {
+                case 'upvote': case 'downvote':
+                    const score = parseInt(e.currentTarget.dataset.score, 10);
+                    actions.lemmyCommentVote(comment.id, score, commentWrapper);
+                    break;
+                case 'reply':
+                    showReplyBox(commentWrapper, commentView, actions);
+                    break;
+            }
+        });
+    });
+
+    const optionsBtn = commentWrapper.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = commentWrapper.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+        menu.addEventListener('click', (e) => e.stopPropagation());
     }
 
-    .notification-item {
-        padding: 10px;
-        gap: 10px;
-    }
+    return commentWrapper;
+}
 
-    .notification-item .timestamp {
-        display: none; /* Hide timestamp on very small screens to save space */
+export async function renderLemmyPostPage(state, post, actions) {
+    const container = document.getElementById('lemmy-post-view');
+    container.innerHTML = '<p>Loading post...</p>';
+
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${post.post.id}`, {}, 'lemmy');
+        const postView = data.post_view;
+
+        container.innerHTML = ''; // Clear loading message
+
+        // Render the main post using the standard Lemmy card
+        const mainPostCard = renderLemmyCard(postView, actions);
+        mainPostCard.classList.add('main-thread-post');
+        container.appendChild(mainPostCard);
+
+        // Add a dedicated container for the comments
+        const threadContainer = document.createElement('div');
+        threadContainer.className = 'lemmy-comment-thread';
+        container.appendChild(threadContainer);
+        
+        fetchAndRenderComments(state, postView.post.id, threadContainer, actions);
+        
+    } catch (error) {
+        console.error("Failed to load Lemmy post detail:", error);
+        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
     }
 }
