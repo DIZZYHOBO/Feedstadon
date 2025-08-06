@@ -9,6 +9,7 @@ import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
+import { showLoadingBar, hideLoadingBar } from './components/ui.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -229,54 +230,72 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const actions = {
-        showProfile: (accountId) => {
+        showProfile: async (accountId) => {
+            showLoadingBar();
             switchView('profile');
-            renderProfilePage(state, accountId, actions);
+            await renderProfilePage(state, accountId, actions);
+            hideLoadingBar();
         },
-        showLemmyProfile: (userAcct, isOwnProfile = false) => {
+        showLemmyProfile: async (userAcct, isOwnProfile = false) => {
+            showLoadingBar();
             switchView('profile');
-            renderLemmyProfilePage(state, userAcct, actions, isOwnProfile);
+            await renderLemmyProfilePage(state, userAcct, actions, isOwnProfile);
+            hideLoadingBar();
         },
-        showStatusDetail: (statusId) => {
+        showStatusDetail: async (statusId) => {
+            showLoadingBar();
             switchView('statusDetail');
-            renderStatusDetail(state, statusId, actions);
+            await renderStatusDetail(state, statusId, actions);
+            hideLoadingBar();
         },
-        showHashtagTimeline: (tagName) => {
+        showHashtagTimeline: async (tagName) => {
+            showLoadingBar();
             switchView('search');
-            renderSearchResults(state, `#${tagName}`);
+            await renderSearchResults(state, `#${tagName}`);
+            hideLoadingBar();
         },
         showSettings: () => {
             switchView('settings');
             renderSettingsPage(state);
         },
-        showNotifications: () => {
+        showNotifications: async () => {
+            showLoadingBar();
             switchView('notifications');
-            renderNotificationsPage(state, actions);
+            await renderNotificationsPage(state, actions);
+            hideLoadingBar();
         },
-        showLemmyPostDetail: (post) => {
+        showLemmyPostDetail: async (post) => {
+            showLoadingBar();
             switchView('lemmyPost');
-            renderLemmyPostPage(state, post, actions);
+            await renderLemmyPostPage(state, post, actions);
+            hideLoadingBar();
         },
-         showLemmyFeed: (feedType, sortType = 'New') => {
+         showLemmyFeed: async (feedType, sortType = 'New') => {
+            showLoadingBar();
             state.currentLemmyFeed = feedType;
             state.currentTimeline = null;
             state.currentLemmySort = sortType;
             switchView('timeline');
             renderTimelineSubNav('lemmy');
-            fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
+            await fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
+            hideLoadingBar();
         },
-        showMastodonTimeline: (timelineType) => {
+        showMastodonTimeline: async (timelineType) => {
+            showLoadingBar();
             state.currentLemmyFeed = null;
             state.currentTimeline = timelineType;
             switchView('timeline');
             renderTimelineSubNav('mastodon');
-            fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            hideLoadingBar();
         },
-         showHomeTimeline: () => {
+         showHomeTimeline: async () => {
+            showLoadingBar();
             state.currentLemmyFeed = null;
             state.currentTimeline = 'home';
             switchView('timeline');
-            fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            hideLoadingBar();
         },
         replyToStatus: (post) => {
             showComposeModalWithReply(state, post);
