@@ -207,7 +207,7 @@ button:disabled {
 }
 
 
-/* --- Navigation --- */
+/* --- Navigation & Loading Bar --- */
 .top-nav {
     position: fixed;
     top: 0;
@@ -223,6 +223,24 @@ button:disabled {
     align-items: center;
     padding: 0 15px;
     z-index: 2000;
+}
+
+#loading-bar {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--accent-color);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease-out, opacity 0.3s ease;
+    z-index: 2001;
+    opacity: 0;
+}
+#loading-bar.loading {
+    transform: scaleX(1);
+    opacity: 1;
 }
 
 .nav-left, .nav-right {
@@ -555,12 +573,20 @@ button:disabled {
     padding: 15px 20px;
     border-bottom: 1px solid var(--border-color);
     transition: background-color 0.2s;
+    position: relative;
 }
 .notification-item:last-child {
     border-bottom: none;
 }
 .notification-item:hover {
     background-color: var(--primary-color);
+}
+.notification-platform-icon {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: var(--font-color-muted);
+    opacity: 0.5;
 }
 .notification-icon {
     font-size: 1.5em;
@@ -956,6 +982,11 @@ button:disabled {
     .notification-item {
         padding: 15px 10px;
         gap: 10px;
+    }
+    
+    .notification-platform-icon {
+        top: 15px;
+        right: 10px;
     }
 
     .notification-item .timestamp {
