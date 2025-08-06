@@ -1,7 +1,7 @@
-import { apiFetch } from './api.js';
-import { renderStatus } from './Post.js';
-import { renderLemmyCard } from './Lemmy.js';
-import { ICONS } from './icons.js';
+import { apiFetch } from '/components/api.js';
+import { renderStatus } from '/components/Post.js';
+import { renderLemmyCard } from '/components/Lemmy.js';
+import { ICONS } from '/components/icons.js';
 
 export async function renderProfilePage(state, accountId, actions) {
     const profileView = document.getElementById('profile-page-view');
