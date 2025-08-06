@@ -96,17 +96,18 @@ export async function renderNotificationsPage(state, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
 
+        // --- Fetch Mastodon Notifications ---
         let mastodonNotifs = [];
         if (state.instanceUrl && state.accessToken) {
             const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
             mastodonNotifs = response.data || [];
         }
 
+        // --- Fetch Lemmy Notifications ---
         let lemmyReplyNotifs = [];
         let lemmyMentionNotifs = [];
         let lemmyPrivateMessages = [];
         if (lemmyInstance) {
-            // STEP 1: Fetch all data first.
             const [repliesResponse, mentionsResponse, messagesResponse] = await Promise.all([
                 apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
                 apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy'),
@@ -117,17 +118,28 @@ export async function renderNotificationsPage(state, actions) {
             lemmyPrivateMessages = messagesResponse.data.private_messages || [];
         }
 
-        // STEP 2: Process and render the notifications immediately.
+        // --- Combine and Process All Notifications ---
         const allNotifications = [
-            ...mastodonNotifs.map(n => ({
-                platform: 'mastodon',
-                date: n.created_at,
-                icon: n.type === 'mention' ? ICONS.reply : ICONS.favorite,
-                content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
-                contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
-                authorAvatar: n.account.avatar_static,
-                timestamp: n.created_at,
-            })),
+            ...mastodonNotifs.map(n => {
+                let icon = ICONS.mention;
+                let actionText = `${n.type}d`;
+                if (n.type === 'favourite') {
+                    icon = ICONS.favorite;
+                    actionText = 'favorited';
+                } else if (n.type === 'reblog') {
+                    icon = ICONS.boost;
+                    actionText = 'boosted';
+                }
+                return {
+                    platform: 'mastodon',
+                    date: n.created_at,
+                    icon: icon,
+                    content: `<strong>${n.account.display_name}</strong> ${actionText} your post.`,
+                    contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
+                    authorAvatar: n.account.avatar_static,
+                    timestamp: n.created_at,
+                }
+            }),
             ...lemmyReplyNotifs.map(n => {
                 if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) return null;
                 return {
@@ -145,7 +157,7 @@ export async function renderNotificationsPage(state, actions) {
                 return {
                     platform: 'lemmy',
                     date: n.person_mention.comment.published,
-                    icon: ICONS.reply,
+                    icon: ICONS.mention,
                     content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
                     contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
                     authorAvatar: n.person_mention.creator.avatar,
@@ -168,6 +180,7 @@ export async function renderNotificationsPage(state, actions) {
 
         allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
         
+        // --- Render Logic ---
         const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
             const filtered = allNotifications.filter(n => filter === 'all' || n.platform === filter);
@@ -191,11 +204,11 @@ export async function renderNotificationsPage(state, actions) {
             });
         });
         
-        const defaultTab = lemmyInstance ? 'lemmy' : 'all';
+        const defaultTab = 'all';
         subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`).classList.add('active');
         renderFilteredNotifications(defaultTab);
         
-        // STEP 3: Mark items as read in the background, *after* everything is visible.
+        // --- Mark As Read (Post-Render) ---
         if (lemmyInstance) {
             const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
             const unreadPms = lemmyPrivateMessages.filter(p => !p.private_message.read);
