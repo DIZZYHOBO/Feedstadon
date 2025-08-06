@@ -1,5 +1,5 @@
 import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
-import { renderProfilePage, renderLemmyProfilePage } from './components/Profile.js';
+import { renderProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
@@ -230,16 +230,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const actions = {
-        showProfile: async (accountId) => {
+        showProfilePage: (platform, accountId = null, userAcct = null) => {
             showLoadingBar();
             switchView('profile');
-            await renderProfilePage(state, accountId, actions);
-            hideLoadingBar();
-        },
-        showLemmyProfile: async (userAcct, isOwnProfile = false) => {
-            showLoadingBar();
-            switchView('profile');
-            await renderLemmyProfilePage(state, userAcct, actions, isOwnProfile);
+            renderProfilePage(state, actions, platform, accountId, userAcct);
             hideLoadingBar();
         },
         showStatusDetail: async (statusId) => {
@@ -302,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
-                actions.showProfile(account.id);
+                actions.showProfilePage('mastodon', account.id);
             } else {
                 actions.showLemmyCommunity(account.acct);
             }
@@ -472,11 +466,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 showComposeModal(state);
                 break;
             case 'profile-link':
-                if (state.currentUser) {
-                    actions.showProfile(state.currentUser.id);
-                } else if (localStorage.getItem('lemmy_username')) {
-                    const lemmyUser = `${localStorage.getItem('lemmy_username')}@${localStorage.getItem('lemmy_instance')}`;
-                    actions.showLemmyProfile(lemmyUser, true);
+                let defaultPlatform = null;
+                if(state.currentUser) defaultPlatform = 'mastodon';
+                else if(localStorage.getItem('lemmy_jwt')) defaultPlatform = 'lemmy';
+                
+                if(defaultPlatform) {
+                    actions.showProfilePage(defaultPlatform);
                 }
                 break;
             case 'settings-link':
