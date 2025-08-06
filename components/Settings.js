@@ -1,5 +1,37 @@
 import { apiFetch, apiUpdateCredentials } from './api.js';
 
+function getWordFilter() {
+    return JSON.parse(localStorage.getItem('lemmy-word-filter') || '[]');
+}
+
+function saveWordFilter(words) {
+    localStorage.setItem('lemmy-word-filter', JSON.stringify(words));
+}
+
+function renderWordFilterList(container) {
+    const words = getWordFilter();
+    container.innerHTML = '';
+    if (words.length > 0) {
+        words.forEach(word => {
+            const li = document.createElement('li');
+            li.textContent = word;
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = 'Remove';
+            removeBtn.className = 'button-secondary';
+            removeBtn.onclick = () => {
+                const newWords = getWordFilter().filter(w => w !== word);
+                saveWordFilter(newWords);
+                renderWordFilterList(container);
+            };
+            li.appendChild(removeBtn);
+            container.appendChild(li);
+        });
+    } else {
+        container.innerHTML = '<li>No words filtered.</li>';
+    }
+}
+
+
 export function renderSettingsPage(state) {
     const settingsView = document.getElementById('settings-view');
     
@@ -54,6 +86,18 @@ export function renderSettingsPage(state) {
                     </select>
                 </div>
             </div>
+            <div class="settings-section">
+                <h3>Lemmy Word Filter</h3>
+                <p>Hide posts from your Lemmy feeds that contain these words (case-insensitive). This filter is local to this device.</p>
+                <form id="word-filter-form">
+                    <div class="form-group">
+                        <label for="word-filter-input">Word or phrase to filter</label>
+                        <input type="text" id="word-filter-input" placeholder="e.g., politics">
+                    </div>
+                    <button type="submit">Add Filter</button>
+                </form>
+                <ul id="word-filter-list"></ul>
+            </div>
         </div>
     `;
 
@@ -89,4 +133,24 @@ export function renderSettingsPage(state) {
             }
         });
     }
+    
+    const wordFilterForm = document.getElementById('word-filter-form');
+    const wordFilterInput = document.getElementById('word-filter-input');
+    const wordFilterListContainer = document.getElementById('word-filter-list');
+
+    wordFilterForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newWord = wordFilterInput.value.trim().toLowerCase();
+        if (newWord) {
+            const words = getWordFilter();
+            if (!words.includes(newWord)) {
+                words.push(newWord);
+                saveWordFilter(words);
+                renderWordFilterList(wordFilterListContainer);
+            }
+            wordFilterInput.value = '';
+        }
+    });
+
+    renderWordFilterList(wordFilterListContainer);
 }
