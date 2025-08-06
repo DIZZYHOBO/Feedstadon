@@ -1,25 +1,12 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
 import { renderLoginPrompt } from './Timeline.js'; 
-
-function getWordFilter() {
-    return JSON.parse(localStorage.getItem('lemmy-word-filter') || '[]');
-}
-
-function shouldFilterPost(post, filterList) {
-    if (filterList.length === 0) return false;
-    const title = post.name.toLowerCase();
-    const body = post.body?.toLowerCase() || '';
-
-    return filterList.some(filterWord => 
-        title.includes(filterWord) || body.includes(filterWord)
-    );
-}
 
 export function renderLemmyCard(post, actions) {
     const filterList = getWordFilter();
-    if (shouldFilterPost(post.post, filterList)) {
+    const combinedContent = `${post.post.name} ${post.post.body || ''}`;
+    if (shouldFilterContent(combinedContent, filterList)) {
         return document.createDocumentFragment(); // Return an empty element to hide the post
     }
     
@@ -223,7 +210,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
         if (!state.lemmyHasMore) {
             state.scrollLoader.innerHTML = '<p>No more posts.</p>';
         } else {
-             state.scrollLoader.innerHTML = '<p>Loading more...</p>';
+             state.scrollLoader.innerHTML = '<p></p>';
         }
 
     } catch (error) {
