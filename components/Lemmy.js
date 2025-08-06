@@ -1,9 +1,28 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
-import { renderLoginPrompt } from './Timeline.js';
+import { renderLoginPrompt } from './Timeline.js'; 
+
+function getWordFilter() {
+    return JSON.parse(localStorage.getItem('lemmy-word-filter') || '[]');
+}
+
+function shouldFilterPost(post, filterList) {
+    if (filterList.length === 0) return false;
+    const title = post.name.toLowerCase();
+    const body = post.body?.toLowerCase() || '';
+
+    return filterList.some(filterWord => 
+        title.includes(filterWord) || body.includes(filterWord)
+    );
+}
 
 export function renderLemmyCard(post, actions) {
+    const filterList = getWordFilter();
+    if (shouldFilterPost(post.post, filterList)) {
+        return document.createDocumentFragment(); // Return an empty element to hide the post
+    }
+    
     const card = document.createElement('div');
     card.className = 'status lemmy-card';
     card.dataset.id = post.post.id;
