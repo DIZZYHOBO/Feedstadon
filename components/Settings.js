@@ -1,12 +1,4 @@
-import { apiFetch, apiUpdateCredentials } from './api.js';
-
-function getWordFilter() {
-    return JSON.parse(localStorage.getItem('lemmy-word-filter') || '[]');
-}
-
-function saveWordFilter(words) {
-    localStorage.setItem('lemmy-word-filter', JSON.stringify(words));
-}
+import { getWordFilter, saveWordFilter } from './utils.js';
 
 function renderWordFilterList(container) {
     const words = getWordFilter();
@@ -34,45 +26,9 @@ function renderWordFilterList(container) {
 
 export function renderSettingsPage(state) {
     const settingsView = document.getElementById('settings-view');
-    
-    // Check if the Mastodon user is logged in
-    const isMastodonLoggedIn = state.currentUser && state.currentUser.id;
-
-    const profileSettingsHTML = isMastodonLoggedIn ? `
-        <div class="settings-section">
-            <h3>Profile Settings (Mastodon)</h3>
-            <form id="profile-settings-form">
-                <div class="form-group">
-                    <label for="display-name">Display Name</label>
-                    <input type="text" id="display-name" name="display_name" value="${state.currentUser.display_name}">
-                </div>
-                <div class="form-group">
-                    <label for="bio">Bio</label>
-                    <textarea id="bio" name="note">${state.currentUser.note}</textarea>
-                </div>
-                <div class="form-group">
-                    <label for="avatar">Avatar</label>
-                    <input type="file" id="avatar-upload" name="avatar" accept="image/*">
-                    <span class="file-status"></span>
-                </div>
-                 <div class="form-group">
-                    <label for="banner">Header Banner</label>
-                    <input type="file" id="banner-upload" name="header" accept="image/*">
-                    <span class="file-status"></span>
-                </div>
-                <button type="submit" class="settings-save-button">Save Profile</button>
-            </form>
-        </div>
-    ` : `
-        <div class="settings-section">
-            <h3>Profile Settings (Mastodon)</h3>
-            <p>You must be logged into Mastodon to edit your profile.</p>
-        </div>
-    `;
 
     settingsView.innerHTML = `
         <div class="settings-container">
-            ${profileSettingsHTML}
             <div class="settings-section">
                 <h3>Theme</h3>
                 <div class="form-group">
@@ -87,8 +43,8 @@ export function renderSettingsPage(state) {
                 </div>
             </div>
             <div class="settings-section">
-                <h3>Lemmy Word Filter</h3>
-                <p>Hide posts from your Lemmy feeds that contain these words (case-insensitive). This filter is local to this device.</p>
+                <h3>Word Filter</h3>
+                <p>Hide posts from your feeds that contain these words (case-insensitive). This filter is local to this device.</p>
                 <form id="word-filter-form">
                     <div class="form-group">
                         <label for="word-filter-input">Word or phrase to filter</label>
@@ -110,29 +66,6 @@ export function renderSettingsPage(state) {
         document.body.dataset.theme = selectedTheme;
         localStorage.setItem('feedstodon-theme', selectedTheme);
     });
-    
-    if (isMastodonLoggedIn) {
-        const profileForm = document.getElementById('profile-settings-form');
-        profileForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const saveButton = profileForm.querySelector('.settings-save-button');
-            saveButton.disabled = true;
-            saveButton.textContent = 'Saving...';
-            
-            try {
-                const formData = new FormData(e.target);
-                await apiUpdateCredentials(state, formData);
-                alert("Profile updated successfully!");
-                // Optionally refresh profile data
-            } catch (error) {
-                console.error("Failed to update profile", error);
-                alert("Failed to update profile.");
-            } finally {
-                saveButton.disabled = false;
-                saveButton.textContent = 'Save Profile';
-            }
-        });
-    }
     
     const wordFilterForm = document.getElementById('word-filter-form');
     const wordFilterInput = document.getElementById('word-filter-input');
