@@ -7,7 +7,7 @@ function renderSingleNotification(notification) {
     item.className = 'notification-item';
     item.innerHTML = `
         <div class="notification-icon">${notification.icon}</div>
-        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/logo.png';">
+        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
         <div class="notification-content">
             <p>${notification.content}</p>
             ${notification.contextHTML}
@@ -47,8 +47,9 @@ export async function updateNotificationBell() {
     }
 }
 
-async function markMentionsAsRead(lemmyInstance) {
+async function markAllAsRead(lemmyInstance) {
     try {
+        // Mark all mentions as read
         const { data: unreadMentions } = await apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy');
         for(const mention of unreadMentions.mentions) {
             await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
@@ -57,9 +58,19 @@ async function markMentionsAsRead(lemmyInstance) {
                  body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
             }, 'lemmy');
         }
+
+        // Mark all private messages as read
+        const { data: unreadPms } = await apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy');
+        for(const pm of unreadPms.private_messages) {
+             await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ private_message_id: pm.private_message.id, read: true })
+            }, 'lemmy');
+        }
         updateNotificationBell();
     } catch (error) {
-        console.error("Failed to mark mentions as read:", error);
+        console.error("Failed to mark notifications as read:", error);
     }
 }
 
@@ -80,7 +91,7 @@ export async function renderNotificationsPage(state, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
-           markMentionsAsRead(lemmyInstance);
+           markAllAsRead(lemmyInstance);
         }
 
         let mastodonNotifs = [];
@@ -121,7 +132,7 @@ export async function renderNotificationsPage(state, actions) {
                     icon: ICONS.reply,
                     content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
                     contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
-                    authorAvatar: n.comment_reply.creator.avatar || './images/logo.png',
+                    authorAvatar: n.comment_reply.creator.avatar,
                     timestamp: n.comment_reply.comment.published,
                 };
             }),
@@ -133,7 +144,7 @@ export async function renderNotificationsPage(state, actions) {
                     icon: ICONS.reply,
                     content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
                     contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
-                    authorAvatar: n.person_mention.creator.avatar || './images/logo.png',
+                    authorAvatar: n.person_mention.creator.avatar,
                     timestamp: n.person_mention.comment.published,
                 }
             }),
@@ -145,7 +156,7 @@ export async function renderNotificationsPage(state, actions) {
                     icon: ICONS.message,
                     content: `<strong>${n.private_message.creator.name}</strong> sent you a private message.`,
                     contextHTML: `<div class="notification-context">${n.private_message.content}</div>`,
-                    authorAvatar: n.private_message.creator.avatar || './images/logo.png',
+                    authorAvatar: n.private_message.creator.avatar,
                     timestamp: n.private_message.published,
                 }
             })
