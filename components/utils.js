@@ -1,32 +1,35 @@
-/**
- * Formats a timestamp into a human-readable string (e.g., "5m", "2h", "3d").
- * @param {string} timestamp - The ISO 8601 timestamp string.
- * @returns {string} - The formatted, relative time string.
- */
-export function formatTimestamp(timestamp) {
-    const now = new Date();
-    const postDate = new Date(timestamp);
-    const seconds = Math.floor((now - postDate) / 1000);
+// A collection of utility functions used across the app
 
-    let interval = seconds / 31536000;
-    if (interval > 1) {
-        return Math.floor(interval) + "y";
+export function formatTimestamp(isoString) {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) {
+        return `${diffInSeconds}s`;
     }
-    interval = seconds / 2592000;
-    if (interval > 1) {
-        return Math.floor(interval) + "mo";
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+        return `${diffInMinutes}m`;
     }
-    interval = seconds / 86400;
-    if (interval > 1) {
-        return Math.floor(interval) + "d";
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+        return `${diffInHours}h`;
     }
-    interval = seconds / 3600;
-    if (interval > 1) {
-        return Math.floor(interval) + "h";
-    }
-    interval = seconds / 60;
-    if (interval > 1) {
-        return Math.floor(interval) + "m";
-    }
-    return Math.floor(seconds) + "s";
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d`;
+}
+
+export function getWordFilter() {
+    return JSON.parse(localStorage.getItem('word-filter') || '[]');
+}
+
+export function saveWordFilter(words) {
+    localStorage.setItem('word-filter', JSON.stringify(words));
+}
+
+export function shouldFilterContent(content, filterList) {
+    if (filterList.length === 0 || !content) return false;
+    const lowerCaseContent = content.toLowerCase();
+    return filterList.some(filterWord => lowerCaseContent.includes(filterWord));
 }
