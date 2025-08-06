@@ -136,6 +136,12 @@ export function renderStatus(status, currentUser, actions, settings) {
                 <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
             </div>
         </div>
+        <div class="edit-post-container">
+            <div class="edit-post-box">
+                <textarea class="edit-textarea"></textarea>
+                <button class="button-primary save-edit-btn">Save</button>
+            </div>
+        </div>
     `;
     
     // Attach image click listener
@@ -176,8 +182,38 @@ export function renderStatus(status, currentUser, actions, settings) {
             e.stopPropagation();
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
-        menu.addEventListener('click', (e) => e.stopPropagation());
+
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            const editContainer = card.querySelector('.edit-post-container');
+            
+            switch (action) {
+                case 'delete':
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                    break;
+                case 'edit':
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, ""); // Convert HTML back to text
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                    break;
+            }
+            menu.style.display = 'none';
+        });
     }
+    
+    const saveEditBtn = card.querySelector('.save-edit-btn');
+    saveEditBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newContent = card.querySelector('.edit-textarea').value.trim();
+        if (newContent) {
+            actions.editStatus(post.id, newContent);
+            card.querySelector('.edit-post-container').style.display = 'none';
+        }
+    });
 
     return card;
 }
