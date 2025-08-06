@@ -1,39 +1,22 @@
-// Get elements after the DOM is loaded
-let modal;
-
-/**
- * Initializes UI components and event listeners.
- * This should be called after DOMContentLoaded.
- */
-export function initUI() {
-    modal = document.getElementById('modal');
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            // If the click is on the dark overlay, hide the modal
-            if (e.target === modal) {
-                hideModal();
-            }
-        });
+export function showLoadingBar() {
+    const loadingBar = document.getElementById('loading-bar');
+    if (loadingBar) {
+        loadingBar.classList.add('loading');
+        // Reset animation
+        loadingBar.style.transform = 'scaleX(0)';
+        setTimeout(() => {
+            loadingBar.style.transform = 'scaleX(0.7)';
+        }, 10);
     }
 }
 
-/**
- * Displays the modal with the provided content.
- * @param {HTMLElement} contentNode - The HTML element to show in the modal.
- */
-export function showModal(contentNode) {
-    if (!modal) modal = document.getElementById('modal');
-    const modalBody = document.getElementById('modal-body');
-
-    modalBody.innerHTML = '';
-    modalBody.appendChild(contentNode);
-    modal.classList.add('visible');
-}
-
-/**
- * Hides the modal.
- */
-export function hideModal() {
-    if (!modal) modal = document.getElementById('modal');
-    modal.classList.remove('visible');
+export function hideLoadingBar() {
+    const loadingBar = document.getElementById('loading-bar');
+    if (loadingBar) {
+        loadingBar.style.transform = 'scaleX(1)';
+        setTimeout(() => {
+            loadingBar.classList.remove('loading');
+            loadingBar.style.transform = 'scaleX(0)';
+        }, 300);
+    }
 }
