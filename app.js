@@ -80,7 +80,7 @@ function initPullToRefresh(state, actions) {
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme on startup
     const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
     document.body.dataset.theme = savedTheme;
@@ -123,6 +123,23 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDetail: document.getElementById('status-detail-view'),
         lemmyPost: document.getElementById('lemmy-post-view'),
     };
+    
+    async function verifyUserCredentials() {
+        if (state.instanceUrl && state.accessToken) {
+            try {
+                const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
+                state.currentUser = account;
+                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
+            } catch (error) {
+                console.error("Token verification failed:", error);
+                // Clear invalid token
+                localStorage.removeItem('fediverse-instance');
+                localStorage.removeItem('fediverse-token');
+                state.instanceUrl = null;
+                state.accessToken = null;
+            }
+        }
+    }
 
     const switchView = (viewName, pushToHistory = true) => {
         if (state.currentView === viewName && viewName !== 'notifications') return;
@@ -131,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             history.pushState({view: viewName}, '', `#${viewName}`);
         }
         state.currentView = viewName;
+        window.scrollTo(0, 0);
 
         Object.keys(views).forEach(key => {
             if (views[key] && views[key].style) {
@@ -369,26 +387,24 @@ document.addEventListener('DOMContentLoaded', () => {
     state.actions = actions;
 
     const onMastodonLoginSuccess = async (instanceUrl, accessToken) => {
-        const success = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials')
-            .then(response => {
-                if (!response || !response.data || !response.data.id) {
-                    showToast('Mastodon login failed.'); return false;
-                }
-                state.instanceUrl = instanceUrl;
-                state.accessToken = accessToken;
-                state.currentUser = response.data;
-                localStorage.setItem('fediverse-instance', instanceUrl);
-                localStorage.setItem('fediverse-token', accessToken);
-                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
-                showToast('Mastodon login successful!');
-                actions.showHomeTimeline();
-                return true;
-            })
-            .catch(() => {
-                showToast('Mastodon login failed.');
-                return false;
-            });
-        return success;
+        try {
+            const { data: account } = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials');
+            if (!account || !account.id) {
+                showToast('Mastodon login failed.'); return false;
+            }
+            state.instanceUrl = instanceUrl;
+            state.accessToken = accessToken;
+            state.currentUser = account;
+            localStorage.setItem('fediverse-instance', instanceUrl);
+            localStorage.setItem('fediverse-token', accessToken);
+            document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
+            showToast('Mastodon login successful!');
+            actions.showHomeTimeline();
+            return true;
+        } catch (error) {
+            showToast('Mastodon login failed.');
+            return false;
+        }
     };
 
     const onLemmyLoginSuccess = (instance, username, password) => {
@@ -422,6 +438,8 @@ document.addEventListener('DOMContentLoaded', () => {
         actions.showNotifications();
     });
 
+    // --- Initial Load ---
+    await verifyUserCredentials();
     const initialView = location.hash.substring(1) || 'timeline';
     
     if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
