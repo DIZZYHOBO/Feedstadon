@@ -407,6 +407,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: commentData
             }, 'lemmy');
             return response.data;
+        },
+        lemmyBlockCommunity: async (communityId, block) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/community/block', {
+                    method: 'POST',
+                    body: { community_id: communityId, block: block }
+                }, 'lemmy');
+                showToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                // Refresh the current view to hide the blocked content
+                if (state.currentView === 'timeline' && state.currentLemmyFeed) {
+                    actions.showLemmyFeed(state.currentLemmyFeed);
+                } else {
+                     actions.showHomeTimeline();
+                }
+            } catch (err) {
+                showToast('Failed to block community.');
+            }
         }
     };
     state.actions = actions;
