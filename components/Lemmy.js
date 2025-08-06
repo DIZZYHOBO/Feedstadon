@@ -26,7 +26,7 @@ export function renderLemmyCard(post, actions) {
         <div class="status-body-content">
             <div class="status-header">
                 <div class="status-header-main">
-                    <img src="${post.community.icon}" alt="${post.community.name} icon" class="avatar" data-action="view-community">
+                    <img src="${post.community.icon || './images/php.png'}" alt="${post.community.name} icon" class="avatar" data-action="view-community" onerror="this.onerror=null;this.src='./images/php.png';">
                     <div>
                         <a href="#" class="display-name" data-action="view-community">${post.community.name}</a>
                         <span class="acct">posted by <a href="#" data-action="view-creator">${post.creator.name}</a> · ${formatTimestamp(post.post.published)}</span>
