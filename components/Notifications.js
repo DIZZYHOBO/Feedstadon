@@ -26,15 +26,15 @@ export async function updateNotificationBell() {
     };
 
     try {
-        const [mentionCount, pmCount, replyCount] = await Promise.all([
-            apiFetch(lemmyInstance, null, '/api/v3/user/mention/count', {}, 'lemmy'),
-            apiFetch(lemmyInstance, null, '/api/v3/private_message/count', {}, 'lemmy'),
-            apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: 'true', limit: 1 }, 'lemmy')
+        const [mentions, pms, replies] = await Promise.all([
+            apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy'),
+            apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy'),
+            apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: true, limit: 50 }, 'lemmy')
         ]);
         
-        const totalUnread = (mentionCount.data?.mentions || 0) + 
-                              (pmCount.data?.private_messages || 0) + 
-                              (replyCount.data?.replies?.length > 0 ? 1 : 0);
+        const totalUnread = (mentions.data?.mentions?.length || 0) + 
+                              (pms.data?.private_messages?.length || 0) + 
+                              (replies.data?.replies?.length || 0);
 
         if (totalUnread > 0) {
             notifBtn.classList.add('unread');
@@ -65,11 +65,31 @@ export async function renderNotificationsPage(state, actions) {
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyInstance) {
-            apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ person_mention_id: -1, read: true })
-            }, 'lemmy').then(() => updateNotificationBell());
+            // Mark all mentions as read by fetching them
+            const { data: unreadMentions } = await apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy');
+            for(const mention of unreadMentions.mentions) {
+                await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ person_mention_id: mention.person_mention.id, read: true })
+                }, 'lemmy');
+            }
+            // Mark all private messages as read
+            const { data: unreadPms } = await apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy');
+            for(const pm of unreadPms.private_messages) {
+                 await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ private_message_id: pm.private_message.id, read: true })
+                }, 'lemmy');
+            }
+            updateNotificationBell();
+        }
+
+        let mastodonNotifs = [];
+        if (state.instanceUrl && state.accessToken) {
+            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+            mastodonNotifs = response.data || [];
         }
 
         let lemmyReplyNotifs = [];
@@ -87,6 +107,15 @@ export async function renderNotificationsPage(state, actions) {
         }
 
         const allNotifications = [
+            ...mastodonNotifs.map(n => ({
+                platform: 'mastodon',
+                date: n.created_at,
+                icon: n.type === 'mention' ? ICONS.reply : ICONS.favorite, // Simplified icon logic
+                content: `<strong>${n.account.display_name}</strong> ${n.type}d your post.`,
+                contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
+                authorAvatar: n.account.avatar_static,
+                timestamp: n.created_at,
+            })),
             ...lemmyReplyNotifs.map(n => {
                 if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) return null;
                 return {
@@ -149,7 +178,7 @@ export async function renderNotificationsPage(state, actions) {
                 renderFilteredNotifications(e.target.dataset.filter);
             });
         });
-        
+
         // Show the lemmy tab by default if there's a lemmy user
         const defaultTab = lemmyInstance ? 'lemmy' : 'all';
         subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`).classList.add('active');
