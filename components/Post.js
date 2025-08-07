@@ -214,6 +214,60 @@ export function renderStatus(status, currentUser, actions, settings) {
             card.querySelector('.edit-post-container').style.display = 'none';
         }
     });
+    
+    let pressTimer;
+    card.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            const postAuthor = status.reblog ? status.reblog.account : status.account;
+            const isOwn = currentUser && currentUser.id === postAuthor.id;
+            let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+            if (isOwn) {
+                menuItems.push(
+                    { label: `Edit`, action: () => {
+                        const editContainer = card.querySelector('.edit-post-container');
+                        const editTextArea = editContainer.querySelector('.edit-textarea');
+                        editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                        editContainer.style.display = 'block';
+                        editTextArea.focus();
+                    }},
+                    { label: `Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            actions.deleteStatus(post.id);
+                        }
+                    }}
+                );
+            }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
+    });
+
+    card.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const postAuthor = status.reblog ? status.reblog.account : status.account;
+        const isOwn = currentUser && currentUser.id === postAuthor.id;
+        let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+        if (isOwn) {
+            menuItems.push(
+                { label: `Edit`, action: () => {
+                    const editContainer = card.querySelector('.edit-post-container');
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                }},
+                { label: `Delete`, action: () => {
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                }}
+            );
+        }
+        actions.showContextMenu(e, menuItems);
+    });
 
     return card;
 }
