@@ -11,7 +11,7 @@ export async function renderTimeline(state, actions) {
     try {
         let statuses = [];
         if (state.accessToken) {
-            const mastodonResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${state.currentTimeline}`);
+            const mastodonResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/home`);
             statuses = mastodonResponse.data;
         }
 
@@ -21,7 +21,6 @@ export async function renderTimeline(state, actions) {
             lemmyPosts = lemmyResponse.data.posts;
         }
 
-        // Combine and sort
         const combinedFeed = [
             ...statuses.map(s => ({ ...s, type: 'mastodon', created_at: new Date(s.created_at) })),
             ...lemmyPosts.map(p => ({ ...p, type: 'lemmy', created_at: new Date(p.post.published) }))
@@ -57,7 +56,7 @@ export async function renderStatusDetail(state, actions, statusId) {
         const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
         const context = response.data;
         
-        detailView.innerHTML = ''; // Clear loading
+        detailView.innerHTML = '';
         
         const statusList = document.createElement('div');
         statusList.className = 'status-list';
@@ -81,7 +80,6 @@ export async function renderStatusDetail(state, actions, statusId) {
         });
         
         statusList.appendChild(repliesContainer);
-
         detailView.appendChild(statusList);
 
     } catch (error) {
