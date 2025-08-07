@@ -65,3 +65,32 @@ export function showImageModal(imageUrl) {
     modal.classList.add('visible');
     history.pushState({ imageModal: true }, "Image View");
 }
+
+export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
+    container.innerHTML = '';
+    const template = document.getElementById('login-prompt-template');
+    const clone = template.content.cloneNode(true);
+    container.appendChild(clone);
+    
+    const mastodonSection = container.querySelector('#mastodon-login-section');
+    const lemmySection = container.querySelector('#lemmy-login-section');
+
+    if (platform === 'mastodon') {
+        lemmySection.style.display = 'none';
+        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const instance = e.target.querySelector('.instance-url').value;
+            const token = e.target.querySelector('.access-token').value;
+            onLoginSuccess(instance, token);
+        });
+    } else if (platform === 'lemmy') {
+        mastodonSection.style.display = 'none';
+        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const instance = e.target.querySelector('.lemmy-instance-input').value;
+            const username = e.target.querySelector('.lemmy-username-input').value;
+            const password = e.target.querySelector('.lemmy-password-input').value;
+            onSecondarySuccess(instance, username, password);
+        });
+    }
+}
