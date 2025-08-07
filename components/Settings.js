@@ -35,12 +35,9 @@ export function renderSettingsPage(state) {
                     <label for="theme-select">Select Theme</label>
                     <select id="theme-select">
                         <option value="feedstodon">Feedstodon (Default)</option>
-                        <option value="purple">Purple</option>
-                        <option value="tube">Tube</option>
                         <option value="readit">Readit</option>
                         <option value="git">Git</option>
                         <option value="voyage">Voyage</option>
-                        <option value="dracula">Dracula</option>
                     </select>
                 </div>
             </div>
