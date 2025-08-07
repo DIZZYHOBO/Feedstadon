@@ -1,60 +1,305 @@
-import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
+import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
+import { apiFetch } from './api.js';
 import { showImageModal } from './ui.js';
 
-export function renderStatus(status, state, actions) {
-    if (!status || !status.account) return null;
+function renderPoll(poll, statusId, actions) {
+    const container = document.createElement('div');
+    container.className = 'poll-container';
 
-    const statusDiv = document.createElement('div');
-    statusDiv.className = 'status';
-    statusDiv.dataset.id = status.id;
-
-    let mediaAttachmentsHTML = '';
-    if (status.media_attachments && status.media_attachments.length > 0) {
-        mediaAttachmentsHTML = status.media_attachments.map(media => {
-            if (media.type === 'image') {
-                return `<img src="${media.preview_url || './images/logo.png'}" alt="${media.description || 'Image attachment'}" data-full-src="${media.url}" class="status-media-attachment">`;
-            } else if (media.type === 'video') {
-                return `<video src="${media.url}" controls class="status-media-attachment"></video>`;
+    if (poll.voted) {
+        // Render results
+        poll.options.forEach((option, index) => {
+            const percentage = poll.votes_count > 0 ? (option.votes_count / poll.votes_count * 100).toFixed(1) : 0;
+            const result = document.createElement('div');
+            result.className = 'poll-result';
+            if (poll.own_votes.includes(index)) {
+                result.classList.add('voted');
             }
-            return '';
-        }).join('');
+            result.innerHTML = `
+                <div class="poll-result-bar" style="width: ${percentage}%;"></div>
+                <span class="poll-result-label">${option.title}</span>
+                <span class="poll-result-percent">${percentage}%</span>
+            `;
+            container.appendChild(result);
+        });
+    } else {
+        // Render options
+        poll.options.forEach((option, index) => {
+            const optionEl = document.createElement('button');
+            optionEl.className = 'poll-option';
+            optionEl.textContent = option.title;
+            optionEl.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const updatedPoll = await actions.voteInPoll(poll.id, [index]);
+                    const pollContainer = e.target.closest('.poll-container');
+                    const newPoll = renderPoll(updatedPoll, statusId, actions);
+                    pollContainer.replaceWith(newPoll);
+                } catch (error) {
+                    console.error('Failed to vote:', error);
+                }
+            });
+            container.appendChild(optionEl);
+        });
+    }
+    
+    const info = document.createElement('div');
+    info.className = 'poll-info';
+    info.textContent = `${poll.votes_count} votes · ${poll.expired ? 'Final results' : 'Poll ends soon'}`;
+    container.appendChild(info);
+
+    return container;
+}
+
+
+export function renderStatus(status, currentUser, actions, settings) {
+    const post = status.reblog || status;
+    const author = post.account;
+    const isOwnPost = currentUser && currentUser.id === author.id;
+    
+    if (settings && settings.hideNsfw && post.sensitive) {
+        return document.createDocumentFragment();
+    }
+    
+    const filterList = getWordFilter();
+    if (shouldFilterContent(post.content, filterList)) {
+        return document.createDocumentFragment();
     }
 
-    statusDiv.innerHTML = `
-        <div class="status-body-content">
-            <div class="status-header">
-                <div class="status-header-main">
-                    <img src="${status.account.avatar_static || './images/logo.png'}" alt="${status.account.display_name}'s avatar" class="avatar">
-                    <div>
-                        <div class="display-name">${status.account.display_name}</div>
-                        <div class="acct">@${status.account.acct}</div>
-                    </div>
-                </div>
-                <div class="status-header-side">
-                    <div class="timestamp">${formatTimestamp(status.created_at)}</div>
-                    <div class="post-options-container"></div>
-                </div>
+    const card = document.createElement('div');
+    card.className = 'status';
+    card.dataset.id = post.id;
+
+    let boosterInfo = '';
+    if (status.reblog) {
+        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
+    }
+    
+    let inReplyToInfo = '';
+    if (post.in_reply_to_account_id) {
+        inReplyToInfo = `<div class="reply-info" data-action="view-thread">${ICONS.reply} Replying to some folks...</div>`;
+    }
+
+    let mediaHTML = '';
+    if (post.media_attachments.length > 0) {
+        const attachment = post.media_attachments[0];
+        if (attachment.type === 'image') {
+            mediaHTML = `<div class="status-media"><img src="${attachment.url}" alt="${attachment.description || 'Post media'}" loading="lazy"></div>`;
+        } else if (attachment.type === 'video') {
+            mediaHTML = `<div class="status-media"><video src="${attachment.url}" controls></video></div>`;
+        }
+    }
+    
+    let pollHTML = '';
+    if (post.poll) {
+        pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
+    }
+
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="mention">Mention @${author.acct}</button>
+                ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
+                <button data-action="mute">Mute @${author.acct}</button>
+                <button data-action="block">Block @${author.acct}</button>
             </div>
-            <div class="status-content">${status.content}</div>
-            <div class="status-media">${mediaAttachmentsHTML}</div>
-        </div>
-        <div class="status-footer">
-            <button class="status-action reply-btn">${ICONS.reply} <span>${status.replies_count}</span></button>
-            <button class="status-action boost-btn ${status.reblogged ? 'active' : ''}">${ICONS.boost} <span>${status.reblogs_count}</span></button>
-            <button class="status-action favorite-btn ${status.favourited ? 'active' : ''}">${ICONS.favorite} <span>${status.favourites_count}</span></button>
-            <button class="status-action bookmark-btn ${status.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
         </div>
     `;
 
-    // Add event listener for image modal
-    statusDiv.querySelectorAll('.status-media-attachment[data-full-src]').forEach(img => {
-        img.addEventListener('click', (e) => {
+    card.innerHTML = `
+        ${boosterInfo}
+        <div class="status-body-content">
+            ${inReplyToInfo}
+            <div class="status-header">
+                <div class="status-header-main">
+                    <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
+                    <div>
+                        <span class="display-name">${author.display_name}</span>
+                        <span class="acct">@${author.acct}</span>
+                        <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
+                    </div>
+                </div>
+                <div class="status-header-side">
+                    ${optionsMenuHTML}
+                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
+                </div>
+            </div>
+            <div class="status-content">${post.content}</div>
+            ${mediaHTML}
+            ${pollHTML}
+            <div class="status-footer">
+                <button class="status-action" data-action="reply">${ICONS.reply} ${post.replies_count}</button>
+                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.boost} ${post.reblogs_count}</button>
+                <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${post.favourites_count}</button>
+                <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+            </div>
+        </div>
+        <div class="edit-post-container">
+            <div class="edit-post-box">
+                <textarea class="edit-textarea"></textarea>
+                <button class="button-primary save-edit-btn">Save</button>
+            </div>
+        </div>
+    `;
+    
+    // Attach image click listener
+    const mediaImg = card.querySelector('.status-media img');
+    if (mediaImg) {
+        mediaImg.style.cursor = 'pointer';
+        mediaImg.addEventListener('click', (e) => {
             e.stopPropagation();
-            showImageModal(img.dataset.fullSrc);
+            showImageModal(mediaImg.src);
         });
+    }
+
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
+        actions.showStatusDetail(post.id);
     });
     
-    return statusDiv;
+    card.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.target.closest('.status-action').dataset.action;
+            switch(action) {
+                case 'reply':
+                    actions.replyToStatus(post);
+                    break;
+                case 'reblog':
+                case 'favorite':
+                case 'bookmark':
+                    actions.toggleAction(action, status, e.target.closest('.status-action'));
+                    break;
+            }
+        });
+    });
+
+    const optionsBtn = card.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = card.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            const editContainer = card.querySelector('.edit-post-container');
+            
+            switch (action) {
+                case 'delete':
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                    break;
+                case 'edit':
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, ""); // Convert HTML back to text
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                    break;
+            }
+            menu.style.display = 'none';
+        });
+    }
+    
+    const saveEditBtn = card.querySelector('.save-edit-btn');
+    saveEditBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newContent = card.querySelector('.edit-textarea').value.trim();
+        if (newContent) {
+            actions.editStatus(post.id, newContent);
+            card.querySelector('.edit-post-container').style.display = 'none';
+        }
+    });
+    
+    let pressTimer;
+    card.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            const postAuthor = status.reblog ? status.reblog.account : status.account;
+            const isOwn = currentUser && currentUser.id === postAuthor.id;
+            let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+            if (isOwn) {
+                menuItems.push(
+                    { label: `Edit`, action: () => {
+                        const editContainer = card.querySelector('.edit-post-container');
+                        const editTextArea = editContainer.querySelector('.edit-textarea');
+                        editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                        editContainer.style.display = 'block';
+                        editTextArea.focus();
+                    }},
+                    { label: `Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            actions.deleteStatus(post.id);
+                        }
+                    }}
+                );
+            }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
+    });
+
+    card.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const postAuthor = status.reblog ? status.reblog.account : status.account;
+        const isOwn = currentUser && currentUser.id === postAuthor.id;
+        let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+        if (isOwn) {
+            menuItems.push(
+                { label: `Edit`, action: () => {
+                    const editContainer = card.querySelector('.edit-post-container');
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                }},
+                { label: `Delete`, action: () => {
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                }}
+            );
+        }
+        actions.showContextMenu(e, menuItems);
+    });
+
+    return card;
+}
+
+
+export async function renderStatusDetail(state, statusId, actions) {
+    const container = document.getElementById('status-detail-view');
+    container.innerHTML = '';
+
+    try {
+        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+        const { data: mainStatus } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        
+        container.innerHTML = '';
+        
+        if (context.ancestors) {
+            context.ancestors.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
+        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings);
+        mainPost.classList.add('main-thread-post');
+        container.appendChild(mainPost);
+        
+        if (context.descendants) {
+            context.descendants.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
+    } catch (error) {
+        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
+    }
 }
