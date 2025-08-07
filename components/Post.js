@@ -154,7 +154,7 @@ export function renderStatus(status, currentUser, actions, settings) {
         });
     }
 
-    card.querySelector('.status-body-content').addEventListener('click', () => {
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
         actions.showStatusDetail(post.id);
     });
     
