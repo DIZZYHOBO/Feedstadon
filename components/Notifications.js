@@ -111,22 +111,30 @@ export function renderNotificationsPage(state, actions) {
                     ]);
 
                     if (repliesResult.status === 'fulfilled') {
-                        notifications.push(...(repliesResult.value.data.replies || []).map(n => ({
-                            platform: 'lemmy', date: n.comment_reply.comment.published, icon: ICONS.reply,
-                            content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
-                            contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
-                            authorAvatar: n.comment_reply.creator.avatar, timestamp: n.comment_reply.comment.published,
-                        })));
+                        // *** FIX: Added a check to ensure comment_reply and comment objects exist ***
+                        notifications.push(...(repliesResult.value.data.replies || []).map(n => {
+                            if (!n.comment_reply || !n.comment_reply.comment) return null;
+                            return {
+                                platform: 'lemmy', date: n.comment_reply.comment.published, icon: ICONS.reply,
+                                content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
+                                contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
+                                authorAvatar: n.comment_reply.creator.avatar, timestamp: n.comment_reply.comment.published,
+                            };
+                        }).filter(Boolean));
                     }
                     if (mentionsResult.status === 'fulfilled') {
                         const mentions = mentionsResult.value.data.mentions || [];
-                        notifications.push(...mentions.map(n => ({
-                            platform: 'lemmy', date: n.person_mention.comment.published, icon: ICONS.mention,
-                            content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
-                            contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
-                            authorAvatar: n.person_mention.creator.avatar, timestamp: n.person_mention.comment.published,
-                        })));
-                        const unreadMentions = mentions.filter(m => !m.person_mention.read);
+                        // *** FIX: Added a check to ensure person_mention and comment objects exist ***
+                        notifications.push(...mentions.map(n => {
+                            if (!n.person_mention || !n.person_mention.comment) return null;
+                            return {
+                                platform: 'lemmy', date: n.person_mention.comment.published, icon: ICONS.mention,
+                                content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
+                                contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
+                                authorAvatar: n.person_mention.creator.avatar, timestamp: n.person_mention.comment.published,
+                            };
+                        }).filter(Boolean));
+                        const unreadMentions = mentions.filter(m => m.person_mention && !m.person_mention.read);
                         markItemsAsRead(lemmyInstance, unreadMentions);
                     }
                 } else {
