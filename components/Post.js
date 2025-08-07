@@ -117,6 +117,17 @@ export function renderStatus(status, currentUser, actions, settings) {
         }
     }
     
+    // YouTube embed logic
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const youtubeMatch = post.content.match(youtubeRegex);
+    if (youtubeMatch) {
+        mediaHTML += `
+            <div class="video-embed-container">
+                <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
+            </div>
+        `;
+    }
+    
     let pollHTML = '';
     if (post.poll) {
         pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
