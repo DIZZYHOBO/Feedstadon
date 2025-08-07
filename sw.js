@@ -6,7 +6,7 @@ const ASSETS_TO_CACHE = [
     './app.js',
     './components/api.js',
     './components/Compose.js',
-    './components/Conversations.js',
+    // *** FIX: Removed Conversations.js from the cache ***
     './components/icons.js',
     './components/Lemmy.js',
     './components/LemmyPost.js',
