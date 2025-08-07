@@ -1,7 +1,9 @@
-import { apiFetch, apiUpdateCredentials } from './api.js';
+import { apiFetch } from './api.js';
+import { ICONS } from './icons.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
-import { ICONS } from './icons.js';
+import { showModal, hideModal } from './ui.js';
+import { formatTimestamp } from './utils.js';
 
 async function renderMastodonProfile(state, actions, container, accountId) {
     container.innerHTML = ``;
