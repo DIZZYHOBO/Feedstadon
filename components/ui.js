@@ -1,67 +1,57 @@
 import { ICONS } from './icons.js';
+import { apiFetch, apiUpdateCredentials } from './api.js';
 
-export function showLoadingBar() {
-    const loadingBar = document.getElementById('loading-bar');
-    if (loadingBar) {
-        loadingBar.classList.add('loading');
-        // Reset animation
-        loadingBar.style.transform = 'scaleX(0)';
-        setTimeout(() => {
-            loadingBar.style.transform = 'scaleX(0.7)';
-        }, 10);
+export function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('visible');
     }
 }
 
-export function hideLoadingBar() {
-    const loadingBar = document.getElementById('loading-bar');
-    if (loadingBar) {
-        loadingBar.style.transform = 'scaleX(1)';
-        setTimeout(() => {
-            loadingBar.classList.remove('loading');
-            loadingBar.style.transform = 'scaleX(0)';
-        }, 300);
+export function hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('visible');
     }
 }
 
-export function initImageModal() {
-    const modal = document.getElementById('image-modal');
-    const saveBtn = document.getElementById('save-image-btn');
-    saveBtn.innerHTML = ICONS.save;
+export function showToast(message, duration = 3000) {
+    const toast = document.getElementById('toast-notification');
+    toast.textContent = message;
+    toast.classList.add('visible');
+    setTimeout(() => {
+        toast.classList.remove('visible');
+    }, duration);
+}
 
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('visible');
-            // If the modal was opened via history, go back
-            if (history.state && history.state.imageModal) {
-                history.back();
-            }
-        }
-    });
-
-    saveBtn.addEventListener('click', () => {
-        const image = document.getElementById('fullscreen-image');
-        const imageUrl = image.src;
-        
-        // Create a temporary anchor element to trigger the download
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = imageUrl;
-        
-        // Suggest a filename for the download
-        const filename = imageUrl.split('/').pop().split('#')[0].split('?')[0] || 'image.jpg';
-        a.download = filename;
-        
-        // Append to the body, click, and then remove
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+export function createContextMenu(items) {
+    const menu = document.getElementById('context-menu');
+    menu.innerHTML = '';
+    items.forEach(item => {
+        const button = document.createElement('button');
+        button.innerHTML = `${item.icon} ${item.label}`;
+        button.onclick = (e) => {
+            e.stopPropagation();
+            item.action();
+            hideContextMenu();
+        };
+        menu.appendChild(button);
     });
 }
 
-export function showImageModal(imageUrl) {
-    const modal = document.getElementById('image-modal');
-    const image = document.getElementById('fullscreen-image');
-    image.src = imageUrl;
-    modal.classList.add('visible');
-    history.pushState({ imageModal: true }, "Image View");
+export function showContextMenu(x, y) {
+    const menu = document.getElementById('context-menu');
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.display = 'block';
+
+    setTimeout(() => {
+        document.addEventListener('click', hideContextMenu, { once: true });
+    }, 0);
+}
+
+export function hideContextMenu() {
+    const menu = document.getElementById('context-menu');
+    menu.style.display = 'none';
+    document.removeEventListener('click', hideContextMenu);
 }
