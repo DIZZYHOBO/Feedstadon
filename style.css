@@ -61,6 +61,17 @@ body {
     color: var(--font-color);
     margin: 0;
     font-size: 16px;
+    user-select: none; /* Make text unselectable by default */
+    -webkit-user-select: none; /* For Safari */
+    -moz-user-select: none; /* For Firefox */
+}
+
+textarea,
+input,
+.status-content {
+    user-select: auto; /* Re-enable text selection for form elements and post content */
+    -webkit-user-select: auto;
+    -moz-user-select: auto;
 }
 
 .container {
@@ -1176,6 +1187,14 @@ button:disabled {
 }
 .quick-reply-box button, .edit-post-box button {
     flex-shrink: 0;
+}
+
+.conversation-container {
+    padding: 0 20px 20px;
+    border-top: 1px solid var(--border-color);
+    display: none;
+    flex-direction: column;
+    gap: 15px;
 }
 
 
