@@ -1,35 +1,7 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
-
-export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
-    container.innerHTML = '';
-    const template = document.getElementById('login-prompt-template');
-    const clone = template.content.cloneNode(true);
-    container.appendChild(clone);
-    
-    const mastodonSection = container.querySelector('#mastodon-login-section');
-    const lemmySection = container.querySelector('#lemmy-login-section');
-
-    if (platform === 'mastodon') {
-        lemmySection.style.display = 'none';
-        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.instance-url').value;
-            const token = e.target.querySelector('.access-token').value;
-            onLoginSuccess(instance, token);
-        });
-    } else if (platform === 'lemmy') {
-        mastodonSection.style.display = 'none';
-        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.lemmy-instance-input').value;
-            const username = e.target.querySelector('.lemmy-username-input').value;
-            const password = e.target.querySelector('.lemmy-password-input').value;
-            onSecondarySuccess(instance, username, password);
-        });
-    }
-}
+import { renderLoginPrompt } from './ui.js';
 
 export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess) {
     if (!state.accessToken && !localStorage.getItem('lemmy_jwt')) {
