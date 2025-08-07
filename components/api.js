@@ -16,9 +16,9 @@ export async function apiFetch(instance, token, endpoint, options = {}, authType
         const lemmyToken = localStorage.getItem('lemmy_jwt');
         if (lemmyToken) {
             options.headers['Authorization'] = `Bearer ${lemmyToken}`;
-            // Lemmy's API often requires the auth token in the body for POST/PUT
-            // *** FIX: Removed the exclusion for 'mark_as_read' endpoints ***
-            if (options.method === 'POST' || options.method === 'PUT') {
+            
+            // *** FIX: Only add 'auth' to the body for POST/PUT requests that DON'T contain 'mark_as_read' ***
+            if ((options.method === 'POST' || options.method === 'PUT') && !endpoint.includes('mark_as_read')) {
                 if (options.body) {
                     options.body.auth = lemmyToken;
                 } else {
