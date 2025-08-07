@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async showTimeline(timelineType) {
             state.currentTimeline = timelineType;
-            this.updateActiveView('timeline-view');
+            this.updateActiveView('timeline');
             await renderTimeline(state, actions);
         },
         async showStatusDetail(statusId) {
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async showNotifications() {
             this.updateActiveView('notifications-view');
-            await renderNotificationsPage(state, actions);
+            renderNotificationsPage(state, actions);
         },
         async showProfile(accountId) {
             state.currentProfileId = accountId;
@@ -79,18 +79,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderSettingsPage(state, actions);
         },
         updateActiveView(viewId) {
-            const views = ['timeline-view', 'status-detail-view', 'notifications-view', 'profile-page-view', 'edit-profile-view', 'settings-view'];
+            const views = ['timeline', 'status-detail-view', 'notifications-view', 'profile-page-view', 'edit-profile-view', 'settings-view'];
             views.forEach(id => {
-                const view = document.getElementById(id.replace('-view', ''));
+                const view = document.getElementById(id);
                 if (view) {
                     view.style.display = id === viewId ? 'block' : 'none';
                 }
             });
+             if (viewId === 'timeline') {
+                document.getElementById('timeline').style.display = 'flex';
+             }
         }
     };
 
     if (!state.accessToken && !state.lemmyToken) {
-        // Show login view
         const loginTemplate = document.getElementById('login-prompt-template').content.cloneNode(true);
         document.body.innerHTML = '';
         document.body.appendChild(loginTemplate);
@@ -111,18 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     } else {
-        // Show main app view
         document.querySelector('.top-nav').style.display = 'flex';
         actions.showTimeline('home');
     }
 
-    // --- Event Listeners for main UI ---
     if (state.accessToken || state.lemmyToken) {
         document.getElementById('notifications-btn').addEventListener('click', () => actions.showNotifications());
         document.getElementById('profile-link').addEventListener('click', (e) => {
             e.preventDefault();
-            // TODO: Need a way to get the current user's ID
-            // For now, this will be non-functional until we fetch current user data
             console.log("Profile link clicked - functionality to be implemented");
         });
         document.getElementById('settings-link').addEventListener('click', (e) => {
@@ -134,11 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showModal('logout-modal');
         });
         
-        document.getElementById('logout-all-link').addEventListener('click', (e) => {
-            e.preventDefault();
-            actions.logoutAll();
-        });
-
         document.getElementById('logout-all-btn').addEventListener('click', () => actions.logoutAll());
         document.getElementById('cancel-logout-btn').addEventListener('click', () => hideModal('logout-modal'));
 
@@ -146,8 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             actions.showTimeline('home');
         });
-
-        // Initialize icons
+        
         document.getElementById('notifications-btn').innerHTML = ICONS.notifications;
     }
 });
