@@ -102,6 +102,10 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
                     <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
                     <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
                 </div>
+                 <div class="profile-actions">
+                    <button class="button-secondary" id="lemmy-follow-btn">Follow</button>
+                    <button class="button-danger" id="lemmy-block-btn">Block</button>
+                </div>
                 <div class="profile-info">
                     <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
                     <p class="acct">@${person_view.person.name}@${instance}</p>
@@ -111,6 +115,17 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
             <div class="profile-feed"></div>
         `;
         
+        container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
+            // Lemmy doesn't have a traditional follow system for users, this is a placeholder
+            alert('Following users is not a standard feature on all Lemmy instances.');
+        });
+        
+        container.querySelector('#lemmy-block-btn').addEventListener('click', () => {
+            if (confirm(`Are you sure you want to block ${person_view.person.name}?`)) {
+                actions.lemmyBlockUser(person_view.person.id, true);
+            }
+        });
+
         const feed = container.querySelector('.profile-feed');
         if (combinedFeed.length === 0) {
             feed.innerHTML = '<p>No activity yet.</p>';
