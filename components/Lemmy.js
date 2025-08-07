@@ -2,6 +2,7 @@ import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
 import { renderLoginPrompt } from './Timeline.js'; 
+import { showImageModal } from './ui.js';
 
 export function renderLemmyCard(post, actions) {
     const filterList = getWordFilter();
@@ -66,22 +67,36 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
-    // Dedicated listener for opening the post detail view
-    card.querySelector('.status-body-content').addEventListener('click', (e) => {
-        e.stopPropagation();
-        const actionTarget = e.target.closest('[data-action]');
-        const action = actionTarget ? actionTarget.dataset.action : 'view-post';
+    // Attach image click listener
+    const mediaImg = card.querySelector('.status-media img');
+    if (mediaImg) {
+        mediaImg.style.cursor = 'pointer';
+        mediaImg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // For lemmy thumbnails, we want the full image URL if available
+            showImageModal(post.post.url || mediaImg.src);
+        });
+    }
+    
+    // Dedicated listener for opening the post detail view on double-click
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
+        actions.showLemmyPostDetail(post);
+    });
 
-        switch (action) {
-            case 'view-community':
-                actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
-                break;
-            case 'view-creator':
-                actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
-                break;
-            default:
-                actions.showLemmyPostDetail(post);
-                break;
+    // Listener for single-click actions like viewing profiles or communities
+    card.querySelector('.status-body-content').addEventListener('click', (e) => {
+        const actionTarget = e.target.closest('[data-action]');
+        if (actionTarget) {
+            e.stopPropagation();
+            const action = actionTarget.dataset.action;
+            switch (action) {
+                case 'view-community':
+                    actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
+                    break;
+                case 'view-creator':
+                    actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
+                    break;
+            }
         }
     });
     
