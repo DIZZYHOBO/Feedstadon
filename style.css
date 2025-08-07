@@ -57,6 +57,17 @@
     --link-color: #58a6ff;
 }
 
+[data-theme="voyage"] {
+    --bg-color: #000000;
+    --card-color: #1A1A1B;
+    --primary-color: #272729;
+    --accent-color: #7857FF;
+    --font-color: #FFFFFF;
+    --font-color-muted: #8E8D93;
+    --border-color: #343536;
+    --link-color: #7857FF;
+}
+
 
 *, *::before, *::after {
     box-sizing: border-box;
