@@ -44,6 +44,8 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
+    const bodyHTML = post.post.body ? new showdown.Converter().makeHtml(post.post.body) : '';
+
     card.innerHTML = `
         <div class="status-body-content">
             <div class="status-header">
@@ -62,6 +64,7 @@ export function renderLemmyCard(post, actions) {
             <div class="status-content">
                 <h3 class="lemmy-title">${post.post.name}</h3>
                 ${mediaHTML}
+                <div class="lemmy-post-body">${bodyHTML}</div>
             </div>
         </div>
         <div class="status-footer">
@@ -88,7 +91,6 @@ export function renderLemmyCard(post, actions) {
         mediaImg.style.cursor = 'pointer';
         mediaImg.addEventListener('click', (e) => {
             e.stopPropagation();
-            // For lemmy thumbnails, we want the full image URL if available
             showImageModal(post.post.url || mediaImg.src);
         });
     }
