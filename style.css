@@ -278,10 +278,20 @@ button:disabled {
     position: relative;
 }
 
+#centered-logo-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    pointer-events: none; /* So it doesn't block clicks on other elements */
+}
+
 #nav-logo {
-    height: 30px;
+    height: 100px;
     width: auto;
-    fill: var(--font-color);
+    fill: var(--font-color-muted);
+    opacity: 0.5;
 }
 
 .nav-button {
