@@ -210,33 +210,24 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
                 <form id="lemmy-community-search-form">
                     <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
                 </form>
+                <div id="lemmy-search-results-container" style="display: none;"></div>
                 <div id="lemmy-discover-content-area" class="discover-content-area"></div>
             `;
             
             const searchForm = container.querySelector('#lemmy-community-search-form');
             const searchInput = container.querySelector('#lemmy-community-search');
-            let searchTimeout;
+            const searchResultsContainer = container.querySelector('#lemmy-search-results-container');
 
-            const performSearch = async () => {
+            searchForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 const query = searchInput.value.trim();
-                const searchResultsContainer = container.querySelector('#lemmy-discover-content-area');
-                if (query.length > 2) {
+                if (query.length > 0) {
                     const { data } = await apiFetch(lemmyInstance, null, '/api/v3/search', {}, 'lemmy', { q: query, type_: 'Community', sort: 'TopAll', listing_type: 'All' });
                     renderCommunityList(data.communities, actions, searchResultsContainer);
-                } else if (query.length === 0) {
-                     renderLemmyDiscover(state, actions, container); // Reset to default list
+                    searchResultsContainer.style.display = 'block';
+                } else {
+                    searchResultsContainer.style.display = 'none';
                 }
-            };
-            
-            searchForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                clearTimeout(searchTimeout);
-                performSearch();
-            });
-
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(performSearch, 500);
             });
         }
         
