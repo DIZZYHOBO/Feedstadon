@@ -630,6 +630,65 @@ button:disabled {
 }
 
 
+/* --- Discover Page --- */
+#discover-view {
+    flex-direction: column;
+}
+.discover-tab-content {
+    display: none;
+}
+.discover-tab-content.active {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.discover-sub-nav {
+    display: flex;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+.discover-sub-nav-btn {
+    flex-grow: 1;
+}
+.discover-list-item {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.discover-list-item .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+.discover-list-item div {
+    flex-grow: 1;
+}
+.discover-item-title {
+    font-weight: bold;
+}
+.discover-item-subtitle {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+}
+.discover-list-item .follow-btn {
+    margin-left: auto;
+}
+.news-item-thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-left: 15px;
+}
+
+
 /* --- Post Options Menu --- */
 .post-options-container {
     position: relative;
