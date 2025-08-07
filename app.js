@@ -1,5 +1,5 @@
 import { fetchTimeline } from './components/Timeline.js';
-import { renderProfilePage, renderEditProfilePage } from './components/Profile.js';
+import { renderProfilePage, renderEditProfilePage, loadMoreLemmyProfile } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail } from './components/Post.js';
@@ -102,6 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         accessToken: localStorage.getItem('fediverse-token') || null,
         currentUser: null,
         currentView: null,
+        currentProfileTab: 'mastodon',
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: 'New',
@@ -112,6 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         nextPageUrl: null,
         lemmyPage: 1,
         lemmyHasMore: true,
+        lemmyProfilePage: 1,
+        lemmyProfileHasMore: true,
         lemmyDiscoverPage: 1,
         lemmyDiscoverHasMore: true,
         mastodonTrendingPage: 1,
@@ -706,6 +709,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else if (state.currentDiscoverTab === 'mastodon-trending' && state.mastodonTrendingHasMore) {
                     loadMoreMastodonTrendingPosts(state, actions);
                 }
+            } else if (state.currentView === 'profile' && state.currentProfileTab === 'lemmy' && state.lemmyProfileHasMore) {
+                loadMoreLemmyProfile(state, actions);
             }
         }
     });
