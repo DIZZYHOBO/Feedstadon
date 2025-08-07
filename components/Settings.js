@@ -39,6 +39,7 @@ export function renderSettingsPage(state) {
                         <option value="tube">Tube</option>
                         <option value="readit">Readit</option>
                         <option value="git">Git</option>
+                        <option value="voyage">Voyage</option>
                     </select>
                 </div>
             </div>
