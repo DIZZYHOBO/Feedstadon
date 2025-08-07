@@ -14,7 +14,7 @@ export function renderStatus(status, state, actions) {
     if (status.media_attachments && status.media_attachments.length > 0) {
         mediaAttachmentsHTML = status.media_attachments.map(media => {
             if (media.type === 'image') {
-                return `<img src="${media.preview_url}" alt="${media.description || 'Image attachment'}" data-full-src="${media.url}" class="status-media-attachment">`;
+                return `<img src="${media.preview_url || './images/logo.png'}" alt="${media.description || 'Image attachment'}" data-full-src="${media.url}" class="status-media-attachment">`;
             } else if (media.type === 'video') {
                 return `<video src="${media.url}" controls class="status-media-attachment"></video>`;
             }
@@ -26,7 +26,7 @@ export function renderStatus(status, state, actions) {
         <div class="status-body-content">
             <div class="status-header">
                 <div class="status-header-main">
-                    <img src="${status.account.avatar_static}" alt="${status.account.display_name}'s avatar" class="avatar">
+                    <img src="${status.account.avatar_static || './images/logo.png'}" alt="${status.account.display_name}'s avatar" class="avatar">
                     <div>
                         <div class="display-name">${status.account.display_name}</div>
                         <div class="acct">@${status.account.acct}</div>
