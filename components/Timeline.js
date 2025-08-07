@@ -3,94 +3,89 @@ import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { showModal, hideModal } from './ui.js';
 
-
-export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
-    container.innerHTML = '';
-    const template = document.getElementById('login-prompt-template');
-    const clone = template.content.cloneNode(true);
-    container.appendChild(clone);
+export async function renderTimeline(state, actions) {
+    const timeline = document.getElementById('timeline');
+    const scrollLoader = document.getElementById('scroll-loader');
+    timeline.innerHTML = '<p>Loading...</p>';
     
-    const mastodonSection = container.querySelector('#mastodon-login-section');
-    const lemmySection = container.querySelector('#lemmy-login-section');
+    try {
+        let statuses = [];
+        if (state.accessToken) {
+            const mastodonResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${state.currentTimeline}`);
+            statuses = mastodonResponse.data;
+        }
 
-    if (platform === 'mastodon') {
-        lemmySection.style.display = 'none';
-        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.instance-url').value;
-            const token = e.target.querySelector('.access-token').value;
-            onLoginSuccess(instance, token);
+        let lemmyPosts = [];
+        if (state.lemmyToken) {
+            const lemmyResponse = await apiFetch(state.lemmyInstance, null, '/api/v3/post/list', { sort: 'Hot' }, 'lemmy');
+            lemmyPosts = lemmyResponse.data.posts;
+        }
+
+        // Combine and sort
+        const combinedFeed = [
+            ...statuses.map(s => ({ ...s, type: 'mastodon', created_at: new Date(s.created_at) })),
+            ...lemmyPosts.map(p => ({ ...p, type: 'lemmy', created_at: new Date(p.post.published) }))
+        ];
+
+        combinedFeed.sort((a, b) => b.created_at - a.created_at);
+
+        timeline.innerHTML = '';
+        if (combinedFeed.length === 0) {
+            timeline.innerHTML = '<p>No posts to show.</p>';
+            return;
+        }
+
+        combinedFeed.forEach(item => {
+            if (item.type === 'mastodon') {
+                const statusDiv = renderStatus(item, state, actions);
+                if (statusDiv) timeline.appendChild(statusDiv);
+            } else if (item.type === 'lemmy') {
+                const lemmyCard = renderLemmyCard(item, state, actions);
+                if (lemmyCard) timeline.appendChild(lemmyCard);
+            }
         });
-    } else if (platform === 'lemmy') {
-        mastodonSection.style.display = 'none';
-        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.lemmy-instance-input').value;
-            const username = e.target.querySelector('.lemmy-username-input').value;
-            const password = e.target.querySelector('.lemmy-password-input').value;
-            onSecondarySuccess(instance, username, password);
-        });
+    } catch (error) {
+        console.error('Failed to render timeline:', error);
+        timeline.innerHTML = `<p>Error loading timeline: ${error.message}</p>`;
     }
 }
 
-export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess) {
-    if (!state.accessToken && !localStorage.getItem('lemmy_jwt')) {
-        renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
-        return;
-    }
-    
-    if (state.isLoadingMore) return;
-    
-    if (!loadMore) {
-        window.scrollTo(0, 0);
-        state.timelineDiv.innerHTML = '';
-    }
-    
-    state.isLoadingMore = true;
-    if (loadMore) state.scrollLoader.classList.add('loading');
-    else document.getElementById('refresh-btn').classList.add('loading');
-    
+export async function renderStatusDetail(state, actions, statusId) {
+    const detailView = document.getElementById('status-detail-view');
+    detailView.innerHTML = '<p>Loading status...</p>';
     try {
-        let allPosts = [];
-
-        // Fetch Mastodon posts
-        const mastodonPromise = state.accessToken 
-            ? apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home')
-            : Promise.resolve({ data: [] });
-
-        // Fetch Lemmy posts for merged feed
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const lemmyPromise = lemmyInstance 
-            ? apiFetch(lemmyInstance, null, '/api/v3/post/list', { type_: 'Subscribed' }, 'lemmy')
-            : Promise.resolve({ data: { posts: [] } });
-
-        const [mastodonResponse, lemmyResponse] = await Promise.all([mastodonPromise, lemmyPromise]);
+        const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+        const context = response.data;
         
-        const mastodonPosts = mastodonResponse.data.map(p => ({ ...p, platform: 'mastodon', date: p.created_at }));
-        const lemmyPosts = (lemmyResponse.data.posts || []).map(p => ({ ...p, platform: 'lemmy', date: p.post.published }));
+        detailView.innerHTML = ''; // Clear loading
+        
+        const statusList = document.createElement('div');
+        statusList.className = 'status-list';
 
-        allPosts = [...mastodonPosts, ...lemmyPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
+        context.ancestors.forEach(status => {
+            const statusDiv = renderStatus(status, state, actions);
+            if (statusDiv) statusList.appendChild(statusDiv);
+        });
 
-        if (allPosts.length > 0) {
-            allPosts.forEach(post => {
-                let postCard;
-                if (post.platform === 'mastodon') {
-                    postCard = renderStatus(post, state.currentUser, actions, state.settings);
-                } else {
-                    postCard = renderLemmyCard(post, actions);
-                }
-                state.timelineDiv.appendChild(postCard);
-            });
-        } else {
-            state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
-        }
+        const mainStatusDiv = renderStatus(context.descendants.find(s => s.id === statusId) || context.ancestors[context.ancestors.length-1], state, actions);
+        mainStatusDiv.classList.add('main-thread-post');
+        statusList.appendChild(mainStatusDiv);
+
+        const repliesContainer = document.createElement('div');
+        repliesContainer.className = 'comment-replies-container';
+        context.descendants.forEach(status => {
+            if(status.in_reply_to_id === statusId) {
+                const statusDiv = renderStatus(status, state, actions);
+                if (statusDiv) repliesContainer.appendChild(statusDiv);
+            }
+        });
+        
+        statusList.appendChild(repliesContainer);
+
+        detailView.appendChild(statusList);
 
     } catch (error) {
-        console.error('Failed to fetch timeline:', error);
-        state.timelineDiv.innerHTML = `<p>Error loading feed. ${error.message}</p>`;
-    } finally {
-        state.isLoadingMore = false;
-        if (loadMore) state.scrollLoader.classList.remove('loading');
-        else document.getElementById('refresh-btn').classList.remove('loading');
+        console.error('Failed to render status detail:', error);
+        detailView.innerHTML = `<p>Error loading status: ${error.message}</p>`;
     }
 }
