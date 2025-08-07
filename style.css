@@ -531,7 +531,7 @@ button:disabled {
     text-decoration: underline;
 }
 
-
+/* --- Media & Video Embeds --- */
 .status-media {
     display: flex;
     justify-content: center;
@@ -544,6 +544,24 @@ button:disabled {
     border-radius: 8px;
     object-fit: cover;
 }
+.video-embed-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    background: #000;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+.video-embed-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
 
 .status-footer { 
     display: flex; 
