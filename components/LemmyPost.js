@@ -168,6 +168,30 @@ function renderCommentNode(commentView, actions) {
         </div>
     `;
     
+    commentWrapper.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
+        
+        let menuItems = [
+            { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
+                if (confirm('Are you sure you want to block this user?')) {
+                    actions.lemmyBlockUser(commentView.creator.id, true);
+                }
+            }},
+        ];
+        
+        if (isOwn) {
+             menuItems.push(
+                { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
+                { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+            );
+        }
+
+        actions.showContextMenu(e, menuItems);
+    });
+    
     // Event listeners
     commentWrapper.querySelectorAll('.status-action').forEach(button => {
         button.addEventListener('click', (e) => {
