@@ -154,8 +154,18 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             actions.showTimeline('home');
         });
+        
+        // *** FIX: Added event listeners for Lemmy and Mastodon links ***
+        document.getElementById('lemmy-main-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            actions.showTimeline('lemmy');
+        });
 
-        // *** FIX: Added event listeners for both dropdown menus ***
+        document.getElementById('mastodon-main-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            actions.showTimeline('mastodon');
+        });
+
         const userDropdown = document.getElementById('user-dropdown');
         const feedsDropdown = document.getElementById('feeds-dropdown');
 
