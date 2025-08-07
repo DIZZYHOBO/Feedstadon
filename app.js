@@ -451,6 +451,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 showToast('Failed to block community.');
             }
+        },
+        lemmyBlockUser: async (personId, block) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/user/block', {
+                    method: 'POST',
+                    body: { person_id: personId, block: block }
+                }, 'lemmy');
+                showToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                // Refresh the current view to hide the blocked content
+                if (state.currentView === 'timeline' && state.currentLemmyFeed) {
+                    actions.showLemmyFeed(state.currentLemmyFeed);
+                } else {
+                     actions.showHomeTimeline();
+                }
+            } catch (err) {
+                showToast('Failed to block user.');
+            }
         }
     };
     state.actions = actions;
