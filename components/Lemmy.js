@@ -15,9 +15,24 @@ export function renderLemmyCard(post, actions) {
     card.className = 'status lemmy-card';
     card.dataset.id = post.post.id;
 
-    let thumbnailHTML = '';
-    if (post.post.thumbnail_url) {
-        thumbnailHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+    let mediaHTML = '';
+    const url = post.post.url;
+    if (url) {
+        // YouTube embed logic
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const youtubeMatch = url.match(youtubeRegex);
+
+        if (youtubeMatch) {
+            mediaHTML = `
+                <div class="video-embed-container">
+                    <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
+                </div>
+            `;
+        } else if (/\.(mp4|webm)$/i.test(url)) {
+            mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
+        } else if (post.post.thumbnail_url) {
+            mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+        }
     }
 
     let optionsMenuHTML = `
@@ -28,6 +43,8 @@ export function renderLemmyCard(post, actions) {
             </div>
         </div>
     `;
+
+    const bodyHTML = post.post.body ? new showdown.Converter().makeHtml(post.post.body) : '';
 
     card.innerHTML = `
         <div class="status-body-content">
@@ -46,7 +63,8 @@ export function renderLemmyCard(post, actions) {
             </div>
             <div class="status-content">
                 <h3 class="lemmy-title">${post.post.name}</h3>
-                ${thumbnailHTML}
+                ${mediaHTML}
+                <div class="lemmy-post-body">${bodyHTML}</div>
             </div>
         </div>
         <div class="status-footer">
@@ -73,7 +91,6 @@ export function renderLemmyCard(post, actions) {
         mediaImg.style.cursor = 'pointer';
         mediaImg.addEventListener('click', (e) => {
             e.stopPropagation();
-            // For lemmy thumbnails, we want the full image URL if available
             showImageModal(post.post.url || mediaImg.src);
         });
     }
@@ -256,7 +273,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 4
+            limit: 3
         };
         if (state.currentLemmyFeed !== 'All') {
             params.type_ = state.currentLemmyFeed;

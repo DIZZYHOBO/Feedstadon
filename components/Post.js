@@ -52,6 +52,32 @@ function renderPoll(poll, statusId, actions) {
     return container;
 }
 
+function renderConversationPost(post, currentUser, actions) {
+    const postEl = document.createElement('div');
+    postEl.className = 'status conversation-post';
+    postEl.innerHTML = `
+        <div class="status-header">
+             <img class="avatar" src="${post.account.avatar}" alt="${post.account.display_name} avatar">
+             <div>
+                <span class="display-name">${post.account.display_name}</span>
+                <span class="acct">@${post.account.acct}</span>
+             </div>
+        </div>
+        <div class="status-content">${post.content}</div>
+        <div class="status-footer">
+            <button class="status-action reply-to-comment-btn" data-acct="@${post.account.acct}">Reply</button>
+        </div>
+    `;
+    
+    postEl.querySelector('.reply-to-comment-btn').addEventListener('click', (e) => {
+        const acct = e.target.dataset.acct;
+        const mainReplyTextarea = postEl.closest('.conversation-container').querySelector('.conversation-reply-textarea');
+        mainReplyTextarea.value = `${acct} `;
+        mainReplyTextarea.focus();
+    });
+
+    return postEl;
+}
 
 export function renderStatus(status, currentUser, actions, settings) {
     const post = status.reblog || status;
@@ -89,6 +115,17 @@ export function renderStatus(status, currentUser, actions, settings) {
         } else if (attachment.type === 'video') {
             mediaHTML = `<div class="status-media"><video src="${attachment.url}" controls></video></div>`;
         }
+    }
+    
+    // YouTube embed logic
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const youtubeMatch = post.content.match(youtubeRegex);
+    if (youtubeMatch) {
+        mediaHTML += `
+            <div class="video-embed-container">
+                <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
+            </div>
+        `;
     }
     
     let pollHTML = '';
@@ -142,6 +179,7 @@ export function renderStatus(status, currentUser, actions, settings) {
                 <button class="button-primary save-edit-btn">Save</button>
             </div>
         </div>
+        <div class="conversation-container"></div>
     `;
     
     // Attach image click listener
@@ -164,7 +202,7 @@ export function renderStatus(status, currentUser, actions, settings) {
             const action = e.target.closest('.status-action').dataset.action;
             switch(action) {
                 case 'reply':
-                    actions.replyToStatus(post);
+                    actions.replyToStatus(post, card);
                     break;
                 case 'reblog':
                 case 'favorite':
@@ -238,7 +276,7 @@ export function renderStatus(status, currentUser, actions, settings) {
                 );
             }
             actions.showContextMenu(e, menuItems);
-        }, 500);
+        }, 1500);
     });
 
     card.addEventListener('touchend', () => {

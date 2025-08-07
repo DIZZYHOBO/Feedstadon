@@ -71,91 +71,141 @@ async function renderMastodonProfile(state, actions, container, accountId) {
     }
 }
 
-async function renderLemmyProfile(state, actions, container, userAcct) {
-    container.innerHTML = ``;
+export async function loadMoreLemmyProfile(state, actions) {
+    await renderLemmyProfile(state, actions, null, null, true);
+}
+
+async function renderLemmyProfile(state, actions, container, userAcct, loadMore = false) {
+    if (state.isLoadingMore) return;
     
     let username, instance;
-    if (userAcct) {
+
+    if (userAcct) { // Initial load for a specific profile
         [username, instance] = userAcct.split('@');
-    } else {
+        state.currentLemmyProfileUser = { username, instance };
+    } else if (loadMore && state.currentLemmyProfileUser) { // Infinite scroll
+        username = state.currentLemmyProfileUser.username;
+        instance = state.currentLemmyProfileUser.instance;
+    } else if (!loadMore) { // Initial load for the logged-in user's own profile
         username = localStorage.getItem('lemmy_username');
         instance = localStorage.getItem('lemmy_instance');
+        if (username && instance) {
+            state.currentLemmyProfileUser = { username, instance };
+        }
+    } else {
+        console.error("Cannot load more profile content without a user context.");
+        return; // Safeguard against errors
     }
     
     if (!username || !instance) {
-        container.innerHTML = `<p>Not logged into Lemmy.</p>`;
+        if (!loadMore) container.innerHTML = `<p>Lemmy user not found or not logged in.</p>`;
         return;
     }
-
+    
+    state.isLoadingMore = true;
+    const feedContainer = document.querySelector('#lemmy-profile-content .profile-feed');
+    
     try {
-        const { data: userData } = await apiFetch(instance, null, `/api/v3/user?username=${username}`, {}, 'lemmy');
+        const { data: userData } = await apiFetch(instance, null, `/api/v3/user`, {}, 'lemmy', { 
+            username: username, 
+            limit: 15,
+            page: loadMore ? state.lemmyProfilePage : 1,
+            sort: 'New'
+        });
         const { person_view, posts, comments } = userData;
 
+        if (!loadMore) {
+            container.innerHTML = `
+                <div class="profile-card">
+                     <div class="profile-header">
+                        <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
+                        <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
+                    </div>
+                     <div class="profile-actions">
+                        <button class="button-secondary" id="lemmy-follow-btn">Follow</button>
+                        <button class="button-danger" id="lemmy-block-btn">Block</button>
+                    </div>
+                    <div class="profile-info">
+                        <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
+                        <p class="acct">@${person_view.person.name}@${instance}</p>
+                        <div class="note">${person_view.person.bio || ''}</div>
+                    </div>
+                </div>
+                <div class="profile-feed"></div>
+            `;
+            
+            container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
+                alert('Following users is not a standard feature on all Lemmy instances.');
+            });
+            
+            container.querySelector('#lemmy-block-btn').addEventListener('click', () => {
+                if (confirm(`Are you sure you want to block ${person_view.person.name}?`)) {
+                    actions.lemmyBlockUser(person_view.person.id, true);
+                }
+            });
+        }
+
+        const feed = container ? container.querySelector('.profile-feed') : feedContainer;
         const combinedFeed = [
             ...posts.map(p => ({ ...p, type: 'post', date: p.post.published })),
             ...comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }))
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        container.innerHTML = `
-            <div class="profile-card">
-                 <div class="profile-header">
-                    <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
-                    <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
-                </div>
-                <div class="profile-info">
-                    <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
-                    <p class="acct">@${person_view.person.name}@${instance}</p>
-                    <div class="note">${person_view.person.bio || ''}</div>
-                </div>
-            </div>
-            <div class="profile-feed"></div>
-        `;
-        
-        const feed = container.querySelector('.profile-feed');
         if (combinedFeed.length === 0) {
-            feed.innerHTML = '<p>No activity yet.</p>';
-            return;
-        }
-
-        combinedFeed.forEach(item => {
-            if (item.type === 'post') {
-                feed.appendChild(renderLemmyCard(item, actions));
-            } else {
-                const commentCard = document.createElement('div');
-                commentCard.className = 'status lemmy-comment-on-profile';
-                commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
-
-                commentCard.innerHTML = `
-                    <div class="status-body-content">
-                        <div class="comment-context">
-                            <span class="display-name">${item.creator.name}</span> commented on:
-                        </div>
-                        <h4 class="post-title">${item.post.name}</h4>
-                        <div class="status-content">${item.comment.content}</div>
-                        <div class="status-footer">
-                            <div class="lemmy-vote-cluster">
-                                <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                                <span class="lemmy-score">${item.counts.score}</span>
-                                <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+            if (!loadMore) feed.innerHTML = '<p>No activity yet.</p>';
+            state.lemmyProfileHasMore = false;
+        } else {
+            combinedFeed.forEach(item => {
+                if (item.type === 'post') {
+                    feed.appendChild(renderLemmyCard(item, actions));
+                } else {
+                    const commentCard = document.createElement('div');
+                    commentCard.className = 'status lemmy-comment-on-profile';
+                    
+                    commentCard.innerHTML = `
+                        <div class="status-body-content">
+                            <div class="comment-context">
+                                <span class="display-name">${item.creator.name}</span> commented on:
                             </div>
-                        </div>
-                    </div>`;
-                
-                commentCard.querySelectorAll('.lemmy-vote-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const score = parseInt(e.currentTarget.dataset.score, 10);
-                        actions.lemmyCommentVote(item.comment.id, score, commentCard);
-                    });
-                });
+                            <h4 class="post-title">${item.post.name}</h4>
+                            <div class="status-content">${item.comment.content}</div>
+                            <div class="status-footer">
+                                <div class="lemmy-vote-cluster">
+                                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
+                                    <span class="lemmy-score">${item.counts.score}</span>
+                                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
+                                </div>
+                                <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
+                            </div>
+                        </div>`;
 
-                feed.appendChild(commentCard);
-            }
-        });
+                    commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
+                    
+                    commentCard.querySelectorAll('.lemmy-vote-btn').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const score = parseInt(e.currentTarget.dataset.score, 10);
+                            actions.lemmyCommentVote(item.comment.id, score, commentCard);
+                        });
+                    });
+                    
+                    commentCard.querySelector('.screenshot-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        actions.showScreenshotPage(item, item); 
+                    });
+
+                    feed.appendChild(commentCard);
+                }
+            });
+            state.lemmyProfilePage++;
+            state.lemmyProfileHasMore = true;
+        }
 
     } catch (error) {
         console.error("Failed to load Lemmy profile:", error);
-        container.innerHTML = `<p>Error loading Lemmy profile: ${error.message}</p>`;
+        if (!loadMore) container.innerHTML = `<p>Error loading Lemmy profile: ${error.message}</p>`;
+    } finally {
+        state.isLoadingMore = false;
     }
 }
 
@@ -169,6 +219,7 @@ export function renderProfilePage(state, actions, platform, accountId, userAcct)
         tabs.forEach(t => t.classList.remove('active'));
         mastodonContent.classList.remove('active');
         lemmyContent.classList.remove('active');
+        state.currentProfileTab = targetPlatform;
         
         const activeTab = view.querySelector(`.tab-button[data-profile-tab="${targetPlatform}"]`);
         if (activeTab) {
@@ -184,6 +235,8 @@ export function renderProfilePage(state, actions, platform, accountId, userAcct)
             }
         } else if (targetPlatform === 'lemmy') {
             lemmyContent.classList.add('active');
+            state.lemmyProfilePage = 1;
+            state.lemmyProfileHasMore = true;
             renderLemmyProfile(state, actions, lemmyContent, userAcct);
         }
     }
