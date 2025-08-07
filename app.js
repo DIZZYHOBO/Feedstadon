@@ -125,6 +125,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyPost: document.getElementById('lemmy-post-view'),
     };
     
+    // --- Global Context Menu ---
+    const contextMenu = document.getElementById('context-menu');
+    const showContextMenu = (e, items) => {
+        e.preventDefault();
+        e.stopPropagation();
+        contextMenu.innerHTML = '';
+        items.forEach(item => {
+            const button = document.createElement('button');
+            button.innerHTML = item.label;
+            button.onclick = (event) => {
+                event.stopPropagation();
+                item.action();
+                hideContextMenu();
+            };
+            contextMenu.appendChild(button);
+        });
+        contextMenu.style.display = 'block';
+        const pageX = e.touches ? e.touches[0].pageX : e.pageX;
+        const pageY = e.touches ? e.touches[0].pageY : e.pageY;
+        contextMenu.style.left = `${pageX}px`;
+        contextMenu.style.top = `${pageY}px`;
+    };
+    const hideContextMenu = () => {
+        if (contextMenu) {
+            contextMenu.style.display = 'none';
+        }
+    };
+    document.addEventListener('click', hideContextMenu);
+    document.addEventListener('contextmenu', (e) => {
+        // Hide if clicking outside a valid target
+        if (!e.target.closest('.status')) {
+            hideContextMenu();
+        }
+    });
+
     async function verifyUserCredentials() {
         if (state.instanceUrl && state.accessToken) {
             try {
@@ -469,7 +504,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 showToast('Failed to block user.');
             }
-        }
+        },
+        showContextMenu: showContextMenu
     };
     state.actions = actions;
 
