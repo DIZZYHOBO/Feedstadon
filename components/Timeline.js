@@ -10,13 +10,20 @@ export async function renderTimeline(state, actions) {
     
     try {
         let statuses = [];
-        if (state.accessToken) {
-            const mastodonResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${state.currentTimeline}`);
+        let lemmyPosts = [];
+
+        // *** FIX: Conditionally fetch based on the selected timeline ***
+        const fetchMastodon = state.accessToken && (state.currentTimeline === 'home' || state.currentTimeline === 'mastodon');
+        const fetchLemmy = state.lemmyToken && (state.currentTimeline === 'home' || state.currentTimeline === 'lemmy');
+        
+        if (fetchMastodon) {
+            // For 'mastodon' feed, fetch the user's home timeline. For 'home', do the same.
+            const timelineEndpoint = state.currentTimeline === 'mastodon' ? 'home' : state.currentTimeline;
+            const mastodonResponse = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/timelines/${timelineEndpoint}`);
             statuses = mastodonResponse.data;
         }
 
-        let lemmyPosts = [];
-        if (state.lemmyToken) {
+        if (fetchLemmy) {
             const lemmyResponse = await apiFetch(state.lemmyInstance, null, '/api/v3/post/list', { sort: 'Hot' }, 'lemmy');
             lemmyPosts = lemmyResponse.data.posts;
         }
