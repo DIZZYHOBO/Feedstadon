@@ -375,7 +375,7 @@ button:disabled {
 
 /* --- Timeline & Notifications Sub-Nav --- */
 .timeline-sub-nav, .notifications-sub-nav {
-    display: none;
+    display: flex;
     gap: 10px;
     margin-bottom: 20px;
     background-color: var(--card-color);
