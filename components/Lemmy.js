@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
-import { renderLoginPrompt } from './Timeline.js'; 
+import { renderLoginPrompt } from './ui.js'; 
 import { showImageModal } from './ui.js';
 
 export function renderLemmyCard(post, actions) {
