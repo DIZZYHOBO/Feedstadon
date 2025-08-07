@@ -238,7 +238,7 @@ export function renderStatus(status, currentUser, actions, settings) {
                 );
             }
             actions.showContextMenu(e, menuItems);
-        }, 500);
+        }, 1500);
     });
 
     card.addEventListener('touchend', () => {
