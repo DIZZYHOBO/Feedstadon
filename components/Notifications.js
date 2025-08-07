@@ -29,7 +29,6 @@ export async function updateNotificationBell() {
     }
 
     try {
-        // *** FIX: Removed private message (pms) fetching ***
         const [mentions, replies] = await Promise.all([
             apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy'),
             apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: true, limit: 50 }, 'lemmy')
@@ -63,8 +62,6 @@ async function markItemsAsRead(lemmyInstance, unreadMentions) {
             }
         }
         
-        // *** FIX: Removed logic for marking private messages as read ***
-        
         // Update the bell's status after attempting to mark items as read.
         updateNotificationBell();
     } catch (error) {
@@ -88,75 +85,87 @@ export async function renderNotificationsPage(state, actions) {
     
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
+        let allNotifications = [];
 
         // --- Fetch Mastodon Notifications ---
-        let mastodonNotifs = [];
         if (state.instanceUrl && state.accessToken) {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
-            mastodonNotifs = response.data || [];
+            try {
+                const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+                const mastodonNotifs = response.data || [];
+                allNotifications.push(...mastodonNotifs.map(n => {
+                    let icon = ICONS.mention;
+                    let actionText = `${n.type}d`;
+                    if (n.type === 'favourite') {
+                        icon = ICONS.favorite;
+                        actionText = 'favorited';
+                    } else if (n.type === 'reblog') {
+                        icon = ICONS.boost;
+                        actionText = 'boosted';
+                    }
+                    return {
+                        platform: 'mastodon',
+                        date: n.created_at,
+                        icon: icon,
+                        content: `<strong>${n.account.display_name}</strong> ${actionText} your post.`,
+                        contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
+                        authorAvatar: n.account.avatar_static,
+                        timestamp: n.created_at,
+                    }
+                }));
+            } catch (e) {
+                console.error("Failed to fetch Mastodon notifications:", e);
+            }
         }
 
         // --- Fetch Lemmy Notifications ---
-        let lemmyReplyNotifs = [];
-        let lemmyMentionNotifs = [];
-        // *** FIX: Removed private message fetching ***
         if (lemmyInstance) {
-            const [repliesResponse, mentionsResponse] = await Promise.all([
+            const results = await Promise.allSettled([
                 apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
                 apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy')
             ]);
-            lemmyReplyNotifs = repliesResponse.data.replies || [];
-            lemmyMentionNotifs = mentionsResponse.data.mentions || [];
-        }
+            
+            const [repliesResult, mentionsResult] = results;
 
-        // --- Combine and Process All Notifications ---
-        const allNotifications = [
-            ...mastodonNotifs.map(n => {
-                let icon = ICONS.mention;
-                let actionText = `${n.type}d`;
-                if (n.type === 'favourite') {
-                    icon = ICONS.favorite;
-                    actionText = 'favorited';
-                } else if (n.type === 'reblog') {
-                    icon = ICONS.boost;
-                    actionText = 'boosted';
-                }
-                return {
-                    platform: 'mastodon',
-                    date: n.created_at,
-                    icon: icon,
-                    content: `<strong>${n.account.display_name}</strong> ${actionText} your post.`,
-                    contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
-                    authorAvatar: n.account.avatar_static,
-                    timestamp: n.created_at,
-                }
-            }),
-            ...lemmyReplyNotifs.map(n => {
-                if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) return null;
-                return {
-                    platform: 'lemmy',
-                    date: n.comment_reply.comment.published,
-                    icon: ICONS.reply,
-                    content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
-                    contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
-                    authorAvatar: n.comment_reply.creator.avatar,
-                    timestamp: n.comment_reply.comment.published,
-                };
-            }),
-            ...lemmyMentionNotifs.map(n => {
-                 if (!n?.person_mention?.creator || !n?.person_mention?.comment) return null;
-                return {
-                    platform: 'lemmy',
-                    date: n.person_mention.comment.published,
-                    icon: ICONS.mention,
-                    content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
-                    contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
-                    authorAvatar: n.person_mention.creator.avatar,
-                    timestamp: n.person_mention.comment.published,
-                }
-            })
-            // *** FIX: Removed private message processing ***
-        ].filter(Boolean);
+            if (repliesResult.status === 'fulfilled') {
+                const lemmyReplyNotifs = repliesResult.value.data.replies || [];
+                allNotifications.push(...lemmyReplyNotifs.map(n => {
+                    if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) return null;
+                    return {
+                        platform: 'lemmy',
+                        date: n.comment_reply.comment.published,
+                        icon: ICONS.reply,
+                        content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
+                        contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
+                        authorAvatar: n.comment_reply.creator.avatar,
+                        timestamp: n.comment_reply.comment.published,
+                    };
+                }).filter(Boolean));
+            } else {
+                console.error("Failed to fetch Lemmy replies:", repliesResult.reason);
+            }
+
+            if (mentionsResult.status === 'fulfilled') {
+                const lemmyMentionNotifs = mentionsResult.value.data.mentions || [];
+                allNotifications.push(...lemmyMentionNotifs.map(n => {
+                    if (!n?.person_mention?.creator || !n?.person_mention?.comment) return null;
+                    return {
+                        platform: 'lemmy',
+                        date: n.person_mention.comment.published,
+                        icon: ICONS.mention,
+                        content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
+                        contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
+                        authorAvatar: n.person_mention.creator.avatar,
+                        timestamp: n.person_mention.comment.published,
+                    }
+                }).filter(Boolean));
+                
+                // Mark mentions as read after fetching
+                const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
+                markItemsAsRead(lemmyInstance, unreadMentions);
+            } else {
+                 console.error("Failed to fetch Lemmy mentions:", mentionsResult.reason);
+            }
+        }
 
         allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
         
@@ -187,15 +196,9 @@ export async function renderNotificationsPage(state, actions) {
         const defaultTab = 'all';
         subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`).classList.add('active');
         renderFilteredNotifications(defaultTab);
-        
-        // --- Mark As Read (Post-Render) ---
-        if (lemmyInstance) {
-            const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
-            markItemsAsRead(lemmyInstance, unreadMentions);
-        }
 
     } catch (error) {
-        console.error('Failed to fetch notifications:', error);
+        console.error('Failed to render notifications page:', error);
         listContainer.innerHTML = `<p>Could not load notifications. ${error.message}</p>`;
     }
 }
