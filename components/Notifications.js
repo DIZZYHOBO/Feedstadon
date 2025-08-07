@@ -10,7 +10,7 @@ function renderSingleNotification(notification) {
             ${notification.platform === 'lemmy' ? ICONS.lemmy : ICONS.mastodon}
         </div>
         <div class="notification-icon">${notification.icon}</div>
-        <img class.name="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
         <div class="notification-content">
             <p>${notification.content}</p>
             ${notification.contextHTML}
