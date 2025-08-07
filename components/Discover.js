@@ -152,14 +152,46 @@ function renderMastodonDiscover(state, actions, container) {
 
 // --- Lemmy Discover Section ---
 
+async function renderCommunityList(communities, actions, container) {
+    container.innerHTML = '';
+    communities.forEach(communityView => {
+        const community = communityView.community;
+        const communityEl = document.createElement('div');
+        communityEl.className = 'discover-list-item';
+        
+        const isSubscribed = communityView.subscribed === "Subscribed";
+        
+        communityEl.innerHTML = `
+            <img src="${community.icon}" class="avatar" onerror="this.src='./images/logo.png'"/>
+            <div>
+                <div class="discover-item-title">${community.name}</div>
+                <div class="discover-item-subtitle">${community.actor_id.split('/')[2]}</div>
+            </div>
+            <button class="button-secondary follow-btn">${isSubscribed ? 'Unfollow' : 'Follow'}</button>
+        `;
+
+        communityEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const currentlySubscribed = e.target.textContent === 'Unfollow';
+            const success = await actions.lemmyFollowCommunity(community.id, !currentlySubscribed);
+            if (success) {
+                e.target.textContent = currentlySubscribed ? 'Follow' : 'Unfollow';
+            }
+        });
+
+        container.appendChild(communityEl);
+    });
+}
+
 export async function loadMoreLemmyCommunities(state, actions) {
-    const container = document.querySelector('#lemmy-discover-content');
-    await renderLemmyDiscover(state, actions, container, true);
+    await renderLemmyDiscover(state, actions, null, true);
 }
 
 async function renderLemmyDiscover(state, actions, container, loadMore = false) {
     if (state.isLoadingMore) return;
     state.isLoadingMore = true;
+    
+    const contentArea = document.querySelector('#lemmy-discover-content-area');
     
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -168,43 +200,40 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
             page: loadMore ? state.lemmyDiscoverPage : 1
         });
         
-        if (!loadMore) container.innerHTML = '';
+        if (!loadMore) {
+            container.innerHTML = `
+                <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
+                <div id="lemmy-discover-content-area" class="discover-content-area"></div>
+            `;
+            
+            const searchInput = container.querySelector('#lemmy-community-search');
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(async () => {
+                    const query = e.target.value.trim();
+                    const searchResultsContainer = container.querySelector('#lemmy-discover-content-area');
+                    if (query.length > 2) {
+                        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { q: query, sort: 'TopDay' });
+                        renderCommunityList(data.communities, actions, searchResultsContainer);
+                    } else if (query.length === 0) {
+                        renderLemmyDiscover(state, actions, container); // Reset to default list
+                    }
+                }, 500);
+            });
+        }
+        
+        const communityContainer = container ? container.querySelector('#lemmy-discover-content-area') : contentArea;
         
         if (data.communities.length > 0) {
-            data.communities.forEach(communityView => {
-                const community = communityView.community;
-                const communityEl = document.createElement('div');
-                communityEl.className = 'discover-list-item';
-                
-                const isSubscribed = communityView.subscribed === "Subscribed";
-                
-                communityEl.innerHTML = `
-                    <img src="${community.icon}" class="avatar" onerror="this.src='./images/logo.png'"/>
-                    <div>
-                        <div class="discover-item-title">${community.name}</div>
-                        <div class="discover-item-subtitle">${community.actor_id.split('/')[2]}</div>
-                    </div>
-                    <button class="button-secondary follow-btn">${isSubscribed ? 'Unfollow' : 'Follow'}</button>
-                `;
-
-                communityEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const currentlySubscribed = e.target.textContent === 'Unfollow';
-                    const success = await actions.lemmyFollowCommunity(community.id, !currentlySubscribed);
-                    if (success) {
-                        e.target.textContent = currentlySubscribed ? 'Follow' : 'Unfollow';
-                    }
-                });
-
-                container.appendChild(communityEl);
-            });
+            renderCommunityList(data.communities, actions, communityContainer);
             state.lemmyDiscoverPage++;
             state.lemmyDiscoverHasMore = true;
         } else {
             state.lemmyDiscoverHasMore = false;
         }
     } catch (error) {
-        container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
+        if (!loadMore) container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
     } finally {
         state.isLoadingMore = false;
     }
