@@ -68,6 +68,17 @@
     --link-color: #7857FF;
 }
 
+[data-theme="dracula"] {
+    --bg-color: #282a36;
+    --card-color: #44475a;
+    --primary-color: #44475a;
+    --accent-color: #bd93f9;
+    --font-color: #f8f8f2;
+    --font-color-muted: #6272a4;
+    --border-color: #6272a4;
+    --link-color: #8be9fd;
+}
+
 
 *, *::before, *::after {
     box-sizing: border-box;
