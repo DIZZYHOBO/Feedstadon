@@ -102,8 +102,13 @@ export async function renderNotificationsPage(state, actions) {
         // --- Fetch Mastodon Notifications ---
         let mastodonNotifs = [];
         if (state.instanceUrl && state.accessToken) {
-            const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
-            mastodonNotifs = response.data || [];
+            try {
+                const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+                mastodonNotifs = response.data || [];
+            } catch (e) {
+                console.error("Failed to fetch Mastodon notifications:", e);
+                // Optionally show a message to the user in the UI
+            }
         }
 
         // --- Fetch Lemmy Notifications ---
@@ -111,14 +116,32 @@ export async function renderNotificationsPage(state, actions) {
         let lemmyMentionNotifs = [];
         let lemmyPrivateMessages = [];
         if (lemmyInstance) {
-            const [repliesResponse, mentionsResponse, messagesResponse] = await Promise.all([
+            // *** FIX: Use Promise.allSettled to make fetching resilient to individual errors ***
+            const results = await Promise.allSettled([
                 apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
                 apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy'),
                 apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: false }, 'lemmy')
             ]);
-            lemmyReplyNotifs = repliesResponse.data.replies || [];
-            lemmyMentionNotifs = mentionsResponse.data.mentions || [];
-            lemmyPrivateMessages = messagesResponse.data.private_messages || [];
+            
+            const [repliesResult, mentionsResult, messagesResult] = results;
+
+            if (repliesResult.status === 'fulfilled') {
+                lemmyReplyNotifs = repliesResult.value.data.replies || [];
+            } else {
+                console.error("Failed to fetch Lemmy replies:", repliesResult.reason);
+            }
+
+            if (mentionsResult.status === 'fulfilled') {
+                lemmyMentionNotifs = mentionsResult.value.data.mentions || [];
+            } else {
+                 console.error("Failed to fetch Lemmy mentions:", mentionsResult.reason);
+            }
+            
+            if (messagesResult.status === 'fulfilled') {
+                lemmyPrivateMessages = messagesResult.value.data.private_messages || [];
+            } else {
+                console.error("Failed to fetch Lemmy private messages:", messagesResult.reason);
+            }
         }
 
         // --- Combine and Process All Notifications ---
