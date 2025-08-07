@@ -8,6 +8,7 @@ import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
+import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
@@ -128,6 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         timeline: document.getElementById('timeline'),
         notifications: document.getElementById('notifications-view'),
         discover: document.getElementById('discover-view'),
+        screenshot: document.getElementById('screenshot-view'),
         profile: document.getElementById('profile-page-view'),
         editProfile: document.getElementById('edit-profile-view'),
         search: document.getElementById('search-results-view'),
@@ -330,6 +332,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             showLoadingBar();
             switchView('discover');
             await renderDiscoverPage(state, actions);
+            hideLoadingBar();
+        },
+         showScreenshotPage: async (commentView, postView) => {
+            showLoadingBar();
+            switchView('screenshot');
+            await renderScreenshotPage(state, commentView, postView, actions);
             hideLoadingBar();
         },
         showLemmyPostDetail: async (post) => {
