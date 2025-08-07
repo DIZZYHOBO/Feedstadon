@@ -278,22 +278,6 @@ button:disabled {
     position: relative;
 }
 
-#background-logo-container {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: -1;
-    pointer-events: none;
-}
-
-#background-logo-container svg {
-    width: 300px;
-    height: auto;
-    fill: var(--primary-color);
-    opacity: 0.5;
-}
-
 .nav-button {
     background: none;
     border: none;
