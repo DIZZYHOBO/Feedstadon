@@ -1,4 +1,4 @@
-import { fetchTimeline, renderLoginPrompt } from './components/Timeline.js';
+import { fetchTimeline } from './components/Timeline.js';
 import { renderProfilePage, renderEditProfilePage } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
@@ -9,7 +9,7 @@ import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
-import { showLoadingBar, hideLoadingBar, initImageModal } from './components/ui.js';
+import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
