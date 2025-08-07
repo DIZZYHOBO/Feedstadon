@@ -192,15 +192,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (platform === 'lemmy') {
             items = [
                 { label: 'Subbed', feed: 'Subscribed' },
-                { label: 'Local', feed: 'Local' },
-                { label: 'All', feed: 'All' }
+                { label: 'All', feed: 'All' },
+                { label: 'Local', feed: 'Local' }
             ];
             currentFeed = state.currentLemmyFeed;
         } else if (platform === 'mastodon') {
              items = [
                 { label: 'Subbed', feed: 'home' },
-                { label: 'Local', feed: 'public?local=true' },
-                { label: 'All', feed: 'public' }
+                { label: 'All', feed: 'public' },
+                { label: 'Local', feed: 'public?local=true' }
             ];
             currentFeed = state.currentTimeline;
         }
