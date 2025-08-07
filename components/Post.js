@@ -1,92 +1,245 @@
+import { ICONS } from './icons.js';
+import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
 import { apiFetch } from './api.js';
-import { renderStatus } from './Post.js';
-import { renderLemmyCard } from './Lemmy.js';
+import { showImageModal } from './ui.js';
 
-export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
-    container.innerHTML = '';
-    const template = document.getElementById('login-prompt-template');
-    const clone = template.content.cloneNode(true);
-    container.appendChild(clone);
-    
-    const mastodonSection = container.querySelector('#mastodon-login-section');
-    const lemmySection = container.querySelector('#lemmy-login-section');
+function renderPoll(poll, statusId, actions) {
+    const container = document.createElement('div');
+    container.className = 'poll-container';
 
-    if (platform === 'mastodon') {
-        lemmySection.style.display = 'none';
-        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.instance-url').value;
-            const token = e.target.querySelector('.access-token').value;
-            onLoginSuccess(instance, token);
+    if (poll.voted) {
+        // Render results
+        poll.options.forEach((option, index) => {
+            const percentage = poll.votes_count > 0 ? (option.votes_count / poll.votes_count * 100).toFixed(1) : 0;
+            const result = document.createElement('div');
+            result.className = 'poll-result';
+            if (poll.own_votes.includes(index)) {
+                result.classList.add('voted');
+            }
+            result.innerHTML = `
+                <div class="poll-result-bar" style="width: ${percentage}%;"></div>
+                <span class="poll-result-label">${option.title}</span>
+                <span class="poll-result-percent">${percentage}%</span>
+            `;
+            container.appendChild(result);
         });
-    } else if (platform === 'lemmy') {
-        mastodonSection.style.display = 'none';
-        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.lemmy-instance-input').value;
-            const username = e.target.querySelector('.lemmy-username-input').value;
-            const password = e.target.querySelector('.lemmy-password-input').value;
-            onSecondarySuccess(instance, username, password);
+    } else {
+        // Render options
+        poll.options.forEach((option, index) => {
+            const optionEl = document.createElement('button');
+            optionEl.className = 'poll-option';
+            optionEl.textContent = option.title;
+            optionEl.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const updatedPoll = await actions.voteInPoll(poll.id, [index]);
+                    const pollContainer = e.target.closest('.poll-container');
+                    const newPoll = renderPoll(updatedPoll, statusId, actions);
+                    pollContainer.replaceWith(newPoll);
+                } catch (error) {
+                    console.error('Failed to vote:', error);
+                }
+            });
+            container.appendChild(optionEl);
         });
     }
+    
+    const info = document.createElement('div');
+    info.className = 'poll-info';
+    info.textContent = `${poll.votes_count} votes · ${poll.expired ? 'Final results' : 'Poll ends soon'}`;
+    container.appendChild(info);
+
+    return container;
 }
 
-export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess) {
-    if (!state.accessToken && !localStorage.getItem('lemmy_jwt')) {
-        renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
-        return;
+
+export function renderStatus(status, currentUser, actions, settings) {
+    const post = status.reblog || status;
+    const author = post.account;
+    const isOwnPost = currentUser && currentUser.id === author.id;
+    
+    if (settings && settings.hideNsfw && post.sensitive) {
+        return document.createDocumentFragment();
     }
     
-    if (state.isLoadingMore) return;
-    
-    if (!loadMore) {
-        window.scrollTo(0, 0);
-        state.timelineDiv.innerHTML = '';
+    const filterList = getWordFilter();
+    if (shouldFilterContent(post.content, filterList)) {
+        return document.createDocumentFragment();
+    }
+
+    const card = document.createElement('div');
+    card.className = 'status';
+    card.dataset.id = post.id;
+
+    let boosterInfo = '';
+    if (status.reblog) {
+        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
     }
     
-    state.isLoadingMore = true;
-    if (loadMore) state.scrollLoader.classList.add('loading');
-    
-    try {
-        let allPosts = [];
+    let inReplyToInfo = '';
+    if (post.in_reply_to_account_id) {
+        inReplyToInfo = `<div class="reply-info" data-action="view-thread">${ICONS.reply} Replying to some folks...</div>`;
+    }
 
-        // Fetch Mastodon posts
-        const mastodonPromise = state.accessToken 
-            ? apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home')
-            : Promise.resolve({ data: [] });
-
-        // Fetch Lemmy posts for merged feed
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const lemmyPromise = lemmyInstance 
-            ? apiFetch(lemmyInstance, null, '/api/v3/post/list', { type_: 'Subscribed' }, 'lemmy')
-            : Promise.resolve({ data: { posts: [] } });
-
-        const [mastodonResponse, lemmyResponse] = await Promise.all([mastodonPromise, lemmyPromise]);
-        
-        const mastodonPosts = mastodonResponse.data.map(p => ({ ...p, platform: 'mastodon', date: p.created_at }));
-        const lemmyPosts = (lemmyResponse.data.posts || []).map(p => ({ ...p, platform: 'lemmy', date: p.post.published }));
-
-        allPosts = [...mastodonPosts, ...lemmyPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        if (allPosts.length > 0) {
-            allPosts.forEach(post => {
-                let postCard;
-                if (post.platform === 'mastodon') {
-                    postCard = renderStatus(post, state.currentUser, actions, state.settings);
-                } else {
-                    postCard = renderLemmyCard(post, actions);
-                }
-                state.timelineDiv.appendChild(postCard);
-            });
-        } else {
-            state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
+    let mediaHTML = '';
+    if (post.media_attachments.length > 0) {
+        const attachment = post.media_attachments[0];
+        if (attachment.type === 'image') {
+            mediaHTML = `<div class="status-media"><img src="${attachment.url}" alt="${attachment.description || 'Post media'}" loading="lazy"></div>`;
+        } else if (attachment.type === 'video') {
+            mediaHTML = `<div class="status-media"><video src="${attachment.url}" controls></video></div>`;
         }
+    }
+    
+    let pollHTML = '';
+    if (post.poll) {
+        pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
+    }
 
+    card.innerHTML = `
+        ${boosterInfo}
+        <div class="status-body-content">
+            ${inReplyToInfo}
+            <div class="status-header">
+                <div class="status-header-main">
+                    <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
+                    <div>
+                        <span class="display-name">${author.display_name}</span>
+                        <span class="acct">@${author.acct}</span>
+                        <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
+                    </div>
+                </div>
+                <div class="status-header-side">
+                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
+                </div>
+            </div>
+            <div class="status-content">${post.content}</div>
+            ${mediaHTML}
+            ${pollHTML}
+            <div class="status-footer">
+                <button class="status-action" data-action="reply">${ICONS.reply} ${post.replies_count}</button>
+                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.boost} ${post.reblogs_count}</button>
+                <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${post.favourites_count}</button>
+                <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
+            </div>
+        </div>
+        <div class="edit-post-container">
+            <div class="edit-post-box">
+                <textarea class="edit-textarea"></textarea>
+                <button class="button-primary save-edit-btn">Save</button>
+            </div>
+        </div>
+    `;
+    
+    // Attach image click listener
+    const mediaImg = card.querySelector('.status-media img');
+    if (mediaImg) {
+        mediaImg.style.cursor = 'pointer';
+        mediaImg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImageModal(mediaImg.src);
+        });
+    }
+
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
+        actions.showStatusDetail(post.id);
+    });
+    
+    card.querySelectorAll('.status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.target.closest('.status-action').dataset.action;
+            switch(action) {
+                case 'reply':
+                    actions.replyToStatus(post);
+                    break;
+                case 'reblog':
+                case 'favorite':
+                case 'bookmark':
+                    actions.toggleAction(action, status, e.target.closest('.status-action'));
+                    break;
+            }
+        });
+    });
+
+    const saveEditBtn = card.querySelector('.save-edit-btn');
+    saveEditBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newContent = card.querySelector('.edit-textarea').value.trim();
+        if (newContent) {
+            actions.editStatus(post.id, newContent);
+            card.querySelector('.edit-post-container').style.display = 'none';
+        }
+    });
+    
+    let pressTimer;
+    const contextHandler = (e) => {
+        const postAuthor = status.reblog ? status.reblog.account : status.account;
+        const isOwn = currentUser && currentUser.id === postAuthor.id;
+        let menuItems = [ { label: `${ICONS.delete} Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+        if (isOwn) {
+            menuItems.push(
+                { label: `${ICONS.edit} Edit`, action: () => {
+                    const editContainer = card.querySelector('.edit-post-container');
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                }},
+                { label: `${ICONS.delete} Delete`, action: () => {
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                }}
+            );
+        }
+        actions.showContextMenu(e, menuItems);
+    };
+
+    card.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => contextHandler(e), 500);
+    });
+
+    card.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        contextHandler(e);
+    });
+
+    return card;
+}
+
+
+export async function renderStatusDetail(state, statusId, actions) {
+    const container = document.getElementById('status-detail-view');
+    container.innerHTML = '';
+
+    try {
+        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+        const { data: mainStatus } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        
+        container.innerHTML = '';
+        
+        if (context.ancestors) {
+            context.ancestors.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
+        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings);
+        mainPost.classList.add('main-thread-post');
+        container.appendChild(mainPost);
+        
+        if (context.descendants) {
+            context.descendants.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+        }
+        
     } catch (error) {
-        console.error('Failed to fetch timeline:', error);
-        state.timelineDiv.innerHTML = `<p>Error loading feed. ${error.message}</p>`;
-    } finally {
-        state.isLoadingMore = false;
-        if (loadMore) state.scrollLoader.classList.remove('loading');
+        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
     }
 }
