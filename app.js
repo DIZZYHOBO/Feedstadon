@@ -7,7 +7,7 @@ import { initComposeModal, showComposeModal, showComposeModalWithReply } from '.
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
-import { renderDiscoverPage } from './components/Discover.js';
+import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
@@ -104,12 +104,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: 'New',
+        currentDiscoverTab: 'lemmy',
         timelineDiv: document.getElementById('timeline'),
         scrollLoader: document.getElementById('scroll-loader'),
         isLoadingMore: false,
         nextPageUrl: null,
         lemmyPage: 1,
         lemmyHasMore: true,
+        lemmyDiscoverPage: 1,
+        lemmyDiscoverHasMore: true,
+        mastodonTrendingPage: 1,
+        mastodonTrendingHasMore: true,
         conversations: [],
         lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'leminal.space'],
         settings: {
@@ -321,7 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderNotificationsPage(state, actions);
             hideLoadingBar();
         },
-        showDiscoverPage: async () => {
+         showDiscoverPage: async () => {
             showLoadingBar();
             switchView('discover');
             await renderDiscoverPage(state, actions);
@@ -497,7 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 'lemmy');
             return response.data;
         },
-        lemmyFollowCommunity: async (communityId, follow = true) => {
+         lemmyFollowCommunity: async (communityId, follow = true) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
                 await apiFetch(lemmyInstance, null, '/api/v3/community/follow', {
@@ -681,10 +686,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (state.isLoadingMore) return;
 
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
-            if (state.currentView === 'timeline' && state.currentLemmyFeed && state.lemmyHasMore) {
-                fetchLemmyFeed(state, actions, true);
-            } else if (state.currentView === 'timeline' && state.currentTimeline && state.nextPageUrl) {
-                fetchTimeline(state, state.currentTimeline, true);
+            if (state.currentView === 'timeline') {
+                if (state.currentLemmyFeed && state.lemmyHasMore) {
+                    fetchLemmyFeed(state, actions, true);
+                } else if (state.currentTimeline && state.nextPageUrl) {
+                    fetchTimeline(state, state.currentTimeline, true);
+                }
+            } else if (state.currentView === 'discover') {
+                if (state.currentDiscoverTab === 'lemmy' && state.lemmyDiscoverHasMore) {
+                    loadMoreLemmyCommunities(state, actions);
+                } else if (state.currentDiscoverTab === 'mastodon-trending' && state.mastodonTrendingHasMore) {
+                    loadMoreMastodonTrendingPosts(state, actions);
+                }
             }
         }
     });
