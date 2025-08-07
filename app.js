@@ -595,8 +595,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
-            // Default to a public feed if not logged into anything
-            actions.showLemmyFeed('All');
+            actions.showHomeTimeline(); 
         }
     } else {
         switchView(initialView, false);
