@@ -200,10 +200,6 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
     
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { 
-            sort: 'TopDay',
-            page: loadMore ? state.lemmyDiscoverPage : 1
-        });
         
         if (!loadMore) {
             container.innerHTML = `
@@ -222,7 +218,7 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
                 e.preventDefault();
                 const query = searchInput.value.trim();
                 if (query.length > 0) {
-                    const { data } = await apiFetch(lemmyInstance, null, '/api/v3/search', {}, 'lemmy', { q: query, type_: 'Community', sort: 'TopAll', listing_type: 'All' });
+                    const { data } = await apiFetch(lemmyInstance, null, '/api/v3/search', {}, 'lemmy', { q: query, type_: 'Communities', sort: 'TopAll' });
                     renderCommunityList(data.communities, actions, searchResultsContainer);
                     searchResultsContainer.style.display = 'block';
                 } else {
@@ -232,6 +228,10 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
         }
         
         const communityContainer = container ? container.querySelector('#lemmy-discover-content-area') : contentArea;
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { 
+            sort: 'TopDay',
+            page: loadMore ? state.lemmyDiscoverPage : 1
+        });
         
         if (data.communities.length > 0) {
             if (!loadMore) communityContainer.innerHTML = '';
