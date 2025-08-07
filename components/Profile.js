@@ -116,7 +116,6 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
         `;
         
         container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
-            // Lemmy doesn't have a traditional follow system for users, this is a placeholder
             alert('Following users is not a standard feature on all Lemmy instances.');
         });
         
@@ -138,8 +137,7 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
             } else {
                 const commentCard = document.createElement('div');
                 commentCard.className = 'status lemmy-comment-on-profile';
-                commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
-
+                
                 commentCard.innerHTML = `
                     <div class="status-body-content">
                         <div class="comment-context">
@@ -156,6 +154,8 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
                             <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
                         </div>
                     </div>`;
+
+                commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
                 
                 commentCard.querySelectorAll('.lemmy-vote-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
@@ -167,7 +167,7 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
                 
                 commentCard.querySelector('.screenshot-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    actions.showScreenshotPage(item, item);
+                    actions.showScreenshotPage(item, item); 
                 });
 
                 feed.appendChild(commentCard);
