@@ -40,6 +40,7 @@ export function renderSettingsPage(state) {
                         <option value="readit">Readit</option>
                         <option value="git">Git</option>
                         <option value="voyage">Voyage</option>
+                        <option value="dracula">Dracula</option>
                     </select>
                 </div>
             </div>
