@@ -79,25 +79,38 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
     if (state.isLoadingMore) return;
     
     let username, instance;
-    if (userAcct) {
+
+    if (userAcct) { // Initial load for a specific profile
         [username, instance] = userAcct.split('@');
         state.currentLemmyProfileUser = { username, instance };
-    } else if (state.currentLemmyProfileUser) {
+    } else if (loadMore && state.currentLemmyProfileUser) { // Infinite scroll
         username = state.currentLemmyProfileUser.username;
         instance = state.currentLemmyProfileUser.instance;
+    } else if (!loadMore) { // Initial load for the logged-in user's own profile
+        username = localStorage.getItem('lemmy_username');
+        instance = localStorage.getItem('lemmy_instance');
+        if (username && instance) {
+            state.currentLemmyProfileUser = { username, instance };
+        }
     } else {
-        return; // Exit if no user is set, preventing the error
+        console.error("Cannot load more profile content without a user context.");
+        return; // Safeguard against errors
+    }
+    
+    if (!username || !instance) {
+        if (!loadMore) container.innerHTML = `<p>Lemmy user not found or not logged in.</p>`;
+        return;
     }
     
     state.isLoadingMore = true;
-
     const feedContainer = document.querySelector('#lemmy-profile-content .profile-feed');
     
     try {
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user`, {}, 'lemmy', { 
             username: username, 
             limit: 15,
-            page: loadMore ? state.lemmyProfilePage : 1
+            page: loadMore ? state.lemmyProfilePage : 1,
+            sort: 'New'
         });
         const { person_view, posts, comments } = userData;
 
