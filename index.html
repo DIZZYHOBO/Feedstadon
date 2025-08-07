@@ -14,8 +14,6 @@
 
     <nav class="top-nav" style="display: none;">
         <div class="nav-left">
-            <button class="nav-button icon-button" id="notifications-btn" title="Notifications"></button>
-            <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
             <div class="dropdown" id="feeds-dropdown">
                 <button class="nav-button">Feeds</button>
                 <div class="dropdown-content">
@@ -24,6 +22,7 @@
                     <a href="#" id="mastodon-main-link">Mastodon</a>
                 </div>
             </div>
+            <button class="nav-button" id="discover-btn">Discover</button>
         </div>
         
         <div class="nav-center">
@@ -35,6 +34,8 @@
 
         <div class="nav-right">
             <button class="nav-button" id="search-toggle-btn">Search</button>
+            <button class="nav-button icon-button" id="refresh-btn" title="Refresh Feed"></button>
+            <button class="nav-button icon-button" id="notifications-btn" title="Notifications"></button>
             <div class="dropdown" id="user-dropdown">
                 <button class="nav-button" id="user-display-btn">Menu</button>
                 <div class="dropdown-content">
@@ -58,6 +59,7 @@
                 <div class="notifications-sub-nav"></div>
                 <div id="notifications-list"></div>
             </div>
+            <div id="discover-view" style="display: none;"></div>
             <div id="profile-page-view" style="display: none;">
                  <div class="profile-tabs">
                     <button class="tab-button" data-profile-tab="mastodon">Mastodon</button>
