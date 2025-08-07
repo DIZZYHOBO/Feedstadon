@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async showNotifications() {
             this.updateActiveView('notifications-view');
-            await renderNotificationsPage(state, actions);
+            renderNotificationsPage(state, actions);
         },
         async showProfile(accountId) {
             state.currentProfileId = accountId;
@@ -79,13 +79,21 @@ document.addEventListener('DOMContentLoaded', () => {
             renderSettingsPage(state, actions);
         },
         updateActiveView(viewId) {
-            const views = ['timeline-view', 'status-detail-view', 'notifications-view', 'profile-page-view', 'edit-profile-view', 'settings-view'];
-            views.forEach(id => {
-                const view = document.getElementById(id.replace('-view', ''));
-                if (view) {
-                    view.style.display = id === viewId ? 'block' : 'none';
-                }
+            // This assumes your main content views are direct children of #app-view
+            const appView = document.getElementById('app-view');
+            if (!appView) return;
+
+            Array.from(appView.children).forEach(view => {
+                view.style.display = 'none';
             });
+
+            const activeView = document.getElementById(viewId);
+            if (activeView) {
+                activeView.style.display = 'block';
+            } else {
+                 const timelineView = document.getElementById('timeline-view');
+                 if(timelineView) timelineView.style.display = 'block';
+            }
         }
     };
 
@@ -146,6 +154,29 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             actions.showTimeline('home');
         });
+
+        // *** FIX: Added event listeners for both dropdown menus ***
+        const userDropdown = document.getElementById('user-dropdown');
+        const feedsDropdown = document.getElementById('feeds-dropdown');
+
+        userDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+            feedsDropdown.classList.remove('active'); // Close other dropdown
+            userDropdown.classList.toggle('active');
+        });
+
+        feedsDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.remove('active'); // Close other dropdown
+            feedsDropdown.classList.toggle('active');
+        });
+        
+        // Add a listener to close dropdowns if the user clicks anywhere else
+        document.addEventListener('click', () => {
+            userDropdown.classList.remove('active');
+            feedsDropdown.classList.remove('active');
+        });
+
 
         // Initialize icons
         document.getElementById('notifications-btn').innerHTML = ICONS.notifications;
