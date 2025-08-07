@@ -1,237 +1,74 @@
 import { apiFetch } from './api.js';
-import { ICONS } from './icons.js';
-import { formatTimestamp } from './utils.js';
-import { renderLemmyCard } from './Lemmy.js'; // We can reuse the card from the timeline
+import { renderStatus } from './Post.js';
+import { renderLemmyCard } from './Lemmy.js';
 
-function showReplyBox(commentWrapper, comment, actions) {
-    const existingReplyBox = commentWrapper.querySelector('.lemmy-reply-box');
-    if (existingReplyBox) {
-        existingReplyBox.remove();
+export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
+    container.innerHTML = '';
+    const template = document.getElementById('login-prompt-template');
+    const clone = template.content.cloneNode(true);
+    container.appendChild(clone);
+    
+    const mastodonSection = container.querySelector('#mastodon-login-section');
+    const lemmySection = container.querySelector('#lemmy-login-section');
+
+    if (platform === 'mastodon') {
+        lemmySection.style.display = 'none';
+        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const instance = e.target.querySelector('.instance-url').value;
+            const token = e.target.querySelector('.access-token').value;
+            onLoginSuccess(instance, token);
+        });
+    } else if (platform === 'lemmy') {
+        mastodonSection.style.display = 'none';
+        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const instance = e.target.querySelector('.lemmy-instance-input').value;
+            const username = e.target.querySelector('.lemmy-username-input').value;
+            const password = e.target.querySelector('.lemmy-password-input').value;
+            onSecondarySuccess(instance, username, password);
+        });
+    }
+}
+
+export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess) {
+    const timelineType = state.currentTimeline;
+
+    if (timelineType === 'home' && !state.accessToken) {
+        renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
         return;
     }
 
-    const replyBox = document.createElement('div');
-    replyBox.className = 'lemmy-reply-box';
-    replyBox.innerHTML = `
-        <textarea class="reply-textarea" placeholder="Write your reply..."></textarea>
-        <div class="reply-actions">
-            <button class="cancel-reply-btn button-secondary">Cancel</button>
-            <button class="submit-reply-btn">Reply</button>
-        </div>
-    `;
+    if (state.isLoadingMore) return;
+    
+    if (!loadMore) {
+        window.scrollTo(0, 0);
+        state.timelineDiv.innerHTML = '';
+    }
+    
+    state.isLoadingMore = true;
+    if (loadMore) state.scrollLoader.classList.add('loading');
+    
+    try {
+        const endpoint = `/api/v1/timelines/${timelineType}`;
+        const response = await apiFetch(state.instanceUrl, state.accessToken, endpoint);
+        
+        const posts = response.data;
 
-    commentWrapper.querySelector('.status-body-content').appendChild(replyBox);
-
-    replyBox.querySelector('.cancel-reply-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        replyBox.remove();
-    });
-
-    replyBox.querySelector('.submit-reply-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const textarea = replyBox.querySelector('.reply-textarea');
-        const content = textarea.value.trim();
-        if (!content) return;
-
-        try {
-            const newComment = await actions.lemmyPostComment({
-                content: content,
-                post_id: comment.post.id,
-                parent_id: comment.comment.id
+        if (posts.length > 0) {
+            posts.forEach(post => {
+                const postCard = renderStatus(post, state.currentUser, actions, state.settings);
+                state.timelineDiv.appendChild(postCard);
             });
-
-            const newCommentEl = renderCommentNode(newComment.comment_view, actions);
-            let repliesContainer = commentWrapper.querySelector('.comment-replies-container');
-            if (!repliesContainer) {
-                repliesContainer = document.createElement('div');
-                repliesContainer.className = 'comment-replies-container';
-                commentWrapper.appendChild(repliesContainer);
-            }
-            repliesContainer.prepend(newCommentEl);
-            replyBox.remove();
-
-        } catch (err) {
-            alert('Failed to post reply.');
+        } else if (!loadMore) {
+            state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
         }
-    });
-}
 
-function buildCommentTree(comments) {
-    const commentMap = new Map();
-    const rootComments = [];
-
-    comments.forEach(commentView => {
-        commentView.children = [];
-        commentMap.set(commentView.comment.id, commentView);
-    });
-
-    comments.forEach(commentView => {
-        const pathParts = commentView.comment.path.split('.');
-        if (pathParts.length === 2) {
-            rootComments.push(commentView);
-        } else {
-            const parentId = parseInt(pathParts[pathParts.length - 2], 10);
-            if (commentMap.has(parentId)) {
-                const parent = commentMap.get(parentId);
-                parent.children.push(commentView);
-            }
-        }
-    });
-    return rootComments;
-}
-
-function renderCommentTree(comments, container, actions) {
-    comments.forEach(commentView => {
-        const commentElement = renderCommentNode(commentView, actions);
-        container.appendChild(commentElement);
-
-        if (commentView.children && commentView.children.length > 0) {
-            const repliesContainer = document.createElement('div');
-            repliesContainer.className = 'comment-replies-container';
-            const body = commentElement.querySelector('.status-body-content');
-            if (body) {
-                body.appendChild(repliesContainer);
-                renderCommentTree(commentView.children, repliesContainer, actions);
-            }
-        }
-    });
-}
-
-async function fetchAndRenderComments(state, postId, container, actions) {
-    container.innerHTML = ``;
-    try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const params = { post_id: postId, max_depth: 15, sort: 'New', type_: 'All' };
-        const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
-        const commentsData = response.data.comments;
-
-        container.innerHTML = '';
-        if (commentsData && commentsData.length > 0) {
-            const commentTree = buildCommentTree(commentsData);
-            renderCommentTree(commentTree, container, actions);
-        } else {
-            container.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
-        }
-    } catch (err) {
-        console.error("Failed to load Lemmy comments:", err);
-        container.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
-    }
-}
-
-function renderCommentNode(commentView, actions) {
-    const comment = commentView.comment;
-    const creator = commentView.creator;
-    const counts = commentView.counts;
-
-    const commentWrapper = document.createElement('div');
-    commentWrapper.className = 'status lemmy-comment';
-    commentWrapper.id = `comment-wrapper-${comment.id}`;
-    
-    if (comment.path.split('.').length === 2) {
-        commentWrapper.classList.add('top-level-comment');
-    }
-
-    commentWrapper.innerHTML = `
-        <div class="status-body-content">
-            <div class="status-header">
-                <div class="status-header-main">
-                    <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
-                    <div>
-                        <span class="display-name">${creator.display_name || creator.name}</span>
-                        <span class="acct">@${creator.name}</span>
-                        <span class="timestamp">· ${formatTimestamp(comment.published)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="status-content">${comment.content}</div>
-            <div class="status-footer">
-                <div class="lemmy-vote-cluster">
-                    <button class="status-action lemmy-vote-btn ${commentView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                    <span class="lemmy-score">${counts.score}</span>
-                    <button class="status-action lemmy-vote-btn ${commentView.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                </div>
-                <button class="status-action" data-action="reply">${ICONS.reply}</button>
-            </div>
-        </div>
-    `;
-    
-    let pressTimer;
-    const contextHandler = (e) => {
-        const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
-        let menuItems = [
-            { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
-                if (confirm('Are you sure you want to block this user?')) {
-                    actions.lemmyBlockUser(commentView.creator.id, true);
-                }
-            }},
-        ];
-        if (isOwn) {
-             menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
-                { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
-            );
-        }
-        actions.showContextMenu(e, menuItems);
-    };
-
-    commentWrapper.addEventListener('touchstart', (e) => {
-        pressTimer = setTimeout(() => contextHandler(e), 500);
-    });
-
-    commentWrapper.addEventListener('touchend', () => {
-        clearTimeout(pressTimer);
-    });
-
-    commentWrapper.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        contextHandler(e);
-    });
-    
-    // Event listeners
-    commentWrapper.querySelectorAll('.status-action').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = e.currentTarget.dataset.action;
-            switch(action) {
-                case 'upvote': case 'downvote':
-                    const score = parseInt(e.currentTarget.dataset.score, 10);
-                    actions.lemmyCommentVote(comment.id, score, commentWrapper);
-                    break;
-                case 'reply':
-                    showReplyBox(commentWrapper, commentView, actions);
-                    break;
-            }
-        });
-    });
-
-    return commentWrapper;
-}
-
-export async function renderLemmyPostPage(state, post, actions) {
-    const container = document.getElementById('lemmy-post-view');
-    container.innerHTML = '';
-
-    try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${post.post.id}`, {}, 'lemmy');
-        const postView = data.post_view;
-
-        container.innerHTML = ''; // Clear loading message
-
-        // Render the main post using the standard Lemmy card
-        const mainPostCard = renderLemmyCard(postView, actions);
-        mainPostCard.classList.add('main-thread-post');
-        container.appendChild(mainPostCard);
-
-        // Add a dedicated container for the comments
-        const threadContainer = document.createElement('div');
-        threadContainer.className = 'lemmy-comment-thread';
-        container.appendChild(threadContainer);
-        
-        fetchAndRenderComments(state, postView.post.id, threadContainer, actions);
-        
     } catch (error) {
-        console.error("Failed to load Lemmy post detail:", error);
-        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
+        console.error('Failed to fetch timeline:', error);
+        state.timelineDiv.innerHTML = `<p>Error loading feed. ${error.message}</p>`;
+    } finally {
+        state.isLoadingMore = false;
+        if (loadMore) state.scrollLoader.classList.remove('loading');
     }
 }
