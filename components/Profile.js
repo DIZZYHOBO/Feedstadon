@@ -77,16 +77,19 @@ export async function loadMoreLemmyProfile(state, actions) {
 
 async function renderLemmyProfile(state, actions, container, userAcct, loadMore = false) {
     if (state.isLoadingMore) return;
-    state.isLoadingMore = true;
-
+    
     let username, instance;
     if (userAcct) {
         [username, instance] = userAcct.split('@');
         state.currentLemmyProfileUser = { username, instance };
-    } else {
+    } else if (state.currentLemmyProfileUser) {
         username = state.currentLemmyProfileUser.username;
         instance = state.currentLemmyProfileUser.instance;
+    } else {
+        return; // Exit if no user is set, preventing the error
     }
+    
+    state.isLoadingMore = true;
 
     const feedContainer = document.querySelector('#lemmy-profile-content .profile-feed');
     
