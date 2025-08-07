@@ -5,7 +5,6 @@ import { formatTimestamp } from './utils.js';
 function renderSingleNotification(notification) {
     const item = document.createElement('div');
     item.className = 'notification-item';
-    // *** FIX: Corrected "class.name" to "class" in the img tag below ***
     item.innerHTML = `
         <div class="notification-platform-icon">
             ${notification.platform === 'lemmy' ? ICONS.lemmy : ICONS.mastodon}
@@ -30,14 +29,13 @@ export async function updateNotificationBell() {
     }
 
     try {
-        const [mentions, pms, replies] = await Promise.all([
+        // *** FIX: Removed private message (pms) fetching ***
+        const [mentions, replies] = await Promise.all([
             apiFetch(lemmyInstance, null, '/api/v3/user/mention', { unread_only: true }, 'lemmy'),
-            apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: true }, 'lemmy'),
             apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: true, limit: 50 }, 'lemmy')
         ]);
         
         const totalUnread = (mentions.data?.mentions?.length || 0) + 
-                              (pms.data?.private_messages?.length || 0) + 
                               (replies.data?.replies?.length || 0);
 
         if (totalUnread > 0) {
@@ -51,7 +49,7 @@ export async function updateNotificationBell() {
     }
 }
 
-async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
+async function markItemsAsRead(lemmyInstance, unreadMentions) {
     // This function now runs independently and won't block rendering.
     try {
         for(const mention of unreadMentions) {
@@ -64,17 +62,8 @@ async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
                 console.error(`Failed to mark mention ${mention.person_mention.id} as read`, err);
             }
         }
-
-        for(const pm of unreadPms) {
-            try {
-                 await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
-                     method: 'POST',
-                     body: { private_message_id: pm.private_message.id, read: true }
-                }, 'lemmy');
-            } catch (err) {
-                 console.error(`Failed to mark private message ${pm.private_message.id} as read`, err);
-            }
-        }
+        
+        // *** FIX: Removed logic for marking private messages as read ***
         
         // Update the bell's status after attempting to mark items as read.
         updateNotificationBell();
@@ -110,16 +99,14 @@ export async function renderNotificationsPage(state, actions) {
         // --- Fetch Lemmy Notifications ---
         let lemmyReplyNotifs = [];
         let lemmyMentionNotifs = [];
-        let lemmyPrivateMessages = [];
+        // *** FIX: Removed private message fetching ***
         if (lemmyInstance) {
-            const [repliesResponse, mentionsResponse, messagesResponse] = await Promise.all([
+            const [repliesResponse, mentionsResponse] = await Promise.all([
                 apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
-                apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy'),
-                apiFetch(lemmyInstance, null, '/api/v3/private_message/list', { unread_only: false }, 'lemmy')
+                apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy')
             ]);
             lemmyReplyNotifs = repliesResponse.data.replies || [];
             lemmyMentionNotifs = mentionsResponse.data.mentions || [];
-            lemmyPrivateMessages = messagesResponse.data.private_messages || [];
         }
 
         // --- Combine and Process All Notifications ---
@@ -167,19 +154,8 @@ export async function renderNotificationsPage(state, actions) {
                     authorAvatar: n.person_mention.creator.avatar,
                     timestamp: n.person_mention.comment.published,
                 }
-            }),
-            ...lemmyPrivateMessages.map(n => {
-                 if (!n?.private_message?.creator) return null;
-                return {
-                    platform: 'lemmy',
-                    date: n.private_message.published,
-                    icon: ICONS.message,
-                    content: `<strong>${n.private_message.creator.name}</strong> sent you a private message.`,
-                    contextHTML: `<div class="notification-context">${n.private_message.content}</div>`,
-                    authorAvatar: n.private_message.creator.avatar,
-                    timestamp: n.private_message.published,
-                }
             })
+            // *** FIX: Removed private message processing ***
         ].filter(Boolean);
 
         allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -215,8 +191,7 @@ export async function renderNotificationsPage(state, actions) {
         // --- Mark As Read (Post-Render) ---
         if (lemmyInstance) {
             const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
-            const unreadPms = lemmyPrivateMessages.filter(p => !p.private_message.read);
-            markItemsAsRead(lemmyInstance, unreadMentions, unreadPms);
+            markItemsAsRead(lemmyInstance, unreadMentions);
         }
 
     } catch (error) {

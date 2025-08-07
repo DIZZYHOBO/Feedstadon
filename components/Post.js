@@ -96,6 +96,18 @@ export function renderStatus(status, currentUser, actions, settings) {
         pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
     }
 
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="mention">Mention @${author.acct}</button>
+                ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
+                <button data-action="mute">Mute @${author.acct}</button>
+                <button data-action="block">Block @${author.acct}</button>
+            </div>
+        </div>
+    `;
+
     card.innerHTML = `
         ${boosterInfo}
         <div class="status-body-content">
@@ -110,6 +122,7 @@ export function renderStatus(status, currentUser, actions, settings) {
                     </div>
                 </div>
                 <div class="status-header-side">
+                    ${optionsMenuHTML}
                     <div class="platform-icon-indicator">${ICONS.mastodon}</div>
                 </div>
             </div>
@@ -162,6 +175,36 @@ export function renderStatus(status, currentUser, actions, settings) {
         });
     });
 
+    const optionsBtn = card.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = card.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            const editContainer = card.querySelector('.edit-post-container');
+            
+            switch (action) {
+                case 'delete':
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                    break;
+                case 'edit':
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, ""); // Convert HTML back to text
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                    break;
+            }
+            menu.style.display = 'none';
+        });
+    }
+    
     const saveEditBtn = card.querySelector('.save-edit-btn');
     saveEditBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -173,31 +216,29 @@ export function renderStatus(status, currentUser, actions, settings) {
     });
     
     let pressTimer;
-    const contextHandler = (e) => {
-        const postAuthor = status.reblog ? status.reblog.account : status.account;
-        const isOwn = currentUser && currentUser.id === postAuthor.id;
-        let menuItems = [ { label: `${ICONS.delete} Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
-        if (isOwn) {
-            menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => {
-                    const editContainer = card.querySelector('.edit-post-container');
-                    const editTextArea = editContainer.querySelector('.edit-textarea');
-                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
-                    editContainer.style.display = 'block';
-                    editTextArea.focus();
-                }},
-                { label: `${ICONS.delete} Delete`, action: () => {
-                    if (confirm('Are you sure you want to delete this post?')) {
-                        actions.deleteStatus(post.id);
-                    }
-                }}
-            );
-        }
-        actions.showContextMenu(e, menuItems);
-    };
-
     card.addEventListener('touchstart', (e) => {
-        pressTimer = setTimeout(() => contextHandler(e), 500);
+        pressTimer = setTimeout(() => {
+            const postAuthor = status.reblog ? status.reblog.account : status.account;
+            const isOwn = currentUser && currentUser.id === postAuthor.id;
+            let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+            if (isOwn) {
+                menuItems.push(
+                    { label: `Edit`, action: () => {
+                        const editContainer = card.querySelector('.edit-post-container');
+                        const editTextArea = editContainer.querySelector('.edit-textarea');
+                        editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                        editContainer.style.display = 'block';
+                        editTextArea.focus();
+                    }},
+                    { label: `Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            actions.deleteStatus(post.id);
+                        }
+                    }}
+                );
+            }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
     });
 
     card.addEventListener('touchend', () => {
@@ -206,7 +247,26 @@ export function renderStatus(status, currentUser, actions, settings) {
 
     card.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        contextHandler(e);
+        const postAuthor = status.reblog ? status.reblog.account : status.account;
+        const isOwn = currentUser && currentUser.id === postAuthor.id;
+        let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
+        if (isOwn) {
+            menuItems.push(
+                { label: `Edit`, action: () => {
+                    const editContainer = card.querySelector('.edit-post-container');
+                    const editTextArea = editContainer.querySelector('.edit-textarea');
+                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
+                    editContainer.style.display = 'block';
+                    editTextArea.focus();
+                }},
+                { label: `Delete`, action: () => {
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.deleteStatus(post.id);
+                    }
+                }}
+            );
+        }
+        actions.showContextMenu(e, menuItems);
     });
 
     return card;
