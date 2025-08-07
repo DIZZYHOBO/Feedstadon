@@ -100,6 +100,60 @@ export function renderLemmyCard(post, actions) {
         }
     });
     
+    let pressTimer;
+    card.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            const isOwn = post.creator.name === localStorage.getItem('lemmy_username');
+            let menuItems = [
+                { label: `${ICONS.delete} Block @${post.creator.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this user?')) {
+                        actions.lemmyBlockUser(post.creator.id, true);
+                    }
+                }},
+                { label: `${ICONS.delete} Block ${post.community.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this community?')) {
+                        actions.lemmyBlockCommunity(post.community.id, true);
+                    }
+                }},
+            ];
+            if (isOwn) {
+                 menuItems.push(
+                    { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
+                    { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+                );
+            }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
+    });
+
+    card.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const isOwn = post.creator.name === localStorage.getItem('lemmy_username');
+        let menuItems = [
+            { label: `${ICONS.delete} Block @${post.creator.name}`, action: () => {
+                if (confirm('Are you sure you want to block this user?')) {
+                    actions.lemmyBlockUser(post.creator.id, true);
+                }
+            }},
+            { label: `${ICONS.delete} Block ${post.community.name}`, action: () => {
+                if (confirm('Are you sure you want to block this community?')) {
+                    actions.lemmyBlockCommunity(post.community.id, true);
+                }
+            }},
+        ];
+        if (isOwn) {
+             menuItems.push(
+                { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
+                { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+            );
+        }
+        actions.showContextMenu(e, menuItems);
+    });
+    
     // Listeners for the action buttons in the footer
     card.querySelectorAll('.status-footer .status-action').forEach(button => {
         button.addEventListener('click', e => {
