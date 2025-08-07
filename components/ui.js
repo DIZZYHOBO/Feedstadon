@@ -15,6 +15,15 @@ export function hideModal(modalId) {
     }
 }
 
+export function showImageModal(src) {
+    const imageModal = document.getElementById('image-modal');
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    if (imageModal && fullscreenImage) {
+        fullscreenImage.src = src;
+        showModal('image-modal');
+    }
+}
+
 export function showToast(message, duration = 3000) {
     const toast = document.getElementById('toast-notification');
     toast.textContent = message;
