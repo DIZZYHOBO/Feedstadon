@@ -152,7 +152,12 @@ function renderMastodonDiscover(state, actions, container) {
 
 // --- Lemmy Discover Section ---
 
-async function renderCommunityList(communities, actions, container) {
+function renderCommunityList(communities, actions, container) {
+    if (communities.length === 0) {
+        container.innerHTML = '<p>No communities found.</p>';
+        return;
+    }
+
     container.innerHTML = '';
     communities.forEach(communityView => {
         const community = communityView.community;
@@ -202,30 +207,43 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
         
         if (!loadMore) {
             container.innerHTML = `
-                <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
+                <form id="lemmy-community-search-form">
+                    <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
+                </form>
                 <div id="lemmy-discover-content-area" class="discover-content-area"></div>
             `;
             
+            const searchForm = container.querySelector('#lemmy-community-search-form');
             const searchInput = container.querySelector('#lemmy-community-search');
             let searchTimeout;
-            searchInput.addEventListener('input', (e) => {
+
+            const performSearch = async () => {
+                const query = searchInput.value.trim();
+                const searchResultsContainer = container.querySelector('#lemmy-discover-content-area');
+                if (query.length > 2) {
+                    const { data } = await apiFetch(lemmyInstance, null, '/api/v3/search', {}, 'lemmy', { q: query, type_: 'Community', sort: 'TopAll', listing_type: 'All' });
+                    renderCommunityList(data.communities, actions, searchResultsContainer);
+                } else if (query.length === 0) {
+                     renderLemmyDiscover(state, actions, container); // Reset to default list
+                }
+            };
+            
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(async () => {
-                    const query = e.target.value.trim();
-                    const searchResultsContainer = container.querySelector('#lemmy-discover-content-area');
-                    if (query.length > 2) {
-                        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { q: query, sort: 'TopDay' });
-                        renderCommunityList(data.communities, actions, searchResultsContainer);
-                    } else if (query.length === 0) {
-                        renderLemmyDiscover(state, actions, container); // Reset to default list
-                    }
-                }, 500);
+                performSearch();
+            });
+
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 500);
             });
         }
         
         const communityContainer = container ? container.querySelector('#lemmy-discover-content-area') : contentArea;
         
         if (data.communities.length > 0) {
+            if (!loadMore) communityContainer.innerHTML = '';
             renderCommunityList(data.communities, actions, communityContainer);
             state.lemmyDiscoverPage++;
             state.lemmyDiscoverHasMore = true;
