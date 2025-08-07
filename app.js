@@ -169,7 +169,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
                 state.currentUser = account;
-                document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
             } catch (error) {
                 console.error("Token verification failed:", error);
                 // Clear invalid token
@@ -530,7 +529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.currentUser = account;
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
-            document.getElementById('user-display-btn').textContent = state.currentUser.display_name;
             showToast('Mastodon login successful!');
             actions.showHomeTimeline();
             return true;
@@ -554,11 +552,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateNotificationBell();
                 actions.showLemmyFeed('Subscribed');
             } else {
-                alert('Lemmy login failed.');
+                showToast('Lemmy login failed.');
             }
         })
         .catch(err => {
-             alert('Lemmy login error.');
+             showToast('Lemmy login error.');
         });
     };
     
