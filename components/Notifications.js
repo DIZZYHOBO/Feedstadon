@@ -55,6 +55,7 @@ async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
     try {
         for(const mention of unreadMentions) {
             try {
+                // Mentions use a standard request body
                 await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
                      method: 'POST',
                      body: { person_mention_id: mention.person_mention.id, read: true }
@@ -66,10 +67,15 @@ async function markItemsAsRead(lemmyInstance, unreadMentions, unreadPms) {
 
         for(const pm of unreadPms) {
             try {
-                 await apiFetch(lemmyInstance, null, '/api/v3/private_message/mark_as_read', {
-                     method: 'POST',
-                     body: { private_message_id: pm.private_message.id, read: true }
-                }, 'lemmy');
+                 // Pass data as URL parameters for this specific endpoint
+                 await apiFetch(
+                    lemmyInstance,
+                    null,
+                    '/api/v3/private_message/mark_as_read',
+                    { method: 'POST' }, // Options object with no body
+                    'lemmy',
+                    { private_message_id: pm.private_message.id, read: true } // Params for URL query string
+                );
             } catch (err) {
                  console.error(`Failed to mark private message ${pm.private_message.id} as read`, err);
             }
@@ -107,7 +113,6 @@ export async function renderNotificationsPage(state, actions) {
                 mastodonNotifs = response.data || [];
             } catch (e) {
                 console.error("Failed to fetch Mastodon notifications:", e);
-                // Optionally show a message to the user in the UI
             }
         }
 
@@ -116,7 +121,6 @@ export async function renderNotificationsPage(state, actions) {
         let lemmyMentionNotifs = [];
         let lemmyPrivateMessages = [];
         if (lemmyInstance) {
-            // *** FIX: Use Promise.allSettled to make fetching resilient to individual errors ***
             const results = await Promise.allSettled([
                 apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
                 apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy'),
