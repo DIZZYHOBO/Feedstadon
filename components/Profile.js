@@ -153,6 +153,7 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
                                 <span class="lemmy-score">${item.counts.score}</span>
                                 <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                             </div>
+                            <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
                         </div>
                     </div>`;
                 
@@ -162,6 +163,11 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
                         const score = parseInt(e.currentTarget.dataset.score, 10);
                         actions.lemmyCommentVote(item.comment.id, score, commentCard);
                     });
+                });
+                
+                commentCard.querySelector('.screenshot-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    actions.showScreenshotPage(item, item);
                 });
 
                 feed.appendChild(commentCard);
