@@ -10,7 +10,7 @@ function renderSingleNotification(notification) {
             ${notification.platform === 'lemmy' ? ICONS.lemmy : ICONS.mastodon}
         </div>
         <div class="notification-icon">${notification.icon}</div>
-        <img class="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+        <img class.name="notification-avatar" src="${notification.authorAvatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
         <div class="notification-content">
             <p>${notification.content}</p>
             ${notification.contextHTML}
@@ -49,7 +49,6 @@ export async function updateNotificationBell() {
 }
 
 async function markItemsAsRead(lemmyInstance, unreadMentions) {
-    // This function now runs independently and won't block rendering.
     try {
         for(const mention of unreadMentions) {
             try {
@@ -61,144 +60,120 @@ async function markItemsAsRead(lemmyInstance, unreadMentions) {
                 console.error(`Failed to mark mention ${mention.person_mention.id} as read`, err);
             }
         }
-        
-        // Update the bell's status after attempting to mark items as read.
         updateNotificationBell();
     } catch (error) {
         console.error("An error occurred while marking items as read:", error);
     }
 }
 
-export async function renderNotificationsPage(state, actions) {
+export function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
     const subNav = container.querySelector('.notifications-sub-nav');
     const listContainer = container.querySelector('#notifications-list');
 
     subNav.innerHTML = `
         <div class="notifications-sub-nav-tabs">
-            <button class="notifications-sub-nav-btn" data-filter="all">All</button>
-            <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
             <button class="notifications-sub-nav-btn" data-filter="mastodon">Mastodon</button>
+            <button class="notifications-sub-nav-btn" data-filter="lemmy">Lemmy</button>
         </div>
     `;
-    listContainer.innerHTML = '';
-    
-    try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        let allNotifications = [];
 
-        // --- Fetch Mastodon Notifications ---
-        if (state.instanceUrl && state.accessToken) {
-            try {
-                const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
-                const mastodonNotifs = response.data || [];
-                allNotifications.push(...mastodonNotifs.map(n => {
-                    let icon = ICONS.mention;
-                    let actionText = `${n.type}d`;
-                    if (n.type === 'favourite') {
-                        icon = ICONS.favorite;
-                        actionText = 'favorited';
-                    } else if (n.type === 'reblog') {
-                        icon = ICONS.boost;
-                        actionText = 'boosted';
+    const fetchAndRender = async (platform) => {
+        listContainer.innerHTML = '<p>Loading...</p>';
+        let notifications = [];
+
+        try {
+            if (platform === 'mastodon') {
+                if (state.instanceUrl && state.accessToken) {
+                    const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/notifications');
+                    notifications = (response.data || []).map(n => {
+                        let icon = ICONS.mention;
+                        let actionText = `${n.type}d`;
+                        if (n.type === 'favourite') { icon = ICONS.favorite; actionText = 'favorited'; }
+                        else if (n.type === 'reblog') { icon = ICONS.boost; actionText = 'boosted'; }
+                        return {
+                            platform: 'mastodon', date: n.created_at, icon: icon,
+                            content: `<strong>${n.account.display_name}</strong> ${actionText} your post.`,
+                            contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
+                            authorAvatar: n.account.avatar_static, timestamp: n.created_at,
+                        };
+                    });
+                } else {
+                    listContainer.innerHTML = '<p>You are not logged into Mastodon.</p>';
+                    return;
+                }
+            } else if (platform === 'lemmy') {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                if (lemmyInstance) {
+                    const [repliesResult, mentionsResult] = await Promise.allSettled([
+                        apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
+                        apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy')
+                    ]);
+
+                    if (repliesResult.status === 'fulfilled') {
+                        notifications.push(...(repliesResult.value.data.replies || []).map(n => ({
+                            platform: 'lemmy', date: n.comment_reply.comment.published, icon: ICONS.reply,
+                            content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
+                            contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
+                            authorAvatar: n.comment_reply.creator.avatar, timestamp: n.comment_reply.comment.published,
+                        })));
                     }
-                    return {
-                        platform: 'mastodon',
-                        date: n.created_at,
-                        icon: icon,
-                        content: `<strong>${n.account.display_name}</strong> ${actionText} your post.`,
-                        contextHTML: n.status ? `<div class="notification-context">${n.status.content.replace(/<[^>]*>/g, "")}</div>` : '',
-                        authorAvatar: n.account.avatar_static,
-                        timestamp: n.created_at,
+                    if (mentionsResult.status === 'fulfilled') {
+                        const mentions = mentionsResult.value.data.mentions || [];
+                        notifications.push(...mentions.map(n => ({
+                            platform: 'lemmy', date: n.person_mention.comment.published, icon: ICONS.mention,
+                            content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
+                            contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
+                            authorAvatar: n.person_mention.creator.avatar, timestamp: n.person_mention.comment.published,
+                        })));
+                        const unreadMentions = mentions.filter(m => !m.person_mention.read);
+                        markItemsAsRead(lemmyInstance, unreadMentions);
                     }
-                }));
-            } catch (e) {
-                console.error("Failed to fetch Mastodon notifications:", e);
-            }
-        }
-
-        // --- Fetch Lemmy Notifications ---
-        if (lemmyInstance) {
-            const results = await Promise.allSettled([
-                apiFetch(lemmyInstance, null, '/api/v3/user/replies', { sort: 'New', unread_only: false }, 'lemmy'),
-                apiFetch(lemmyInstance, null, '/api/v3/user/mention', { sort: 'New', unread_only: false }, 'lemmy')
-            ]);
-            
-            const [repliesResult, mentionsResult] = results;
-
-            if (repliesResult.status === 'fulfilled') {
-                const lemmyReplyNotifs = repliesResult.value.data.replies || [];
-                allNotifications.push(...lemmyReplyNotifs.map(n => {
-                    if (!n?.comment_reply?.creator || !n?.comment_reply?.comment) return null;
-                    return {
-                        platform: 'lemmy',
-                        date: n.comment_reply.comment.published,
-                        icon: ICONS.reply,
-                        content: `<strong>${n.comment_reply.creator.name}</strong> replied to your comment.`,
-                        contextHTML: `<div class="notification-context">${n.comment_reply.comment.content}</div>`,
-                        authorAvatar: n.comment_reply.creator.avatar,
-                        timestamp: n.comment_reply.comment.published,
-                    };
-                }).filter(Boolean));
-            } else {
-                console.error("Failed to fetch Lemmy replies:", repliesResult.reason);
+                } else {
+                    listContainer.innerHTML = '<p>You are not logged into Lemmy.</p>';
+                    return;
+                }
             }
 
-            if (mentionsResult.status === 'fulfilled') {
-                const lemmyMentionNotifs = mentionsResult.value.data.mentions || [];
-                allNotifications.push(...lemmyMentionNotifs.map(n => {
-                    if (!n?.person_mention?.creator || !n?.person_mention?.comment) return null;
-                    return {
-                        platform: 'lemmy',
-                        date: n.person_mention.comment.published,
-                        icon: ICONS.mention,
-                        content: `<strong>${n.person_mention.creator.name}</strong> mentioned you in a comment.`,
-                        contextHTML: `<div class="notification-context">${n.person_mention.comment.content}</div>`,
-                        authorAvatar: n.person_mention.creator.avatar,
-                        timestamp: n.person_mention.comment.published,
-                    }
-                }).filter(Boolean));
-                
-                // Mark mentions as read after fetching
-                const unreadMentions = lemmyMentionNotifs.filter(m => !m.person_mention.read);
-                markItemsAsRead(lemmyInstance, unreadMentions);
-            } else {
-                 console.error("Failed to fetch Lemmy mentions:", mentionsResult.reason);
-            }
-        }
+            notifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
-        // --- Render Logic ---
-        const renderFilteredNotifications = (filter) => {
             listContainer.innerHTML = '';
-            const filtered = allNotifications.filter(n => filter === 'all' || n.platform === filter);
-            
-            if (filtered.length === 0) {
+            if (notifications.length === 0) {
                 listContainer.innerHTML = '<p>No notifications to show.</p>';
                 return;
             }
-
-            filtered.forEach(notification => {
+            notifications.forEach(notification => {
                 const item = renderSingleNotification(notification);
                 if (item) listContainer.appendChild(item);
             });
-        };
 
-        subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                subNav.querySelectorAll('.notifications-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                renderFilteredNotifications(e.target.dataset.filter);
-            });
+        } catch (error) {
+            console.error(`Failed to fetch ${platform} notifications:`, error);
+            listContainer.innerHTML = `<p>Could not load notifications for ${platform}.</p>`;
+        }
+    };
+
+    const tabButtons = subNav.querySelectorAll('.notifications-sub-nav-btn');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            fetchAndRender(e.target.dataset.filter);
         });
-        
-        const defaultTab = 'all';
-        subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`).classList.add('active');
-        renderFilteredNotifications(defaultTab);
+    });
 
-    } catch (error) {
-        console.error('Failed to render notifications page:', error);
-        listContainer.innerHTML = `<p>Could not load notifications. ${error.message}</p>`;
+    // Set initial tab and load its content
+    const defaultTab = state.instanceUrl ? 'mastodon' : 'lemmy';
+    const defaultButton = subNav.querySelector(`.notifications-sub-nav-btn[data-filter="${defaultTab}"]`);
+    if (defaultButton) {
+        defaultButton.classList.add('active');
+        fetchAndRender(defaultTab);
+    } else {
+        // Fallback if no default can be determined
+        const firstButton = subNav.querySelector('.notifications-sub-nav-btn');
+        if (firstButton) {
+            firstButton.classList.add('active');
+            fetchAndRender(firstButton.dataset.filter);
+        }
     }
 }
