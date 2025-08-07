@@ -88,6 +88,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup UI Elements
     const notificationsBtn = document.getElementById('notifications-btn');
     notificationsBtn.innerHTML = ICONS.notifications + '<div class="notification-dot"></div>';
+    const refreshBtn = document.getElementById('refresh-btn');
+    refreshBtn.innerHTML = ICONS.refresh;
+    const refreshSpinner = document.getElementById('refresh-spinner');
+    refreshSpinner.innerHTML = ICONS.refresh;
 
 
     const state = {
@@ -324,6 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
          showLemmyFeed: async (feedType, sortType = 'New') => {
             showLoadingBar();
+            refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = feedType;
             state.currentTimeline = null;
             state.currentLemmySort = sortType;
@@ -331,23 +336,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderTimelineSubNav('lemmy');
             await fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
             hideLoadingBar();
+            refreshSpinner.style.display = 'none';
         },
         showMastodonTimeline: async (timelineType) => {
             showLoadingBar();
+            refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = null;
             state.currentTimeline = timelineType;
             switchView('timeline');
             renderTimelineSubNav('mastodon');
             await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
             hideLoadingBar();
+            refreshSpinner.style.display = 'none';
         },
          showHomeTimeline: async () => {
             showLoadingBar();
+            refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = null;
             state.currentTimeline = 'home';
             switchView('timeline');
             await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
             hideLoadingBar();
+            refreshSpinner.style.display = 'none';
         },
         replyToStatus: (post) => {
             showComposeModalWithReply(state, post);
@@ -557,6 +567,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     initComposeModal(state, () => actions.showHomeTimeline());
     initImageModal();
     
+    refreshBtn.addEventListener('click', () => {
+        if (state.currentView === 'timeline') {
+            if (state.currentTimeline) {
+                actions.showHomeTimeline();
+            } else if (state.currentLemmyFeed) {
+                actions.showLemmyFeed(state.currentLemmyFeed);
+            }
+        }
+    });
+
     notificationsBtn.addEventListener('click', () => {
         actions.showNotifications();
     });
