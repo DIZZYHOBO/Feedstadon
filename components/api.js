@@ -17,8 +17,8 @@ export async function apiFetch(instance, token, endpoint, options = {}, authType
         if (lemmyToken) {
             options.headers['Authorization'] = `Bearer ${lemmyToken}`;
             
-            // *** FIX: Only add 'auth' to the body for POST/PUT requests that DON'T contain 'mark_as_read' ***
-            if ((options.method === 'POST' || options.method === 'PUT') && !endpoint.includes('mark_as_read')) {
+            // *** FIX: Consistently add 'auth' to the body for all POST/PUT requests ***
+            if (options.method === 'POST' || options.method === 'PUT') {
                 if (options.body) {
                     options.body.auth = lemmyToken;
                 } else {
