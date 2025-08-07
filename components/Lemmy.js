@@ -17,7 +17,7 @@ export function renderLemmyCard(post, state, actions) {
         <div class="status-body-content">
             <div class="status-header">
                 <div class="status-header-main">
-                    <img src="${community.icon}" alt="${community.name}'s icon" class="avatar">
+                    <img src="${community.icon || './images/logo.png'}" alt="${community.name}'s icon" class="avatar">
                     <div>
                         <a href="#" class="display-name" data-community-id="${community.id}">${community.name}</a>
                         <div class="acct">posted by <a href="#" data-user-id="${creator.id}">@${creator.name}</a></div>
@@ -31,7 +31,7 @@ export function renderLemmyCard(post, state, actions) {
             <h3 class="lemmy-title">${post.post.name}</h3>
             ${post.post.body ? `<div class="status-content lemmy-body">${post.post.body}</div>` : ''}
             ${post.post.url ? `<a href="${post.post.url}" target="_blank" class="lemmy-link-preview">${post.post.url}</a>` : ''}
-            ${post.post.thumbnail_url ? `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="thumbnail" class="status-media-attachment"></div>` : ''}
+            ${post.post.thumbnail_url ? `<div class="status-media"><img src="${post.post.thumbnail_url || './images/logo.png'}" alt="thumbnail" class="status-media-attachment"></div>` : ''}
         </div>
         <div class="status-footer">
             <div class="lemmy-vote-cluster">
