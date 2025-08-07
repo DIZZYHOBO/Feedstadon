@@ -168,12 +168,34 @@ function renderCommentNode(commentView, actions) {
         </div>
     `;
     
+    let pressTimer;
+    commentWrapper.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
+            let menuItems = [
+                { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this user?')) {
+                        actions.lemmyBlockUser(commentView.creator.id, true);
+                    }
+                }},
+            ];
+            if (isOwn) {
+                 menuItems.push(
+                    { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
+                    { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+                );
+            }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
+    });
+
+    commentWrapper.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
     commentWrapper.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        
         const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
-        
         let menuItems = [
             { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
                 if (confirm('Are you sure you want to block this user?')) {
@@ -181,14 +203,12 @@ function renderCommentNode(commentView, actions) {
                 }
             }},
         ];
-        
         if (isOwn) {
              menuItems.push(
                 { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
                 { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
             );
         }
-
         actions.showContextMenu(e, menuItems);
     });
     
