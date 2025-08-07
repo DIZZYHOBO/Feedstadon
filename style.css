@@ -716,8 +716,23 @@ button:disabled {
     border-radius: 8px;
     margin-left: 15px;
 }
-#lemmy-community-search {
+#lemmy-community-search-form {
+    position: relative;
     margin-bottom: 10px;
+}
+#lemmy-search-results-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    display: none;
+    z-index: 10;
 }
 
 
