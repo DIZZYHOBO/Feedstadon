@@ -82,6 +82,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    position: relative;
 }
 
 #pull-to-refresh-indicator {
@@ -241,6 +242,26 @@ button:disabled {
 #loading-bar.loading {
     transform: scaleX(1);
     opacity: 1;
+}
+
+#refresh-spinner {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2002;
+    display: none;
+}
+#refresh-spinner .icon {
+    width: 32px;
+    height: 32px;
+    color: var(--accent-color);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .nav-left, .nav-right {
