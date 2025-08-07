@@ -278,6 +278,12 @@ button:disabled {
     position: relative;
 }
 
+#nav-logo {
+    height: 30px;
+    width: auto;
+    fill: var(--font-color);
+}
+
 .nav-button {
     background: none;
     border: none;
