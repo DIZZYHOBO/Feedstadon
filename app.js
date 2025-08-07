@@ -7,6 +7,7 @@ import { initComposeModal, showComposeModal, showComposeModalWithReply } from '.
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
+import { renderDiscoverPage } from './components/Discover.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
@@ -121,6 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         app: document.getElementById('app-view'),
         timeline: document.getElementById('timeline'),
         notifications: document.getElementById('notifications-view'),
+        discover: document.getElementById('discover-view'),
         profile: document.getElementById('profile-page-view'),
         editProfile: document.getElementById('edit-profile-view'),
         search: document.getElementById('search-results-view'),
@@ -319,6 +321,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderNotificationsPage(state, actions);
             hideLoadingBar();
         },
+        showDiscoverPage: async () => {
+            showLoadingBar();
+            switchView('discover');
+            await renderDiscoverPage(state, actions);
+            hideLoadingBar();
+        },
         showLemmyPostDetail: async (post) => {
             showLoadingBar();
             switchView('lemmyPost');
@@ -404,6 +412,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast(`Failed to ${action} post.`);
             }
         },
+        mastodonFollow: async (accountId, follow = true) => {
+            try {
+                const endpoint = follow ? 'follow' : 'unfollow';
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/${endpoint}`, { method: 'POST' });
+                showToast(`User ${follow ? 'followed' : 'unfollowed'}.`);
+                return true;
+            } catch (err) {
+                showToast(`Failed to ${follow ? 'follow' : 'unfollow'} user.`);
+                return false;
+            }
+        },
         lemmyVote: async (postId, score, card) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -477,6 +496,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: commentData
             }, 'lemmy');
             return response.data;
+        },
+        lemmyFollowCommunity: async (communityId, follow = true) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/community/follow', {
+                    method: 'POST',
+                    body: { community_id: communityId, follow: follow }
+                }, 'lemmy');
+                showToast(`Community ${follow ? 'followed' : 'unfollowed'}.`);
+                return true;
+            } catch (err) {
+                showToast('Failed to follow community.');
+                return false;
+            }
         },
         lemmyBlockCommunity: async (communityId, block) => {
             try {
@@ -577,6 +610,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     notificationsBtn.addEventListener('click', () => {
         actions.showNotifications();
+    });
+    
+    document.getElementById('discover-btn').addEventListener('click', () => {
+        actions.showDiscoverPage();
     });
 
     // --- Initial Load ---
