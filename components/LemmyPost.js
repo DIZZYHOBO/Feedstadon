@@ -156,7 +156,7 @@ export function renderCommentNode(commentView, actions) {
                     ${optionsMenuHTML}
                 </div>
             </div>
-            <div class="status-content">${comment.content}</div>
+            <div class="status-content"></div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                     <button class="status-action lemmy-vote-btn ${commentView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
@@ -168,6 +168,11 @@ export function renderCommentNode(commentView, actions) {
         </div>
     `;
     
+    const contentDiv = commentWrapper.querySelector('.status-content');
+    if (contentDiv) {
+        contentDiv.innerHTML = new showdown.Converter().makeHtml(comment.content);
+    }
+
     commentWrapper.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
         e.stopPropagation();
         actions.showLemmyProfile(`${creator.name}@${new URL(creator.actor_id).hostname}`);
