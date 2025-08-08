@@ -143,21 +143,48 @@ export async function renderDiscoverPage(state, actions) {
     const lemmyContainer = view.querySelector('#lemmy-discover-content');
     const mastodonContainer = view.querySelector('#mastodon-trending-content');
 
+    const loadedTabs = {
+        subscribed: false,
+        lemmy: false,
+        'mastodon-trending': false
+    };
+
+    async function loadTabData(tabName) {
+        if (loadedTabs[tabName]) return;
+
+        switch (tabName) {
+            case 'subscribed':
+                subscribedContainer.innerHTML = 'Loading...';
+                await renderSubscribedCommunities(state, actions, subscribedContainer);
+                break;
+            case 'lemmy':
+                lemmyContainer.innerHTML = 'Loading...';
+                await renderLemmyCommunities(state, actions, lemmyContainer);
+                break;
+            case 'mastodon-trending':
+                mastodonContainer.innerHTML = 'Loading...';
+                await renderMastodonTrendingPosts(state, actions, mastodonContainer);
+                break;
+        }
+        loadedTabs[tabName] = true;
+    }
+
     view.querySelectorAll('.discover-sub-nav-btn').forEach(button => {
         button.addEventListener('click', () => {
             view.querySelector('.discover-sub-nav-btn.active').classList.remove('active');
             button.classList.add('active');
             
-            state.currentDiscoverTab = button.dataset.tab;
+            const newTab = button.dataset.tab;
+            state.currentDiscoverTab = newTab;
 
             view.querySelector('.discover-tab-content.active').classList.remove('active');
-            view.querySelector(`#${state.currentDiscoverTab}-content`).classList.add('active');
+            view.querySelector(`#${newTab}-content`).classList.add('active');
+
+            loadTabData(newTab);
         });
     });
 
-    await renderSubscribedCommunities(state, actions, subscribedContainer);
-    await renderLemmyCommunities(state, actions, lemmyContainer);
-    await renderMastodonTrendingPosts(state, actions, mastodonContainer);
+    await loadTabData('subscribed');
 }
 
 
