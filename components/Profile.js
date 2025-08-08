@@ -1,6 +1,7 @@
 import { apiFetch, apiUpdateCredentials } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
+import { renderCommentNode } from './LemmyPost.js';
 import { ICONS } from './icons.js';
 
 async function renderMastodonProfile(state, actions, container, accountId) {
@@ -180,14 +181,44 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                                     <span class="lemmy-score">${item.counts.score}</span>
                                     <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                                 </div>
+                                <button class="status-action view-replies-btn">Replies</button>
                                 <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
                             </div>
-                        </div>`;
+                        </div>
+                        <div class="comment-replies-container profile-replies-container"></div>
+                    `;
 
                     const contentDiv = commentCard.querySelector('.status-content');
                     if (contentDiv) {
                         contentDiv.innerHTML = new showdown.Converter().makeHtml(item.comment.content);
                     }
+                    
+                    commentCard.querySelector('.view-replies-btn').addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const repliesContainer = commentCard.querySelector('.profile-replies-container');
+                        const isVisible = repliesContainer.style.display === 'block';
+
+                        if (isVisible) {
+                            repliesContainer.style.display = 'none';
+                        } else {
+                            repliesContainer.style.display = 'block';
+                            if (!repliesContainer.dataset.loaded) {
+                                repliesContainer.innerHTML = 'Loading replies...';
+                                const { data: postData } = await apiFetch(instance, null, '/api/v3/post', {}, 'lemmy', { id: item.post.id });
+                                const fullComment = postData.comments.find(c => c.comment.id === item.comment.id);
+                                
+                                repliesContainer.innerHTML = '';
+                                if (fullComment && fullComment.replies) {
+                                    fullComment.replies.forEach(reply => {
+                                        repliesContainer.appendChild(renderCommentNode(reply, actions));
+                                    });
+                                } else {
+                                    repliesContainer.innerHTML = '<p>No replies to this comment.</p>';
+                                }
+                                repliesContainer.dataset.loaded = 'true';
+                            }
+                        }
+                    });
 
                     commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
                     
