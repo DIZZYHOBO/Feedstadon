@@ -150,7 +150,7 @@ export function renderStatus(status, currentUser, actions, settings) {
         <div class="status-body-content">
             ${inReplyToInfo}
             <div class="status-header">
-                <div class="status-header-main">
+                <div class="status-header-main" data-action="view-profile">
                     <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
                     <div>
                         <span class="display-name">${author.display_name}</span>
@@ -181,6 +181,11 @@ export function renderStatus(status, currentUser, actions, settings) {
         </div>
         <div class="conversation-container"></div>
     `;
+
+    card.querySelector('[data-action="view-profile"]').addEventListener('click', e => {
+        e.stopPropagation();
+        actions.showProfilePage('mastodon', author.id);
+    });
     
     // Attach image click listener
     const mediaImg = card.querySelector('.status-media img');
