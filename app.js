@@ -2,7 +2,7 @@ import { fetchTimeline } from './components/Timeline.js';
 import { renderProfilePage, renderEditProfilePage, loadMoreLemmyProfile } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
-import { renderStatusDetail } from './components/Post.js';
+import { renderStatusDetail, renderStatus } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
@@ -401,8 +401,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-        replyToStatus: (post) => {
-            showComposeModalWithReply(state, post);
+        replyToStatus: (post, card) => {
+            actions.showConversation(post, card);
+        },
+        showConversation: async (post, card) => {
+            const container = card.querySelector('.conversation-container');
+            const isVisible = container.style.display === 'flex';
+            
+            document.querySelectorAll('.conversation-container').forEach(c => c.style.display = 'none');
+
+            if (isVisible) {
+                container.style.display = 'none';
+            } else {
+                container.innerHTML = 'Loading conversation...';
+                container.style.display = 'flex';
+                
+                const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${post.id}/context`);
+
+                container.innerHTML = `
+                    <div class="conversation-thread"></div>
+                    <div class="conversation-reply-box">
+                        <textarea class="conversation-reply-textarea" placeholder="Reply..."></textarea>
+                        <button class="button-primary send-reply-btn">Reply</button>
+                    </div>
+                `;
+
+                const threadContainer = container.querySelector('.conversation-thread');
+                if (context.descendants) {
+                    context.descendants.forEach(reply => {
+                        threadContainer.appendChild(renderStatus(reply, state.currentUser, actions, state.settings));
+                    });
+                }
+                
+                const textarea = container.querySelector('.conversation-reply-textarea');
+                textarea.value = `@${post.account.acct} `;
+                textarea.focus();
+
+                container.querySelector('.send-reply-btn').addEventListener('click', async () => {
+                    const status = textarea.value.trim();
+                    if (!status) return;
+
+                    await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+                        method: 'POST',
+                        body: { status: status, in_reply_to_id: post.id }
+                    });
+                    
+                    container.style.display = 'none';
+                });
+            }
         },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
