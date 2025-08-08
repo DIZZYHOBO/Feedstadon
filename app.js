@@ -2,10 +2,12 @@ import { fetchTimeline } from './components/Timeline.js';
 import { renderProfilePage, renderEditProfilePage, loadMoreLemmyProfile } from './components/Profile.js';
 import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
 import { renderSettingsPage } from './components/Settings.js';
-import { renderStatusDetail } from './components/Post.js';
+import { renderStatusDetail, renderStatus } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
+import { renderMergedPostPage } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
@@ -133,12 +135,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         notifications: document.getElementById('notifications-view'),
         discover: document.getElementById('discover-view'),
         screenshot: document.getElementById('screenshot-view'),
+        mergedPost: document.getElementById('merged-post-view'),
         profile: document.getElementById('profile-page-view'),
         editProfile: document.getElementById('edit-profile-view'),
         search: document.getElementById('search-results-view'),
         settings: document.getElementById('settings-view'),
         statusDetail: document.getElementById('status-detail-view'),
         lemmyPost: document.getElementById('lemmy-post-view'),
+        lemmyCommunity: document.getElementById('lemmy-community-view'),
     };
     
     // --- Global Context Menu ---
@@ -305,6 +309,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderProfilePage(state, actions, platform, accountId, userAcct);
             hideLoadingBar();
         },
+        showLemmyProfile: (userAcct) => {
+             actions.showProfilePage('lemmy', null, userAcct);
+        },
         showEditProfile: () => {
             switchView('editProfile');
             renderEditProfilePage(state, actions);
@@ -349,6 +356,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderLemmyPostPage(state, post, actions);
             hideLoadingBar();
         },
+        showLemmyCommunity: async (communityName) => {
+            showLoadingBar();
+            switchView('lemmyCommunity');
+            await renderLemmyCommunityPage(state, actions, communityName);
+            hideLoadingBar();
+        },
+        showMergedPost: async (post) => {
+            showLoadingBar();
+            switchView('mergedPost');
+            await renderMergedPostPage(state, post, actions);
+            hideLoadingBar();
+        },
          showLemmyFeed: async (feedType, sortType = 'New') => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
@@ -368,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.currentTimeline = timelineType;
             switchView('timeline');
             renderTimelineSubNav('mastodon');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, true); // Added mastodonOnly flag
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
@@ -382,8 +401,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-        replyToStatus: (post) => {
-            showComposeModalWithReply(state, post);
+        replyToStatus: (post, card) => {
+            actions.showConversation(post, card);
+        },
+        showConversation: async (post, card) => {
+            const container = card.querySelector('.conversation-container');
+            const isVisible = container.style.display === 'flex';
+            
+            document.querySelectorAll('.conversation-container').forEach(c => c.style.display = 'none');
+
+            if (isVisible) {
+                container.style.display = 'none';
+            } else {
+                container.innerHTML = 'Loading conversation...';
+                container.style.display = 'flex';
+                
+                const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${post.id}/context`);
+
+                container.innerHTML = `
+                    <div class="conversation-thread"></div>
+                    <div class="conversation-reply-box">
+                        <textarea class="conversation-reply-textarea" placeholder="Reply..."></textarea>
+                        <button class="button-primary send-reply-btn">Reply</button>
+                    </div>
+                `;
+
+                const threadContainer = container.querySelector('.conversation-thread');
+                if (context.descendants) {
+                    context.descendants.forEach(reply => {
+                        threadContainer.appendChild(renderStatus(reply, state.currentUser, actions, state.settings));
+                    });
+                }
+                
+                const textarea = container.querySelector('.conversation-reply-textarea');
+                textarea.value = `@${post.account.acct} `;
+                textarea.focus();
+
+                container.querySelector('.send-reply-btn').addEventListener('click', async () => {
+                    const status = textarea.value.trim();
+                    if (!status) return;
+
+                    await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+                        method: 'POST',
+                        body: { status: status, in_reply_to_id: post.id }
+                    });
+                    
+                    container.style.display = 'none';
+                });
+            }
         },
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
@@ -689,8 +754,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'settings-link':
                 actions.showSettings();
                 break;
+            case 'help-link':
+                document.getElementById('help-modal').classList.add('visible');
+                break;
         }
         document.getElementById('user-dropdown').classList.remove('active');
+    });
+
+    document.getElementById('close-help-btn').addEventListener('click', () => {
+        document.getElementById('help-modal').classList.remove('visible');
+    });
+    
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
+            e.preventDefault();
+            openInAppBrowser(link.href);
+        }
     });
 
     window.addEventListener('scroll', () => {
