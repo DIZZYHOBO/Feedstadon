@@ -1,0 +1,97 @@
+:root {
+    --bg-color: #282a36;
+    --card-color: #44475a;
+    --primary-color: #44475a;
+    --accent-color: #bd93f9;
+    --font-color: #f8f8f2;
+    --font-color-muted: #6272a4;
+    --border-color: #6272a4;
+    --link-color: #8be9fd;
+    --border-radius: 12px;
+}
+
+body {
+    font-family: sans-serif;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    margin: 0;
+}
+
+.main-container {
+    display: flex;
+    gap: 30px;
+    width: 100%;
+    max-width: 1200px;
+}
+
+#preview-container {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#controls-container {
+    flex: 1;
+    background-color: var(--card-color);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+/* Preview Card Styles (mimicking main app) */
+.status { background-color: var(--card-color); border-radius: var(--border-radius); border: 1px solid var(--border-color); overflow: hidden; }
+.status-body-content { padding: 20px; }
+.status-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.status-header .avatar { width: 44px; height: 44px; border-radius: 50%; }
+.lemmy-card .avatar { border-radius: 8px; }
+.status-header .display-name { font-weight: bold; }
+.status-header .acct { color: var(--font-color-muted); }
+.status-content .lemmy-title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
+.status-content .status-media img { max-width: 100%; border-radius: 8px; }
+.lemmy-post-body p { margin-top: 15px; line-height: 1.5; }
+.comment { background-color: var(--card-color); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 15px; }
+.comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.comment-header .avatar { width: 30px; height: 30px; border-radius: 50%; }
+.comment-body { color: var(--font-color); }
+.mastodon-style { border-left: 3px solid var(--accent-color); }
+
+/* Controls Styles */
+.theme-inputs { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+.input-group { display: flex; flex-direction: column; gap: 5px; }
+label { font-weight: bold; color: var(--font-color-muted); }
+input[type="text"] {
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 1em;
+}
+button {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+#output-area { display: flex; flex-direction: column; gap: 10px; }
+textarea {
+    width: 100%;
+    height: 250px;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+    font-family: monospace;
+}
+#copy-css-btn { margin-top: -10px; }
