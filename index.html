@@ -137,6 +137,29 @@
         </div>
     </div>
 
+    <template id="mastodon-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Mastodon</h3>
+            <p>Enter your instance URL to get started.</p>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
+                <button type="submit" class="connect-btn">Connect</button>
+            </form>
+        </div>
+    </template>
+
+    <template id="lemmy-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Lemmy</h3>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
+                <input type="text" class="username-input" placeholder="Username">
+                <input type="password" class="password-input" placeholder="Password">
+                <button type="submit" class="connect-btn">Connect</button>
+            </form>
+        </div>
+    </template>
+
     <script src="app.js" type="module"></script>
     <script>
         if ('serviceWorker' in navigator) {
