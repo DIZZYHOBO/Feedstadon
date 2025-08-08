@@ -44,7 +44,14 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
-    const bodyHTML = post.post.body ? new showdown.Converter().makeHtml(post.post.body) : '';
+    const fullBodyHtml = post.post.body ? new showdown.Converter().makeHtml(post.post.body) : '';
+    let bodyHTML = fullBodyHtml;
+    const wordCount = post.post.body ? post.post.body.split(/\s+/).length : 0;
+
+    if (wordCount > 30) {
+        const truncatedText = post.post.body.split(/\s+/).slice(0, 30).join(' ');
+        bodyHTML = new showdown.Converter().makeHtml(truncatedText) + '... <a href="#" class="read-more-link">Read More</a>';
+    }
 
     card.innerHTML = `
         <div class="status-body-content">
@@ -84,6 +91,16 @@ export function renderLemmyCard(post, actions) {
             </div>
         </div>
     `;
+
+    if (wordCount > 30) {
+        const bodyContainer = card.querySelector('.lemmy-post-body');
+        const readMoreLink = bodyContainer.querySelector('.read-more-link');
+        readMoreLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            bodyContainer.innerHTML = fullBodyHtml;
+        });
+    }
 
     // Attach image click listener
     const mediaImg = card.querySelector('.status-media img');
