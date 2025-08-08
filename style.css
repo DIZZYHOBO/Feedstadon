@@ -36,14 +36,15 @@
 }
 
 [data-theme="voyage"] {
-    --bg-color: #282a36;
-    --card-color: #44475a;
-    --primary-color: #44475a;
-    --accent-color: #bd93f9;
-    --font-color: #f8f8f2;
-    --font-color-muted: #6272a4;
-    --border-color: #6272a4;
-    --link-color: #8be9fd;
+    --bg-color: #12151d;
+    --card-color: #1a1c28;
+    --primary-color: #fffdfa;
+    --accent-color: #afb1b5;
+    --font-color: #fffdfa;
+    --font-color-muted: #afb1b5;
+    --border-color: #1a1c28;
+    --link-color: #fffdfa;
+    --notification-dot-color: #ff3d3d;
 }
 
 
@@ -1199,6 +1200,14 @@ button:disabled {
     opacity: 0.5;
     flex-shrink: 0;
 }
+.crosspost-tag {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 5px 10px;
+    font-weight: bold;
+    font-size: 0.8em;
+    text-align: center;
+}
 .lemmy-card .status-header a {
     text-decoration: none;
     color: inherit;
@@ -1244,6 +1253,32 @@ button:disabled {
     font-weight: bold;
     color: var(--font-color);
 }
+
+/* --- Merged Post View --- */
+#merged-post-view {
+    flex-direction: column;
+    gap: 20px;
+}
+.merged-comments-container {
+    display: flex;
+    gap: 20px;
+}
+.merged-comments-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.merged-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
 
 /* --- Quick Reply & Edit Containers --- */
 .quick-reply-container, .edit-post-container {
