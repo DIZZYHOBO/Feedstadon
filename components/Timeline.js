@@ -23,9 +23,12 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
     try {
         let allPosts = [];
 
+        // Determine the correct Mastodon endpoint
+        const mastodonEndpoint = `/api/v1/timelines/${state.currentTimeline}`;
+
         // Fetch Mastodon posts
         const mastodonPromise = state.accessToken 
-            ? apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home')
+            ? apiFetch(state.instanceUrl, state.accessToken, mastodonEndpoint)
             : Promise.resolve({ data: [] });
 
         // Fetch Lemmy posts only if it's a merged feed
