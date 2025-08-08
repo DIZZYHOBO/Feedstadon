@@ -38,13 +38,12 @@
 [data-theme="voyage"] {
     --bg-color: #12151d;
     --card-color: #1a1c28;
-    --primary-color: #fffdfa;
+    --primary-color: #1a1f40;
     --accent-color: #afb1b5;
     --font-color: #fffdfa;
     --font-color-muted: #afb1b5;
     --border-color: #1a1c28;
     --link-color: #fffdfa;
-    --notification-dot-color: #ff3d3d;
 }
 
 
