@@ -118,7 +118,7 @@ async function fetchAndRenderComments(state, postId, container, actions) {
     }
 }
 
-function renderCommentNode(commentView, actions) {
+export function renderCommentNode(commentView, actions) {
     const comment = commentView.comment;
     const creator = commentView.creator;
     const counts = commentView.counts;
@@ -144,7 +144,7 @@ function renderCommentNode(commentView, actions) {
     commentWrapper.innerHTML = `
         <div class="status-body-content">
             <div class="status-header">
-                <div class="status-header-main">
+                <div class="status-header-main" data-action="view-creator">
                     <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
                     <div>
                         <span class="display-name">${creator.display_name || creator.name}</span>
@@ -156,7 +156,7 @@ function renderCommentNode(commentView, actions) {
                     ${optionsMenuHTML}
                 </div>
             </div>
-            <div class="status-content">${comment.content}</div>
+            <div class="status-content"></div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                     <button class="status-action lemmy-vote-btn ${commentView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
@@ -168,6 +168,16 @@ function renderCommentNode(commentView, actions) {
         </div>
     `;
     
+    const contentDiv = commentWrapper.querySelector('.status-content');
+    if (contentDiv) {
+        contentDiv.innerHTML = new showdown.Converter().makeHtml(comment.content);
+    }
+
+    commentWrapper.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.showLemmyProfile(`${creator.name}@${new URL(creator.actor_id).hostname}`);
+    });
+
     let pressTimer;
     commentWrapper.addEventListener('touchstart', (e) => {
         pressTimer = setTimeout(() => {
