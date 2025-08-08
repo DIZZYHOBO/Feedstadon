@@ -36,6 +36,7 @@
                         <a href="#" id="new-post-link">New Post</a>
                         <a href="#" id="profile-link">Profile</a>
                         <a href="#" id="settings-link">Settings</a>
+                        <a href="#" id="help-link">Help</a>
                     </div>
                 </div>
                 <button id="notifications-btn" class="icon-button"></button>
@@ -116,6 +117,23 @@
         <div class="image-modal-content">
             <img id="fullscreen-image" src="">
             <button class="icon-button" id="save-image-btn" title="Save Image"></button>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="help-modal">
+        <div class="modal-content help-modal-content">
+            <button id="close-help-btn" class="close-btn">close</button>
+            <h3>Markdown Guide</h3>
+            <div class="markdown-guide">
+                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
+                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
+                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
+                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
+                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
+                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
+                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
+                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
+            </div>
         </div>
     </div>
 
