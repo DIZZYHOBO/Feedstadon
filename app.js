@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.currentTimeline = timelineType;
             switchView('timeline');
             renderTimelineSubNav('mastodon');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, true); // Added mastodonOnly flag
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
