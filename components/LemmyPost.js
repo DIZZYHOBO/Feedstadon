@@ -144,7 +144,7 @@ export function renderCommentNode(commentView, actions) {
     commentWrapper.innerHTML = `
         <div class="status-body-content">
             <div class="status-header">
-                <div class="status-header-main">
+                <div class="status-header-main" data-action="view-creator">
                     <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
                     <div>
                         <span class="display-name">${creator.display_name || creator.name}</span>
@@ -168,6 +168,11 @@ export function renderCommentNode(commentView, actions) {
         </div>
     `;
     
+    commentWrapper.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.showLemmyProfile(`${creator.name}@${new URL(creator.actor_id).hostname}`);
+    });
+
     let pressTimer;
     commentWrapper.addEventListener('touchstart', (e) => {
         pressTimer = setTimeout(() => {
