@@ -1199,7 +1199,6 @@ button:disabled {
     opacity: 0.5;
     flex-shrink: 0;
 }
-
 .lemmy-card .status-header a {
     text-decoration: none;
     color: inherit;
@@ -1207,37 +1206,40 @@ button:disabled {
 .lemmy-card .status-header a:hover {
     color: var(--accent-color);
 }
-
 .lemmy-card .status-header .avatar {
     border-radius: 8px; /* Lemmy community icons are often square */
 }
-
 .lemmy-card .lemmy-title {
     font-size: 1.1em;
     font-weight: bold;
     margin: 0 0 10px 0;
 }
-
+.lemmy-card .lemmy-post-body {
+    transition: max-height 0.3s ease-out;
+}
+.read-more-link {
+    color: var(--accent-color);
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+    display: inline-block;
+}
 .lemmy-card .status-footer {
     justify-content: space-between;
     align-items: center;
     padding-bottom: 20px; /* Adds extra space below the action buttons */
 }
-
 .lemmy-vote-cluster {
     display: flex;
     align-items: center;
     gap: 10px;
 }
-
 .lemmy-vote-btn {
     font-size: 1.2em;
 }
-
 .lemmy-vote-btn.active {
     color: var(--accent-color);
 }
-
 .lemmy-score {
     font-weight: bold;
     color: var(--font-color);
