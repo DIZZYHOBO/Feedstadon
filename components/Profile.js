@@ -109,7 +109,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
     try {
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user`, {}, 'lemmy', { 
             username: username, 
-            limit: 15,
+            limit: 3,
             page: loadMore ? state.lemmyProfilePage : 1,
             sort: 'New'
         });
