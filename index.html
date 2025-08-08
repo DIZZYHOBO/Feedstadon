@@ -143,7 +143,12 @@
             <p>Enter your instance URL to get started.</p>
             <form class="login-form">
                 <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
-                <button type="submit" class="connect-btn">Connect</button>
+                <button type="submit" class="connect-btn">Connect via Auth</button>
+            </form>
+            <p class="or-divider">OR</p>
+            <form class="token-login-form">
+                <input type="text" class="token-input" placeholder="Paste your Access Token">
+                <button type="submit" class="connect-btn">Login with Token</button>
             </form>
         </div>
     </template>
