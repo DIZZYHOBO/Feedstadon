@@ -15,7 +15,7 @@ export function renderComment(commentView, postView, actions) {
             <span class="acct">@${commentView.creator.name}</span>
             <span class="timestamp">· ${formatTimestamp(commentView.comment.published)}</span>
         </div>
-        <div class="comment-body">${new showdown.Converter().makeHtml(commentView.comment.content)}</div>
+        <div class="comment-body"></div>
         <div class="status-footer">
             <div class="lemmy-vote-cluster">
                 <button class="status-action lemmy-vote-btn ${commentView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
@@ -26,6 +26,11 @@ export function renderComment(commentView, postView, actions) {
         </div>
         <div class="comment-replies-container"></div>
     `;
+
+    const commentBody = commentEl.querySelector('.comment-body');
+    if (commentBody) {
+        commentBody.innerHTML = new showdown.Converter().makeHtml(commentView.comment.content);
+    }
 
     commentEl.querySelectorAll('.lemmy-vote-btn').forEach(button => {
         button.addEventListener('click', e => {
