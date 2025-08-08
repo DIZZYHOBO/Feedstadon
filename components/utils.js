@@ -23,6 +23,10 @@ export function getWordFilter() {
     return JSON.parse(localStorage.getItem('wordFilter') || '[]');
 }
 
+export function saveWordFilter(filterList) {
+    localStorage.setItem('wordFilter', JSON.stringify(filterList));
+}
+
 export function shouldFilterContent(content, filterList) {
     if (!content) return false;
     const lowerCaseContent = content.toLowerCase();
