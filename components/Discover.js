@@ -1,5 +1,6 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
+import { renderStatus } from './Post.js'; // Assuming renderStatus is in Post.js
 
 async function renderSubscribedCommunities(state, actions, container) {
     if (!localStorage.getItem('lemmy_jwt')) {
@@ -51,18 +52,20 @@ async function renderSubscribedCommunities(state, actions, container) {
 }
 
 
-async function renderLemmyCommunities(state, actions, container) {
+async function renderLemmyCommunities(state, actions, container, loadMore = false) {
     if (!localStorage.getItem('lemmy_jwt')) {
         container.innerHTML = `<p>Log in to your Lemmy account to discover communities.</p>`;
         return;
     }
     
-    container.innerHTML = `
-        <form id="lemmy-community-search-form">
-            <input type="search" id="lemmy-community-search-input" placeholder="Search for communities...">
-        </form>
-        <div id="lemmy-community-list" class="discover-list"></div>
-    `;
+    if (!loadMore) {
+        container.innerHTML = `
+            <form id="lemmy-community-search-form">
+                <input type="search" id="lemmy-community-search-input" placeholder="Search for communities...">
+            </form>
+            <div id="lemmy-community-list" class="discover-list"></div>
+        `;
+    }
 
     const searchInput = container.querySelector('#lemmy-community-search-input');
     const listContainer = container.querySelector('#lemmy-community-list');
@@ -77,18 +80,18 @@ async function renderLemmyCommunities(state, actions, container) {
         return response.data.communities;
     }
 
-    async function listCommunities(loadMore = false) {
+    async function listCommunities(page = 1) {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         const response = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
             sort: 'TopDay',
             limit: 20,
-            page: state.lemmyDiscoverPage
+            page: page
         });
         return response.data.communities;
     }
 
-    function renderList(communities) {
-        listContainer.innerHTML = '';
+    function renderList(communities, append = false) {
+        if (!append) listContainer.innerHTML = '';
         communities.forEach(communityView => {
             const item = document.createElement('div');
             item.className = 'discover-list-item';
@@ -117,46 +120,96 @@ async function renderLemmyCommunities(state, actions, container) {
         });
     }
     
-    searchInput.addEventListener('input', async () => {
-        const query = searchInput.value.trim();
-        if (query.length > 2) {
-            const communities = await searchCommunities(query);
-            renderList(communities);
-        } else if (query.length === 0) {
-            const communities = await listCommunities();
-            renderList(communities);
-        }
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', async () => {
+            const query = searchInput.value.trim();
+            if (query.length > 2) {
+                const communities = await searchCommunities(query);
+                renderList(communities);
+            } else if (query.length === 0) {
+                const communities = await listCommunities();
+                renderList(communities);
+            }
+        });
+    }
 
-    // Initial load
-    const initialCommunities = await listCommunities();
-    renderList(initialCommunities);
+    if (!loadMore) {
+        const initialCommunities = await listCommunities();
+        renderList(initialCommunities);
+    } else {
+        const communities = await listCommunities(state.lemmyDiscoverPage);
+        renderList(communities, true);
+        state.lemmyDiscoverHasMore = communities.length > 0;
+    }
 }
 
-async function renderMastodonTrendingPosts(state, actions, container, loadMore = false) {
+async function renderMastodonTrending(state, actions, container) {
     if (!state.instanceUrl) {
-        container.innerHTML = `<p>Log in to your Mastodon account to see trending posts.</p>`;
+        container.innerHTML = `<p>Log in to your Mastodon account to see trending content.</p>`;
         return;
     }
+    
+    container.innerHTML = `
+        <div class="discover-sub-nav">
+            <button class="discover-sub-nav-btn active" data-trending-tab="posts">Posts</button>
+            <button class="discover-sub-nav-btn" data-trending-tab="hashtags">Hashtags</button>
+            <button class="discover-sub-nav-btn" data-trending-tab="news">News</button>
+        </div>
+        <div id="trending-posts-content" class="discover-tab-content active"></div>
+        <div id="trending-hashtags-content" class="discover-tab-content"></div>
+        <div id="trending-news-content" class="discover-tab-content"></div>
+    `;
 
-    try {
-        const { data, next } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/trends/statuses`, {
-            params: { limit: 20, offset: (state.mastodonTrendingPage - 1) * 20 }
-        });
+    const postsContainer = container.querySelector('#trending-posts-content');
+    const hashtagsContainer = container.querySelector('#trending-hashtags-content');
+    const newsContainer = container.querySelector('#trending-news-content');
+    
+    const loadedTabs = { posts: false, hashtags: false, news: false };
 
-        if (!loadMore) container.innerHTML = '';
+    async function loadTrendingData(tabName) {
+        if (loadedTabs[tabName]) return;
 
-        data.forEach(status => {
-            // Re-use status rendering logic if available, or create a simplified version
-            const postCard = document.createElement('div');
-            postCard.className = 'status'; // Use status for consistent styling
-            postCard.innerHTML = `<div class="status-body-content">${status.content}</div>`;
-            container.appendChild(postCard);
-        });
-        state.mastodonTrendingHasMore = data.length > 0;
-    } catch (err) {
-        container.innerHTML = `<p>Could not load trending posts.</p>`;
+        switch(tabName) {
+            case 'posts':
+                postsContainer.innerHTML = 'Loading...';
+                const { data: posts } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/statuses');
+                postsContainer.innerHTML = '';
+                posts.forEach(status => postsContainer.appendChild(renderStatus(status, state.currentUser, actions, state.settings)));
+                break;
+            case 'hashtags':
+                hashtagsContainer.innerHTML = 'Loading...';
+                const { data: tags } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/tags');
+                hashtagsContainer.innerHTML = '';
+                tags.forEach(tag => {
+                    const tagEl = document.createElement('a');
+                    tagEl.href = '#';
+                    tagEl.className = 'discover-list-item';
+                    tagEl.textContent = `#${tag.name}`;
+                    tagEl.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        actions.showHashtagTimeline(tag.name);
+                    });
+                    hashtagsContainer.appendChild(tagEl);
+                });
+                break;
+            case 'news':
+                newsContainer.innerHTML = '<p>News feature is not yet available.</p>';
+                break;
+        }
+        loadedTabs[tabName] = true;
     }
+
+    container.querySelectorAll('.discover-sub-nav-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            container.querySelector('.discover-sub-nav-btn.active').classList.remove('active');
+            container.querySelector('.discover-tab-content.active').classList.remove('active');
+            button.classList.add('active');
+            container.querySelector(`#trending-${button.dataset.trendingTab}-content`).classList.add('active');
+            loadTrendingData(button.dataset.trendingTab);
+        });
+    });
+
+    loadTrendingData('posts');
 }
 
 
@@ -197,7 +250,7 @@ export async function renderDiscoverPage(state, actions) {
                 break;
             case 'mastodon-trending':
                 mastodonContainer.innerHTML = 'Loading...';
-                await renderMastodonTrendingPosts(state, actions, mastodonContainer);
+                await renderMastodonTrending(state, actions, mastodonContainer);
                 break;
         }
         loadedTabs[tabName] = true;
@@ -208,8 +261,8 @@ export async function renderDiscoverPage(state, actions) {
             const newTab = button.dataset.tab;
             if (state.currentDiscoverTab === newTab) return;
 
-            view.querySelectorAll('.discover-sub-nav-btn').forEach(btn => btn.classList.remove('active'));
-            view.querySelectorAll('.discover-tab-content').forEach(content => content.classList.remove('active'));
+            view.querySelector('.discover-sub-nav-btn.active').classList.remove('active');
+            view.querySelector('.discover-tab-content.active').classList.remove('active');
             
             button.classList.add('active');
             view.querySelector(`#${newTab}-content`).classList.add('active');
@@ -227,9 +280,8 @@ export async function loadMoreLemmyCommunities(state, actions) {
     if (state.isLoadingMore) return;
     state.isLoadingMore = true;
     state.lemmyDiscoverPage++;
-    const container = document.getElementById('lemmy-community-list');
-    const communities = await listCommunities(true); // This function needs to be defined or accessible here
-    renderList(communities); // This function also needs to be accessible
+    const container = document.getElementById('lemmy-discover-content');
+    await renderLemmyCommunities(state, actions, container, true);
     state.isLoadingMore = false;
 }
 
@@ -238,6 +290,6 @@ export async function loadMoreMastodonTrendingPosts(state, actions) {
     state.isLoadingMore = true;
     state.mastodonTrendingPage++;
     const container = document.getElementById('mastodon-trending-content');
-    await renderMastodonTrendingPosts(state, actions, container, true);
+    await renderMastodonTrending(state, actions, container, true);
     state.isLoadingMore = false;
 }
