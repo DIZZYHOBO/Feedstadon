@@ -1311,12 +1311,33 @@ button:disabled {
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
+    body {
+        font-size: 14px; /* Base font size for mobile */
+    }
+
     .container {
         padding: 60px 5px 10px 5px; /* Adjust padding for mobile */
     }
 
     .nav-left, .nav-right {
         gap: 5px;
+    }
+
+    .status-body-content {
+        padding: 15px;
+    }
+
+    .status-content {
+        font-size: 1rem; /* Adjust post content font size */
+        line-height: 1.5;
+    }
+
+    .status-header .display-name {
+        font-size: 0.95rem;
+    }
+
+    .status-header .acct, .status-header .timestamp {
+        font-size: 0.8rem;
     }
     
     .status-footer {
