@@ -205,7 +205,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                             if (!repliesContainer.dataset.loaded) {
                                 repliesContainer.innerHTML = 'Loading replies...';
                                 const { data: postData } = await apiFetch(instance, null, '/api/v3/post', {}, 'lemmy', { id: item.post.id });
-                                const fullComment = postData.comments.find(c => c.comment.id === item.comment.id);
+                                const fullComment = postData.comments && postData.comments.find(c => c.comment.id === item.comment.id);
                                 
                                 repliesContainer.innerHTML = '';
                                 if (fullComment && fullComment.replies) {
