@@ -449,6 +449,8 @@ button:disabled {
     gap: 12px;
     flex-grow: 1;
     min-width: 0;
+    text-decoration: none;
+    color: inherit;
 }
 .status-header-side {
     display: flex;
@@ -492,6 +494,29 @@ button:disabled {
 }
 .status-content a:hover, .profile-info .note a:hover {
     text-decoration: underline;
+}
+
+/* Spoiler Styles */
+.spoiler-tag {
+    margin-bottom: 10px;
+}
+.spoiler-toggle-btn {
+    width: 100%;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.spoiler-content {
+    display: none;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    background-color: var(--bg-color);
+}
+.spoiler-content.visible {
+    display: block;
 }
 
 /* --- Media & Video Embeds --- */
