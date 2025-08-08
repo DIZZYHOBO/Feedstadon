@@ -3,7 +3,7 @@ import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { renderLoginPrompt } from './ui.js';
 
-export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess) {
+export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess, mastodonOnly = false) {
     if (!state.accessToken && !localStorage.getItem('lemmy_jwt')) {
         renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
         return;
@@ -28,10 +28,9 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
             ? apiFetch(state.instanceUrl, state.accessToken, '/api/v1/timelines/home')
             : Promise.resolve({ data: [] });
 
-        // Fetch Lemmy posts for merged feed
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const lemmyPromise = lemmyInstance 
-            ? apiFetch(lemmyInstance, null, '/api/v3/post/list', { type_: 'Subscribed' }, 'lemmy')
+        // Fetch Lemmy posts only if it's a merged feed
+        const lemmyPromise = !mastodonOnly && localStorage.getItem('lemmy_instance') 
+            ? apiFetch(localStorage.getItem('lemmy_instance'), null, '/api/v3/post/list', { type_: 'Subscribed' }, 'lemmy')
             : Promise.resolve({ data: { posts: [] } });
 
         const [mastodonResponse, lemmyResponse] = await Promise.all([mastodonPromise, lemmyPromise]);
