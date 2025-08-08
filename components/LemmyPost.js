@@ -118,7 +118,7 @@ async function fetchAndRenderComments(state, postId, container, actions) {
     }
 }
 
-function renderCommentNode(commentView, actions) {
+export function renderCommentNode(commentView, actions) {
     const comment = commentView.comment;
     const creator = commentView.creator;
     const counts = commentView.counts;
