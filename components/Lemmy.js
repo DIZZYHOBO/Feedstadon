@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
-import { renderLoginPrompt } from './ui.js'; 
+import { formatTimestamp, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
+import { renderLoginPrompt } from './ui.js';
 import { showImageModal } from './ui.js';
 
 export function renderLemmyCard(post, actions) {
@@ -34,6 +34,11 @@ export function renderLemmyCard(post, actions) {
             mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
         }
     }
+    
+    let crosspostTag = '';
+    if (post.cross_post) {
+        crosspostTag = `<div class="crosspost-tag">Merged</div>`;
+    }
 
     let optionsMenuHTML = `
         <div class="post-options-container">
@@ -44,18 +49,27 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
-    const bodyHTML = post.post.body ? new showdown.Converter().makeHtml(post.post.body) : '';
+    const processedBody = processSpoilers(post.post.body || '');
+    const fullBodyHtml = new showdown.Converter().makeHtml(processedBody);
+    let bodyHTML = fullBodyHtml;
+    const wordCount = post.post.body ? post.post.body.split(/\s+/).length : 0;
+
+    if (wordCount > 30) {
+        const truncatedText = post.post.body.split(/\s+/).slice(0, 30).join(' ');
+        bodyHTML = new showdown.Converter().makeHtml(processSpoilers(truncatedText)) + '... <a href="#" class="read-more-link">Read More</a>';
+    }
 
     card.innerHTML = `
+        ${crosspostTag}
         <div class="status-body-content">
             <div class="status-header">
-                <div class="status-header-main">
-                    <img src="${post.community.icon || './images/php.png'}" alt="${post.community.name} icon" class="avatar" data-action="view-community" onerror="this.onerror=null;this.src='./images/php.png';">
+                <a href="#" class="status-header-main" data-action="view-community">
+                    <img src="${post.community.icon || './images/php.png'}" alt="${post.community.name} icon" class="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
                     <div>
-                        <a href="#" class="display-name" data-action="view-community">${post.community.name}</a>
-                        <span class="acct">posted by <a href="#" data-action="view-creator">${post.creator.name}</a> · ${formatTimestamp(post.post.published)}</span>
+                        <span class="display-name">${post.community.name}</span>
+                        <span class="acct">posted by <span class="creator-link" data-action="view-creator">${post.creator.name}</span> · ${formatTimestamp(post.post.published)}</span>
                     </div>
-                </div>
+                </a>
                 <div class="status-header-side">
                     ${optionsMenuHTML}
                     <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
@@ -84,8 +98,31 @@ export function renderLemmyCard(post, actions) {
             </div>
         </div>
     `;
+    
+    card.querySelectorAll('.spoiler-toggle-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('.icon');
+            content.classList.toggle('visible');
+            if (content.classList.contains('visible')) {
+                icon.innerHTML = ICONS.lemmyUpvote.match(/<path.*>/)[0];
+            } else {
+                icon.innerHTML = ICONS.lemmyDownvote.match(/<path.*>/)[0];
+            }
+        });
+    });
 
-    // Attach image click listener
+    if (wordCount > 30) {
+        const bodyContainer = card.querySelector('.lemmy-post-body');
+        const readMoreLink = bodyContainer.querySelector('.read-more-link');
+        readMoreLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            bodyContainer.innerHTML = fullBodyHtml;
+        });
+    }
+
     const mediaImg = card.querySelector('.status-media img');
     if (mediaImg) {
         mediaImg.style.cursor = 'pointer';
@@ -95,26 +132,24 @@ export function renderLemmyCard(post, actions) {
         });
     }
     
-    // Dedicated listener for opening the post detail view on double-click
     card.querySelector('.status-body-content').addEventListener('dblclick', () => {
-        actions.showLemmyPostDetail(post);
+        if (post.cross_post) {
+            actions.showMergedPost(post);
+        } else {
+            actions.showLemmyPostDetail(post);
+        }
     });
 
-    // Listener for single-click actions like viewing profiles or communities
-    card.querySelector('.status-body-content').addEventListener('click', (e) => {
-        const actionTarget = e.target.closest('[data-action]');
-        if (actionTarget) {
-            e.stopPropagation();
-            const action = actionTarget.dataset.action;
-            switch (action) {
-                case 'view-community':
-                    actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
-                    break;
-                case 'view-creator':
-                    actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
-                    break;
-            }
-        }
+    card.querySelector('[data-action="view-community"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
+    });
+    
+    card.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
     });
     
     let pressTimer;
@@ -171,7 +206,6 @@ export function renderLemmyCard(post, actions) {
         actions.showContextMenu(e, menuItems);
     });
     
-    // Listeners for the action buttons in the footer
     card.querySelectorAll('.status-footer .status-action').forEach(button => {
         button.addEventListener('click', e => {
             e.stopPropagation();
@@ -199,7 +233,11 @@ export function renderLemmyCard(post, actions) {
                     }
                     break;
                 case 'view-post':
-                     actions.showLemmyPostDetail(post);
+                    if (post.cross_post) {
+                        actions.showMergedPost(post);
+                    } else {
+                        actions.showLemmyPostDetail(post);
+                    }
                     break;
             }
         });
@@ -249,7 +287,7 @@ export function renderLemmyCard(post, actions) {
 
 export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySuccess) {
     if (!localStorage.getItem('lemmy_jwt') && !loadMore) {
-        renderLoginPrompt(state.timelineDiv, 'lemmy', null, onLemmySuccess);
+        renderLoginPrompt(state.timelineDiv, 'lemmy', onLemmySuccess);
         return;
     }
 
