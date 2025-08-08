@@ -764,14 +764,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('close-help-btn').addEventListener('click', () => {
         document.getElementById('help-modal').classList.remove('visible');
     });
-    
-    document.body.addEventListener('click', (e) => {
-        const link = e.target.closest('a');
-        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
-            e.preventDefault();
-            openInAppBrowser(link.href);
-        }
-    });
 
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore) return;
