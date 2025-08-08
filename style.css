@@ -38,13 +38,15 @@
 [data-theme="voyage"] {
     --bg-color: #12151d;
     --card-color: #1a1c28;
-    --primary-color: #1a1f40;
-    --accent-color: #1a1a89;
+    --primary-color: #fffdfa;
+    --accent-color: #afb1b5;
     --font-color: #fffdfa;
     --font-color-muted: #afb1b5;
     --border-color: #1a1c28;
     --link-color: #fffdfa;
+    --notification-dot-color: #ff3d3d;
 }
+
 
 *, *::before, *::after {
     box-sizing: border-box;
@@ -260,10 +262,6 @@ button:disabled {
 
 .nav-center {
     flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    padding: 0 20px;
-    position: relative;
 }
 
 .nav-button {
@@ -334,32 +332,6 @@ button:disabled {
     color: var(--accent-color) !important;
 }
 
-/* --- Search Bar --- */
-#search-form {
-    width: 100%;
-    max-width: 500px;
-}
-
-#search-input {
-    border-radius: 20px;
-    padding: 8px 12px;
-}
-
-#search-suggestions-container {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 500px;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    overflow: hidden;
-    z-index: 2000;
-}
 
 /* --- Timeline & Notifications Sub-Nav --- */
 .timeline-sub-nav, .notifications-sub-nav {
