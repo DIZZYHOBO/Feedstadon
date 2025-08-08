@@ -51,23 +51,45 @@ async function renderSubscribedCommunities(state, actions, container) {
 }
 
 
-async function renderLemmyCommunities(state, actions, container, loadMore = false) {
+async function renderLemmyCommunities(state, actions, container) {
     if (!localStorage.getItem('lemmy_jwt')) {
         container.innerHTML = `<p>Log in to your Lemmy account to discover communities.</p>`;
         return;
     }
+    
+    container.innerHTML = `
+        <form id="lemmy-community-search-form">
+            <input type="search" id="lemmy-community-search-input" placeholder="Search for communities...">
+        </form>
+        <div id="lemmy-community-list" class="discover-list"></div>
+    `;
 
-    try {
+    const searchInput = container.querySelector('#lemmy-community-search-input');
+    const listContainer = container.querySelector('#lemmy-community-list');
+
+    async function searchCommunities(query) {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const response = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
+            q: query,
+            sort: 'TopDay',
+            limit: 50
+        });
+        return response.data.communities;
+    }
+
+    async function listCommunities(loadMore = false) {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         const response = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
             sort: 'TopDay',
             limit: 20,
             page: state.lemmyDiscoverPage
         });
+        return response.data.communities;
+    }
 
-        if (!loadMore) container.innerHTML = '';
-
-        response.data.communities.forEach(communityView => {
+    function renderList(communities) {
+        listContainer.innerHTML = '';
+        communities.forEach(communityView => {
             const item = document.createElement('div');
             item.className = 'discover-list-item';
             item.innerHTML = `
@@ -91,12 +113,24 @@ async function renderLemmyCommunities(state, actions, container, loadMore = fals
                     button.textContent = isSubscribed ? 'Follow' : 'Following';
                 }
             });
-            container.appendChild(item);
+            listContainer.appendChild(item);
         });
-        state.lemmyDiscoverHasMore = response.data.communities.length > 0;
-    } catch (err) {
-        container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
     }
+    
+    searchInput.addEventListener('input', async () => {
+        const query = searchInput.value.trim();
+        if (query.length > 2) {
+            const communities = await searchCommunities(query);
+            renderList(communities);
+        } else if (query.length === 0) {
+            const communities = await listCommunities();
+            renderList(communities);
+        }
+    });
+
+    // Initial load
+    const initialCommunities = await listCommunities();
+    renderList(initialCommunities);
 }
 
 async function renderMastodonTrendingPosts(state, actions, container, loadMore = false) {
@@ -193,8 +227,9 @@ export async function loadMoreLemmyCommunities(state, actions) {
     if (state.isLoadingMore) return;
     state.isLoadingMore = true;
     state.lemmyDiscoverPage++;
-    const container = document.getElementById('lemmy-discover-content');
-    await renderLemmyCommunities(state, actions, container, true);
+    const container = document.getElementById('lemmy-community-list');
+    const communities = await listCommunities(true); // This function needs to be defined or accessible here
+    renderList(communities); // This function also needs to be accessible
     state.isLoadingMore = false;
 }
 
