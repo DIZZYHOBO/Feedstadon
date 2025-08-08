@@ -1,143 +1,105 @@
-export function formatTimestamp(timestamp) {
-    const now = new Date();
-    const past = new Date(timestamp);
-    const diffInSeconds = Math.floor((now - past) / 1000);
-
-    const secondsInMinute = 60;
-    const secondsInHour = 3600;
-    const secondsInDay = 86400;
-
-    if (diffInSeconds < secondsInMinute) {
-        return `${diffInSeconds}s`;
-    } else if (diffInSeconds < secondsInHour) {
-        return `${Math.floor(diffInSeconds / secondsInMinute)}m`;
-    } else if (diffInSeconds < secondsInDay) {
-        return `${Math.floor(diffInSeconds / secondsInHour)}h`;
-    } else {
-        return `${Math.floor(diffInSeconds / secondsInDay)}d`;
-    }
-}
-
-
-export function getWordFilter() {
-    return JSON.parse(localStorage.getItem('wordFilter') || '[]');
-}
-
-export function shouldFilterContent(content, filterList) {
-    if (!content) return false;
-    const lowerCaseContent = content.toLowerCase();
-    return filterList.some(word => lowerCaseContent.includes(word.toLowerCase()));
-}
-
-export function processSpoilers(content) {
-    if (!content) return '';
-    const spoilerRegex = />!([\s\S]*?)!</g;
-    return content.replace(spoilerRegex, (match, spoilerText) => {
-        return `
-            <div class="spoiler-tag">
-                <button class="spoiler-toggle-btn">
-                    Spoiler
-                    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="m192 384 320 384 320-384z"/></svg>
-                </button>
-                <div class="spoiler-content">
-                    ${spoilerText}
-                </div>
-            </div>
-        `;
-    });
-}import { ICONS } from './icons.js';
+import { apiFetch } from './api.js';
+import { ICONS } from './icons.js';
 
 export function showLoadingBar() {
-    const loadingBar = document.getElementById('loading-bar');
-    if (loadingBar) {
-        loadingBar.classList.add('loading');
-        // Reset animation
-        loadingBar.style.transform = 'scaleX(0)';
-        setTimeout(() => {
-            loadingBar.style.transform = 'scaleX(0.7)';
-        }, 10);
-    }
+    document.getElementById('loading-bar').classList.add('loading');
 }
 
 export function hideLoadingBar() {
-    const loadingBar = document.getElementById('loading-bar');
-    if (loadingBar) {
-        loadingBar.style.transform = 'scaleX(1)';
-        setTimeout(() => {
-            loadingBar.classList.remove('loading');
-            loadingBar.style.transform = 'scaleX(0)';
-        }, 300);
-    }
+    document.getElementById('loading-bar').classList.remove('loading');
 }
 
 export function initImageModal() {
     const modal = document.getElementById('image-modal');
     const saveBtn = document.getElementById('save-image-btn');
     saveBtn.innerHTML = ICONS.save;
+    
+    modal.addEventListener('click', () => {
+        modal.classList.remove('visible');
+        history.back();
+    });
 
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('visible');
-            // If the modal was opened via history, go back
-            if (history.state && history.state.imageModal) {
-                history.back();
+    saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const imageUrl = document.getElementById('fullscreen-image').src;
+        // This is a simple browser download, might not work on all platforms/browsers without more robust handling
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = 'image.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+}
+
+export function showImageModal(src) {
+    const modal = document.getElementById('image-modal');
+    const img = document.getElementById('fullscreen-image');
+    img.src = src;
+    modal.classList.add('visible');
+    history.pushState({ modal: 'image' }, 'Image View', '#image');
+}
+
+export function renderLoginPrompt(container, platform, onLoginSuccess) {
+    container.innerHTML = '';
+    const templateId = `${platform}-login-template`;
+    const template = document.getElementById(templateId);
+
+    if (!template) {
+        console.error(`Login template not found for platform: ${platform}`);
+        container.innerHTML = `<p>Error: Login form could not be loaded.</p>`;
+        return;
+    }
+    
+    const loginForm = template.content.cloneNode(true);
+    const form = loginForm.querySelector('form');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const instance = form.querySelector('.instance-url-input').value.trim();
+        
+        if (platform === 'mastodon') {
+            try {
+                const response = await apiFetch(instance, null, '/api/v2/apps', {
+                    method: 'POST',
+                    body: {
+                        client_name: 'Feeds',
+                        redirect_uris: 'urn:ietf:wg:oauth:2.0:oob',
+                        scopes: 'read write follow'
+                    }
+                });
+                const clientId = response.data.client_id;
+                const authUrl = `https://${instance}/oauth/authorize?client_id=${clientId}&scope=read+write+follow&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code`;
+                
+                const authCode = prompt(`Please authorize this app by visiting the following URL and pasting the code here:\n\n${authUrl}`);
+                
+                if (authCode) {
+                    const tokenResponse = await apiFetch(instance, null, '/oauth/token', {
+                        method: 'POST',
+                        body: {
+                            client_id: clientId,
+                            client_secret: response.data.client_secret,
+                            redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
+                            grant_type: 'authorization_code',
+                            code: authCode,
+                            scope: 'read write follow'
+                        }
+                    });
+                    
+                    if (tokenResponse.data.access_token) {
+                        onLoginSuccess(instance, tokenResponse.data.access_token);
+                    }
+                }
+            } catch (error) {
+                console.error('Mastodon login error:', error);
+                alert('Failed to log in to Mastodon.');
             }
+        } else if (platform === 'lemmy') {
+            const username = form.querySelector('.username-input').value.trim();
+            const password = form.querySelector('.password-input').value.trim();
+            onLoginSuccess(instance, username, password);
         }
     });
-
-    saveBtn.addEventListener('click', () => {
-        const image = document.getElementById('fullscreen-image');
-        const imageUrl = image.src;
-        
-        // Create a temporary anchor element to trigger the download
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = imageUrl;
-        
-        // Suggest a filename for the download
-        const filename = imageUrl.split('/').pop().split('#')[0].split('?')[0] || 'image.jpg';
-        a.download = filename;
-        
-        // Append to the body, click, and then remove
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    });
-}
-
-export function showImageModal(imageUrl) {
-    const modal = document.getElementById('image-modal');
-    const image = document.getElementById('fullscreen-image');
-    image.src = imageUrl;
-    modal.classList.add('visible');
-    history.pushState({ imageModal: true }, "Image View");
-}
-
-export function renderLoginPrompt(container, platform, onLoginSuccess, onSecondarySuccess) {
-    container.innerHTML = '';
-    const template = document.getElementById('login-prompt-template');
-    const clone = template.content.cloneNode(true);
-    container.appendChild(clone);
     
-    const mastodonSection = container.querySelector('#mastodon-login-section');
-    const lemmySection = container.querySelector('#lemmy-login-section');
-
-    if (platform === 'mastodon') {
-        lemmySection.style.display = 'none';
-        container.querySelector('.mastodon-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.instance-url').value;
-            const token = e.target.querySelector('.access-token').value;
-            onLoginSuccess(instance, token);
-        });
-    } else if (platform === 'lemmy') {
-        mastodonSection.style.display = 'none';
-        container.querySelector('.lemmy-login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const instance = e.target.querySelector('.lemmy-instance-input').value;
-            const username = e.target.querySelector('.lemmy-username-input').value;
-            const password = e.target.querySelector('.lemmy-password-input').value;
-            onSecondarySuccess(instance, username, password);
-        });
-    }
+    container.appendChild(loginForm);
 }
