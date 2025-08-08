@@ -1209,6 +1209,9 @@ button:disabled {
     font-size: 0.8em;
     text-align: center;
 }
+.lemmy-card .status-body-content {
+    padding: 25px;
+}
 .lemmy-card .status-header a {
     text-decoration: none;
     color: inherit;
