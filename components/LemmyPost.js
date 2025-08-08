@@ -60,6 +60,10 @@ export async function renderLemmyPostPage(state, post, actions) {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || new URL(post.community.actor_id).hostname;
         const { data } = await apiFetch(lemmyInstance, null, '/api/v3/post', {}, 'lemmy', { id: post.post.id });
         
+        // --- DEBUGGING LINE ---
+        console.log("Data received for post comments:", data); 
+        // --- END DEBUGGING LINE ---
+
         if (data.comments) {
             data.comments.forEach(comment => {
                 commentsContainer.appendChild(renderComment(comment, post, actions));
