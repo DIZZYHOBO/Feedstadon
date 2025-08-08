@@ -764,10 +764,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('close-help-btn').addEventListener('click', () => {
         document.getElementById('help-modal').classList.remove('visible');
     });
-
-    document.addEventListener('click', (e) => {
+    
+    document.body.addEventListener('click', (e) => {
         const link = e.target.closest('a');
-        if (link && link.href && link.href.startsWith('http')) {
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
             e.preventDefault();
             openInAppBrowser(link.href);
         }
