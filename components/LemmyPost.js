@@ -63,7 +63,7 @@ export async function renderLemmyPostPage(state, post, actions) {
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || new URL(post.community.actor_id).hostname;
-        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/post', {}, 'lemmy', { id: post.post.id });
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/post', { id: post.post.id }, 'lemmy');
         
         if (data.comments) {
             data.comments.forEach(comment => {
