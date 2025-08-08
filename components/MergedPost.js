@@ -1,6 +1,6 @@
 import { apiFetch } from './api.js';
 import { renderLemmyCard } from './Lemmy.js';
-import { renderComment } from './LemmyPost.js';
+import { renderCommentNode } from './LemmyPost.js';
 
 async function fetchAndRenderComments(instance, postId, container, actions) {
     try {
@@ -17,7 +17,7 @@ async function fetchAndRenderComments(instance, postId, container, actions) {
         container.appendChild(header);
 
         comments.forEach(comment => {
-            container.appendChild(renderComment(comment, postView, actions));
+            container.appendChild(renderCommentNode(comment, actions));
         });
     } catch (error) {
         container.innerHTML += `<p>Could not load comments for post ${postId}.</p>`;
