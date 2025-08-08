@@ -221,6 +221,15 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
 
 export function renderProfilePage(state, actions, platform, accountId, userAcct) {
     const view = document.getElementById('profile-page-view');
+    view.innerHTML = `
+        <div class="profile-tabs">
+            <button class="tab-button" data-profile-tab="mastodon">Mastodon</button>
+            <button class="tab-button" data-profile-tab="lemmy">Lemmy</button>
+        </div>
+        <div id="mastodon-profile-content" class="profile-tab-content"></div>
+        <div id="lemmy-profile-content" class="profile-tab-content"></div>
+    `;
+
     const tabs = view.querySelectorAll('.profile-tabs .tab-button');
     const mastodonContent = view.querySelector('#mastodon-profile-content');
     const lemmyContent = view.querySelector('#lemmy-profile-content');
@@ -258,7 +267,6 @@ export function renderProfilePage(state, actions, platform, accountId, userAcct)
         });
     });
 
-    // Set initial tab
     switchTab(platform);
 }
 
