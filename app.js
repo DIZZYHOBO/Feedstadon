@@ -13,7 +13,7 @@ import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingP
 import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
-import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, openInAppBrowser } from './components/ui.js';
+import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -767,7 +767,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('a');
-        if (link && link.href && !link.href.startsWith(window.location.origin) && !link.href.startsWith('javascript:')) {
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
             e.preventDefault();
             openInAppBrowser(link.href);
         }
