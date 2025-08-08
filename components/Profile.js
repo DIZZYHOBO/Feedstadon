@@ -128,12 +128,17 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                     <div class="profile-info">
                         <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
                         <p class="acct">@${person_view.person.name}@${instance}</p>
-                        <div class="note">${person_view.person.bio || ''}</div>
+                        <div class="note"></div>
                     </div>
                 </div>
                 <div class="profile-feed"></div>
             `;
             
+            const noteDiv = container.querySelector('.note');
+            if (noteDiv) {
+                noteDiv.innerHTML = new showdown.Converter().makeHtml(person_view.person.bio || '');
+            }
+
             container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
                 alert('Following users is not a standard feature on all Lemmy instances.');
             });
@@ -168,7 +173,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                                 <span class="display-name">${item.creator.name}</span> commented on:
                             </div>
                             <h4 class="post-title">${item.post.name}</h4>
-                            <div class="status-content">${item.comment.content}</div>
+                            <div class="status-content"></div>
                             <div class="status-footer">
                                 <div class="lemmy-vote-cluster">
                                     <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
@@ -178,6 +183,11 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                                 <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
                             </div>
                         </div>`;
+
+                    const contentDiv = commentCard.querySelector('.status-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = new showdown.Converter().makeHtml(item.comment.content);
+                    }
 
                     commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
                     
