@@ -64,11 +64,41 @@ body {
 .comment-body { color: var(--font-color); }
 .mastodon-style { border-left: 3px solid var(--accent-color); }
 
+/* Component Showcase Styles */
+.component-showcase {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.form-elements {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.button-showcase {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.quick-reply-box {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+.quick-reply-box textarea {
+    flex-grow: 1;
+}
+
 /* Controls Styles */
 .theme-inputs { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
 .input-group { display: flex; flex-direction: column; gap: 5px; }
 label { font-weight: bold; color: var(--font-color-muted); }
-input[type="text"] {
+input[type="text"], input[type="search"], textarea {
     background-color: var(--bg-color);
     color: var(--font-color);
     border: 1px solid var(--border-color);
@@ -76,33 +106,43 @@ input[type="text"] {
     border-radius: 5px;
     font-size: 1em;
 }
-button {
-    width: 100%;
+button, .button {
     padding: 12px;
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
+    background-color: var(--primary-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
+}
+.button-secondary {
+    background-color: var(--primary-color);
+    border-color: var(--border-color);
+}
+.connect-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+.button-danger {
+    background-color: #d9534f;
+    color: white;
+    border-color: #d9534f;
+}
+#print-theme-btn {
+    width: 100%;
     margin-bottom: 20px;
 }
 #output-area { display: flex; flex-direction: column; gap: 10px; }
-textarea {
+#output-area textarea {
     width: 100%;
     height: 250px;
-    background-color: var(--bg-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 10px;
     font-family: monospace;
 }
 .output-buttons {
     display: flex;
     gap: 10px;
-    margin-top: -10px;
 }
 .output-buttons button {
     margin-bottom: 0;
