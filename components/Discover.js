@@ -248,6 +248,25 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
     }
 }
 
+async function renderSubscribedLemmy(state, actions, container) {
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
+            type_: 'Subscribed',
+            sort: 'TopDay',
+            limit: 50
+        });
+        renderCommunityList(data.communities, actions, container);
+    } catch (error) {
+        container.innerHTML = `<p>Could not load subscribed communities.</p>`;
+    } finally {
+        state.isLoadingMore = false;
+    }
+}
+
 
 // --- Main Discover Page ---
 
@@ -255,26 +274,33 @@ export function renderDiscoverPage(state, actions) {
     const view = document.getElementById('discover-view');
     view.innerHTML = `
         <div class="profile-tabs">
-            <button class="tab-button active" data-discover-tab="lemmy">Lemmy</button>
+            <button class="tab-button active" data-discover-tab="subscribed">Subbed</button>
+            <button class="tab-button" data-discover-tab="lemmy">Lemmy</button>
             <button class="tab-button" data-discover-tab="mastodon">Mastodon</button>
         </div>
-        <div id="lemmy-discover-content" class="discover-tab-content active"></div>
+        <div id="subscribed-discover-content" class="discover-tab-content active"></div>
+        <div id="lemmy-discover-content" class="discover-tab-content"></div>
         <div id="mastodon-discover-content" class="discover-tab-content"></div>
     `;
 
     const tabs = view.querySelectorAll('.profile-tabs .tab-button');
+    const subscribedContent = view.querySelector('#subscribed-discover-content');
     const lemmyContent = view.querySelector('#lemmy-discover-content');
     const mastodonContent = view.querySelector('#mastodon-discover-content');
 
     function switchTab(platform) {
         tabs.forEach(t => t.classList.remove('active'));
+        subscribedContent.classList.remove('active');
         lemmyContent.classList.remove('active');
         mastodonContent.classList.remove('active');
 
         view.querySelector(`[data-discover-tab="${platform}"]`).classList.add('active');
         state.currentDiscoverTab = platform;
 
-        if (platform === 'lemmy') {
+        if (platform === 'subscribed') {
+            subscribedContent.classList.add('active');
+            renderSubscribedLemmy(state, actions, subscribedContent);
+        } else if (platform === 'lemmy') {
             lemmyContent.classList.add('active');
             state.lemmyDiscoverPage = 1;
             renderLemmyDiscover(state, actions, lemmyContent);
@@ -289,5 +315,5 @@ export function renderDiscoverPage(state, actions) {
     });
 
     // Initial load
-    switchTab('lemmy');
+    switchTab('subscribed');
 }
