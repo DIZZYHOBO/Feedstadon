@@ -406,6 +406,10 @@ button:disabled {
     gap: 15px;
 }
 
+.profile-replies-container {
+    display: none;
+}
+
 /* --- Scroll Loader --- */
 #scroll-loader {
     text-align: center;
