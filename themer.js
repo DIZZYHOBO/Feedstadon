@@ -36,6 +36,22 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('CSS copied to clipboard!');
     });
 
+    document.getElementById('import-theme-btn').addEventListener('click', () => {
+        const cssString = document.getElementById('output-css').value;
+        const regex = /--([a-zA-Z-]+):\s*(#[a-fA-F0-9]{3,6}|[a-zA-Z]+);/g;
+        let match;
+        
+        while ((match = regex.exec(cssString)) !== null) {
+            const varName = match[1];
+            const varValue = match[2];
+            const inputElement = document.getElementById(varName);
+            if (inputElement) {
+                inputElement.value = varValue;
+            }
+        }
+        updatePreview();
+    });
+
     // Initial load
     updatePreview();
 });
