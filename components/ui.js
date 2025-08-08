@@ -51,14 +51,16 @@ export function renderLoginPrompt(container, platform, onLoginSuccess) {
         return;
     }
     
-    const loginForm = template.content.cloneNode(true);
-    const form = loginForm.querySelector('form');
+    const loginPrompt = template.content.cloneNode(true);
+    const authForm = loginPrompt.querySelector('.login-form');
+    const tokenForm = loginPrompt.querySelector('.token-login-form');
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const instance = form.querySelector('.instance-url-input').value.trim();
-        
-        if (platform === 'mastodon') {
+    if (platform === 'mastodon') {
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const instance = authForm.querySelector('.instance-url-input').value.trim();
+            if (!instance) return;
+
             try {
                 const response = await apiFetch(instance, null, '/api/v2/apps', {
                     method: 'POST',
@@ -94,12 +96,28 @@ export function renderLoginPrompt(container, platform, onLoginSuccess) {
                 console.error('Mastodon login error:', error);
                 alert('Failed to log in to Mastodon.');
             }
-        } else if (platform === 'lemmy') {
-            const username = form.querySelector('.username-input').value.trim();
-            const password = form.querySelector('.password-input').value.trim();
+        });
+        
+        tokenForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const instance = authForm.querySelector('.instance-url-input').value.trim();
+            const token = tokenForm.querySelector('.token-input').value.trim();
+            if (instance && token) {
+                onLoginSuccess(instance, token);
+            } else {
+                alert('Please provide both an instance and an access token.');
+            }
+        });
+
+    } else if (platform === 'lemmy') {
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const instance = authForm.querySelector('.instance-url-input').value.trim();
+            const username = authForm.querySelector('.username-input').value.trim();
+            const password = authForm.querySelector('.password-input').value.trim();
             onLoginSuccess(instance, username, password);
-        }
-    });
+        });
+    }
     
-    container.appendChild(loginForm);
+    container.appendChild(loginPrompt);
 }
