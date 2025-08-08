@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
-import { renderLoginPrompt } from './ui.js'; 
+import { renderLoginPrompt } from './ui.js';
 import { showImageModal } from './ui.js';
 
 export function renderLemmyCard(post, actions) {
@@ -34,6 +34,11 @@ export function renderLemmyCard(post, actions) {
             mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
         }
     }
+    
+    let crosspostTag = '';
+    if (post.cross_post) {
+        crosspostTag = `<div class="crosspost-tag">Merged</div>`;
+    }
 
     let optionsMenuHTML = `
         <div class="post-options-container">
@@ -54,6 +59,7 @@ export function renderLemmyCard(post, actions) {
     }
 
     card.innerHTML = `
+        ${crosspostTag}
         <div class="status-body-content">
             <div class="status-header">
                 <div class="status-header-main">
@@ -114,7 +120,11 @@ export function renderLemmyCard(post, actions) {
     
     // Dedicated listener for opening the post detail view on double-click
     card.querySelector('.status-body-content').addEventListener('dblclick', () => {
-        actions.showLemmyPostDetail(post);
+        if (post.cross_post) {
+            actions.showMergedPost(post);
+        } else {
+            actions.showLemmyPostDetail(post);
+        }
     });
 
     // Listener for single-click actions like viewing profiles or communities
@@ -216,7 +226,11 @@ export function renderLemmyCard(post, actions) {
                     }
                     break;
                 case 'view-post':
-                     actions.showLemmyPostDetail(post);
+                    if (post.cross_post) {
+                        actions.showMergedPost(post);
+                    } else {
+                        actions.showLemmyPostDetail(post);
+                    }
                     break;
             }
         });
