@@ -254,12 +254,6 @@ button:disabled {
     width: 32px;
     height: 32px;
     color: var(--accent-color);
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
 }
 
 .nav-left, .nav-right {
@@ -590,11 +584,20 @@ button:disabled {
 .status-action:hover {
     color: var(--accent-color);
 }
-.icon { width: 22px; height: 22px; flex-shrink: 0; }
+.icon { 
+    width: 22px; 
+    height: 22px; 
+    flex-shrink: 0; 
+}
+
+.status-action:hover .icon {
+    color: var(--accent-color);
+}
 
 .status-action.active {
     color: var(--accent-color);
 }
+
 
 /* --- Notifications --- */
 #notifications-list {
