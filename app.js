@@ -754,8 +754,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'settings-link':
                 actions.showSettings();
                 break;
+            case 'help-link':
+                document.getElementById('help-modal').classList.add('visible');
+                break;
         }
         document.getElementById('user-dropdown').classList.remove('active');
+    });
+
+    document.getElementById('close-help-btn').addEventListener('click', () => {
+        document.getElementById('help-modal').classList.remove('visible');
     });
 
     window.addEventListener('scroll', () => {
