@@ -1,157 +1,280 @@
-import { apiFetch } from './api.js';
+import { apiFetch, apiUploadMedia, apiUploadLemmyImage } from './api.js';
 import { ICONS } from './icons.js';
 
-let currentReplyToId = null;
+let isPollActive = false;
+let isCwActive = false;
+let attachedFile = null;
+let currentLemmyPostType = 'Text';
+let resolvedLemmyCommunityId = null;
 
-export function showComposeModal(state, inReplyToId = null) {
-    const modal = document.getElementById('compose-modal');
-    modal.classList.add('visible');
-    document.getElementById('compose-textarea').focus();
-    currentReplyToId = inReplyToId;
-
-    // Reset view
-    document.getElementById('reply-to-info').innerHTML = '';
-    document.getElementById('compose-textarea').value = '';
-    document.getElementById('poll-creator-container').innerHTML = '';
-    document.getElementById('cw-creator-container').innerHTML = '';
+export function showComposeModal(state) {
+    const composeModal = document.getElementById('compose-modal');
+    
+    document.getElementById('mastodon-compose-form').reset();
+    document.getElementById('poll-creator-container').style.display = 'none';
+    document.getElementById('cw-creator-container').style.display = 'none';
     document.getElementById('media-filename-preview').textContent = '';
-    document.getElementById('media-upload-input').value = '';
+    attachedFile = null;
+    isPollActive = false;
+    isCwActive = false;
+
+    document.getElementById('lemmy-compose-form').reset();
+    document.getElementById('lemmy-link-input-container').style.display = 'none';
+    document.getElementById('lemmy-image-input-container').style.display = 'none';
+    document.getElementById('lemmy-body-textarea').style.display = 'block';
+    currentLemmyPostType = 'Text';
+    resolvedLemmyCommunityId = null;
+     document.querySelectorAll('.lemmy-post-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === 'Text');
+    });
+
+    document.querySelector('.compose-tabs .tab-button[data-tab="mastodon"]').click();
+
+    composeModal.classList.add('visible');
+    document.getElementById('compose-textarea').focus();
 }
 
 export function showComposeModalWithReply(state, post) {
-    const replyToInfo = document.getElementById('reply-to-info');
-    if (replyToInfo) {
-        replyToInfo.innerHTML = `Replying to ${post.account.display_name}`;
-    }
-    showComposeModal(state, post.id);
+    showComposeModal(state); // First, open and reset the modal
+
+    const textarea = document.getElementById('compose-textarea');
+    const mentions = [`@${post.account.acct}`];
+    post.mentions.forEach(mention => {
+        if(mention.acct !== state.currentUser.acct) {
+            mentions.push(`@${mention.acct}`);
+        }
+    });
+    
+    textarea.value = `${[...new Set(mentions)].join(' ')} `;
+    textarea.focus();
 }
 
 export function initComposeModal(state, onPostSuccess) {
-    const modal = document.getElementById('compose-modal');
-    const textarea = document.getElementById('compose-textarea');
-    const mediaUploadBtn = document.getElementById('media-upload-btn');
-    const mediaUploadInput = document.getElementById('media-upload-input');
+    const composeModal = document.getElementById('compose-modal');
+
+    // --- Tab Switching ---
+    const tabButtons = composeModal.querySelectorAll('.compose-tabs .tab-button');
+    const tabContents = composeModal.querySelectorAll('.compose-tab-content');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            button.classList.add('active');
+            document.getElementById(`${button.dataset.tab}-compose-tab`).classList.add('active');
+        });
+    });
+
+    // --- Mastodon Form ---
+    const mastodonForm = document.getElementById('mastodon-compose-form');
+    const addMediaBtn = document.getElementById('add-media-btn');
+    const mediaInput = document.getElementById('media-attachment-input');
     const mediaPreview = document.getElementById('media-filename-preview');
-    const pollBtn = document.getElementById('poll-btn');
-    const cwBtn = document.getElementById('cw-btn');
-    const cancelBtn = document.getElementById('cancel-compose-btn');
-    const submitBtn = document.getElementById('submit-compose-btn');
-
-    mediaUploadBtn.innerHTML = ICONS.media;
-    pollBtn.innerHTML = ICONS.poll;
-    cwBtn.innerHTML = ICONS.warning;
-
-    // Tab switching logic
-    const mastodonTabBtn = document.querySelector('[data-tab="mastodon-compose"]');
-    const lemmyTabBtn = document.querySelector('[data-tab="lemmy-compose"]');
-    const mastodonTab = document.getElementById('mastodon-compose-tab');
-    const lemmyTab = document.getElementById('lemmy-compose-tab');
+    const addPollBtn = document.getElementById('add-poll-btn');
+    const addCwBtn = document.getElementById('add-cw-btn');
+    const addPollOptionBtn = document.getElementById('add-poll-option-btn');
     
-    mastodonTabBtn.addEventListener('click', () => {
-        mastodonTabBtn.classList.add('active');
-        lemmyTabBtn.classList.remove('active');
-        mastodonTab.classList.add('active');
-        lemmyTab.classList.remove('active');
-    });
-
-    lemmyTabBtn.addEventListener('click', () => {
-        lemmyTabBtn.classList.add('active');
-        mastodonTabBtn.classList.remove('active');
-        lemmyTab.classList.add('active');
-        mastodonTab.classList.remove('active');
-    });
-
-
-    mediaUploadBtn.addEventListener('click', () => mediaUploadInput.click());
-    mediaUploadInput.addEventListener('change', () => {
-        if (mediaUploadInput.files.length > 0) {
-            mediaPreview.textContent = mediaUploadInput.files[0].name;
+    addMediaBtn.innerHTML = ICONS.media;
+    addPollBtn.innerHTML = ICONS.poll;
+    addCwBtn.innerHTML = ICONS.warning;
+    
+    addMediaBtn.addEventListener('click', () => mediaInput.click());
+    mediaInput.addEventListener('change', () => {
+        if (mediaInput.files.length > 0) {
+            attachedFile = mediaInput.files[0];
+            mediaPreview.textContent = attachedFile.name;
+            addPollBtn.disabled = true;
         }
     });
 
-    cancelBtn.addEventListener('click', () => modal.classList.remove('visible'));
+    addPollBtn.addEventListener('click', () => {
+        isPollActive = !isPollActive;
+        document.getElementById('poll-creator-container').style.display = isPollActive ? 'block' : 'none';
+        addMediaBtn.disabled = isPollActive;
+    });
 
-    submitBtn.addEventListener('click', async () => {
-        const status = textarea.value.trim();
-        if (!status && !mediaUploadInput.files.length) return;
+    addCwBtn.addEventListener('click', () => {
+        isCwActive = !isCwActive;
+        document.getElementById('cw-creator-container').style.display = isCwActive ? 'block' : 'none';
+    });
+
+    addPollOptionBtn.addEventListener('click', () => {
+        const pollOptionsContainer = document.getElementById('poll-options-container');
+        const optionInputs = pollOptionsContainer.querySelectorAll('.poll-option-input');
+        if (optionInputs.length < 4) {
+            const newInput = document.createElement('input');
+            newInput.type = 'text';
+            newInput.className = 'poll-option-input';
+            newInput.placeholder = `Choice ${optionInputs.length + 1}`;
+            newInput.maxLength = 25;
+            pollOptionsContainer.appendChild(newInput);
+        }
+        if (pollOptionsContainer.querySelectorAll('.poll-option-input').length >= 4) {
+            addPollOptionBtn.style.display = 'none';
+        }
+    });
+    
+    mastodonForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const content = document.getElementById('compose-textarea').value.trim();
+        const spoilerText = document.getElementById('spoiler-text-input').value.trim();
+        if (!content && !attachedFile) return;
 
         try {
-            const body = {
-                status: status,
-                in_reply_to_id: currentReplyToId
-            };
+            const postButton = mastodonForm.querySelector('button[type="submit"]');
+            postButton.disabled = true;
+            postButton.textContent = 'Posting...';
+
+            const postBody = { status: content };
             
-            if (mediaUploadInput.files.length > 0) {
-                const attachment = await uploadMedia(state, mediaUploadInput.files[0]);
-                if (attachment && attachment.id) {
-                    body.media_ids = [attachment.id];
+            if (isCwActive && spoilerText) postBody.spoiler_text = spoilerText;
+
+            if (attachedFile) {
+                const mediaResponse = await apiUploadMedia(state, attachedFile);
+                if (mediaResponse.id) postBody.media_ids = [mediaResponse.id];
+            }
+            
+            if (isPollActive) {
+                const pollOptionsContainer = document.getElementById('poll-options-container');
+                const pollOptions = Array.from(pollOptionsContainer.querySelectorAll('.poll-option-input'))
+                                         .map(input => input.value.trim()).filter(Boolean);
+                if (pollOptions.length < 2) {
+                    alert('Polls must have at least 2 choices.');
+                    postButton.disabled = false;
+                    postButton.textContent = 'Post';
+                    return;
                 }
+                postBody.poll = {
+                    options: pollOptions,
+                    expires_in: parseInt(document.getElementById('poll-duration-select').value, 10),
+                    multiple: document.getElementById('poll-multiple-choice-check').checked
+                };
             }
 
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
-                body: body
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postBody)
             });
-            
-            modal.classList.remove('visible');
-            onPostSuccess();
 
+            postButton.disabled = false;
+            postButton.textContent = 'Post';
+            composeModal.classList.remove('visible');
+            onPostSuccess();
         } catch (error) {
-            alert('Failed to post status.');
+            console.error('Failed to post to Mastodon:', error);
+            alert('Could not create Mastodon post.');
+            mastodonForm.querySelector('button[type="submit"]').disabled = false;
+            mastodonForm.querySelector('button[type="submit"]').textContent = 'Post';
         }
     });
 
-    // Lemmy Compose Logic
-    const lemmySubmitBtn = document.getElementById('submit-lemmy-compose-btn');
-    lemmySubmitBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('lemmy-title-input').value;
-        const communityName = document.getElementById('lemmy-community-input').value;
-        const body = document.getElementById('lemmy-body-textarea').value;
-        const url = document.getElementById('lemmy-url-input').value;
-        
-        if (!title || !communityName) {
-            alert('Title and community are required.');
-            return;
-        }
+    // --- Lemmy Form ---
+    const lemmyForm = document.getElementById('lemmy-compose-form');
+    const lemmyCommunityInput = document.getElementById('lemmy-community-input');
+    const lemmyPostTypeBtns = document.querySelectorAll('.lemmy-post-type-btn');
+    const lemmyLinkForm = document.getElementById('lemmy-link-input-container');
+    const lemmyImageForm = document.getElementById('lemmy-image-input-container');
+    const lemmyBodyTextarea = document.getElementById('lemmy-body-textarea');
+    
+    lemmyCommunityInput.addEventListener('blur', async () => {
+        const communityName = lemmyCommunityInput.value.trim().replace(/^!/, '');
+        if (!communityName) return;
 
         try {
             const lemmyInstance = localStorage.getItem('lemmy_instance');
-            const communityRes = await apiFetch(lemmyInstance, null, '/api/v3/community', {}, 'lemmy', { name: communityName });
-            const communityId = communityRes.data.community_view.community.id;
-
-            const postBody = {
-                auth: localStorage.getItem('lemmy_jwt'),
-                community_id: communityId,
-                name: title,
-                body: body,
-                url: url || null
-            };
-
-            await apiFetch(lemmyInstance, null, '/api/v3/post', { method: 'POST', body: postBody }, 'lemmy');
-            
-            modal.classList.remove('visible');
-            // Consider a specific callback for lemmy post success
-            
+            const response = await apiFetch(lemmyInstance, null, `/api/v3/community?name=${communityName}`, {}, 'lemmy');
+            if (response.data.community_view) {
+                resolvedLemmyCommunityId = response.data.community_view.community.id;
+                lemmyCommunityInput.style.borderColor = 'green';
+            } else {
+                resolvedLemmyCommunityId = null;
+                lemmyCommunityInput.style.borderColor = 'red';
+                alert('Community not found.');
+            }
         } catch (err) {
-            alert('Failed to create Lemmy post. Make sure the community exists.');
+            resolvedLemmyCommunityId = null;
+            lemmyCommunityInput.style.borderColor = 'red';
+            alert('Failed to resolve community.');
         }
     });
-}
-
-async function uploadMedia(state, file) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v2/media', {
-            method: 'POST',
-            body: formData,
-            isForm: true
+    
+    lemmyPostTypeBtns.forEach(button => {
+        button.addEventListener('click', () => {
+            currentLemmyPostType = button.dataset.type;
+            lemmyPostTypeBtns.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            lemmyLinkForm.style.display = 'none';
+            lemmyImageForm.style.display = 'none';
+            
+            if (currentLemmyPostType === 'Link') {
+                lemmyLinkForm.style.display = 'block';
+            } else if (currentLemmyPostType === 'Image') {
+                lemmyImageForm.style.display = 'block';
+            }
         });
-        return response.data;
-    } catch (error) {
-        alert('Failed to upload media.');
-        return null;
-    }
+    });
+
+    lemmyForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('lemmy-title-input').value.trim();
+        if (!title || !resolvedLemmyCommunityId) {
+            alert('A title and a valid, resolved community are required.');
+            return;
+        }
+
+        const postBody = {
+            name: title,
+            community_id: resolvedLemmyCommunityId,
+            body: document.getElementById('lemmy-body-textarea').value.trim()
+        };
+        
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        const lemmyToken = localStorage.getItem('lemmy_jwt');
+
+        try {
+            const postButton = lemmyForm.querySelector('button[type="submit"]');
+            postButton.disabled = true;
+            postButton.textContent = 'Posting...';
+
+            if (currentLemmyPostType === 'Link') {
+                postBody.url = document.getElementById('lemmy-url-input').value.trim();
+            } else if (currentLemmyPostType === 'Image') {
+                const imageFile = document.getElementById('lemmy-image-input').files[0];
+                if (imageFile) {
+                    const uploadResponse = await apiUploadLemmyImage(lemmyInstance, lemmyToken, imageFile);
+                    if (uploadResponse.files && uploadResponse.files.length > 0) {
+                        const uploadedFile = uploadResponse.files[0];
+                        postBody.url = `https://${lemmyInstance}/pictrs/image/${uploadedFile.file}`;
+                    } else {
+                        throw new Error("Image upload failed to return a valid URL.");
+                    }
+                }
+            }
+            
+            await apiFetch(lemmyInstance, null, '/api/v3/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postBody)
+            }, 'lemmy');
+
+            postButton.disabled = false;
+            postButton.textContent = 'Post';
+            composeModal.classList.remove('visible');
+            state.actions.showLemmyFeed('Subscribed'); // Refresh feed on success
+        } catch (err) {
+            console.error("Failed to post to Lemmy:", err);
+            alert("Could not create Lemmy post.");
+            lemmyForm.querySelector('button[type="submit"]').disabled = false;
+            lemmyForm.querySelector('button[type="submit"]').textContent = 'Post';
+        }
+    });
+
+
+    // --- General Modal Actions ---
+    composeModal.querySelectorAll('.cancel-compose-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            composeModal.classList.remove('visible');
+        });
+    });
 }

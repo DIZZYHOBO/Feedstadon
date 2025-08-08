@@ -36,15 +36,14 @@
 }
 
 [data-theme="voyage"] {
-    --bg-color: #12151d;
-    --card-color: #1a1c28;
-    --primary-color: #fffdfa;
-    --accent-color: #afb1b5;
-    --font-color: #fffdfa;
-    --font-color-muted: #afb1b5;
-    --border-color: #1a1c28;
-    --link-color: #fffdfa;
-    --notification-dot-color: #ff3d3d;
+    --bg-color: #282a36;
+    --card-color: #44475a;
+    --primary-color: #44475a;
+    --accent-color: #bd93f9;
+    --font-color: #f8f8f2;
+    --font-color-muted: #6272a4;
+    --border-color: #6272a4;
+    --link-color: #8be9fd;
 }
 
 
@@ -213,7 +212,9 @@ button:disabled {
     left: 0;
     width: 100%;
     height: 50px;
-    background-color: var(--card-color);
+    background-color: rgba(16, 16, 16, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
@@ -252,6 +253,12 @@ button:disabled {
     width: 32px;
     height: 32px;
     color: var(--accent-color);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .nav-left, .nav-right {
@@ -262,6 +269,10 @@ button:disabled {
 
 .nav-center {
     flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    padding: 0 20px;
+    position: relative;
 }
 
 .nav-button {
@@ -332,6 +343,32 @@ button:disabled {
     color: var(--accent-color) !important;
 }
 
+/* --- Search Bar --- */
+#search-form {
+    width: 100%;
+    max-width: 500px;
+}
+
+#search-input {
+    border-radius: 20px;
+    padding: 8px 12px;
+}
+
+#search-suggestions-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 500px;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    z-index: 2000;
+}
 
 /* --- Timeline & Notifications Sub-Nav --- */
 .timeline-sub-nav, .notifications-sub-nav {
@@ -406,10 +443,6 @@ button:disabled {
     gap: 15px;
 }
 
-.profile-replies-container {
-    display: none;
-}
-
 /* --- Scroll Loader --- */
 #scroll-loader {
     text-align: center;
@@ -430,7 +463,7 @@ button:disabled {
 .status {
     background-color: var(--card-color);
     border-radius: var(--border-radius);
-    border: 1px solid var(--card-color);
+    border: 1px solid var(--border-color);
     transition: all 0.2s ease-in-out;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     overflow: hidden;
@@ -453,8 +486,6 @@ button:disabled {
     gap: 12px;
     flex-grow: 1;
     min-width: 0;
-    text-decoration: none;
-    color: inherit;
 }
 .status-header-side {
     display: flex;
@@ -498,41 +529,6 @@ button:disabled {
 }
 .status-content a:hover, .profile-info .note a:hover {
     text-decoration: underline;
-}
-.status-content img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-}
-.status-content blockquote {
-    border-left: 4px solid var(--accent-color);
-    margin: 0 0 1em 1em;
-    padding-left: 1em;
-    color: var(--font-color-muted);
-}
-
-
-/* Spoiler Styles */
-.spoiler-tag {
-    margin-bottom: 10px;
-}
-.spoiler-toggle-btn {
-    width: 100%;
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.spoiler-content {
-    display: none;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    background-color: var(--bg-color);
-}
-.spoiler-content.visible {
-    display: block;
 }
 
 /* --- Media & Video Embeds --- */
@@ -593,20 +589,11 @@ button:disabled {
 .status-action:hover {
     color: var(--accent-color);
 }
-.icon { 
-    width: 22px; 
-    height: 22px; 
-    flex-shrink: 0; 
-}
-
-.status-action:hover .icon {
-    color: var(--accent-color);
-}
+.icon { width: 22px; height: 22px; flex-shrink: 0; }
 
 .status-action.active {
     color: var(--accent-color);
 }
-
 
 /* --- Notifications --- */
 #notifications-list {
@@ -1212,17 +1199,7 @@ button:disabled {
     opacity: 0.5;
     flex-shrink: 0;
 }
-.crosspost-tag {
-    background-color: var(--accent-color);
-    color: white;
-    padding: 5px 10px;
-    font-weight: bold;
-    font-size: 0.8em;
-    text-align: center;
-}
-.lemmy-card .status-body-content {
-    padding: 25px;
-}
+
 .lemmy-card .status-header a {
     text-decoration: none;
     color: inherit;
@@ -1230,70 +1207,41 @@ button:disabled {
 .lemmy-card .status-header a:hover {
     color: var(--accent-color);
 }
+
 .lemmy-card .status-header .avatar {
     border-radius: 8px; /* Lemmy community icons are often square */
 }
+
 .lemmy-card .lemmy-title {
-    font-size: 1em; /* Changed from 1.1em */
+    font-size: 1.1em;
     font-weight: bold;
     margin: 0 0 10px 0;
 }
-.lemmy-card .lemmy-post-body {
-    transition: max-height 0.3s ease-out;
-}
-.read-more-link {
-    color: var(--accent-color);
-    cursor: pointer;
-    font-weight: bold;
-    margin-top: 10px;
-    display: inline-block;
-}
+
 .lemmy-card .status-footer {
     justify-content: space-between;
     align-items: center;
     padding-bottom: 20px; /* Adds extra space below the action buttons */
 }
+
 .lemmy-vote-cluster {
     display: flex;
     align-items: center;
     gap: 10px;
 }
+
 .lemmy-vote-btn {
     font-size: 1.2em;
 }
+
 .lemmy-vote-btn.active {
     color: var(--accent-color);
 }
+
 .lemmy-score {
     font-weight: bold;
     color: var(--font-color);
 }
-
-/* --- Merged Post View --- */
-#merged-post-view {
-    flex-direction: column;
-    gap: 20px;
-}
-.merged-comments-container {
-    display: flex;
-    gap: 20px;
-}
-.merged-comments-column {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.merged-section-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
 
 /* --- Quick Reply & Edit Containers --- */
 .quick-reply-container, .edit-post-container {
@@ -1322,65 +1270,15 @@ button:disabled {
     gap: 15px;
 }
 
-/* --- Help Modal --- */
-.help-modal-content {
-    position: relative;
-}
-.close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    cursor: pointer;
-}
-.markdown-guide p {
-    margin: 10px 0;
-    line-height: 1.5;
-}
-.markdown-guide b {
-    color: var(--accent-color);
-}
-.markdown-image-example {
-    max-width: 100px;
-    height: auto;
-    vertical-align: middle;
-    margin-left: 10px;
-    border-radius: 4px;
-}
-
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
-    body {
-        font-size: 14px; /* Base font size for mobile */
-    }
-
     .container {
         padding: 60px 5px 10px 5px; /* Adjust padding for mobile */
     }
 
     .nav-left, .nav-right {
         gap: 5px;
-    }
-
-    .status-body-content {
-        padding: 15px;
-    }
-
-    .status-content {
-        font-size: 1rem; /* Adjust post content font size */
-        line-height: 1.5;
-    }
-
-    .status-header .display-name {
-        font-size: 0.95rem;
-    }
-
-    .status-header .acct, .status-header .timestamp {
-        font-size: 0.8rem;
     }
     
     .status-footer {
