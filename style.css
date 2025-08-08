@@ -1220,7 +1220,7 @@ button:disabled {
     border-radius: 8px; /* Lemmy community icons are often square */
 }
 .lemmy-card .lemmy-title {
-    font-size: 1.1em;
+    font-size: 1em; /* Changed from 1.1em */
     font-weight: bold;
     margin: 0 0 10px 0;
 }
