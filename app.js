@@ -6,6 +6,7 @@ import { renderStatusDetail } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
 import { renderMergedPostPage } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
@@ -141,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         settings: document.getElementById('settings-view'),
         statusDetail: document.getElementById('status-detail-view'),
         lemmyPost: document.getElementById('lemmy-post-view'),
+        lemmyCommunity: document.getElementById('lemmy-community-view'),
     };
     
     // --- Global Context Menu ---
@@ -307,6 +309,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderProfilePage(state, actions, platform, accountId, userAcct);
             hideLoadingBar();
         },
+        showLemmyProfile: (userAcct) => {
+             actions.showProfilePage('lemmy', null, userAcct);
+        },
         showEditProfile: () => {
             switchView('editProfile');
             renderEditProfilePage(state, actions);
@@ -349,6 +354,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             showLoadingBar();
             switchView('lemmyPost');
             await renderLemmyPostPage(state, post, actions);
+            hideLoadingBar();
+        },
+        showLemmyCommunity: async (communityName) => {
+            showLoadingBar();
+            switchView('lemmyCommunity');
+            await renderLemmyCommunityPage(state, actions, communityName);
             hideLoadingBar();
         },
         showMergedPost: async (post) => {
