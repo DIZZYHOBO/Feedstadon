@@ -287,7 +287,7 @@ export function renderLemmyCard(post, actions) {
 
 export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySuccess) {
     if (!localStorage.getItem('lemmy_jwt') && !loadMore) {
-        renderLoginPrompt(state.timelineDiv, 'lemmy', onLemmySuccess);
+        renderLoginPrompt(state.timelineDiv, 'lemmy', null, onLemmySuccess);
         return;
     }
 
