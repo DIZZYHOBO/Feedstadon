@@ -6,6 +6,7 @@ import { renderStatusDetail } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderMergedPostPage } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
@@ -133,6 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         notifications: document.getElementById('notifications-view'),
         discover: document.getElementById('discover-view'),
         screenshot: document.getElementById('screenshot-view'),
+        mergedPost: document.getElementById('merged-post-view'),
         profile: document.getElementById('profile-page-view'),
         editProfile: document.getElementById('edit-profile-view'),
         search: document.getElementById('search-results-view'),
@@ -347,6 +349,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             showLoadingBar();
             switchView('lemmyPost');
             await renderLemmyPostPage(state, post, actions);
+            hideLoadingBar();
+        },
+        showMergedPost: async (post) => {
+            showLoadingBar();
+            switchView('mergedPost');
+            await renderMergedPostPage(state, post, actions);
             hideLoadingBar();
         },
          showLemmyFeed: async (feedType, sortType = 'New') => {
