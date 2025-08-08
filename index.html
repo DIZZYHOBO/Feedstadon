@@ -14,6 +14,7 @@
         <div id="pull-to-refresh-indicator"></div>
         <nav class="top-nav">
              <div class="nav-left">
+                <button id="refresh-btn" class="icon-button"></button>
                 <div class="dropdown" id="feeds-dropdown">
                     <button class="nav-button">Feeds</button>
                     <div class="dropdown-content">
@@ -22,27 +23,22 @@
                         <a href="#" class="main-feed-link" id="lemmy-main-link">Lemmy</a>
                     </div>
                 </div>
+                <button id="discover-btn" class="nav-button">Discover</button>
             </div>
 
             <div class="nav-center">
-                <form id="search-form">
-                    <input type="search" id="search-input" placeholder="Search anything...">
-                </form>
-                <div id="search-suggestions-container"></div>
-            </div>
+                 </div>
 
             <div class="nav-right">
-                <button id="refresh-btn" class="icon-button"></button>
-                <button id="discover-btn" class="icon-button">🧭</button>
-                <button id="notifications-btn" class="icon-button"></button>
                 <div class="dropdown" id="user-dropdown">
-                    <button class="nav-button">User</button>
+                    <button class="nav-button">Menu</button>
                     <div class="dropdown-content">
                         <a href="#" id="new-post-link">New Post</a>
                         <a href="#" id="profile-link">Profile</a>
                         <a href="#" id="settings-link">Settings</a>
                     </div>
                 </div>
+                <button id="notifications-btn" class="icon-button"></button>
             </div>
         </nav>
         
