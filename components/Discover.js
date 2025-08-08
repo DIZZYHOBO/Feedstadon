@@ -171,15 +171,16 @@ export async function renderDiscoverPage(state, actions) {
 
     view.querySelectorAll('.discover-sub-nav-btn').forEach(button => {
         button.addEventListener('click', () => {
-            view.querySelector('.discover-sub-nav-btn.active').classList.remove('active');
-            button.classList.add('active');
-            
             const newTab = button.dataset.tab;
-            state.currentDiscoverTab = newTab;
+            if (state.currentDiscoverTab === newTab) return;
 
+            view.querySelector('.discover-sub-nav-btn.active').classList.remove('active');
             view.querySelector('.discover-tab-content.active').classList.remove('active');
+            
+            button.classList.add('active');
             view.querySelector(`#${newTab}-content`).classList.add('active');
-
+            
+            state.currentDiscoverTab = newTab;
             loadTabData(newTab);
         });
     });
