@@ -2,9 +2,12 @@ import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLoginPrompt } from './ui.js';
 
-export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess, mastodonOnly = false) {
-    if (!state.accessToken && !loadMore) {
-        renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
+export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess, platform = 'mastodon') {
+    const instanceUrl = platform === 'pixelfed' ? state.pixelfedInstanceUrl : state.instanceUrl;
+    const accessToken = platform === 'pixelfed' ? state.pixelfedAccessToken : state.accessToken;
+
+    if (!accessToken && !loadMore) {
+        renderLoginPrompt(state.timelineDiv, platform, onLoginSuccess);
         return;
     }
     
@@ -21,7 +24,7 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
     
     try {
         const timelineUrl = loadMore && state.nextPageUrl ? state.nextPageUrl : `/api/v1/timelines/${state.currentTimeline}`;
-        const { data, next } = await apiFetch(state.instanceUrl, state.accessToken, timelineUrl);
+        const { data, next } = await apiFetch(instanceUrl, accessToken, timelineUrl);
         
         if (!loadMore) {
             state.timelineDiv.innerHTML = '';
