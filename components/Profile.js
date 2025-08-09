@@ -234,7 +234,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                         e.stopPropagation();
                         try {
                             const postId = item.post.id;
-                            const lemmyInstance = new URL(item.post.ap_id).hostname;
+                            const lemmyInstance = new URL(item.community.actor_id).hostname;
                             const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post`, {}, 'lemmy', { id: postId });
                             actions.showScreenshotPage(item, data.post_view);
                         } catch(err) {
