@@ -40,31 +40,6 @@ export function showImageModal(src) {
     history.pushState({ modal: 'image' }, 'Image View', '#image');
 }
 
-export function openInAppBrowser(url) {
-    const browser = document.getElementById('in-app-browser');
-    const iframe = document.getElementById('in-app-browser-frame');
-    const loader = browser.querySelector('.in-app-browser-loader');
-    
-    iframe.src = 'about:blank';
-    browser.style.display = 'flex';
-    loader.style.width = '0%';
-    
-    setTimeout(() => {
-        loader.style.transition = 'width 2s';
-        loader.style.width = '70%';
-    }, 100);
-
-    iframe.onload = () => {
-        loader.style.transition = 'width 0.5s';
-        loader.style.width = '100%';
-        setTimeout(() => {
-            loader.style.display = 'none';
-        }, 500);
-    };
-
-    iframe.src = url;
-}
-
 export function renderLoginPrompt(container, platform, onLoginSuccess) {
     container.innerHTML = '';
     const templateId = `${platform}-login-template`;
