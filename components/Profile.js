@@ -234,10 +234,11 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                         e.stopPropagation();
                         try {
                             const postId = item.post.id;
-                            const lemmyInstance = new URL(item.community.actor_id).hostname;
-                            const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post`, {}, 'lemmy', { id: postId });
+                            // FIX: Use the 'instance' from the parent scope, which is the correct one for the profile being viewed.
+                            const { data } = await apiFetch(instance, null, `/api/v3/post`, {}, 'lemmy', { id: postId });
                             actions.showScreenshotPage(item, data.post_view);
                         } catch(err) {
+                            console.error("Failed to load data for screenshot:", err);
                             alert("Could not load data for screenshot.");
                         }
                     });
