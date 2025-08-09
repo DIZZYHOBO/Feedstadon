@@ -578,6 +578,56 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 'lemmy');
             return response.data;
         },
+        lemmyEditComment: async (commentData) => {
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            if (!lemmyInstance) {
+                showToast('You must be logged in to edit comments.');
+                throw new Error('Not logged in');
+            }
+            const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
+                method: 'PUT',
+                body: commentData
+            }, 'lemmy');
+            return response.data;
+        },
+        lemmyDeleteComment: async (commentId, commentDiv) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/comment/delete', {
+                    method: 'POST',
+                    body: { comment_id: commentId, deleted: true }
+                }, 'lemmy');
+                commentDiv.remove();
+                showToast('Comment deleted.');
+            } catch (err) {
+                showToast('Failed to delete comment.');
+            }
+        },
+        lemmyEditPost: async (postData) => {
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            if (!lemmyInstance) {
+                showToast('You must be logged in to edit posts.');
+                throw new Error('Not logged in');
+            }
+            const response = await apiFetch(lemmyInstance, null, '/api/v3/post', {
+                method: 'PUT',
+                body: postData
+            }, 'lemmy');
+            return response.data;
+        },
+        lemmyDeletePost: async (postId, postCard) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/post/delete', {
+                    method: 'POST',
+                    body: { post_id: postId, deleted: true }
+                }, 'lemmy');
+                postCard.remove();
+                showToast('Post deleted.');
+            } catch (err) {
+                showToast('Failed to delete post.');
+            }
+        },
          lemmyFollowCommunity: async (communityId, follow = true) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
