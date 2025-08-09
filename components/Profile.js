@@ -1,6 +1,7 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { ICONS } from './icons.js';
+import { renderLemmyCard } from './Lemmy.js';
 
 async function renderMastodonProfile(state, actions, container, accountId, userAcct) {
     if (!accountId && userAcct) {
@@ -84,12 +85,13 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
     }
 
     container.innerHTML = 'Loading Lemmy profile...';
+    state.lemmyProfilePage = 1;
+    state.lemmyProfileHasMore = true;
+
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const { data: profile } = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${userAcct}`, {}, 'lemmy', true);
         
-        let followButtonHtml = ''; // Lemmy doesn't have a direct follow concept like Mastodon
-
         container.innerHTML = `
             <div class="profile-header">
                 <img src="${profile.person_view.person.banner || './images/default_banner.png'}" class="profile-header-image">
@@ -110,14 +112,16 @@ async function renderLemmyProfile(state, actions, container, userAcct) {
         `;
 
         const postsContainer = container.querySelector('.profile-posts');
-        const { data: posts } = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${userAcct}&sort=New&page=1&limit=20`, {}, 'lemmy');
+        const { data: posts } = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${userAcct}&sort=New&page=${state.lemmyProfilePage}&limit=20`, {}, 'lemmy');
         
         if (posts.posts && posts.posts.length > 0) {
             posts.posts.forEach(post => {
                 postsContainer.appendChild(renderLemmyCard(post, state, actions));
             });
+            state.lemmyProfilePage++;
         } else {
             postsContainer.innerHTML = '<p>No posts to show.</p>';
+            state.lemmyProfileHasMore = false;
         }
 
     } catch (error) {
@@ -189,6 +193,35 @@ async function renderPixelfedProfile(state, actions, container, accountId) {
     }
 }
 
+export async function loadMoreLemmyProfile(state, actions, userAcct) {
+    if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
+
+    state.isLoadingMore = true;
+    state.scrollLoader.classList.add('loading');
+
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const { data: posts } = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${userAcct}&sort=New&page=${state.lemmyProfilePage}&limit=20`, {}, 'lemmy');
+        
+        const postsContainer = document.querySelector('#profile-content .profile-posts');
+
+        if (posts.posts && posts.posts.length > 0) {
+            posts.posts.forEach(post => {
+                postsContainer.appendChild(renderLemmyCard(post, state, actions));
+            });
+            state.lemmyProfilePage++;
+        } else {
+            state.lemmyProfileHasMore = false;
+            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load more Lemmy profile posts:', error);
+    } finally {
+        state.isLoadingMore = false;
+        state.scrollLoader.classList.remove('loading');
+    }
+}
+
 export async function renderProfilePage(state, actions, platform, accountId = null, userAcct = null) {
     const profileView = document.getElementById('profile-page-view');
     profileView.innerHTML = ''; // Clear previous content
@@ -237,5 +270,34 @@ export async function renderProfilePage(state, actions, platform, accountId = nu
 }
 
 export async function renderEditProfilePage(state, actions) {
-    // ... (existing code, no changes needed here for this feature)
+    const view = document.getElementById('edit-profile-view');
+    view.innerHTML = `
+        <h2>Edit Profile</h2>
+        <form id="edit-profile-form">
+            <label for="display-name">Display Name</label>
+            <input type="text" id="display-name" value="${state.currentUser.display_name}">
+            <label for="bio">Bio</label>
+            <textarea id="bio">${state.currentUser.note.replace(/<br \/>/g, '\n')}</textarea>
+            <button type="submit" class="button-primary">Save Changes</button>
+        </form>
+    `;
+
+    document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const displayName = document.getElementById('display-name').value;
+        const bio = document.getElementById('bio').value;
+        try {
+            await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/update_credentials', {
+                method: 'PATCH',
+                body: { display_name: displayName, note: bio }
+            });
+            alert('Profile updated successfully!');
+            // Refresh user data
+            const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
+            state.currentUser = account;
+            actions.showProfilePage('mastodon');
+        } catch (error) {
+            alert(`Failed to update profile: ${error.message}`);
+        }
+    });
 }
