@@ -1,400 +1,341 @@
-import { apiFetch, apiUpdateCredentials } from './api.js';
+import { ICONS } from './icons.js';
+import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
-import { renderCommentNode } from './LemmyPost.js';
-import { ICONS } from './icons.js';
+import { timeAgo } from './utils.js';
+import { showToast } from './ui.js';
 
-async function renderMastodonProfile(state, actions, container, accountId) {
-    container.innerHTML = ``;
+async function fetchLemmyProfile(state, actions, userAcct) {
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) return null;
 
     try {
-        const idToFetch = accountId || state.currentUser?.id;
-        if (!idToFetch) {
-            container.innerHTML = `<p>Could not find Mastodon user ID.</p>`;
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${userAcct}`, { method: 'GET' }, 'lemmy');
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to fetch Lemmy profile for ${userAcct}:`, error);
+        return null;
+    }
+}
+
+async function fetchLemmyProfileContent(state, actions, userId, page = 1) {
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) return [];
+
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?person_id=${userId}&page=${page}&limit=20&sort=New`, { method: 'GET' }, 'lemmy');
+        return response.data;
+    } catch (error) {
+        console.error('Failed to fetch Lemmy profile content:', error);
+        return [];
+    }
+}
+
+function renderLemmyComment(commentView, state, actions) {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'status lemmy-comment-on-profile';
+    const converter = new showdown.Converter();
+    const htmlContent = converter.makeHtml(commentView.comment.content);
+
+    commentDiv.innerHTML = `
+        <div class="status-body-content">
+            <div class="comment-context">
+                <span>Commented on:</span>
+                <a href="#" class="post-title">${commentView.post.name}</a>
+                <span>in</span>
+                <a href="#" class="community-link">${commentView.community.name}</a>
+            </div>
+            <div class="status-content">${htmlContent}</div>
+            <div class="status-footer">
+                <div class="lemmy-vote-cluster">
+                    <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${commentView.counts.score}</span>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
+                </div>
+                <button class="status-action view-replies-btn">
+                    ${ICONS.comments}
+                    <span class="reply-count">${commentView.counts.child_count}</span>
+                </button>
+            </div>
+            <div class="lemmy-replies-container" style="display: none;"></div>
+        </div>
+    `;
+
+    const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
+    const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
+
+    viewRepliesBtn.addEventListener('click', () => {
+        toggleLemmyReplies(commentView.comment.id, repliesContainer, state, actions);
+    });
+
+    return commentDiv;
+}
+
+async function toggleLemmyReplies(commentId, container, state, actions) {
+    const isVisible = container.style.display === 'block';
+    if (isVisible) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = 'Loading replies...';
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) {
+        container.innerHTML = 'Could not load replies.';
+        return;
+    }
+
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}`, { method: 'GET' }, 'lemmy');
+        const replies = response.data.replies;
+        container.innerHTML = '';
+
+        if (replies.length === 0) {
+            container.innerHTML = 'No replies found.';
             return;
         }
-        
-        const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}`);
-        const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${idToFetch}/statuses`);
 
-        const isOwnProfile = account.id === state.currentUser?.id;
-        const editButtonHTML = isOwnProfile ? `<button class="button-secondary" id="edit-profile-btn">${ICONS.edit} Edit Profile</button>` : '';
-
-        const banner = account.header_static || '';
-        const displayName = account.display_name;
-        const username = account.username;
-        const avatar = account.avatar_static;
-        const note = account.note;
-        const followers = account.followers_count;
-        const following = account.following_count;
-
-        container.innerHTML = `
-            <div class="profile-card">
-                <div class="profile-header">
-                    <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.backgroundColor='var(--primary-color)'">
-                    <img class="avatar" src="${avatar}" alt="${displayName}'s avatar" onerror="this.src='./images/logo.png'">
-                </div>
-                <div class="profile-actions">
-                    ${editButtonHTML}
-                    <button class="follow-btn">Follow</button>
-                    <button class="block-btn">Block</button>
-                </div>
-                <div class="profile-info">
-                    <h2 class="display-name">${displayName}</h2>
-                    <p class="acct">@${username}</p>
-                    <div class="note">${note}</div>
-                    <div class="stats">
-                        <span><strong>${following}</strong> Following</span>
-                        <span><strong>${followers}</strong> Followers</span>
-                    </div>
-                </div>
-            </div>
-            <div class="profile-feed"></div>
-        `;
-
-        const feed = container.querySelector('.profile-feed');
-        if (statuses.length === 0) {
-            feed.innerHTML = '<p>No posts yet.</p>';
-        } else {
-            statuses.forEach(status => {
-                feed.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
-            });
-        }
-        
-        if (isOwnProfile) {
-            container.querySelector('#edit-profile-btn').addEventListener('click', () => {
-                actions.showEditProfile();
-            });
-        }
-
+        replies.forEach(reply => {
+            container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
+        });
     } catch (error) {
-        container.innerHTML = `<p>Error loading Mastodon profile: ${error.message}</p>`;
+        console.error('Failed to fetch replies:', error);
+        container.innerHTML = 'Failed to load replies.';
     }
 }
 
 export async function loadMoreLemmyProfile(state, actions) {
-    await renderLemmyProfile(state, actions, null, null, true);
+    if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
+    state.isLoadingMore = true;
+    state.scrollLoader.style.display = 'block';
+
+    state.lemmyProfilePage++;
+    const lemmyProfile = await fetchLemmyProfile(state, actions, state.currentProfileUserAcct);
+    const content = await fetchLemmyProfileContent(state, actions, lemmyProfile.person_view.person.id, state.lemmyProfilePage);
+    
+    const profileFeed = document.getElementById('lemmy-profile-feed');
+
+    if (content.comments.length > 0) {
+        content.comments.forEach(comment => {
+            profileFeed.appendChild(renderLemmyComment(comment, state, actions));
+        });
+    } else {
+        state.lemmyProfileHasMore = false;
+    }
+
+    state.isLoadingMore = false;
+    state.scrollLoader.style.display = 'none';
 }
 
-async function renderLemmyProfile(state, actions, container, userAcct, loadMore = false) {
-    if (state.isLoadingMore) return;
-    
-    let username, instance;
+export async function renderProfilePage(state, actions, platform, accountId = null, userAcct = null) {
+    const view = document.getElementById('profile-page-view');
+    view.innerHTML = ''; // Clear previous content
 
-    if (userAcct) { // Initial load for a specific profile
-        [username, instance] = userAcct.split('@');
-        state.currentLemmyProfileUser = { username, instance };
-    } else if (loadMore && state.currentLemmyProfileUser) { // Infinite scroll
-        username = state.currentLemmyProfileUser.username;
-        instance = state.currentLemmyProfileUser.instance;
-    } else if (!loadMore) { // Initial load for the logged-in user's own profile
-        username = localStorage.getItem('lemmy_username');
-        instance = localStorage.getItem('lemmy_instance');
-        if (username && instance) {
-            state.currentLemmyProfileUser = { username, instance };
+    if (!accountId && !userAcct) {
+        if (platform === 'mastodon' && state.currentUser) {
+            accountId = state.currentUser.id;
+        } else if (platform === 'lemmy') {
+            userAcct = localStorage.getItem('lemmy_username');
         }
-    } else {
-        console.error("Cannot load more profile content without a user context.");
-        return; // Safeguard against errors
     }
     
-    if (!username || !instance) {
-        if (!loadMore) container.innerHTML = `<p>Lemmy user not found or not logged in.</p>`;
-        return;
-    }
-    
-    state.isLoadingMore = true;
-    const feedContainer = document.querySelector('#lemmy-profile-content .profile-feed');
-    
-    try {
-        const { data: userData } = await apiFetch(instance, null, `/api/v3/user`, {}, 'lemmy', { 
-            username: username, 
-            limit: 20,
-            page: loadMore ? state.lemmyProfilePage : 1,
-            sort: 'New'
-        });
-        const { person_view, posts, comments } = userData;
+    state.currentProfileUserAcct = userAcct;
 
-        if (!loadMore) {
-            container.innerHTML = `
-                <div class="profile-card">
-                     <div class="profile-header">
-                        <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.backgroundColor='var(--primary-color)'">
-                        <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
-                    </div>
-                     <div class="profile-actions">
-                        <button class="button-secondary" id="lemmy-follow-btn">Follow</button>
-                        <button class="button-danger" id="lemmy-block-btn">Block</button>
-                    </div>
-                    <div class="profile-info">
-                        <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
-                        <p class="acct">@${person_view.person.name}@${instance}</p>
-                        <div class="note"></div>
-                    </div>
-                </div>
-                <div class="profile-feed"></div>
+    view.innerHTML = `
+        <div class="profile-card">
+            <div class="profile-header">
+                <img class="banner" src="" alt="Profile banner">
+                <img class="avatar" src="" alt="Profile avatar">
+            </div>
+            <div class="profile-actions"></div>
+            <div class="profile-info">
+                <h2 class="display-name"></h2>
+                <p class="acct"></p>
+                <div class="note"></div>
+                <div class="stats"></div>
+            </div>
+        </div>
+        <div class="profile-tabs">
+            <button class="tab-button active" data-tab="mastodon">Mastodon</button>
+            <button class="tab-button" data-tab="lemmy">Lemmy</button>
+        </div>
+        <div class="profile-tab-content active" id="mastodon-profile-content">
+            <div class="profile-feed" id="mastodon-profile-feed"></div>
+        </div>
+        <div class="profile-tab-content" id="lemmy-profile-content">
+            <div class="profile-feed" id="lemmy-profile-feed"></div>
+        </div>
+    `;
+
+    const bannerImg = view.querySelector('.banner');
+    const avatarImg = view.querySelector('.avatar');
+    const displayNameEl = view.querySelector('.display-name');
+    const acctEl = view.querySelector('.acct');
+    const noteEl = view.querySelector('.note');
+    const statsEl = view.querySelector('.stats');
+    const actionsContainer = view.querySelector('.profile-actions');
+
+    const mastodonTab = view.querySelector('[data-tab="mastodon"]');
+    const lemmyTab = view.querySelector('[data-tab="lemmy"]');
+    const mastodonContent = view.getElementById('mastodon-profile-content');
+    const lemmyContent = view.getElementById('lemmy-profile-content');
+    
+    const switchTab = (targetTab) => {
+        state.currentProfileTab = targetTab;
+        mastodonTab.classList.toggle('active', targetTab === 'mastodon');
+        lemmyTab.classList.toggle('active', targetTab === 'lemmy');
+        mastodonContent.classList.toggle('active', targetTab === 'mastodon');
+        lemmyContent.classList.toggle('active', targetTab === 'lemmy');
+    };
+
+    mastodonTab.addEventListener('click', () => switchTab('mastodon'));
+    lemmyTab.addEventListener('click', () => switchTab('lemmy'));
+
+    if (platform === 'mastodon') {
+        switchTab('mastodon');
+        const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`);
+        const { data: statuses } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses`);
+
+        bannerImg.src = account.header;
+        avatarImg.src = account.avatar;
+        displayNameEl.textContent = account.display_name;
+        acctEl.textContent = `@${account.acct}`;
+        noteEl.innerHTML = account.note;
+        statsEl.innerHTML = `
+            <span><strong>${account.statuses_count}</strong> Posts</span>
+            <span><strong>${account.followers_count}</strong> Followers</span>
+            <span><strong>${account.following_count}</strong> Following</span>
+        `;
+        
+        const profileFeed = view.querySelector('#mastodon-profile-feed');
+        statuses.forEach(status => {
+            profileFeed.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+        });
+
+        if (state.currentUser && account.id !== state.currentUser.id) {
+            const { data: relationship } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/relationships?id[]=${account.id}`);
+            const followBtn = document.createElement('button');
+            followBtn.textContent = relationship[0].following ? 'Unfollow' : 'Follow';
+            followBtn.className = 'button';
+            followBtn.addEventListener('click', async () => {
+                const success = await actions.mastodonFollow(account.id, !relationship[0].following);
+                if (success) {
+                    relationship[0].following = !relationship[0].following;
+                    followBtn.textContent = relationship[0].following ? 'Unfollow' : 'Follow';
+                }
+            });
+            actionsContainer.appendChild(followBtn);
+        } else if (state.currentUser && account.id === state.currentUser.id) {
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit Profile';
+            editBtn.className = 'button';
+            editBtn.addEventListener('click', () => actions.showEditProfile());
+            actionsContainer.appendChild(editBtn);
+        }
+
+    } else if (platform === 'lemmy') {
+        switchTab('lemmy');
+        const lemmyProfile = await fetchLemmyProfile(state, actions, userAcct);
+        if (lemmyProfile) {
+            const personView = lemmyProfile.person_view;
+            bannerImg.src = personView.person.banner || '';
+            avatarImg.src = personView.person.avatar || '';
+            displayNameEl.textContent = personView.person.display_name || personView.person.name;
+            acctEl.textContent = `@${personView.person.name}`;
+            noteEl.innerHTML = new showdown.Converter().makeHtml(personView.person.bio || '');
+            statsEl.innerHTML = `
+                <span><strong>${personView.counts.post_count}</strong> Posts</span>
+                <span><strong>${personView.counts.comment_count}</strong> Comments</span>
             `;
             
-            const noteDiv = container.querySelector('.note');
-            if (noteDiv && person_view.person.bio) {
-                noteDiv.innerHTML = new showdown.Converter().makeHtml(person_view.person.bio);
-            }
-
-            container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
-                alert('Following users is not a standard feature on all Lemmy instances.');
-            });
+            const content = await fetchLemmyProfileContent(state, actions, personView.person.id);
+            const profileFeed = view.querySelector('#lemmy-profile-feed');
             
-            container.querySelector('#lemmy-block-btn').addEventListener('click', () => {
-                if (confirm(`Are you sure you want to block ${person_view.person.name}?`)) {
-                    actions.lemmyBlockUser(person_view.person.id, true);
-                }
-            });
-        }
-
-        const feed = container ? container.querySelector('.profile-feed') : feedContainer;
-        const combinedFeed = [
-            ...posts.map(p => ({ ...p, type: 'post', date: p.post.published })),
-            ...comments.map(c => ({ ...c, type: 'comment', date: c.comment.published }))
-        ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        if (combinedFeed.length === 0) {
-            if (!loadMore) feed.innerHTML = '<p>No activity yet.</p>';
-            state.lemmyProfileHasMore = false;
-        } else {
-            combinedFeed.forEach(item => {
-                if (item.type === 'post') {
-                    feed.appendChild(renderLemmyCard(item, actions));
-                } else {
-                    const commentCard = document.createElement('div');
-                    commentCard.className = 'status lemmy-comment-on-profile';
-                    
-                    commentCard.innerHTML = `
-                        <div class="status-body-content">
-                            <div class="comment-context">
-                                <span class="display-name">${item.creator.name}</span> commented on:
-                            </div>
-                            <h4 class="post-title">${item.post.name}</h4>
-                            <div class="status-content"></div>
-                            <div class="status-footer">
-                                <div class="lemmy-vote-cluster">
-                                    <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
-                                    <span class="lemmy-score">${item.counts.score}</span>
-                                    <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
-                                </div>
-                                <button class="status-action view-replies-btn">Replies</button>
-                                <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
-                            </div>
-                        </div>
-                        <div class="comment-replies-container profile-replies-container"></div>
-                    `;
-
-                    const contentDiv = commentCard.querySelector('.status-content');
-                    if (contentDiv) {
-                        contentDiv.innerHTML = new showdown.Converter().makeHtml(item.comment.content);
-                    }
-                    
-                    commentCard.querySelector('.view-replies-btn').addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const repliesContainer = commentCard.querySelector('.profile-replies-container');
-                        const isVisible = repliesContainer.style.display === 'block';
-
-                        if (isVisible) {
-                            repliesContainer.style.display = 'none';
-                        } else {
-                            repliesContainer.style.display = 'block';
-                            if (!repliesContainer.dataset.loaded) {
-                                repliesContainer.innerHTML = 'Loading replies...';
-                                const { data: postData } = await apiFetch(instance, null, '/api/v3/post', {}, 'lemmy', { id: item.post.id });
-                                const fullComment = postData.comments && postData.comments.find(c => c.comment.id === item.comment.id);
-                                
-                                repliesContainer.innerHTML = '';
-                                if (fullComment && fullComment.replies) {
-                                    fullComment.replies.forEach(reply => {
-                                        repliesContainer.appendChild(renderCommentNode(reply, actions));
-                                    });
-                                } else {
-                                    repliesContainer.innerHTML = '<p>No replies to this comment.</p>';
-                                }
-                                repliesContainer.dataset.loaded = 'true';
-                            }
-                        }
-                    });
-
-                    commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
-                    
-                    commentCard.querySelectorAll('.lemmy-vote-btn').forEach(button => {
-                        button.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            const score = parseInt(e.currentTarget.dataset.score, 10);
-                            actions.lemmyCommentVote(item.comment.id, score, commentCard);
-                        });
-                    });
-                    
-                    commentCard.querySelector('.screenshot-btn').addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        try {
-                            const postId = item.post.id;
-                            // FIX: Use the 'instance' from the parent scope, which is the correct one for the profile being viewed.
-                            const { data } = await apiFetch(instance, null, `/api/v3/post`, {}, 'lemmy', { id: postId });
-                            actions.showScreenshotPage(item, data.post_view);
-                        } catch(err) {
-                            console.error("Failed to load data for screenshot:", err);
-                            alert("Could not load data for screenshot.");
-                        }
-                    });
-
-                    feed.appendChild(commentCard);
-                }
-            });
-            state.lemmyProfilePage++;
-            state.lemmyProfileHasMore = true;
-        }
-
-    } catch (error) {
-        console.error("Failed to load Lemmy profile:", error);
-        if (!loadMore) container.innerHTML = `<p>Error loading Lemmy profile: ${error.message}</p>`;
-    } finally {
-        state.isLoadingMore = false;
-    }
-}
-
-export function renderProfilePage(state, actions, platform, accountId, userAcct) {
-    const view = document.getElementById('profile-page-view');
-    view.innerHTML = `
-        <div class="profile-tabs">
-            <button class="tab-button" data-profile-tab="mastodon">Mastodon</button>
-            <button class="tab-button" data-profile-tab="lemmy">Lemmy</button>
-        </div>
-        <div id="mastodon-profile-content" class="profile-tab-content"></div>
-        <div id="lemmy-profile-content" class="profile-tab-content"></div>
-    `;
-
-    const tabs = view.querySelectorAll('.profile-tabs .tab-button');
-    const mastodonContent = view.querySelector('#mastodon-profile-content');
-    const lemmyContent = view.querySelector('#lemmy-profile-content');
-    
-    function switchTab(targetPlatform) {
-        tabs.forEach(t => t.classList.remove('active'));
-        mastodonContent.classList.remove('active');
-        lemmyContent.classList.remove('active');
-        state.currentProfileTab = targetPlatform;
-        
-        const activeTab = view.querySelector(`.tab-button[data-profile-tab="${targetPlatform}"]`);
-        if (activeTab) {
-            activeTab.classList.add('active');
-        }
-
-        if (targetPlatform === 'mastodon') {
-            mastodonContent.classList.add('active');
-            if (state.currentUser) {
-                renderMastodonProfile(state, actions, mastodonContent, accountId);
-            } else {
-                mastodonContent.innerHTML = `<p>Not logged into Mastodon.</p>`;
+            if (content.comments) {
+                content.comments.forEach(comment => {
+                    profileFeed.appendChild(renderLemmyComment(comment, state, actions));
+                });
             }
-        } else if (targetPlatform === 'lemmy') {
-            lemmyContent.classList.add('active');
-            state.lemmyProfilePage = 1;
-            state.lemmyProfileHasMore = true;
-            renderLemmyProfile(state, actions, lemmyContent, userAcct);
+            
+            const isOwnProfile = userAcct === localStorage.getItem('lemmy_username');
+            if (!isOwnProfile) {
+                const blockBtn = document.createElement('button');
+                blockBtn.textContent = personView.person.banned ? 'Unblock' : 'Block';
+                blockBtn.className = 'button';
+                blockBtn.addEventListener('click', () => {
+                    actions.lemmyBlockUser(personView.person.id, !personView.person.banned);
+                });
+                actionsContainer.appendChild(blockBtn);
+            }
+        } else {
+            view.innerHTML = `<p>Could not load Lemmy profile.</p>`;
         }
     }
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            const targetPlatform = e.target.dataset.profileTab;
-            switchTab(targetPlatform);
-        });
-    });
-
-    switchTab(platform);
 }
 
-export function renderEditProfilePage(state, actions) {
+export async function renderEditProfilePage(state, actions) {
     const view = document.getElementById('edit-profile-view');
-    view.innerHTML = '';
-    
-    if (!state.currentUser) {
-        view.innerHTML = `<p>You must be logged in to edit your profile.</p>`;
-        return;
-    }
-    
-    const container = document.createElement('div');
-    container.className = 'edit-profile-container';
-    
-    container.innerHTML = `
-        <div class="edit-profile-header">
-            <h2>Edit Mastodon Profile</h2>
-            <button class="button-secondary" id="cancel-edit-profile-btn">Cancel</button>
-        </div>
-        <form id="edit-profile-form">
+    view.innerHTML = `
+        <div class="edit-profile-container">
+            <div class="edit-profile-header">
+                <h2>Edit Profile</h2>
+                <div>
+                    <button class="button-secondary" id="cancel-edit-profile">Cancel</button>
+                    <button class="button" id="save-profile-btn">Save</button>
+                </div>
+            </div>
             <div class="profile-image-previews">
-                <img id="avatar-preview" src="${state.currentUser.avatar_static}" alt="Avatar preview">
-                <img id="header-preview" src="${state.currentUser.header_static}" alt="Header preview">
+                <div>
+                    <label>Avatar</label>
+                    <img id="avatar-preview" src="${state.currentUser.avatar}">
+                    <input type="file" id="avatar-upload" accept="image/*">
+                </div>
+                <div>
+                    <label>Banner</label>
+                    <img id="banner-preview" src="${state.currentUser.header}">
+                    <input type="file" id="banner-upload" accept="image/*">
+                </div>
             </div>
             <div class="form-group">
-                <label for="avatar-upload">Upload new avatar</label>
-                <input type="file" id="avatar-upload" name="avatar" accept="image/*">
+                <label for="display-name-input">Display Name</label>
+                <input type="text" id="display-name-input" value="${state.currentUser.display_name}">
             </div>
             <div class="form-group">
-                <label for="header-upload">Upload new header</label>
-                <input type="file" id="header-upload" name="header" accept="image/*">
+                <label for="bio-textarea">Bio</label>
+                <textarea id="bio-textarea">${state.currentUser.note}</textarea>
             </div>
-            <div class="form-group">
-                <label for="display-name">Display Name</label>
-                <input type="text" id="display-name" name="display_name" value="${state.currentUser.display_name}">
-            </div>
-            <div class="form-group">
-                <label for="bio">Bio</label>
-                <textarea id="bio" name="note" rows="4">${state.currentUser.note}</textarea>
-            </div>
-            <button type="submit" class="button-primary">Save Changes</button>
-        </form>
+        </div>
     `;
-    
-    view.appendChild(container);
-    
-    const form = view.querySelector('#edit-profile-form');
-    const avatarInput = view.querySelector('#avatar-upload');
-    const headerInput = view.querySelector('#header-upload');
-    const avatarPreview = view.querySelector('#avatar-preview');
-    const headerPreview = view.querySelector('#header-preview');
-    
-    avatarInput.addEventListener('change', () => {
-        if (avatarInput.files[0]) {
-            avatarPreview.src = URL.createObjectURL(avatarInput.files[0]);
-        }
-    });
-    
-    headerInput.addEventListener('change', () => {
-        if (headerInput.files[0]) {
-            headerPreview.src = URL.createObjectURL(headerInput.files[0]);
-        }
-    });
 
-    view.querySelector('#cancel-edit-profile-btn').addEventListener('click', () => {
-        actions.showProfilePage('mastodon');
-    });
+    const saveBtn = view.querySelector('#save-profile-btn');
+    saveBtn.addEventListener('click', async () => {
+        const displayName = view.querySelector('#display-name-input').value;
+        const bio = view.querySelector('#bio-textarea').value;
+        const avatarFile = view.querySelector('#avatar-upload').files[0];
+        const bannerFile = view.querySelector('#banner-upload').files[0];
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const saveButton = form.querySelector('button[type="submit"]');
-        saveButton.disabled = true;
-        saveButton.textContent = 'Saving...';
+        const formData = new FormData();
+        formData.append('display_name', displayName);
+        formData.append('note', bio);
+        if (avatarFile) formData.append('avatar', avatarFile);
+        if (bannerFile) formData.append('header', bannerFile);
 
         try {
-            const formData = new FormData(e.target);
-            await apiUpdateCredentials(state, formData);
-            alert("Profile updated successfully!");
-            // Refresh the user state after update
-            const { data: account } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/verify_credentials');
-            state.currentUser = account;
-            actions.showProfilePage('mastodon');
+            await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/accounts/update_credentials', {
+                method: 'PATCH',
+                body: formData,
+                isFormData: true
+            });
+            showToast('Profile updated successfully!');
+            actions.showProfilePage('mastodon', state.currentUser.id);
         } catch (error) {
-            console.error("Failed to update profile", error);
-            alert("Failed to update profile.");
-        } finally {
-            saveButton.disabled = false;
-            saveButton.textContent = 'Save Changes';
+            showToast('Failed to update profile.');
         }
+    });
+    
+    view.querySelector('#cancel-edit-profile').addEventListener('click', () => {
+        actions.showProfilePage('mastodon', state.currentUser.id);
     });
 }
