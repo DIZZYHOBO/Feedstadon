@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentView: null,
         currentProfileTab: 'mastodon',
         currentProfileUserAcct: null,
-        currentTimeline: { path: 'home' },
+        currentTimeline: 'home', // Reverted to simple string
         currentLemmyFeed: null,
         currentLemmySort: 'New',
         currentDiscoverTab: 'lemmy',
@@ -265,19 +265,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         } else if (platform === 'mastodon' || platform === 'pixelfed') {
              items = [
-                { label: 'Home', feed: { path: 'home' } },
-                { label: 'Global', feed: { path: 'public' } },
-                { label: 'Local', feed: { path: 'public', params: { local: true } } }
+                { label: 'Home', feed: 'home' },
+                { label: 'Global', feed: 'public' },
+                { label: 'Local', feed: 'public?local=true' }
             ];
-            const currentFeedPath = state.currentTimeline.path;
-            const currentFeedIsLocal = state.currentTimeline.params && state.currentTimeline.params.local;
-
+            const currentFeed = state.currentTimeline;
             items.forEach(item => {
                 const button = document.createElement('button');
                 button.className = 'timeline-sub-nav-btn';
                 button.textContent = item.label;
-                const itemIsLocal = item.feed.params && item.feed.params.local;
-                if (item.feed.path === currentFeedPath && !!itemIsLocal === !!currentFeedIsLocal) {
+                if (item.feed === currentFeed) {
                     button.classList.add('active');
                 }
                 button.addEventListener('click', () => actions.showTimeline(platform, item.feed));
@@ -701,7 +698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
             showToast('Mastodon login successful!');
-            actions.showTimeline('mastodon', { path: 'home' });
+            actions.showTimeline('mastodon', 'home');
             return true;
         } catch (error) {
             showToast('Mastodon login failed.');
@@ -721,7 +718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('pixelfed-instance', instanceUrl);
             localStorage.setItem('pixelfed-token', accessToken);
             showToast('Pixelfed login successful!');
-            actions.showTimeline('pixelfed', { path: 'home' });
+            actions.showTimeline('pixelfed', 'home');
             return true;
         } catch (error) {
             showToast(`Pixelfed login failed: ${error.message}`);
@@ -753,7 +750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     initDropdowns();
     initPullToRefresh(state, actions);
-    initComposeModal(state, () => actions.showTimeline('mastodon', { path: 'home' }));
+    initComposeModal(state, () => actions.showTimeline('mastodon', 'home'));
     initImageModal();
     
     refreshBtn.addEventListener('click', () => {
@@ -785,13 +782,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (initialView === 'timeline') {
         if (state.accessToken) { 
-            actions.showTimeline('mastodon', { path: 'home' });
+            actions.showTimeline('mastodon', 'home');
         } else if (localStorage.getItem('pixelfed-token')) {
-            actions.showTimeline('pixelfed', { path: 'home' });
+            actions.showTimeline('pixelfed', 'home');
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
-            actions.showTimeline('mastodon', { path: 'home' }); 
+            actions.showTimeline('mastodon', 'home'); 
         }
     } else {
         switchView(initialView, false);
@@ -806,9 +803,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (target.id === 'lemmy-main-link') {
             actions.showLemmyFeed('Subscribed');
         } else if (target.id === 'mastodon-main-link') {
-            actions.showTimeline('mastodon', { path: 'home' });
+            actions.showTimeline('mastodon', 'home');
         } else if (target.id === 'pixelfed-main-link') {
-            actions.showTimeline('pixelfed', { path: 'home' });
+            actions.showTimeline('pixelfed', 'home');
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
