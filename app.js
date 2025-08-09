@@ -882,4 +882,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
 });
-}
