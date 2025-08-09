@@ -1,101 +1,143 @@
+import { renderLemmyCard } from './Lemmy.js';
+import { renderCommentNode } from './LemmyPost.js';
 import { apiFetch } from './api.js';
-import { renderLemmyCard } from './Lemmy.js'; 
-import { ICONS } from './icons.js';
-
-function captureAndSave() {
-    const captureTarget = document.getElementById('screenshot-content');
-    html2canvas(captureTarget, {
-        backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg-color'),
-        useCORS: true 
-    }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'feedstodon-screenshot.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    });
-}
 
 export async function renderScreenshotPage(state, commentView, postView, actions) {
-    const view = document.getElementById('screenshot-view');
-    const controlsContainer = view.querySelector('.screenshot-controls');
-    const contentArea = view.querySelector('#screenshot-content');
-    const watermark = view.querySelector('#screenshot-watermark');
+    const container = document.getElementById('screenshot-view');
+    if (!container) {
+        console.error("Screenshot view container not found!");
+        return;
+    }
 
-    // Reset view
-    contentArea.innerHTML = '';
-    watermark.style.display = 'none';
-    watermark.innerHTML = ICONS.watermark;
-    
-    controlsContainer.innerHTML = `
-        <button id="toggle-comments-btn">Toggle Comments</button>
-        <button id="toggle-image-btn">Toggle Image</button>
-        <button id="toggle-body-btn">Toggle Body</button>
-        <button id="toggle-watermark-btn">Toggle Watermark</button>
-        <button id="save-screenshot-btn">${ICONS.save}</button>
-    `;
-    
-    // Render the main post
-    const mainPostCard = renderLemmyCard(postView, actions);
-    contentArea.appendChild(mainPostCard);
-    
-    // Fetch context and render comments
+    container.innerHTML = ''; 
+
+    const controlsTemplate = document.getElementById('screenshot-controls-template');
+    container.appendChild(controlsTemplate.content.cloneNode(true));
+
+    const previewArea = container.querySelector('#screenshot-preview-area');
+    const allComments = [];
+    let parentCount = 0;
+    let replyCount = 0;
+    let includeReplies = false;
+
+    // Fetch all comments for the post
     try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/comment`, {}, 'lemmy', { id: commentView.comment.id });
-        
-        if (data && data.context && Array.isArray(data.context)) {
-            const context = data.comment_view.comment.path.split('.').slice(1, -1).map(id => parseInt(id));
-            const allComments = [ ...data.context, data.comment_view ];
-
-            context.forEach(parentId => {
-                const parentComment = allComments.find(c => c.comment.id === parentId);
-                if (parentComment) {
-                     const commentEl = document.createElement('div');
-                     commentEl.className = 'status lemmy-comment screenshot-comment';
-                     commentEl.innerHTML = `<div class="status-body-content"><div class="status-header"><span class="display-name">${parentComment.creator.name}</span></div><div class="status-content">${parentComment.comment.content}</div></div>`;
-                     contentArea.appendChild(commentEl);
-                }
-            });
-        }
-
-        const finalComment = document.createElement('div');
-        finalComment.className = 'status lemmy-comment screenshot-comment';
-        finalComment.innerHTML = `<div class="status-body-content"><div class="status-header"><span class="display-name">${commentView.creator.name}</span></div><div class="status-content">${commentView.comment.content}</div></div>`;
-        contentArea.appendChild(finalComment);
-        contentArea.appendChild(watermark);
-
-    } catch(err) {
-        console.error("Failed to get comment context for screenshot", err);
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const params = { post_id: postView.post.id, max_depth: 15, sort: 'New', type_: 'All' };
+        const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
+        allComments.push(...response.data.comments);
+    } catch (err) {
+        console.error("Failed to load Lemmy comments for screenshot:", err);
+        previewArea.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
+        return;
     }
     
-    // Add control listeners
-    controlsContainer.querySelector('#save-screenshot-btn').addEventListener('click', captureAndSave);
+    const targetCommentIndex = allComments.findIndex(c => c.comment.id === commentView.comment.id);
+    const targetComment = allComments[targetCommentIndex];
+    const targetCommentPathParts = targetComment.comment.path.split('.');
     
-    let commentsVisible = true;
-    controlsContainer.querySelector('#toggle-comments-btn').addEventListener('click', () => {
-        commentsVisible = !commentsVisible;
-        contentArea.querySelectorAll('.screenshot-comment').forEach(el => {
-            el.style.display = commentsVisible ? 'block' : 'none';
+    const getParents = (comment) => {
+        const parents = [];
+        const pathParts = comment.comment.path.split('.');
+        if (pathParts.length <= 2) return parents;
+
+        for (let i = 1; i < pathParts.length - 1; i++) {
+            const parentId = parseInt(pathParts[i], 10);
+            const parentComment = allComments.find(c => c.comment.id === parentId);
+            if(parentComment) parents.push(parentComment);
+        }
+        return parents;
+    };
+    
+    const getReplies = (comment) => {
+        return allComments.filter(c => {
+             const pathParts = c.comment.path.split('.');
+             const parentId = parseInt(pathParts[pathParts.length - 2], 10);
+             return parentId === comment.comment.id;
         });
+    };
+
+    const allParents = getParents(targetComment);
+    const allReplies = getReplies(targetComment);
+
+
+    function updatePreview() {
+        previewArea.innerHTML = '';
+        
+        // Render the main post card
+        previewArea.appendChild(renderLemmyCard(postView, actions));
+
+        // Render parent comments
+        const parentsToShow = allParents.slice(allParents.length - parentCount);
+        parentsToShow.forEach(parent => {
+            previewArea.appendChild(renderCommentNode(parent, actions));
+        });
+        
+        // Render the target comment
+        previewArea.appendChild(renderCommentNode(commentView, actions));
+        
+        // Render replies if toggled
+        if (includeReplies) {
+            const repliesToShow = allReplies.slice(0, replyCount);
+            repliesToShow.forEach(reply => {
+                const replyNode = renderCommentNode(reply, actions);
+                replyNode.style.marginLeft = '20px'; // Indent replies
+                previewArea.appendChild(replyNode);
+            });
+        }
+    }
+
+    // Initial render
+    updatePreview();
+
+    // --- Event Listeners for Controls ---
+    container.querySelector('[data-action="parents-up"]').addEventListener('click', () => {
+        if (parentCount < allParents.length) {
+            parentCount++;
+            updatePreview();
+        }
+    });
+
+    container.querySelector('[data-action="parents-down"]').addEventListener('click', () => {
+        if (parentCount > 0) {
+            parentCount--;
+            updatePreview();
+        }
     });
     
-    let imageVisible = true;
-    controlsContainer.querySelector('#toggle-image-btn').addEventListener('click', () => {
-        imageVisible = !imageVisible;
-        const image = contentArea.querySelector('.status-media');
-        if (image) image.style.display = imageVisible ? 'flex' : 'none';
+    const repliesCheckbox = container.querySelector('#include-replies-checkbox');
+    const repliesControls = container.querySelector('#replies-controls');
+
+    repliesCheckbox.addEventListener('change', (e) => {
+        includeReplies = e.target.checked;
+        repliesControls.style.display = includeReplies ? 'block' : 'none';
+        if (!includeReplies) {
+            replyCount = 0; // Reset reply count when hiding
+        }
+        updatePreview();
     });
 
-    let bodyVisible = true;
-    controlsContainer.querySelector('#toggle-body-btn').addEventListener('click', () => {
-        bodyVisible = !bodyVisible;
-        const body = contentArea.querySelector('.lemmy-card .status-content > *:not(h3)');
-        if (body) body.style.display = bodyVisible ? 'block' : 'none';
+    container.querySelector('[data-action="replies-up"]').addEventListener('click', () => {
+        if (replyCount < allReplies.length) {
+            replyCount++;
+            updatePreview();
+        }
     });
-
-    let watermarkVisible = false;
-    controlsContainer.querySelector('#toggle-watermark-btn').addEventListener('click', () => {
-        watermarkVisible = !watermarkVisible;
-        watermark.style.display = watermarkVisible ? 'flex' : 'none';
+    
+    container.querySelector('[data-action="replies-down"]').addEventListener('click', () => {
+        if (replyCount > 0) {
+            replyCount--;
+            updatePreview();
+        }
+    });
+    
+    container.querySelector('#capture-btn').addEventListener('click', () => {
+        html2canvas(previewArea).then(canvas => {
+            const image = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = image;
+            link.download = 'feedstodon-screenshot.png';
+            link.click();
+        });
     });
 }
