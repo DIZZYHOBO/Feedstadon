@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentUser: null,
         currentView: null,
         currentProfileTab: 'mastodon',
+        currentProfileUserAcct: null,
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: 'New',
@@ -309,6 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const actions = {
         showProfilePage: (platform, accountId = null, userAcct = null) => {
             showLoadingBar();
+            state.currentProfileUserAcct = userAcct;
             switchView('profile');
             renderProfilePage(state, actions, platform, accountId, userAcct);
             hideLoadingBar();
@@ -891,7 +893,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     loadMoreMastodonTrendingPosts(state, actions);
                 }
             } else if (state.currentView === 'profile' && state.currentProfileTab === 'lemmy' && state.lemmyProfileHasMore) {
-                loadMoreLemmyProfile(state, actions);
+                loadMoreLemmyProfile(state, actions, state.currentProfileUserAcct);
             }
         }
     });
