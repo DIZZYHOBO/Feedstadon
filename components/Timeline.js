@@ -31,7 +31,7 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
         }
         
         data.forEach(status => {
-            const statusCard = renderStatus(status, state.currentUser, actions, state.settings, true);
+            const statusCard = renderStatus(status, state.currentUser, actions, state.settings, platform);
             state.timelineDiv.appendChild(statusCard);
         });
 
