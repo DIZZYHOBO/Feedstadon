@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentView: null,
         currentProfileTab: 'mastodon',
         currentProfileUserAcct: null,
-        currentTimeline: 'home', // Reverted to simple string
+        currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: 'New',
         currentDiscoverTab: 'lemmy',
