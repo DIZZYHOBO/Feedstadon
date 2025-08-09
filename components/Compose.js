@@ -1,280 +1,95 @@
-import { apiFetch, apiUploadMedia, apiUploadLemmyImage } from './api.js';
-import { ICONS } from './icons.js';
+import { apiFetch } from './api.js';
 
-let isPollActive = false;
-let isCwActive = false;
-let attachedFile = null;
-let currentLemmyPostType = 'Text';
-let resolvedLemmyCommunityId = null;
+let currentReplyToId = null;
 
 export function showComposeModal(state) {
-    const composeModal = document.getElementById('compose-modal');
-    
-    document.getElementById('mastodon-compose-form').reset();
-    document.getElementById('poll-creator-container').style.display = 'none';
-    document.getElementById('cw-creator-container').style.display = 'none';
-    document.getElementById('media-filename-preview').textContent = '';
-    attachedFile = null;
-    isPollActive = false;
-    isCwActive = false;
+    const modal = document.getElementById('compose-modal');
+    const inReplyToContainer = document.getElementById('in-reply-to-container');
+    const textarea = document.getElementById('compose-textarea');
 
-    document.getElementById('lemmy-compose-form').reset();
-    document.getElementById('lemmy-link-input-container').style.display = 'none';
-    document.getElementById('lemmy-image-input-container').style.display = 'none';
-    document.getElementById('lemmy-body-textarea').style.display = 'block';
-    currentLemmyPostType = 'Text';
-    resolvedLemmyCommunityId = null;
-     document.querySelectorAll('.lemmy-post-type-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.type === 'Text');
-    });
-
-    document.querySelector('.compose-tabs .tab-button[data-tab="mastodon"]').click();
-
-    composeModal.classList.add('visible');
-    document.getElementById('compose-textarea').focus();
+    currentReplyToId = null;
+    inReplyToContainer.style.display = 'none';
+    textarea.value = '';
+    textarea.placeholder = "What's on your mind?";
+    modal.style.display = 'block';
+    textarea.focus();
 }
 
 export function showComposeModalWithReply(state, post) {
-    showComposeModal(state); // First, open and reset the modal
-
+    const modal = document.getElementById('compose-modal');
+    const inReplyToContainer = document.getElementById('in-reply-to-container');
+    const replyToUser = document.getElementById('reply-to-user');
     const textarea = document.getElementById('compose-textarea');
-    const mentions = [`@${post.account.acct}`];
-    post.mentions.forEach(mention => {
-        if(mention.acct !== state.currentUser.acct) {
-            mentions.push(`@${mention.acct}`);
-        }
-    });
+
+    currentReplyToId = post.id;
+    replyToUser.textContent = `@${post.account.acct}`;
+    inReplyToContainer.style.display = 'block';
     
-    textarea.value = `${[...new Set(mentions)].join(' ')} `;
+    textarea.value = `@${post.account.acct} `;
+    textarea.placeholder = '';
+    modal.style.display = 'block';
     textarea.focus();
 }
 
 export function initComposeModal(state, onPostSuccess) {
-    const composeModal = document.getElementById('compose-modal');
+    const modal = document.getElementById('compose-modal');
+    const closeBtn = modal.querySelector('.close-btn');
+    const postBtn = document.getElementById('post-btn');
+    const textarea = document.getElementById('compose-textarea');
+    const charCount = document.getElementById('char-count');
+    const inReplyToContainer = document.getElementById('in-reply-to-container');
 
-    // --- Tab Switching ---
-    const tabButtons = composeModal.querySelectorAll('.compose-tabs .tab-button');
-    const tabContents = composeModal.querySelectorAll('.compose-tab-content');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            button.classList.add('active');
-            document.getElementById(`${button.dataset.tab}-compose-tab`).classList.add('active');
-        });
+    // Make sure all elements exist before adding listeners
+    if (!modal || !closeBtn || !postBtn || !textarea || !charCount || !inReplyToContainer) {
+        console.error("Compose modal elements not found! Check your index.html.");
+        return;
+    }
+
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
     });
 
-    // --- Mastodon Form ---
-    const mastodonForm = document.getElementById('mastodon-compose-form');
-    const addMediaBtn = document.getElementById('add-media-btn');
-    const mediaInput = document.getElementById('media-attachment-input');
-    const mediaPreview = document.getElementById('media-filename-preview');
-    const addPollBtn = document.getElementById('add-poll-btn');
-    const addCwBtn = document.getElementById('add-cw-btn');
-    const addPollOptionBtn = document.getElementById('add-poll-option-btn');
-    
-    addMediaBtn.innerHTML = ICONS.media;
-    addPollBtn.innerHTML = ICONS.poll;
-    addCwBtn.innerHTML = ICONS.warning;
-    
-    addMediaBtn.addEventListener('click', () => mediaInput.click());
-    mediaInput.addEventListener('change', () => {
-        if (mediaInput.files.length > 0) {
-            attachedFile = mediaInput.files[0];
-            mediaPreview.textContent = attachedFile.name;
-            addPollBtn.disabled = true;
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
         }
     });
 
-    addPollBtn.addEventListener('click', () => {
-        isPollActive = !isPollActive;
-        document.getElementById('poll-creator-container').style.display = isPollActive ? 'block' : 'none';
-        addMediaBtn.disabled = isPollActive;
+    textarea.addEventListener('input', () => {
+        const remaining = 500 - textarea.value.length;
+        charCount.textContent = remaining;
+        charCount.style.color = remaining < 0 ? 'var(--error-color)' : '';
     });
 
-    addCwBtn.addEventListener('click', () => {
-        isCwActive = !isCwActive;
-        document.getElementById('cw-creator-container').style.display = isCwActive ? 'block' : 'none';
-    });
+    postBtn.addEventListener('click', async () => {
+        const content = textarea.value.trim();
+        if (!content) return;
 
-    addPollOptionBtn.addEventListener('click', () => {
-        const pollOptionsContainer = document.getElementById('poll-options-container');
-        const optionInputs = pollOptionsContainer.querySelectorAll('.poll-option-input');
-        if (optionInputs.length < 4) {
-            const newInput = document.createElement('input');
-            newInput.type = 'text';
-            newInput.className = 'poll-option-input';
-            newInput.placeholder = `Choice ${optionInputs.length + 1}`;
-            newInput.maxLength = 25;
-            pollOptionsContainer.appendChild(newInput);
-        }
-        if (pollOptionsContainer.querySelectorAll('.poll-option-input').length >= 4) {
-            addPollOptionBtn.style.display = 'none';
-        }
-    });
-    
-    mastodonForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const content = document.getElementById('compose-textarea').value.trim();
-        const spoilerText = document.getElementById('spoiler-text-input').value.trim();
-        if (!content && !attachedFile) return;
+        postBtn.disabled = true;
+        postBtn.textContent = 'Posting...';
 
         try {
-            const postButton = mastodonForm.querySelector('button[type="submit"]');
-            postButton.disabled = true;
-            postButton.textContent = 'Posting...';
-
-            const postBody = { status: content };
-            
-            if (isCwActive && spoilerText) postBody.spoiler_text = spoilerText;
-
-            if (attachedFile) {
-                const mediaResponse = await apiUploadMedia(state, attachedFile);
-                if (mediaResponse.id) postBody.media_ids = [mediaResponse.id];
-            }
-            
-            if (isPollActive) {
-                const pollOptionsContainer = document.getElementById('poll-options-container');
-                const pollOptions = Array.from(pollOptionsContainer.querySelectorAll('.poll-option-input'))
-                                         .map(input => input.value.trim()).filter(Boolean);
-                if (pollOptions.length < 2) {
-                    alert('Polls must have at least 2 choices.');
-                    postButton.disabled = false;
-                    postButton.textContent = 'Post';
-                    return;
-                }
-                postBody.poll = {
-                    options: pollOptions,
-                    expires_in: parseInt(document.getElementById('poll-duration-select').value, 10),
-                    multiple: document.getElementById('poll-multiple-choice-check').checked
-                };
+            const postData = {
+                status: content,
+            };
+            if (currentReplyToId) {
+                postData.in_reply_to_id = currentReplyToId;
             }
 
             await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(postBody)
+                body: postData
             });
-
-            postButton.disabled = false;
-            postButton.textContent = 'Post';
-            composeModal.classList.remove('visible');
+            
+            modal.style.display = 'none';
+            textarea.value = '';
             onPostSuccess();
+
         } catch (error) {
-            console.error('Failed to post to Mastodon:', error);
-            alert('Could not create Mastodon post.');
-            mastodonForm.querySelector('button[type="submit"]').disabled = false;
-            mastodonForm.querySelector('button[type="submit"]').textContent = 'Post';
+            alert('Failed to post. Please try again.');
+        } finally {
+            postBtn.disabled = false;
+            postBtn.textContent = 'Post';
         }
-    });
-
-    // --- Lemmy Form ---
-    const lemmyForm = document.getElementById('lemmy-compose-form');
-    const lemmyCommunityInput = document.getElementById('lemmy-community-input');
-    const lemmyPostTypeBtns = document.querySelectorAll('.lemmy-post-type-btn');
-    const lemmyLinkForm = document.getElementById('lemmy-link-input-container');
-    const lemmyImageForm = document.getElementById('lemmy-image-input-container');
-    const lemmyBodyTextarea = document.getElementById('lemmy-body-textarea');
-    
-    lemmyCommunityInput.addEventListener('blur', async () => {
-        const communityName = lemmyCommunityInput.value.trim().replace(/^!/, '');
-        if (!communityName) return;
-
-        try {
-            const lemmyInstance = localStorage.getItem('lemmy_instance');
-            const response = await apiFetch(lemmyInstance, null, `/api/v3/community?name=${communityName}`, {}, 'lemmy');
-            if (response.data.community_view) {
-                resolvedLemmyCommunityId = response.data.community_view.community.id;
-                lemmyCommunityInput.style.borderColor = 'green';
-            } else {
-                resolvedLemmyCommunityId = null;
-                lemmyCommunityInput.style.borderColor = 'red';
-                alert('Community not found.');
-            }
-        } catch (err) {
-            resolvedLemmyCommunityId = null;
-            lemmyCommunityInput.style.borderColor = 'red';
-            alert('Failed to resolve community.');
-        }
-    });
-    
-    lemmyPostTypeBtns.forEach(button => {
-        button.addEventListener('click', () => {
-            currentLemmyPostType = button.dataset.type;
-            lemmyPostTypeBtns.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            lemmyLinkForm.style.display = 'none';
-            lemmyImageForm.style.display = 'none';
-            
-            if (currentLemmyPostType === 'Link') {
-                lemmyLinkForm.style.display = 'block';
-            } else if (currentLemmyPostType === 'Image') {
-                lemmyImageForm.style.display = 'block';
-            }
-        });
-    });
-
-    lemmyForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('lemmy-title-input').value.trim();
-        if (!title || !resolvedLemmyCommunityId) {
-            alert('A title and a valid, resolved community are required.');
-            return;
-        }
-
-        const postBody = {
-            name: title,
-            community_id: resolvedLemmyCommunityId,
-            body: document.getElementById('lemmy-body-textarea').value.trim()
-        };
-        
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const lemmyToken = localStorage.getItem('lemmy_jwt');
-
-        try {
-            const postButton = lemmyForm.querySelector('button[type="submit"]');
-            postButton.disabled = true;
-            postButton.textContent = 'Posting...';
-
-            if (currentLemmyPostType === 'Link') {
-                postBody.url = document.getElementById('lemmy-url-input').value.trim();
-            } else if (currentLemmyPostType === 'Image') {
-                const imageFile = document.getElementById('lemmy-image-input').files[0];
-                if (imageFile) {
-                    const uploadResponse = await apiUploadLemmyImage(lemmyInstance, lemmyToken, imageFile);
-                    if (uploadResponse.files && uploadResponse.files.length > 0) {
-                        const uploadedFile = uploadResponse.files[0];
-                        postBody.url = `https://${lemmyInstance}/pictrs/image/${uploadedFile.file}`;
-                    } else {
-                        throw new Error("Image upload failed to return a valid URL.");
-                    }
-                }
-            }
-            
-            await apiFetch(lemmyInstance, null, '/api/v3/post', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(postBody)
-            }, 'lemmy');
-
-            postButton.disabled = false;
-            postButton.textContent = 'Post';
-            composeModal.classList.remove('visible');
-            state.actions.showLemmyFeed('Subscribed'); // Refresh feed on success
-        } catch (err) {
-            console.error("Failed to post to Lemmy:", err);
-            alert("Could not create Lemmy post.");
-            lemmyForm.querySelector('button[type="submit"]').disabled = false;
-            lemmyForm.querySelector('button[type="submit"]').textContent = 'Post';
-        }
-    });
-
-
-    // --- General Modal Actions ---
-    composeModal.querySelectorAll('.cancel-compose-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            composeModal.classList.remove('visible');
-        });
     });
 }
