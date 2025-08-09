@@ -54,7 +54,7 @@ export function renderLoginPrompt(container, platform, onLoginSuccess) {
     const loginPrompt = template.content.cloneNode(true);
     const form = loginPrompt.querySelector('form');
 
-    if (platform === 'mastodon') {
+    if (platform === 'mastodon' || platform === 'pixelfed') {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             const instance = form.querySelector('.instance-url-input').value.trim();
