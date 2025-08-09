@@ -91,17 +91,21 @@ async function toggleLemmyReplies(commentId, container, state, actions) {
 
     try {
         const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}`, { method: 'GET' }, 'lemmy');
-        const replies = response.data.replies;
+        // Safely access replies from the response data
+        const replies = response?.data?.replies;
         container.innerHTML = '';
 
-        if (!replies || replies.length === 0) {
+        // Check if replies is an array and has content
+        if (Array.isArray(replies) && replies.length > 0) {
+            replies.forEach(reply => {
+                // Also ensure reply.comment_view exists before rendering
+                if (reply.comment_view) {
+                    container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
+                }
+            });
+        } else {
             container.innerHTML = 'No replies found.';
-            return;
         }
-
-        replies.forEach(reply => {
-            container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
-        });
     } catch (error) {
         console.error('Failed to fetch replies:', error);
         container.innerHTML = 'Failed to load replies.';
