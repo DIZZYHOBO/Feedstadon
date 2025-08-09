@@ -600,7 +600,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { community_id: communityId, block: block }
                 }, 'lemmy');
                 showToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
-                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -618,7 +617,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { person_id: personId, block: block }
                 }, 'lemmy');
                 showToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
-                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -657,7 +655,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyEditPost: async (postId, content) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/edit', {
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post', {
                     method: 'PUT',
                     body: { post_id: postId, body: content }
                 }, 'lemmy');
@@ -676,7 +674,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyEditComment: async (commentId, content) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/edit', {
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
                     method: 'PUT',
                     body: { comment_id: commentId, content: content }
                 }, 'lemmy');
@@ -829,14 +827,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('help-modal').classList.remove('visible');
     });
     
-    document.body.addEventListener('click', (e) => {
-        const link = e.target.closest('a');
-        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
-            e.preventDefault();
-            openInAppBrowser(link.href);
-        }
-    });
-
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore) return;
 
@@ -863,7 +853,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const imageModal = document.getElementById('image-modal');
         if (imageModal && imageModal.classList.contains('visible')) {
             imageModal.classList.remove('visible');
-            // Don't switch view, just close modal
             history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
         } else if (event.state && event.state.view) {
             switchView(event.state.view, false);
