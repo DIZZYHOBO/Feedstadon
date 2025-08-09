@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentView: null,
         currentProfileTab: 'mastodon',
         currentProfileUserAcct: null,
-        currentTimeline: 'home',
+        currentTimeline: { path: 'home' },
         currentLemmyFeed: null,
         currentLemmySort: 'New',
         currentDiscoverTab: 'lemmy',
@@ -243,7 +243,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         let items = [];
-        let currentFeed = '';
         const tabs = document.createElement('div');
         tabs.className = 'timeline-sub-nav-tabs';
 
@@ -253,51 +252,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { label: 'All', feed: 'All' },
                 { label: 'Local', feed: 'Local' }
             ];
-            currentFeed = state.currentLemmyFeed;
+            const currentFeed = state.currentLemmyFeed;
+            items.forEach(item => {
+                const button = document.createElement('button');
+                button.className = 'timeline-sub-nav-btn';
+                button.textContent = item.label;
+                if (item.feed === currentFeed) {
+                    button.classList.add('active');
+                }
+                button.addEventListener('click', () => actions.showTimeline(platform, item.feed));
+                tabs.appendChild(button);
+            });
         } else if (platform === 'mastodon' || platform === 'pixelfed') {
              items = [
-                { label: 'Home', feed: 'home' },
-                { label: 'Global', feed: 'public' },
-                { label: 'Local', feed: 'public?local=true' }
+                { label: 'Home', feed: { path: 'home' } },
+                { label: 'Global', feed: { path: 'public' } },
+                { label: 'Local', feed: { path: 'public', params: { local: true } } }
             ];
-            currentFeed = state.currentTimeline;
-        }
+            const currentFeedPath = state.currentTimeline.path;
+            const currentFeedIsLocal = state.currentTimeline.params && state.currentTimeline.params.local;
 
-        items.forEach(item => {
-            const button = document.createElement('button');
-            button.className = 'timeline-sub-nav-btn';
-            button.textContent = item.label;
-            if (item.feed === currentFeed) {
-                button.classList.add('active');
-            }
-            button.addEventListener('click', () => {
-                actions.showTimeline(platform, item.feed);
+            items.forEach(item => {
+                const button = document.createElement('button');
+                button.className = 'timeline-sub-nav-btn';
+                button.textContent = item.label;
+                const itemIsLocal = item.feed.params && item.feed.params.local;
+                if (item.feed.path === currentFeedPath && !!itemIsLocal === !!currentFeedIsLocal) {
+                    button.classList.add('active');
+                }
+                button.addEventListener('click', () => actions.showTimeline(platform, item.feed));
+                tabs.appendChild(button);
             });
-            tabs.appendChild(button);
-        });
+        }
         
         subNavContainer.appendChild(tabs);
-
-        if (platform === 'lemmy') {
-            const filterContainer = document.createElement('div');
-            filterContainer.id = 'lemmy-filter-container';
-            filterContainer.innerHTML = `
-                 <select id="lemmy-sort-select">
-                    <option value="New">New</option>
-                    <option value="Active">Active</option>
-                    <option value="Hot">Hot</option>
-                    <option value="TopHour">Top Hour</option>
-                    <option value="TopSixHour">Top Six Hour</option>
-                    <option value="TopTwelveHour">Top Twelve Hour</option>
-                    <option value="TopDay">Top Day</option>
-                </select>
-            `;
-            filterContainer.querySelector('#lemmy-sort-select').value = state.currentLemmySort;
-            filterContainer.querySelector('#lemmy-sort-select').addEventListener('change', (e) => {
-                actions.showLemmyFeed(state.currentLemmyFeed, e.target.value);
-            });
-            subNavContainer.appendChild(filterContainer);
-        }
         
         subNavContainer.style.display = 'flex';
     };
@@ -713,7 +701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
             showToast('Mastodon login successful!');
-            actions.showTimeline('mastodon', 'home');
+            actions.showTimeline('mastodon', { path: 'home' });
             return true;
         } catch (error) {
             showToast('Mastodon login failed.');
@@ -733,7 +721,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('pixelfed-instance', instanceUrl);
             localStorage.setItem('pixelfed-token', accessToken);
             showToast('Pixelfed login successful!');
-            actions.showTimeline('pixelfed', 'home');
+            actions.showTimeline('pixelfed', { path: 'home' });
             return true;
         } catch (error) {
             showToast(`Pixelfed login failed: ${error.message}`);
@@ -765,7 +753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     initDropdowns();
     initPullToRefresh(state, actions);
-    initComposeModal(state, () => actions.showTimeline('mastodon', 'home'));
+    initComposeModal(state, () => actions.showTimeline('mastodon', { path: 'home' }));
     initImageModal();
     
     refreshBtn.addEventListener('click', () => {
@@ -797,13 +785,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (initialView === 'timeline') {
         if (state.accessToken) { 
-            actions.showTimeline('mastodon', 'home');
+            actions.showTimeline('mastodon', { path: 'home' });
         } else if (localStorage.getItem('pixelfed-token')) {
-            actions.showTimeline('pixelfed', 'home');
+            actions.showTimeline('pixelfed', { path: 'home' });
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
-            actions.showTimeline('mastodon', 'home'); 
+            actions.showTimeline('mastodon', { path: 'home' }); 
         }
     } else {
         switchView(initialView, false);
@@ -818,9 +806,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (target.id === 'lemmy-main-link') {
             actions.showLemmyFeed('Subscribed');
         } else if (target.id === 'mastodon-main-link') {
-            actions.showTimeline('mastodon', 'home');
+            actions.showTimeline('mastodon', { path: 'home' });
         } else if (target.id === 'pixelfed-main-link') {
-            actions.showTimeline('pixelfed', 'home');
+            actions.showTimeline('pixelfed', { path: 'home' });
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
