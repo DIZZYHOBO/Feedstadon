@@ -174,6 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     document.addEventListener('click', hideContextMenu);
     document.addEventListener('contextmenu', (e) => {
+        // Hide if clicking outside a valid target
         if (!e.target.closest('.status')) {
             hideContextMenu();
         }
@@ -186,6 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 state.currentUser = account;
             } catch (error) {
                 console.error("Token verification failed:", error);
+                // Clear invalid token
                 localStorage.removeItem('fediverse-instance');
                 localStorage.removeItem('fediverse-token');
                 state.instanceUrl = null;
@@ -209,6 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
+        // Hide sub-nav by default on every view change
         document.getElementById('timeline-sub-nav').style.display = 'none';
         
         document.querySelector('.top-nav').style.display = 'flex';
@@ -398,39 +401,107 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-        replyToStatus: (post) => {
-            showComposeModalWithReply(state, post);
+        replyToStatus: (post, card) => {
+            actions.showConversation(post, card);
         },
-        deleteStatus: async (statusId, card) => {
-            if (confirm('Are you sure you want to delete this post?')) {
-                try {
-                    await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
-                    card.remove();
-                    showToast("Post deleted successfully.");
-                } catch (err) {
-                    showToast("Failed to delete post.");
+        showConversation: async (post, card) => {
+            const container = card.querySelector('.conversation-container');
+            const isVisible = container.style.display === 'flex';
+            
+            document.querySelectorAll('.conversation-container').forEach(c => c.style.display = 'none');
+
+            if (isVisible) {
+                container.style.display = 'none';
+            } else {
+                container.innerHTML = 'Loading conversation...';
+                container.style.display = 'flex';
+                
+                const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${post.id}/context`);
+
+                container.innerHTML = `
+                    <div class="conversation-thread"></div>
+                    <div class="conversation-reply-box">
+                        <textarea class="conversation-reply-textarea" placeholder="Reply..."></textarea>
+                        <button class="button-primary send-reply-btn">Reply</button>
+                    </div>
+                `;
+
+                const threadContainer = container.querySelector('.conversation-thread');
+                if (context.descendants) {
+                    context.descendants.forEach(reply => {
+                        threadContainer.appendChild(renderStatus(reply, state.currentUser, actions, state.settings));
+                    });
                 }
+                
+                const textarea = container.querySelector('.conversation-reply-textarea');
+                textarea.value = `@${post.account.acct} `;
+                textarea.focus();
+
+                container.querySelector('.send-reply-btn').addEventListener('click', async () => {
+                    const status = textarea.value.trim();
+                    if (!status) return;
+
+                    await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+                        method: 'POST',
+                        body: { status: status, in_reply_to_id: post.id }
+                    });
+                    
+                    container.style.display = 'none';
+                });
             }
         },
-        editStatus: (status) => {
-             // Future implementation
-            alert('Editing posts is not yet implemented.');
+        handleSearchResultClick: (account) => {
+            if (account.acct.includes('@')) {
+                actions.showProfilePage('mastodon', account.id);
+            } else {
+                actions.showLemmyCommunity(account.acct);
+            }
+        },
+        deleteStatus: async (statusId) => {
+            try {
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
+                document.querySelector(`.status[data-id="${statusId}"]`)?.remove();
+                showToast("Post deleted successfully.");
+            } catch (err) {
+                showToast("Failed to delete post.");
+            }
+        },
+        editStatus: async (statusId, newContent) => {
+            try {
+                const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, {
+                    method: 'PUT',
+                    body: { status: newContent }
+                });
+                // Update the post in the UI
+                const postCard = document.querySelector(`.status[data-id="${statusId}"]`);
+                if (postCard) {
+                    const contentDiv = postCard.querySelector('.status-content');
+                    contentDiv.innerHTML = response.data.content;
+                }
+                showToast("Post updated successfully.");
+            } catch (err) {
+                showToast("Failed to update post.");
+            }
         },
         toggleAction: async (action, status, button) => {
             const isToggled = button.classList.contains('active');
-            const newAction = isToggled ? `un${action}` : action;
+            const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
             try {
-                const {data} = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
-                button.classList.toggle('active', data[`${action}d`]);
-                
-                const countSpan = button.querySelector('.action-count');
-                if (countSpan) {
-                    const currentCount = parseInt(countSpan.textContent, 10);
-                    countSpan.textContent = data[`${action}s_count`];
-                }
-
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
+                button.classList.toggle('active');
             } catch (err) {
                 showToast(`Failed to ${action} post.`);
+            }
+        },
+        mastodonFollow: async (accountId, follow = true) => {
+            try {
+                const endpoint = follow ? 'follow' : 'unfollow';
+                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/${endpoint}`, { method: 'POST' });
+                showToast(`User ${follow ? 'followed' : 'unfollowed'}.`);
+                return true;
+            } catch (err) {
+                showToast(`Failed to ${follow ? 'follow' : 'unfollow'} user.`);
+                return false;
             }
         },
         lemmyVote: async (postId, score, card) => {
@@ -507,6 +578,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 'lemmy');
             return response.data;
         },
+         lemmyFollowCommunity: async (communityId, follow = true) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/community/follow', {
+                    method: 'POST',
+                    body: { community_id: communityId, follow: follow }
+                }, 'lemmy');
+                showToast(`Community ${follow ? 'followed' : 'unfollowed'}.`);
+                return true;
+            } catch (err) {
+                showToast('Failed to follow community.');
+                return false;
+            }
+        },
         lemmyBlockCommunity: async (communityId, block) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -515,6 +600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { community_id: communityId, block: block }
                 }, 'lemmy');
                 showToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -532,6 +618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { person_id: personId, block: block }
                 }, 'lemmy');
                 showToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -595,11 +682,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshBtn.addEventListener('click', () => {
         if (state.currentView === 'timeline') {
             if (state.currentTimeline) {
-                actions.showMastodonTimeline(state.currentTimeline);
-            } else if (state.currentLemmyFeed) {
-                actions.showLemmyFeed(state.currentLemmyFeed, state.currentLemmySort);
-            } else {
                 actions.showHomeTimeline();
+            } else if (state.currentLemmyFeed) {
+                actions.showLemmyFeed(state.currentLemmyFeed);
             }
         }
     });
@@ -612,28 +697,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         actions.showDiscoverPage();
     });
 
-    document.getElementById('search-bar').addEventListener('keyup', async (e) => {
-        if (e.key === 'Enter') {
-            const query = e.target.value.trim();
-            if (query) {
-                await renderSearchResults(state, query, actions);
-                switchView('search');
-            }
-        } else {
-             await renderHashtagSuggestions(state, e.target.value.trim());
-        }
-    });
-
     // --- Initial Load ---
     await verifyUserCredentials();
+    const initialView = location.hash.substring(1) || 'timeline';
     
-    const initialHash = location.hash.substring(1);
-    // TODO: A more robust router would be better here
-    if (initialHash.startsWith('profile/')) {
-        // ... handle profile links
+    if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
+        updateNotificationBell();
+    }
+    
+    if (initialView === 'timeline') {
+        if (state.accessToken) { 
+            actions.showHomeTimeline();
+        } else if (localStorage.getItem('lemmy_jwt')) {
+            actions.showLemmyFeed('Subscribed');
+        } else {
+            actions.showHomeTimeline(); 
+        }
     } else {
-        switchView('timeline', false);
-        actions.showHomeTimeline();
+        switchView(initialView, false);
     }
 
 
@@ -646,7 +727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showLemmyFeed('Subscribed');
         } else if (target.id === 'mastodon-main-link') {
             actions.showMastodonTimeline('home');
-        } else if (target.id === 'home-timeline-link') {
+        } else if (target.dataset.timeline === 'home') {
             actions.showHomeTimeline();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
@@ -683,18 +764,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('close-help-btn').addEventListener('click', () => {
         document.getElementById('help-modal').classList.remove('visible');
     });
+    
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
+            e.preventDefault();
+            openInAppBrowser(link.href);
+        }
+    });
 
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore) return;
 
-        const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 500;
-
-        if (nearBottom) {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
             if (state.currentView === 'timeline') {
                 if (state.currentLemmyFeed && state.lemmyHasMore) {
                     fetchLemmyFeed(state, actions, true);
                 } else if (state.currentTimeline && state.nextPageUrl) {
-                    fetchTimeline(state, actions, true);
+                    fetchTimeline(state, state.currentTimeline, true);
                 }
             } else if (state.currentView === 'discover') {
                 if (state.currentDiscoverTab === 'lemmy' && state.lemmyDiscoverHasMore) {
@@ -712,14 +799,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const imageModal = document.getElementById('image-modal');
         if (imageModal && imageModal.classList.contains('visible')) {
             imageModal.classList.remove('visible');
+            // Don't switch view, just close modal
             history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
         } else if (event.state && event.state.view) {
             switchView(event.state.view, false);
         } else {
             switchView('timeline', false);
-            actions.showHomeTimeline();
         }
     });
 
-    history.replaceState({view: 'timeline'}, '', '#timeline');
+    history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
 });
