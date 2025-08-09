@@ -11,7 +11,7 @@ import { renderMergedPostPage } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
-import { ICONS } from './components/icons.js';
+import { ICONS } from './icons.js';
 import { apiFetch } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
 
@@ -102,6 +102,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         history: [],
         instanceUrl: localStorage.getItem('fediverse-instance') || null,
         accessToken: localStorage.getItem('fediverse-token') || null,
+        pixelfedInstanceUrl: localStorage.getItem('pixelfed-instance') || null,
+        pixelfedAccessToken: localStorage.getItem('pixelfed-token') || null,
         currentUser: null,
         currentView: null,
         currentProfileTab: 'mastodon',
@@ -250,10 +252,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { label: 'Local', feed: 'Local' }
             ];
             currentFeed = state.currentLemmyFeed;
-        } else if (platform === 'mastodon') {
+        } else if (platform === 'mastodon' || platform === 'pixelfed') {
              items = [
-                { label: 'Subbed', feed: 'home' },
-                { label: 'All', feed: 'public' },
+                { label: 'Home', feed: 'home' },
+                { label: 'Public', feed: 'public' },
                 { label: 'Local', feed: 'public?local=true' }
             ];
             currentFeed = state.currentTimeline;
@@ -269,8 +271,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.addEventListener('click', () => {
                 if (platform === 'lemmy') {
                     actions.showLemmyFeed(item.feed);
-                } else {
+                } else if (platform === 'mastodon') {
                     actions.showMastodonTimeline(item.feed);
+                } else if (platform === 'pixelfed') {
+                    actions.showPixelfedTimeline(item.feed);
                 }
             });
             tabs.appendChild(button);
@@ -387,7 +391,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.currentTimeline = timelineType;
             switchView('timeline');
             renderTimelineSubNav('mastodon');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, true); // Added mastodonOnly flag
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, 'mastodon'); // Added mastodonOnly flag
+            hideLoadingBar();
+            refreshSpinner.style.display = 'none';
+        },
+        showPixelfedTimeline: async (timelineType) => {
+            showLoadingBar();
+            refreshSpinner.style.display = 'block';
+            state.currentLemmyFeed = null;
+            state.currentTimeline = timelineType;
+            switchView('timeline');
+            renderTimelineSubNav('pixelfed');
+            await fetchTimeline(state, actions, false, onPixelfedLoginSuccess, 'pixelfed');
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
@@ -397,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.currentLemmyFeed = null;
             state.currentTimeline = 'home';
             switchView('timeline');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, 'mastodon');
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
@@ -706,10 +721,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
             showToast('Mastodon login successful!');
-            actions.showHomeTimeline();
+            actions.showMastodonTimeline('home');
             return true;
         } catch (error) {
             showToast('Mastodon login failed.');
+            return false;
+        }
+    };
+    
+    const onPixelfedLoginSuccess = async (instanceUrl, accessToken) => {
+        try {
+            const { data: account } = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials');
+            if (!account || !account.id) {
+                showToast('Pixelfed login failed.'); return false;
+            }
+            state.pixelfedInstanceUrl = instanceUrl;
+            state.pixelfedAccessToken = accessToken;
+            // We can share the currentUser state for simplicity if the user is the same across platforms
+            state.currentUser = account; 
+            localStorage.setItem('pixelfed-instance', instanceUrl);
+            localStorage.setItem('pixelfed-token', accessToken);
+            showToast('Pixelfed login successful!');
+            actions.showPixelfedTimeline('home');
+            return true;
+        } catch (error) {
+            showToast('Pixelfed login failed.');
             return false;
         }
     };
@@ -769,11 +805,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (initialView === 'timeline') {
         if (state.accessToken) { 
-            actions.showHomeTimeline();
+            actions.showMastodonTimeline('home');
+        } else if (localStorage.getItem('pixelfed-token')) {
+            actions.showPixelfedTimeline('home');
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
-            actions.showHomeTimeline(); 
+            actions.showMastodonTimeline('home'); 
         }
     } else {
         switchView(initialView, false);
@@ -789,8 +827,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showLemmyFeed('Subscribed');
         } else if (target.id === 'mastodon-main-link') {
             actions.showMastodonTimeline('home');
-        } else if (target.dataset.timeline === 'home') {
-            actions.showHomeTimeline();
+        } else if (target.id === 'pixelfed-main-link') {
+            actions.showPixelfedTimeline('home');
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
@@ -835,7 +873,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentLemmyFeed && state.lemmyHasMore) {
                     fetchLemmyFeed(state, actions, true);
                 } else if (state.currentTimeline && state.nextPageUrl) {
-                    fetchTimeline(state, state.currentTimeline, true);
+                    fetchTimeline(state, actions, true, null, state.pixelfedAccessToken ? 'pixelfed' : 'mastodon');
                 }
             } else if (state.currentView === 'discover') {
                 if (state.currentDiscoverTab === 'lemmy' && state.lemmyDiscoverHasMore) {
