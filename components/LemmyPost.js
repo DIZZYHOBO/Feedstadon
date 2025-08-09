@@ -166,6 +166,12 @@ export function renderCommentNode(commentView, actions) {
                 <button class="status-action" data-action="reply">${ICONS.reply}</button>
             </div>
         </div>
+        <div class="quick-reply-container">
+            <div class="quick-reply-box">
+                <textarea class="edit-comment-textarea" placeholder="Edit your comment..."></textarea>
+                <button class="button-primary save-edit-btn">Save</button>
+            </div>
+        </div>
     `;
     
     const contentDiv = commentWrapper.querySelector('.status-content');
@@ -191,8 +197,18 @@ export function renderCommentNode(commentView, actions) {
             ];
             if (isOwn) {
                  menuItems.push(
-                    { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
-                    { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+                    { label: `${ICONS.edit} Edit`, action: () => {
+                        const editContainer = commentWrapper.querySelector('.quick-reply-container');
+                        editContainer.style.display = 'block';
+                        const editTextArea = editContainer.querySelector('.edit-comment-textarea');
+                        editTextArea.value = comment.content;
+                        editTextArea.focus();
+                    }},
+                    { label: `${ICONS.delete} Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this comment?')) {
+                            actions.lemmyDeleteComment(comment.id, commentWrapper);
+                        }
+                    }}
                 );
             }
             actions.showContextMenu(e, menuItems);
@@ -215,8 +231,18 @@ export function renderCommentNode(commentView, actions) {
         ];
         if (isOwn) {
              menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
-                { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+                { label: `${ICONS.edit} Edit`, action: () => {
+                    const editContainer = commentWrapper.querySelector('.quick-reply-container');
+                    editContainer.style.display = 'block';
+                    const editTextArea = editContainer.querySelector('.edit-comment-textarea');
+                    editTextArea.value = comment.content;
+                    editTextArea.focus();
+                }},
+                { label: `${ICONS.delete} Delete`, action: () => {
+                    if (confirm('Are you sure you want to delete this comment?')) {
+                        actions.lemmyDeleteComment(comment.id, commentWrapper);
+                    }
+                }}
             );
         }
         actions.showContextMenu(e, menuItems);
@@ -248,6 +274,23 @@ export function renderCommentNode(commentView, actions) {
         });
         menu.addEventListener('click', (e) => e.stopPropagation());
     }
+    
+    commentWrapper.querySelector('.save-edit-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const newContent = commentWrapper.querySelector('.edit-comment-textarea').value.trim();
+        if (newContent) {
+            try {
+                const editedComment = await actions.lemmyEditComment({
+                    content: newContent,
+                    comment_id: comment.id
+                });
+                contentDiv.innerHTML = new showdown.Converter().makeHtml(editedComment.comment_view.comment.content);
+                commentWrapper.querySelector('.quick-reply-container').style.display = 'none';
+            } catch (err) {
+                alert('Failed to edit comment.');
+            }
+        }
+    });
 
     return commentWrapper;
 }
