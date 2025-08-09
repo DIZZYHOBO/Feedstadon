@@ -320,10 +320,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             switchView('editProfile');
             renderEditProfilePage(state, actions);
         },
-        showStatusDetail: async (statusId) => {
+        showStatusDetail: async (statusId, platform = 'mastodon') => {
             showLoadingBar();
             switchView('statusDetail');
-            await renderStatusDetail(state, statusId, actions);
+            await renderStatusDetail(state, statusId, actions, platform);
             hideLoadingBar();
         },
         showHashtagTimeline: async (tagName) => {
@@ -502,16 +502,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isToggled = button.classList.contains('active');
             const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
             try {
-                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
+                const platform = button.closest('.status').dataset.platform || 'mastodon';
+                const instanceUrl = platform === 'pixelfed' ? state.pixelfedInstanceUrl : state.instanceUrl;
+                const accessToken = platform === 'pixelfed' ? state.pixelfedAccessToken : state.accessToken;
+
+                await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
                 button.classList.toggle('active');
             } catch (err) {
                 showToast(`Failed to ${action} post.`);
             }
         },
-        mastodonFollow: async (accountId, follow = true) => {
+        mastodonFollow: async (accountId, follow = true, platform = 'mastodon') => {
             try {
+                const instanceUrl = platform === 'pixelfed' ? state.pixelfedInstanceUrl : state.instanceUrl;
+                const accessToken = platform === 'pixelfed' ? state.pixelfedAccessToken : state.accessToken;
+
                 const endpoint = follow ? 'follow' : 'unfollow';
-                await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/${endpoint}`, { method: 'POST' });
+                await apiFetch(instanceUrl, accessToken, `/api/v1/accounts/${accountId}/${endpoint}`, { method: 'POST' });
                 showToast(`User ${follow ? 'followed' : 'unfollowed'}.`);
                 return true;
             } catch (err) {
@@ -733,11 +740,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { data: account } = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials');
             if (!account || !account.id) {
-                showToast('Pixelfed login failed.'); return false;
+                showToast('Pixelfed login failed. Check instance URL and token.'); return false;
             }
             state.pixelfedInstanceUrl = instanceUrl;
             state.pixelfedAccessToken = accessToken;
-            // We can share the currentUser state for simplicity if the user is the same across platforms
             state.currentUser = account; 
             localStorage.setItem('pixelfed-instance', instanceUrl);
             localStorage.setItem('pixelfed-token', accessToken);
@@ -745,7 +751,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showPixelfedTimeline('home');
             return true;
         } catch (error) {
-            showToast('Pixelfed login failed.');
+            showToast(`Pixelfed login failed: ${error.message}`);
             return false;
         }
     };
@@ -843,13 +849,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showComposeModal(state);
                 break;
             case 'profile-link':
-                let defaultPlatform = null;
-                if(state.currentUser) defaultPlatform = 'mastodon';
-                else if(localStorage.getItem('lemmy_jwt')) defaultPlatform = 'lemmy';
-                
-                if(defaultPlatform) {
-                    actions.showProfilePage(defaultPlatform);
+                let platformToShow = 'mastodon';
+                if (state.currentLemmyFeed) {
+                    platformToShow = 'lemmy';
+                } else if (state.currentTimeline) {
+                    if (document.querySelector('.status[data-platform="pixelfed"]')) {
+                        platformToShow = 'pixelfed';
+                    }
                 }
+                actions.showProfilePage(platformToShow, null, state.currentLemmyFeed ? localStorage.getItem('lemmy_username') : null);
                 break;
             case 'settings-link':
                 actions.showSettings();
@@ -873,7 +881,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentLemmyFeed && state.lemmyHasMore) {
                     fetchLemmyFeed(state, actions, true);
                 } else if (state.currentTimeline && state.nextPageUrl) {
-                    fetchTimeline(state, actions, true, null, state.pixelfedAccessToken ? 'pixelfed' : 'mastodon');
+                    const platform = document.querySelector('.status')?.dataset.platform || 'mastodon';
+                    fetchTimeline(state, actions, true, null, platform);
                 }
             } else if (state.currentView === 'discover') {
                 if (state.currentDiscoverTab === 'lemmy' && state.lemmyDiscoverHasMore) {
