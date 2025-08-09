@@ -170,8 +170,29 @@ export function renderLemmyCard(post, actions) {
             ];
             if (isOwn) {
                  menuItems.push(
-                    { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
-                    { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+                    { label: `${ICONS.edit} Edit`, action: () => {
+                        const replyContainer = card.querySelector('.quick-reply-container');
+                        replyContainer.style.display = 'block';
+                        const textarea = replyContainer.querySelector('textarea');
+                        textarea.value = post.post.body;
+                        textarea.focus();
+                        const button = replyContainer.querySelector('button');
+                        button.textContent = 'Save';
+                        button.onclick = async (e) => {
+                            e.stopPropagation();
+                            const newContent = textarea.value.trim();
+                            if (newContent) {
+                                await actions.lemmyEditPost(post.post.id, newContent);
+                                replyContainer.style.display = 'none';
+                                button.textContent = 'Post';
+                            }
+                        };
+                    }},
+                    { label: `${ICONS.delete} Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            actions.lemmyDeletePost(post.post.id);
+                        }
+                    }}
                 );
             }
             actions.showContextMenu(e, menuItems);
@@ -199,8 +220,29 @@ export function renderLemmyCard(post, actions) {
         ];
         if (isOwn) {
              menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
-                { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
+                { label: `${ICONS.edit} Edit`, action: () => {
+                    const replyContainer = card.querySelector('.quick-reply-container');
+                    replyContainer.style.display = 'block';
+                    const textarea = replyContainer.querySelector('textarea');
+                    textarea.value = post.post.body;
+                    textarea.focus();
+                    const button = replyContainer.querySelector('button');
+                    button.textContent = 'Save';
+                    button.onclick = async (e) => {
+                        e.stopPropagation();
+                        const newContent = textarea.value.trim();
+                        if (newContent) {
+                            await actions.lemmyEditPost(post.post.id, newContent);
+                            replyContainer.style.display = 'none';
+                            button.textContent = 'Post';
+                        }
+                    };
+                }},
+                { label: `${ICONS.delete} Delete`, action: () => {
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        actions.lemmyDeletePost(post.post.id);
+                    }
+                }}
             );
         }
         actions.showContextMenu(e, menuItems);
