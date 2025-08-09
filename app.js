@@ -779,6 +779,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         switchView(initialView, false);
     }
 
+    document.getElementById('lemmy-logo-container').innerHTML = ICONS.lemmy;
+    document.getElementById('mastodon-logo-container').innerHTML = ICONS.mastodon;
 
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
