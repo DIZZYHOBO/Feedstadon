@@ -763,8 +763,9 @@ button:disabled {
 #screenshot-content {
     background-color: var(--bg-color);
     padding: 20px;
+    padding-bottom: 60px; /* Space for watermark */
     position: relative;
-    overflow: hidden; /* Ensures watermark stays contained */
+    overflow: hidden;
 }
 .screenshot-controls {
     background-color: var(--card-color);
@@ -783,13 +784,15 @@ button:disabled {
     left: 0;
     width: 100%;
     padding: 10px 20px;
+    height: 60px;
     background-color: var(--card-color);
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    box-sizing: border-box;
 }
 #screenshot-watermark .icon {
-    height: 20px;
+    height: 30px;
     width: auto;
     color: var(--font-color-muted);
 }
