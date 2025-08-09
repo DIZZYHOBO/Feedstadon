@@ -831,9 +831,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('a');
-        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
+        if (link && link.getAttribute('href') && link.getAttribute('href') !== '#' && link.target !== '_blank' && link.href.startsWith('http')) {
             e.preventDefault();
-            // The openInAppBrowser function was removed, so we'll open in a new tab instead.
             window.open(link.href, '_blank');
         }
     });
