@@ -107,7 +107,6 @@ async function toggleLemmyReplies(commentId, container, state, actions) {
     }
 }
 
-// **FIX:** Added 'export' keyword to make this function available for import.
 export async function loadMoreLemmyProfile(state, actions) {
     if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
     state.isLoadingMore = true;
@@ -232,4 +231,14 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     
     // Trigger the initial tab load
     switchTab(platform);
+}
+
+export function renderEditProfilePage(state, actions) {
+    const view = document.getElementById('edit-profile-view');
+    view.innerHTML = `
+        <div class="edit-profile-container">
+            <h2>Edit Profile</h2>
+            <p>This feature is not yet implemented.</p>
+        </div>
+    `;
 }
