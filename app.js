@@ -805,12 +805,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showComposeModal(state);
                 break;
             case 'profile-link':
-                let defaultPlatform = null;
-                if(state.currentUser) defaultPlatform = 'mastodon';
-                else if(localStorage.getItem('lemmy_jwt')) defaultPlatform = 'lemmy';
-                
-                if(defaultPlatform) {
-                    actions.showProfilePage(defaultPlatform);
+                if (state.currentUser) {
+                    actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
+                } else if (localStorage.getItem('lemmy_jwt')) {
+                    const lemmyUsername = localStorage.getItem('lemmy_username');
+                    const lemmyInstance = localStorage.getItem('lemmy_instance');
+                    if (lemmyUsername && lemmyInstance) {
+                        const userAcct = `${lemmyUsername}@${lemmyInstance}`;
+                        actions.showLemmyProfile(userAcct);
+                    } else {
+                        showToast("Could not determine Lemmy user profile.");
+                    }
+                } else {
+                    showToast("Please log in to view your profile.");
                 }
                 break;
             case 'settings-link':
