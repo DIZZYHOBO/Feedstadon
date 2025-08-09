@@ -28,14 +28,8 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
             // For loading more, the full URL is already provided by the API
             timelineUrl = state.nextPageUrl;
         } else {
-            // For a new fetch, construct the URL from the state object
-            const path = state.currentTimeline.path || 'home';
-            let endpoint = `/api/v1/timelines/${path}`;
-            if (state.currentTimeline.params) {
-                const params = new URLSearchParams(state.currentTimeline.params).toString();
-                endpoint += `?${params}`;
-            }
-            timelineUrl = endpoint;
+            // For a new fetch, construct the endpoint from the state string
+            timelineUrl = `/api/v1/timelines/${state.currentTimeline}`;
         }
 
         const { data, next } = await apiFetch(instanceUrl, accessToken, timelineUrl);
