@@ -578,86 +578,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 'lemmy');
             return response.data;
         },
-        lemmyEditComment: async (commentData) => {
-            try {
-                const lemmyInstance = localStorage.getItem('lemmy_instance');
-                if (!lemmyInstance) {
-                    showToast('You must be logged in to edit comments.');
-                    throw new Error('Not logged in');
-                }
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
-                    method: 'PUT',
-                    body: commentData
-                }, 'lemmy');
-                if (response.data && response.data.comment_view) {
-                    return response.data;
-                } else {
-                    throw new Error('Invalid response from server on comment edit.');
-                }
-            } catch (error) {
-                console.error('lemmyEditComment action failed:', error);
-                throw error;
-            }
-        },
-        lemmyDeleteComment: async (commentId, commentDiv) => {
-            try {
-                const lemmyInstance = localStorage.getItem('lemmy_instance');
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/delete', {
-                    method: 'POST',
-                    body: { comment_id: commentId, deleted: true }
-                }, 'lemmy');
-                
-                if (response.data && response.data.comment_view && response.data.comment_view.comment.deleted) {
-                    commentDiv.remove();
-                    showToast('Comment deleted.');
-                } else {
-                    throw new Error('Server did not confirm deletion.');
-                }
-            } catch (err) {
-                console.error('Delete comment error:', err);
-                showToast('Failed to delete comment.');
-            }
-        },
-        lemmyEditPost: async (postData) => {
-            try {
-                const lemmyInstance = localStorage.getItem('lemmy_instance');
-                if (!lemmyInstance) {
-                    showToast('You must be logged in to edit posts.');
-                    throw new Error('Not logged in');
-                }
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/post', {
-                    method: 'PUT',
-                    body: postData
-                }, 'lemmy');
-                if (response.data && response.data.post_view) {
-                    return response.data;
-                } else {
-                    throw new Error('Invalid response from server on post edit.');
-                }
-            } catch (error) {
-                console.error('lemmyEditPost action failed:', error);
-                throw error;
-            }
-        },
-        lemmyDeletePost: async (postId, postCard) => {
-            try {
-                const lemmyInstance = localStorage.getItem('lemmy_instance');
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/delete', {
-                    method: 'POST',
-                    body: { post_id: postId, deleted: true }
-                }, 'lemmy');
-
-                if (response.data && response.data.post_view && response.data.post_view.post.deleted) {
-                    postCard.remove();
-                    showToast('Post deleted.');
-                } else {
-                    throw new Error('Server did not confirm deletion.');
-                }
-            } catch (err) {
-                console.error('Delete post error:', err);
-                showToast('Failed to delete post.');
-            }
-        },
          lemmyFollowCommunity: async (communityId, follow = true) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -843,6 +763,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('close-help-btn').addEventListener('click', () => {
         document.getElementById('help-modal').classList.remove('visible');
+    });
+    
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
+            e.preventDefault();
+            openInAppBrowser(link.href);
+        }
     });
 
     window.addEventListener('scroll', () => {
