@@ -57,7 +57,7 @@ html {
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter'; /* Force Google Font */
     background-color: var(--bg-color);
     color: var(--font-color);
     margin: 0;
@@ -109,7 +109,7 @@ input[type="text"],
 input[type="password"],
 input[type="search"],
 input[type="url"] {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter'; /* Force Google Font */
     font-size: 1rem;
     color: var(--font-color);
     background-color: var(--primary-color);
