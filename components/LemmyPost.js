@@ -284,10 +284,15 @@ export function renderCommentNode(commentView, actions) {
                     content: newContent,
                     comment_id: comment.id
                 });
-                contentDiv.innerHTML = new showdown.Converter().makeHtml(editedComment.comment_view.comment.content);
-                commentWrapper.querySelector('.quick-reply-container').style.display = 'none';
+                if (editedComment && editedComment.comment_view) {
+                    contentDiv.innerHTML = new showdown.Converter().makeHtml(editedComment.comment_view.comment.content);
+                    commentWrapper.querySelector('.quick-reply-container').style.display = 'none';
+                } else {
+                    throw new Error('Server did not return edited comment.');
+                }
             } catch (err) {
                 alert('Failed to edit comment.');
+                console.error('Edit comment error:', err);
             }
         }
     });
