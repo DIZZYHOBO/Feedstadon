@@ -10,7 +10,7 @@
     --border-color: #333435;
     --link-color: #88C0D0;
     --notification-dot-color: #ff3d3d;
-    --border-radius: 12px;
+    --border-radius: 0px;
 }
 
 [data-theme="readit"] {
@@ -95,7 +95,7 @@ input,
     z-index: 1000;
     background-color: var(--primary-color);
     padding: 10px;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 0 0;
     width: fit-content;
 }
 #pull-to-refresh-indicator.holding {
@@ -114,7 +114,7 @@ input[type="url"] {
     color: var(--font-color);
     background-color: var(--primary-color);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0px;
     padding: 12px;
     width: 100%;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -136,7 +136,7 @@ button, .button {
     border: 1px solid var(--border-color);
     color: var(--font-color-muted);
     padding: 8px 12px;
-    border-radius: 8px;
+    border-radius: 0px;
     font-size: 0.9em;
     font-weight: bold;
     cursor: pointer;
@@ -176,7 +176,7 @@ button:disabled {
 .login-card {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 0px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     overflow: hidden;
     position: relative;
@@ -269,7 +269,7 @@ button:disabled {
     border: none;
     color: var(--font-color);
     padding: 8px 10px;
-    border-radius: 8px;
+    border-radius: 0px;
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
@@ -314,7 +314,7 @@ button:disabled {
     background-color: rgba(30, 30, 30, 0.85);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color); border-radius: 8px;
+    border: 1px solid var(--border-color); border-radius: 0px;
     min-width: 200px;
     max-width: 350px;
     z-index: 1; overflow: hidden; margin-top: 10px;
@@ -340,7 +340,7 @@ button:disabled {
     margin-bottom: 20px;
     background-color: var(--card-color);
     padding: 5px;
-    border-radius: 10px;
+    border-radius: 0px;
     border: 1px solid var(--border-color);
     align-items: center;
 }
@@ -356,7 +356,7 @@ button:disabled {
     color: var(--font-color-muted);
     font-weight: bold;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 0px;
     transition: background-color 0.2s, color 0.2s;
 }
 .timeline-sub-nav-btn:hover, .notifications-sub-nav-btn:hover {
@@ -374,7 +374,7 @@ button:disabled {
     background-color: var(--primary-color);
     color: var(--font-color);
     border: 1px solid var(--border-color);
-    border-radius: 5px;
+    border-radius: 0px;
     padding: 8px;
     font-size: 0.9em;
 }
@@ -502,7 +502,7 @@ button:disabled {
 .status-content img {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 0px;
 }
 .status-content blockquote {
     border-left: 4px solid var(--accent-color);
@@ -528,7 +528,7 @@ button:disabled {
     padding: 10px;
     border: 1px solid var(--border-color);
     border-top: none;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 0px 0px;
     background-color: var(--bg-color);
 }
 .spoiler-content.visible {
@@ -545,7 +545,7 @@ button:disabled {
 .status-media img, .status-media video {
     max-width: 100%;
     max-height: 500px;
-    border-radius: 8px;
+    border-radius: 0px;
     object-fit: cover;
 }
 .video-embed-container {
@@ -555,7 +555,7 @@ button:disabled {
     overflow: hidden;
     max-width: 100%;
     background: #000;
-    border-radius: 8px;
+    border-radius: 0px;
     margin-top: 10px;
 }
 .video-embed-container iframe {
@@ -688,7 +688,7 @@ button:disabled {
     display: flex;
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 0px;
     padding: 5px;
     margin-bottom: 10px;
 }
@@ -726,7 +726,7 @@ button:disabled {
     width: 80px;
     height: 80px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 0px;
     margin-left: 15px;
 }
 #lemmy-community-search-form {
@@ -739,7 +739,7 @@ button:disabled {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-top: none;
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    border-radius: 0 0 0px 0px;
     display: none;
     z-index: 10;
 }
@@ -808,7 +808,7 @@ button:disabled {
     right: 0;
     background-color: var(--primary-color);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0px;
     min-width: 120px;
     z-index: 10;
     overflow: hidden;
@@ -835,7 +835,7 @@ button:disabled {
     display: none;
     background-color: var(--primary-color);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0px;
     min-width: 150px;
     z-index: 4000;
     overflow: hidden;
@@ -878,7 +878,7 @@ button:disabled {
 .modal-content {
     background: var(--card-color);
     padding: 25px;
-    border-radius: 8px;
+    border-radius: 0px;
     width: 90%;
     max-width: 500px;
 }
@@ -889,7 +889,7 @@ button:disabled {
     margin-top: 20px;
 }
 .modal-actions button {
-    border-radius: 8px;
+    border-radius: 0px;
 }
 
 /* --- Image Modal --- */
@@ -995,7 +995,7 @@ button:disabled {
     border: 1px solid var(--border-color);
     color: var(--font-color);
     padding: 10px;
-    border-radius: 5px;
+    border-radius: 0px;
 }
 
 .poll-settings {
@@ -1018,7 +1018,7 @@ button:disabled {
     background-color: var(--primary-color);
     color: var(--font-color);
     border: 1px solid var(--border-color);
-    border-radius: 5px;
+    border-radius: 0px;
     padding: 5px;
 }
 
@@ -1054,7 +1054,7 @@ button:disabled {
     display: flex;
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 0px;
     margin-bottom: 20px;
     padding: 5px;
 }
@@ -1066,7 +1066,7 @@ button:disabled {
     color: var(--font-color-muted);
     font-weight: bold;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 0px;
     transition: background-color 0.2s, color 0.2s;
 }
 .profile-tabs .tab-button:hover {
@@ -1092,7 +1092,7 @@ button:disabled {
 .profile-card {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0px;
     overflow: hidden;
 }
 
@@ -1165,7 +1165,7 @@ button:disabled {
 .profile-image-previews img {
     width: 100px;
     height: 100px;
-    border-radius: 8px;
+    border-radius: 0px;
     object-fit: cover;
     background-color: var(--primary-color);
 }
@@ -1198,7 +1198,7 @@ button:disabled {
 #word-filter-list li {
     background-color: var(--primary-color);
     padding: 10px;
-    border-radius: 6px;
+    border-radius: 0px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1231,7 +1231,7 @@ button:disabled {
     color: var(--accent-color);
 }
 .lemmy-card .status-header .avatar {
-    border-radius: 8px; /* Lemmy community icons are often square */
+    border-radius: 0px; /* Lemmy community icons are often square */
 }
 .lemmy-card .lemmy-title {
     font-size: 1em; /* Changed from 1.1em */
