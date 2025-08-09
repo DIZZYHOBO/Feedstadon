@@ -117,8 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyHasMore: true,
         lemmyProfilePage: 1,
         lemmyProfileHasMore: true,
-        lemmyDiscoverPage: 1,
-        lemmyDiscoverHasMore: true,
         mastodonTrendingPage: 1,
         mastodonTrendingHasMore: true,
         conversations: [],
