@@ -32,6 +32,106 @@ async function getLemmyProfile(userAcct) {
     }
 }
 
+function renderLemmyComment(commentView, state, actions) {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'status lemmy-comment-on-profile';
+    const converter = new showdown.Converter();
+    const htmlContent = converter.makeHtml(commentView.comment.content);
+
+    commentDiv.innerHTML = `
+        <div class="status-body-content">
+            <div class="comment-context">
+                <span>Commented on:</span>
+                <a href="#" class="post-title">${commentView.post.name}</a>
+                <span>in</span>
+                <a href="#" class="community-link">${commentView.community.name}</a>
+            </div>
+            <div class="status-content">${htmlContent}</div>
+            <div class="status-footer">
+                <div class="lemmy-vote-cluster">
+                    <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${commentView.counts.score}</span>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
+                </div>
+                <button class="status-action view-replies-btn">
+                    ${ICONS.comments}
+                    <span class="reply-count">${commentView.counts.child_count}</span>
+                </button>
+            </div>
+            <div class="lemmy-replies-container" style="display: none;"></div>
+        </div>
+    `;
+
+    const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
+    const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
+
+    viewRepliesBtn.addEventListener('click', () => {
+        toggleLemmyReplies(commentView.comment.id, repliesContainer, state, actions);
+    });
+
+    return commentDiv;
+}
+
+async function toggleLemmyReplies(commentId, container, state, actions) {
+    const isVisible = container.style.display === 'block';
+    if (isVisible) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = 'Loading replies...';
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) {
+        container.innerHTML = 'Could not load replies.';
+        return;
+    }
+
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}`, { method: 'GET' }, 'lemmy');
+        const replies = response.data.replies;
+        container.innerHTML = '';
+
+        if (replies.length === 0) {
+            container.innerHTML = 'No replies found.';
+            return;
+        }
+
+        replies.forEach(reply => {
+            container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
+        });
+    } catch (error) {
+        console.error('Failed to fetch replies:', error);
+        container.innerHTML = 'Failed to load replies.';
+    }
+}
+
+// **FIX:** Added 'export' keyword to make this function available for import.
+export async function loadMoreLemmyProfile(state, actions) {
+    if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
+    state.isLoadingMore = true;
+    state.scrollLoader.style.display = 'block';
+
+    state.lemmyProfilePage++;
+    const lemmyProfile = await getLemmyProfile(state.currentProfileUserAcct);
+    const content = await fetchLemmyProfileContent(state, actions, lemmyProfile.person_view.person.id, state.lemmyProfilePage);
+    
+    const profileFeed = document.getElementById('lemmy-profile-feed');
+
+    if (content.comments.length > 0) {
+        content.comments.forEach(comment => {
+            profileFeed.appendChild(renderLemmyComment(comment, state, actions));
+        });
+    } else {
+        state.lemmyProfileHasMore = false;
+    }
+
+    state.isLoadingMore = false;
+    state.scrollLoader.style.display = 'none';
+}
+
+
 // --- Main Page Rendering ---
 export async function renderProfilePage(state, actions, platform, accountId, userAcct) {
     const view = document.getElementById('profile-page-view');
