@@ -9,31 +9,38 @@ export function hideLoadingBar() {
     document.getElementById('loading-bar').classList.remove('loading');
 }
 
+// **FIX:** This function now properly shows the modal with a given image source.
+export function showImageModal(src) {
+    const modal = document.getElementById('image-modal');
+    const img = document.getElementById('fullscreen-image');
+    if (modal && img) {
+        img.src = src;
+        modal.classList.add('visible');
+    }
+}
+
 export function initImageModal() {
     const modal = document.getElementById('image-modal');
     const img = document.getElementById('fullscreen-image');
     const saveBtn = document.getElementById('save-image-btn');
-    saveBtn.innerHTML = ICONS.save;
+    
+    if (saveBtn) {
+        saveBtn.innerHTML = ICONS.save;
+        saveBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'image.png';
+            link.click();
+        });
+    }
 
-    document.addEventListener('click', (e) => {
-        if (e.target.matches('.status-media img')) {
-            img.src = e.target.src;
-            modal.classList.add('visible');
-        }
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('visible');
-        }
-    });
-
-    saveBtn.addEventListener('click', () => {
-        const link = document.createElement('a');
-        link.href = img.src;
-        link.download = 'image.png';
-        link.click();
-    });
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('visible');
+            }
+        });
+    }
 }
 
 export function renderLoginPrompt(container, platform, onLoginSuccess) {
@@ -68,15 +75,12 @@ export function renderLoginPrompt(container, platform, onLoginSuccess) {
     container.appendChild(loginPrompt);
 }
 
-// **FIX:** Added 'export' to make this function available in other modules.
 export const showToast = (message) => {
-    const toast = document.getElementById('toast-notification');
+    let toast = document.getElementById('toast-notification');
     if (!toast) {
-        const newToast = document.createElement('div');
-        newToast.id = 'toast-notification';
-        document.body.appendChild(newToast);
-        showToast(message); // Retry after creating
-        return;
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        document.body.appendChild(toast);
     }
     toast.textContent = message;
     toast.classList.add('visible');
