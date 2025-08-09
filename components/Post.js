@@ -79,7 +79,7 @@ function renderConversationPost(post, currentUser, actions) {
     return postEl;
 }
 
-export function renderStatus(status, currentUser, actions, settings) {
+export function renderStatus(status, currentUser, actions, settings, isTimelineContext = false) {
     const post = status.reblog || status;
     const author = post.account;
     const isOwnPost = currentUser && currentUser.id === author.id;
@@ -117,7 +117,6 @@ export function renderStatus(status, currentUser, actions, settings) {
         }
     }
     
-    // YouTube embed logic
     const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const youtubeMatch = post.content.match(youtubeRegex);
     if (youtubeMatch) {
@@ -150,7 +149,7 @@ export function renderStatus(status, currentUser, actions, settings) {
         <div class="status-body-content">
             ${inReplyToInfo}
             <div class="status-header">
-                <div class="status-header-main">
+                <div class="status-header-main" data-action="view-profile">
                     <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
                     <div>
                         <span class="display-name">${author.display_name}</span>
@@ -173,16 +172,15 @@ export function renderStatus(status, currentUser, actions, settings) {
                 <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
             </div>
         </div>
-        <div class="edit-post-container">
-            <div class="edit-post-box">
-                <textarea class="edit-textarea"></textarea>
-                <button class="button-primary save-edit-btn">Save</button>
-            </div>
-        </div>
+        <div class="edit-post-container"></div>
         <div class="conversation-container"></div>
     `;
     
-    // Attach image click listener
+    card.querySelector('[data-action="view-profile"]').addEventListener('click', e => {
+        e.stopPropagation();
+        actions.showProfilePage('mastodon', author.id);
+    });
+
     const mediaImg = card.querySelector('.status-media img');
     if (mediaImg) {
         mediaImg.style.cursor = 'pointer';
@@ -202,7 +200,11 @@ export function renderStatus(status, currentUser, actions, settings) {
             const action = e.target.closest('.status-action').dataset.action;
             switch(action) {
                 case 'reply':
-                    actions.replyToStatus(post, card);
+                    if (isTimelineContext) {
+                        actions.replyToStatus(post, card);
+                    } else {
+                        // In detail view, you might want to focus a main reply box, not implemented here.
+                    }
                     break;
                 case 'reblog':
                 case 'favorite':
@@ -212,108 +214,14 @@ export function renderStatus(status, currentUser, actions, settings) {
             }
         });
     });
-
-    const optionsBtn = card.querySelector('.post-options-btn');
-    if (optionsBtn) {
-        const menu = card.querySelector('.post-options-menu');
-        optionsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-
-        menu.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = e.target.dataset.action;
-            const editContainer = card.querySelector('.edit-post-container');
-            
-            switch (action) {
-                case 'delete':
-                    if (confirm('Are you sure you want to delete this post?')) {
-                        actions.deleteStatus(post.id);
-                    }
-                    break;
-                case 'edit':
-                    const editTextArea = editContainer.querySelector('.edit-textarea');
-                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, ""); // Convert HTML back to text
-                    editContainer.style.display = 'block';
-                    editTextArea.focus();
-                    break;
-            }
-            menu.style.display = 'none';
-        });
-    }
     
-    const saveEditBtn = card.querySelector('.save-edit-btn');
-    saveEditBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const newContent = card.querySelector('.edit-textarea').value.trim();
-        if (newContent) {
-            actions.editStatus(post.id, newContent);
-            card.querySelector('.edit-post-container').style.display = 'none';
-        }
-    });
-    
-    let pressTimer;
-    card.addEventListener('touchstart', (e) => {
-        pressTimer = setTimeout(() => {
-            const postAuthor = status.reblog ? status.reblog.account : status.account;
-            const isOwn = currentUser && currentUser.id === postAuthor.id;
-            let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
-            if (isOwn) {
-                menuItems.push(
-                    { label: `Edit`, action: () => {
-                        const editContainer = card.querySelector('.edit-post-container');
-                        const editTextArea = editContainer.querySelector('.edit-textarea');
-                        editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
-                        editContainer.style.display = 'block';
-                        editTextArea.focus();
-                    }},
-                    { label: `Delete`, action: () => {
-                        if (confirm('Are you sure you want to delete this post?')) {
-                            actions.deleteStatus(post.id);
-                        }
-                    }}
-                );
-            }
-            actions.showContextMenu(e, menuItems);
-        }, 1500);
-    });
-
-    card.addEventListener('touchend', () => {
-        clearTimeout(pressTimer);
-    });
-
-    card.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const postAuthor = status.reblog ? status.reblog.account : status.account;
-        const isOwn = currentUser && currentUser.id === postAuthor.id;
-        let menuItems = [ { label: `Block @${postAuthor.acct}`, action: () => { /* Add block user logic */ } } ];
-        if (isOwn) {
-            menuItems.push(
-                { label: `Edit`, action: () => {
-                    const editContainer = card.querySelector('.edit-post-container');
-                    const editTextArea = editContainer.querySelector('.edit-textarea');
-                    editTextArea.value = post.content.replace(/<br\s*\/?>/gm, "\n").replace(/<[^>]*>/g, "");
-                    editContainer.style.display = 'block';
-                    editTextArea.focus();
-                }},
-                { label: `Delete`, action: () => {
-                    if (confirm('Are you sure you want to delete this post?')) {
-                        actions.deleteStatus(post.id);
-                    }
-                }}
-            );
-        }
-        actions.showContextMenu(e, menuItems);
-    });
-
     return card;
 }
 
 
 export async function renderStatusDetail(state, statusId, actions) {
     const container = document.getElementById('status-detail-view');
-    container.innerHTML = '';
+    container.innerHTML = 'Loading post...';
 
     try {
         const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
