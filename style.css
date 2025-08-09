@@ -763,7 +763,6 @@ button:disabled {
 #screenshot-content {
     background-color: var(--bg-color);
     padding: 20px;
-    border-radius: var(--border-radius);
     position: relative;
     overflow: hidden; /* Ensures watermark stays contained */
 }
@@ -783,16 +782,16 @@ button:disabled {
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 10px;
-    background-color: rgba(0,0,0,0.5);
+    padding: 10px 20px;
+    background-color: var(--card-color);
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
 }
 #screenshot-watermark .icon {
-    width: 100px;
-    height: auto;
-    color: rgba(255,255,255,0.7);
+    height: 20px;
+    width: auto;
+    color: var(--font-color-muted);
 }
 
 
