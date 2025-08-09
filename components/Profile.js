@@ -1,6 +1,7 @@
 import { apiFetch, apiUpdateCredentials } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
+import { renderCommentNode } from './LemmyPost.js';
 import { ICONS } from './icons.js';
 
 async function renderMastodonProfile(state, actions, container, accountId) {
@@ -108,7 +109,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
     try {
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user`, {}, 'lemmy', { 
             username: username, 
-            limit: 15,
+            limit: 3,
             page: loadMore ? state.lemmyProfilePage : 1,
             sort: 'New'
         });
@@ -128,12 +129,17 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                     <div class="profile-info">
                         <h2 class="display-name">${person_view.person.display_name || person_view.person.name}</h2>
                         <p class="acct">@${person_view.person.name}@${instance}</p>
-                        <div class="note">${person_view.person.bio || ''}</div>
+                        <div class="note"></div>
                     </div>
                 </div>
                 <div class="profile-feed"></div>
             `;
             
+            const noteDiv = container.querySelector('.note');
+            if (noteDiv) {
+                noteDiv.innerHTML = new showdown.Converter().makeHtml(person_view.person.bio || '');
+            }
+
             container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
                 alert('Following users is not a standard feature on all Lemmy instances.');
             });
@@ -168,16 +174,51 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                                 <span class="display-name">${item.creator.name}</span> commented on:
                             </div>
                             <h4 class="post-title">${item.post.name}</h4>
-                            <div class="status-content">${item.comment.content}</div>
+                            <div class="status-content"></div>
                             <div class="status-footer">
                                 <div class="lemmy-vote-cluster">
                                     <button class="status-action lemmy-vote-btn" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
                                     <span class="lemmy-score">${item.counts.score}</span>
                                     <button class="status-action lemmy-vote-btn" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                                 </div>
+                                <button class="status-action view-replies-btn">Replies</button>
                                 <button class="status-action screenshot-btn">${ICONS.screenshot}</button>
                             </div>
-                        </div>`;
+                        </div>
+                        <div class="comment-replies-container profile-replies-container"></div>
+                    `;
+
+                    const contentDiv = commentCard.querySelector('.status-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = new showdown.Converter().makeHtml(item.comment.content);
+                    }
+                    
+                    commentCard.querySelector('.view-replies-btn').addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const repliesContainer = commentCard.querySelector('.profile-replies-container');
+                        const isVisible = repliesContainer.style.display === 'block';
+
+                        if (isVisible) {
+                            repliesContainer.style.display = 'none';
+                        } else {
+                            repliesContainer.style.display = 'block';
+                            if (!repliesContainer.dataset.loaded) {
+                                repliesContainer.innerHTML = 'Loading replies...';
+                                const { data: postData } = await apiFetch(instance, null, '/api/v3/post', {}, 'lemmy', { id: item.post.id });
+                                const fullComment = postData.comments && postData.comments.find(c => c.comment.id === item.comment.id);
+                                
+                                repliesContainer.innerHTML = '';
+                                if (fullComment && fullComment.replies) {
+                                    fullComment.replies.forEach(reply => {
+                                        repliesContainer.appendChild(renderCommentNode(reply, actions));
+                                    });
+                                } else {
+                                    repliesContainer.innerHTML = '<p>No replies to this comment.</p>';
+                                }
+                                repliesContainer.dataset.loaded = 'true';
+                            }
+                        }
+                    });
 
                     commentCard.addEventListener('click', () => actions.showLemmyPostDetail(item));
                     
@@ -211,6 +252,15 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
 
 export function renderProfilePage(state, actions, platform, accountId, userAcct) {
     const view = document.getElementById('profile-page-view');
+    view.innerHTML = `
+        <div class="profile-tabs">
+            <button class="tab-button" data-profile-tab="mastodon">Mastodon</button>
+            <button class="tab-button" data-profile-tab="lemmy">Lemmy</button>
+        </div>
+        <div id="mastodon-profile-content" class="profile-tab-content"></div>
+        <div id="lemmy-profile-content" class="profile-tab-content"></div>
+    `;
+
     const tabs = view.querySelectorAll('.profile-tabs .tab-button');
     const mastodonContent = view.querySelector('#mastodon-profile-content');
     const lemmyContent = view.querySelector('#lemmy-profile-content');
@@ -248,7 +298,6 @@ export function renderProfilePage(state, actions, platform, accountId, userAcct)
         });
     });
 
-    // Set initial tab
     switchTab(platform);
 }
 
