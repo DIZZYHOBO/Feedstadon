@@ -628,6 +628,70 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast('Failed to block user.');
             }
         },
+        lemmyDeletePost: async (postId) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/post/delete', {
+                    method: 'POST',
+                    body: { post_id: postId, deleted: true }
+                }, 'lemmy');
+                showToast('Post deleted.');
+                document.querySelector(`.status[data-id="${postId}"]`)?.remove();
+            } catch (err) {
+                showToast('Failed to delete post.');
+            }
+        },
+        lemmyDeleteComment: async (commentId) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/comment/delete', {
+                    method: 'POST',
+                    body: { comment_id: commentId, deleted: true }
+                }, 'lemmy');
+                showToast('Comment deleted.');
+                document.getElementById(`comment-wrapper-${commentId}`)?.remove();
+            } catch (err) {
+                showToast('Failed to delete comment.');
+            }
+        },
+        lemmyEditPost: async (postId, content) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post/edit', {
+                    method: 'PUT',
+                    body: { post_id: postId, body: content }
+                }, 'lemmy');
+                showToast('Post edited.');
+                const postCard = document.querySelector(`.status[data-id="${postId}"]`);
+                if (postCard) {
+                    const contentDiv = postCard.querySelector('.lemmy-post-body');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = new showdown.Converter().makeHtml(response.data.post_view.post.body);
+                    }
+                }
+            } catch (err) {
+                showToast('Failed to edit post.');
+            }
+        },
+        lemmyEditComment: async (commentId, content) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/edit', {
+                    method: 'PUT',
+                    body: { comment_id: commentId, content: content }
+                }, 'lemmy');
+                showToast('Comment edited.');
+                const commentWrapper = document.getElementById(`comment-wrapper-${commentId}`);
+                if (commentWrapper) {
+                    const contentDiv = commentWrapper.querySelector('.status-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = new showdown.Converter().makeHtml(response.data.comment_view.comment.content);
+                    }
+                }
+            } catch (err) {
+                showToast('Failed to edit comment.');
+            }
+        },
         showContextMenu: showContextMenu
     };
     state.actions = actions;
