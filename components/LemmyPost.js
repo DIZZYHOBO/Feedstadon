@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
-import { renderLemmyCard } from './Lemmy.js';
+import { renderLemmyCard } from './Lemmy.js'; // We can reuse the card from the timeline
 
 function showReplyBox(commentWrapper, comment, actions) {
     const existingReplyBox = commentWrapper.querySelector('.lemmy-reply-box');
