@@ -72,7 +72,8 @@ function initPullToRefresh(state, actions) {
         if (diffY > 80) { // Threshold to trigger refresh
             if (state.currentView === 'timeline') {
                 if (state.currentTimeline) {
-                    actions.showHomeTimeline();
+                    const platform = document.querySelector('.status')?.dataset.platform || 'mastodon';
+                    actions.showTimeline(platform, state.currentTimeline);
                 } else if (state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 }
@@ -256,7 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (platform === 'mastodon' || platform === 'pixelfed') {
              items = [
                 { label: 'Home', feed: 'home' },
-                { label: 'Public', feed: 'public' },
+                { label: 'Global', feed: 'public' },
                 { label: 'Local', feed: 'public?local=true' }
             ];
             currentFeed = state.currentTimeline;
@@ -270,13 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 button.classList.add('active');
             }
             button.addEventListener('click', () => {
-                if (platform === 'lemmy') {
-                    actions.showLemmyFeed(item.feed);
-                } else if (platform === 'mastodon') {
-                    actions.showMastodonTimeline(item.feed);
-                } else if (platform === 'pixelfed') {
-                    actions.showPixelfedTimeline(item.feed);
-                }
+                actions.showTimeline(platform, item.feed);
             });
             tabs.appendChild(button);
         });
@@ -308,6 +303,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const actions = {
+        showTimeline: async (platform, timelineType) => {
+            if (platform === 'lemmy') {
+                await actions.showLemmyFeed(timelineType);
+            } else {
+                showLoadingBar();
+                refreshSpinner.style.display = 'block';
+                state.currentLemmyFeed = null;
+                state.currentTimeline = timelineType;
+                switchView('timeline');
+                renderTimelineSubNav(platform);
+                const onLogin = platform === 'pixelfed' ? onPixelfedLoginSuccess : onMastodonLoginSuccess;
+                await fetchTimeline(state, actions, false, onLogin, platform);
+                hideLoadingBar();
+                refreshSpinner.style.display = 'none';
+            }
+        },
         showProfilePage: (platform, accountId = null, userAcct = null) => {
             showLoadingBar();
             state.currentProfileUserAcct = userAcct;
@@ -386,42 +397,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-        showMastodonTimeline: async (timelineType) => {
-            showLoadingBar();
-            refreshSpinner.style.display = 'block';
-            state.currentLemmyFeed = null;
-            state.currentTimeline = timelineType;
-            switchView('timeline');
-            renderTimelineSubNav('mastodon');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, 'mastodon'); // Added mastodonOnly flag
-            hideLoadingBar();
-            refreshSpinner.style.display = 'none';
-        },
-        showPixelfedTimeline: async (timelineType) => {
-            showLoadingBar();
-            refreshSpinner.style.display = 'block';
-            state.currentLemmyFeed = null;
-            state.currentTimeline = timelineType;
-            switchView('timeline');
-            renderTimelineSubNav('pixelfed');
-            await fetchTimeline(state, actions, false, onPixelfedLoginSuccess, 'pixelfed');
-            hideLoadingBar();
-            refreshSpinner.style.display = 'none';
-        },
-         showHomeTimeline: async () => {
-            showLoadingBar();
-            refreshSpinner.style.display = 'block';
-            state.currentLemmyFeed = null;
-            state.currentTimeline = 'home';
-            switchView('timeline');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, 'mastodon');
-            hideLoadingBar();
-            refreshSpinner.style.display = 'none';
-        },
         replyToStatus: (post, card) => {
-            actions.showConversation(post, card);
+            const platform = card.dataset.platform || 'mastodon';
+            actions.showConversation(post, card, platform);
         },
-        showConversation: async (post, card) => {
+        showConversation: async (post, card, platform) => {
             const container = card.querySelector('.conversation-container');
             const isVisible = container.style.display === 'flex';
             
@@ -433,7 +413,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 container.innerHTML = 'Loading conversation...';
                 container.style.display = 'flex';
                 
-                const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${post.id}/context`);
+                const instanceUrl = platform === 'pixelfed' ? state.pixelfedInstanceUrl : state.instanceUrl;
+                const accessToken = platform === 'pixelfed' ? state.pixelfedAccessToken : state.accessToken;
+
+                const { data: context } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${post.id}/context`);
 
                 container.innerHTML = `
                     <div class="conversation-thread"></div>
@@ -446,7 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const threadContainer = container.querySelector('.conversation-thread');
                 if (context.descendants) {
                     context.descendants.forEach(reply => {
-                        threadContainer.appendChild(renderStatus(reply, state.currentUser, actions, state.settings));
+                        threadContainer.appendChild(renderStatus(reply, state.currentUser, actions, state.settings, platform, false));
                     });
                 }
                 
@@ -458,7 +441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const status = textarea.value.trim();
                     if (!status) return;
 
-                    await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+                    await apiFetch(instanceUrl, accessToken, '/api/v1/statuses', {
                         method: 'POST',
                         body: { status: status, in_reply_to_id: post.id }
                     });
@@ -627,7 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
-                     actions.showHomeTimeline();
+                     actions.showTimeline('mastodon', 'home');
                 }
             } catch (err) {
                 showToast('Failed to block community.');
@@ -644,7 +627,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
-                     actions.showHomeTimeline();
+                     actions.showTimeline('mastodon', 'home');
                 }
             } catch (err) {
                 showToast('Failed to block user.');
@@ -730,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
             showToast('Mastodon login successful!');
-            actions.showMastodonTimeline('home');
+            actions.showTimeline('mastodon', 'home');
             return true;
         } catch (error) {
             showToast('Mastodon login failed.');
@@ -750,7 +733,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('pixelfed-instance', instanceUrl);
             localStorage.setItem('pixelfed-token', accessToken);
             showToast('Pixelfed login successful!');
-            actions.showPixelfedTimeline('home');
+            actions.showTimeline('pixelfed', 'home');
             return true;
         } catch (error) {
             showToast(`Pixelfed login failed: ${error.message}`);
@@ -782,13 +765,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     initDropdowns();
     initPullToRefresh(state, actions);
-    initComposeModal(state, () => actions.showHomeTimeline());
+    initComposeModal(state, () => actions.showTimeline('mastodon', 'home'));
     initImageModal();
     
     refreshBtn.addEventListener('click', () => {
         if (state.currentView === 'timeline') {
             if (state.currentTimeline) {
-                actions.showHomeTimeline();
+                const platform = document.querySelector('.status')?.dataset.platform || 'mastodon';
+                actions.showTimeline(platform, state.currentTimeline);
             } else if (state.currentLemmyFeed) {
                 actions.showLemmyFeed(state.currentLemmyFeed);
             }
@@ -813,13 +797,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (initialView === 'timeline') {
         if (state.accessToken) { 
-            actions.showMastodonTimeline('home');
+            actions.showTimeline('mastodon', 'home');
         } else if (localStorage.getItem('pixelfed-token')) {
-            actions.showPixelfedTimeline('home');
+            actions.showTimeline('pixelfed', 'home');
         } else if (localStorage.getItem('lemmy_jwt')) {
             actions.showLemmyFeed('Subscribed');
         } else {
-            actions.showMastodonTimeline('home'); 
+            actions.showTimeline('mastodon', 'home'); 
         }
     } else {
         switchView(initialView, false);
@@ -834,9 +818,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (target.id === 'lemmy-main-link') {
             actions.showLemmyFeed('Subscribed');
         } else if (target.id === 'mastodon-main-link') {
-            actions.showMastodonTimeline('home');
+            actions.showTimeline('mastodon', 'home');
         } else if (target.id === 'pixelfed-main-link') {
-            actions.showPixelfedTimeline('home');
+            actions.showTimeline('pixelfed', 'home');
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
