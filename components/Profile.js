@@ -94,7 +94,7 @@ async function toggleLemmyReplies(commentId, container, state, actions) {
         const replies = response.data.replies;
         container.innerHTML = '';
 
-        if (replies.length === 0) {
+        if (!replies || replies.length === 0) {
             container.innerHTML = 'No replies found.';
             return;
         }
