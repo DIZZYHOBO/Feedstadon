@@ -45,7 +45,8 @@ export async function renderScreenshotPage(state, commentView, postView, actions
     // Clear previous content
     commentArea.innerHTML = '';
     
-    // **FIX:** Ensure the views are valid HTML Elements before cloning.
+    // **FIX:** Check if views are valid HTML Elements and clone them before appending.
+    // This prevents the "parameter is not of type 'Node'" error.
     if (currentPostView instanceof HTMLElement) {
         commentArea.appendChild(currentPostView.cloneNode(true));
     }
