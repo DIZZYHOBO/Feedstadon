@@ -833,7 +833,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const link = e.target.closest('a');
         if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
             e.preventDefault();
-            openInAppBrowser(link.href);
+            // The openInAppBrowser function was removed, so we'll open in a new tab instead.
+            window.open(link.href, '_blank');
         }
     });
 
