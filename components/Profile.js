@@ -179,8 +179,8 @@ export async function renderProfilePage(state, actions, platform, accountId = nu
 
     const mastodonTab = view.querySelector('[data-tab="mastodon"]');
     const lemmyTab = view.querySelector('[data-tab="lemmy"]');
-    const mastodonContent = view.getElementById('mastodon-profile-content');
-    const lemmyContent = view.getElementById('lemmy-profile-content');
+    const mastodonContent = document.getElementById('mastodon-profile-content');
+    const lemmyContent = document.getElementById('lemmy-profile-content');
     
     const switchTab = (targetTab) => {
         state.currentProfileTab = targetTab;
