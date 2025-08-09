@@ -600,6 +600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { community_id: communityId, block: block }
                 }, 'lemmy');
                 showToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -617,6 +618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { person_id: personId, block: block }
                 }, 'lemmy');
                 showToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -829,9 +831,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('a');
-        if (link && link.getAttribute('href') && link.getAttribute('href') !== '#' && link.target !== '_blank' && link.href.startsWith('http')) {
+        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
             e.preventDefault();
-            window.open(link.href, '_blank');
+            openInAppBrowser(link.href);
         }
     });
 
@@ -861,6 +863,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const imageModal = document.getElementById('image-modal');
         if (imageModal && imageModal.classList.contains('visible')) {
             imageModal.classList.remove('visible');
+            // Don't switch view, just close modal
             history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
         } else if (event.state && event.state.view) {
             switchView(event.state.view, false);
