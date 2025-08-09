@@ -3,7 +3,7 @@ import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js'
 import { apiFetch } from './api.js';
 import { showImageModal } from './ui.js';
 
-export function renderStatus(status, currentUser, actions, settings, platform = 'mastodon', isTimelineContext = false) {
+export function renderStatus(status, currentUser, actions, settings, platform = 'mastodon', isTimelineContext = true) {
     const post = status.reblog || status;
     const author = post.account;
     const isOwnPost = currentUser && currentUser.id === author.id;
@@ -72,7 +72,7 @@ export function renderStatus(status, currentUser, actions, settings, platform = 
                 </div>
                 <div class="status-header-side">
                     ${optionsMenuHTML}
-                    <div class="platform-icon-indicator">${platform === 'pixelfed' ? ICONS.media : ICONS.mastodon}</div>
+                    <div class="platform-icon-indicator">${platform === 'pixelfed' ? ICONS.pixelfed : ICONS.mastodon}</div>
                 </div>
             </div>
             <div class="status-content">${post.content}</div>
@@ -146,17 +146,17 @@ export async function renderStatusDetail(state, statusId, actions, platform = 'm
         
         if (context.ancestors) {
             context.ancestors.forEach(status => {
-                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings, platform));
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings, platform, false));
             });
         }
         
-        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings, platform);
+        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings, platform, false);
         mainPost.classList.add('main-thread-post');
         container.appendChild(mainPost);
         
         if (context.descendants) {
             context.descendants.forEach(status => {
-                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings, platform));
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings, platform, false));
             });
         }
         
