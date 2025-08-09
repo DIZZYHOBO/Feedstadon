@@ -184,13 +184,21 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         if (!currentLemmyProfile) return;
 
         if (filter === 'comments') {
-            currentLemmyProfile.comments.forEach(comment => {
-                feedContainer.appendChild(renderLemmyComment(comment, state, actions));
-            });
+            if (currentLemmyProfile.comments && currentLemmyProfile.comments.length > 0) {
+                currentLemmyProfile.comments.forEach(comment => {
+                    feedContainer.appendChild(renderLemmyComment(comment, state, actions));
+                });
+            } else {
+                feedContainer.innerHTML = '<p class="empty-feed-message">No comments to display.</p>';
+            }
         } else if (filter === 'posts') {
-            currentLemmyProfile.posts.forEach(post => {
-                feedContainer.appendChild(renderLemmyCard(post, actions));
-            });
+            if (currentLemmyProfile.posts && currentLemmyProfile.posts.length > 0) {
+                currentLemmyProfile.posts.forEach(post => {
+                    feedContainer.appendChild(renderLemmyCard(post, actions));
+                });
+            } else {
+                feedContainer.innerHTML = '<p class="empty-feed-message">No posts to display.</p>';
+            }
         }
     };
 
