@@ -10,7 +10,7 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
         renderLoginPrompt(state.timelineDiv, platform, onLoginSuccess);
         return;
     }
-    
+
     if (state.isLoadingMore) return;
 
     if (!loadMore) {
@@ -21,40 +21,42 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
     state.isLoadingMore = true;
     if (loadMore) state.scrollLoader.classList.add('loading');
     else document.getElementById('refresh-btn').classList.add('loading');
-    
+
     try {
         let timelineUrl;
         if (loadMore && state.nextPageUrl) {
+            // For loading more, the full URL is already provided by the API
             timelineUrl = state.nextPageUrl;
         } else {
-            // Correctly construct the base URL from the state object
+            // For a new fetch, construct the URL from the state object
             const path = state.currentTimeline.path || 'home';
-            const params = state.currentTimeline.params ? new URLSearchParams(state.currentTimeline.params).toString() : '';
-            timelineUrl = `/api/v1/timelines/${path}`;
-            if (params) {
-                timelineUrl += `?${params}`;
+            let endpoint = `/api/v1/timelines/${path}`;
+            if (state.currentTimeline.params) {
+                const params = new URLSearchParams(state.currentTimeline.params).toString();
+                endpoint += `?${params}`;
             }
+            timelineUrl = endpoint;
         }
-        
+
         const { data, next } = await apiFetch(instanceUrl, accessToken, timelineUrl);
-        
+
         if (!loadMore) {
             state.timelineDiv.innerHTML = '';
         }
-        
+
         data.forEach(status => {
             const statusCard = renderStatus(status, state.currentUser, actions, state.settings, platform);
             state.timelineDiv.appendChild(statusCard);
         });
 
         state.nextPageUrl = next;
-        
+
         if (!state.nextPageUrl) {
             state.scrollLoader.innerHTML = '<p>No more posts.</p>';
         } else {
             state.scrollLoader.innerHTML = '<p></p>';
         }
-        
+
     } catch (error) {
         console.error('Failed to fetch timeline:', error);
         state.timelineDiv.innerHTML = `<p>Could not load timeline. ${error.message}</p>`;
