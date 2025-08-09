@@ -23,7 +23,19 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
     else document.getElementById('refresh-btn').classList.add('loading');
     
     try {
-        const timelineUrl = loadMore && state.nextPageUrl ? state.nextPageUrl : `/api/v1/timelines/${state.currentTimeline}`;
+        let timelineUrl;
+        if (loadMore && state.nextPageUrl) {
+            timelineUrl = state.nextPageUrl;
+        } else {
+            // Correctly construct the base URL from the state object
+            const path = state.currentTimeline.path || 'home';
+            const params = state.currentTimeline.params ? new URLSearchParams(state.currentTimeline.params).toString() : '';
+            timelineUrl = `/api/v1/timelines/${path}`;
+            if (params) {
+                timelineUrl += `?${params}`;
+            }
+        }
+        
         const { data, next } = await apiFetch(instanceUrl, accessToken, timelineUrl);
         
         if (!loadMore) {
