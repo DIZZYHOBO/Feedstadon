@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, apiUploadMedia } from './api.js';
 import { ICONS } from './icons.js';
 
 let currentReplyToId = null;
@@ -36,6 +36,7 @@ export function initComposeModal(state, onPostSuccess) {
     const cwBtn = document.getElementById('cw-btn');
     const cancelBtn = document.getElementById('cancel-compose-btn');
     const submitBtn = document.getElementById('submit-compose-btn');
+    const charCount = document.getElementById('character-count');
 
     mediaUploadBtn.innerHTML = ICONS.media;
     pollBtn.innerHTML = ICONS.poll;
@@ -70,6 +71,8 @@ export function initComposeModal(state, onPostSuccess) {
     });
 
     cancelBtn.addEventListener('click', () => modal.classList.remove('visible'));
+    document.getElementById('cancel-lemmy-compose-btn').addEventListener('click', () => modal.classList.remove('visible'));
+
 
     submitBtn.addEventListener('click', async () => {
         const status = textarea.value.trim();
@@ -82,7 +85,7 @@ export function initComposeModal(state, onPostSuccess) {
             };
             
             if (mediaUploadInput.files.length > 0) {
-                const attachment = await uploadMedia(state, mediaUploadInput.files[0]);
+                const attachment = await apiUploadMedia(state, mediaUploadInput.files[0]);
                 if (attachment && attachment.id) {
                     body.media_ids = [attachment.id];
                 }
@@ -137,21 +140,9 @@ export function initComposeModal(state, onPostSuccess) {
             alert('Failed to create Lemmy post. Make sure the community exists.');
         }
     });
-}
 
-async function uploadMedia(state, file) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const response = await apiFetch(state.instanceUrl, state.accessToken, '/api/v2/media', {
-            method: 'POST',
-            body: formData,
-            isForm: true
-        });
-        return response.data;
-    } catch (error) {
-        alert('Failed to upload media.');
-        return null;
-    }
+    textarea.addEventListener('input', () => {
+        const remaining = 500 - textarea.value.length;
+        charCount.textContent = remaining;
+    });
 }

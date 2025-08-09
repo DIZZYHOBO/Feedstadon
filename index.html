@@ -6,7 +6,9 @@
     <title>Feeds</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -88,6 +90,7 @@
                         <span id="media-filename-preview"></span>
                     </div>
                     <div>
+                        <span id="character-count">500</span>
                         <button class="button-secondary" id="cancel-compose-btn">Cancel</button>
                         <button type="submit" id="submit-compose-btn">Post</button>
                     </div>
@@ -136,6 +139,27 @@
             </div>
         </div>
     </div>
+
+    <template id="screenshot-controls-template">
+        <div class="screenshot-controls">
+            <div class="control-group">
+                <label>Parent Comments:</label>
+                <button data-action="parents-up">↑</button>
+                <button data-action="parents-down">↓</button>
+            </div>
+            <div class="control-group">
+                <input type="checkbox" id="include-replies-checkbox">
+                <label for="include-replies-checkbox">Include Replies</label>
+            </div>
+            <div class="control-group" id="replies-controls" style="display: none;">
+                 <label>Replies:</label>
+                <button data-action="replies-up">↑</button>
+                <button data-action="replies-down">↓</button>
+            </div>
+            <button id="capture-btn">Capture Screenshot</button>
+        </div>
+        <div id="screenshot-preview-area"></div>
+    </template>
 
     <template id="mastodon-login-template">
         <div class="login-prompt">

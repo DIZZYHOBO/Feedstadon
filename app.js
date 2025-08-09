@@ -600,7 +600,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { community_id: communityId, block: block }
                 }, 'lemmy');
                 showToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
-                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -618,7 +617,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { person_id: personId, block: block }
                 }, 'lemmy');
                 showToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
-                // Refresh the current view to hide the blocked content
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
@@ -626,6 +624,70 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (err) {
                 showToast('Failed to block user.');
+            }
+        },
+        lemmyDeletePost: async (postId) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/post/delete', {
+                    method: 'POST',
+                    body: { post_id: postId, deleted: true }
+                }, 'lemmy');
+                showToast('Post deleted.');
+                document.querySelector(`.status[data-id="${postId}"]`)?.remove();
+            } catch (err) {
+                showToast('Failed to delete post.');
+            }
+        },
+        lemmyDeleteComment: async (commentId) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                await apiFetch(lemmyInstance, null, '/api/v3/comment/delete', {
+                    method: 'POST',
+                    body: { comment_id: commentId, deleted: true }
+                }, 'lemmy');
+                showToast('Comment deleted.');
+                document.getElementById(`comment-wrapper-${commentId}`)?.remove();
+            } catch (err) {
+                showToast('Failed to delete comment.');
+            }
+        },
+        lemmyEditPost: async (postId, content) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/post', {
+                    method: 'PUT',
+                    body: { post_id: postId, body: content }
+                }, 'lemmy');
+                showToast('Post edited.');
+                const postCard = document.querySelector(`.status[data-id="${postId}"]`);
+                if (postCard) {
+                    const contentDiv = postCard.querySelector('.lemmy-post-body');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = new showdown.Converter().makeHtml(response.data.post_view.post.body);
+                    }
+                }
+            } catch (err) {
+                showToast('Failed to edit post.');
+            }
+        },
+        lemmyEditComment: async (commentId, content) => {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
+                    method: 'PUT',
+                    body: { comment_id: commentId, content: content }
+                }, 'lemmy');
+                showToast('Comment edited.');
+                const commentWrapper = document.getElementById(`comment-wrapper-${commentId}`);
+                if (commentWrapper) {
+                    const contentDiv = commentWrapper.querySelector('.status-content');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = new showdown.Converter().makeHtml(response.data.comment_view.comment.content);
+                    }
+                }
+            } catch (err) {
+                showToast('Failed to edit comment.');
             }
         },
         showContextMenu: showContextMenu
@@ -765,14 +827,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('help-modal').classList.remove('visible');
     });
     
-    document.body.addEventListener('click', (e) => {
-        const link = e.target.closest('a');
-        if (link && link.href && link.target !== '_blank' && link.href.startsWith('http')) {
-            e.preventDefault();
-            openInAppBrowser(link.href);
-        }
-    });
-
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore) return;
 
@@ -799,7 +853,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const imageModal = document.getElementById('image-modal');
         if (imageModal && imageModal.classList.contains('visible')) {
             imageModal.classList.remove('visible');
-            // Don't switch view, just close modal
             history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
         } else if (event.state && event.state.view) {
             switchView(event.state.view, false);

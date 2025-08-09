@@ -31,7 +31,7 @@ async function renderMastodonProfile(state, actions, container, accountId) {
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
-                    <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.display='none'">
+                    <img class="banner" src="${banner}" alt="${displayName}'s banner" onerror="this.style.backgroundColor='var(--primary-color)'">
                     <img class="avatar" src="${avatar}" alt="${displayName}'s avatar" onerror="this.src='./images/logo.png'">
                 </div>
                 <div class="profile-actions">
@@ -109,7 +109,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
     try {
         const { data: userData } = await apiFetch(instance, null, `/api/v3/user`, {}, 'lemmy', { 
             username: username, 
-            limit: 3,
+            limit: 20,
             page: loadMore ? state.lemmyProfilePage : 1,
             sort: 'New'
         });
@@ -119,7 +119,7 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
             container.innerHTML = `
                 <div class="profile-card">
                      <div class="profile-header">
-                        <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.display='none'">
+                        <img class="banner" src="${person_view.person.banner || ''}" alt="${person_view.person.display_name || person_view.person.name}'s banner" onerror="this.style.backgroundColor='var(--primary-color)'">
                         <img class="avatar" src="${person_view.person.avatar || './images/logo.png'}" alt="${person_view.person.display_name || person_view.person.name}'s avatar" onerror="this.src='./images/logo.png'">
                     </div>
                      <div class="profile-actions">
@@ -136,8 +136,8 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
             `;
             
             const noteDiv = container.querySelector('.note');
-            if (noteDiv) {
-                noteDiv.innerHTML = new showdown.Converter().makeHtml(person_view.person.bio || '');
+            if (noteDiv && person_view.person.bio) {
+                noteDiv.innerHTML = new showdown.Converter().makeHtml(person_view.person.bio);
             }
 
             container.querySelector('#lemmy-follow-btn').addEventListener('click', () => {
@@ -230,9 +230,17 @@ async function renderLemmyProfile(state, actions, container, userAcct, loadMore 
                         });
                     });
                     
-                    commentCard.querySelector('.screenshot-btn').addEventListener('click', (e) => {
+                    commentCard.querySelector('.screenshot-btn').addEventListener('click', async (e) => {
                         e.stopPropagation();
-                        actions.showScreenshotPage(item, item); 
+                        try {
+                            const postId = item.post.id;
+                            // FIX: Use the 'instance' from the parent scope, which is the correct one for the profile being viewed.
+                            const { data } = await apiFetch(instance, null, `/api/v3/post`, {}, 'lemmy', { id: postId });
+                            actions.showScreenshotPage(item, data.post_view);
+                        } catch(err) {
+                            console.error("Failed to load data for screenshot:", err);
+                            alert("Could not load data for screenshot.");
+                        }
                     });
 
                     feed.appendChild(commentCard);
