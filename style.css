@@ -1413,3 +1413,34 @@ button:disabled {
         display: none; /* Hide timestamp on very small screens to save space */
     }
 }
+
+/* --- NEW: Media Grid Styles --- */
+.media-grid {
+    display: grid;
+    gap: 5px;
+    margin-top: 15px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.media-grid-1 { grid-template-columns: 1fr; }
+.media-grid-2 { grid-template-columns: 1fr 1fr; }
+.media-grid-3 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "a a" "b c";
+}
+.media-grid-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+}
+
+.media-attachment {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.media-grid-3 .media-attachment:nth-child(1) { grid-area: a; }
+.media-grid-3 .media-attachment:nth-child(2) { grid-area: b; }
+.media-grid-3 .media-attachment:nth-child(3) { grid-area: c; }
