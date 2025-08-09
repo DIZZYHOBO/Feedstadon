@@ -90,15 +90,13 @@ async function toggleLemmyReplies(commentId, container, state, actions) {
     }
 
     try {
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}`, { method: 'GET' }, 'lemmy');
-        // Safely access replies from the response data
+        // Add max_depth to ensure the full reply tree is fetched from the API
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}&max_depth=8`, { method: 'GET' }, 'lemmy');
         const replies = response?.data?.replies;
         container.innerHTML = '';
 
-        // Check if replies is an array and has content
         if (Array.isArray(replies) && replies.length > 0) {
             replies.forEach(reply => {
-                // Also ensure reply.comment_view exists before rendering
                 if (reply.comment_view) {
                     container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
                 }
