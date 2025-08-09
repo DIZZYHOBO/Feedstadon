@@ -11,7 +11,7 @@ import { renderMergedPostPage } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
-import { ICONS } from './icons.js';
+import { ICONS } from './components/icons.js';
 import { apiFetch } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
 
