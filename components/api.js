@@ -21,13 +21,19 @@ export async function apiFetch(instance, token, endpoint, options = {}, authType
     } else if (authType === 'lemmy') {
         const jwt = localStorage.getItem('lemmy_jwt');
         if (jwt) {
-            // FIX: Use the Authorization header for Lemmy JWT, which is the correct method for v3 of the API.
             headers['Authorization'] = `Bearer ${jwt}`;
         }
     }
 
     let body;
     if (options.body) {
+        // BUG FIX: The Lemmy API (v3) rejects requests if auth is present in both the header and the body.
+        // This ensures the `auth` token from the body is removed for Lemmy requests,
+        // relying solely on the correct Authorization header method.
+        if (authType === 'lemmy' && options.body.auth) {
+            delete options.body.auth;
+        }
+        
         if (options.body instanceof FormData) {
             body = options.body;
         } else {
