@@ -323,13 +323,18 @@ button:disabled {
 .nav-left .dropdown-content { left: 0; right: auto; }
 .nav-right .dropdown-content { right: 0; left: auto; }
 
-.dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: block; font-size: 1rem; font-weight: normal; }
+.dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: flex; align-items: center; justify-content: space-between; font-size: 0.9em; font-weight: normal; }
 .dropdown-content a:hover { background-color: var(--accent-color); }
 .dropdown.active .dropdown-content { display: block; }
 
 .main-feed-link {
     font-weight: bold !important;
     color: var(--accent-color) !important;
+}
+
+.dropdown-content .icon {
+    width: 20px;
+    height: 20px;
 }
 
 
