@@ -99,7 +99,8 @@ export function renderLemmyCard(post, actions) {
         </div>
         <div class="edit-post-container" style="display: none;">
             <div class="edit-post-box">
-                <textarea class="edit-post-textarea"></textarea>
+                <input type="text" class="edit-post-title" placeholder="Title">
+                <textarea class="edit-post-textarea" placeholder="Text (optional)"></textarea>
                 <button class="button-primary save-edit-btn">Save</button>
             </div>
         </div>
@@ -179,9 +180,11 @@ export function renderLemmyCard(post, actions) {
                     { label: `${ICONS.edit} Edit`, action: () => {
                         const editContainer = card.querySelector('.edit-post-container');
                         editContainer.style.display = 'block';
+                        const editTitleInput = editContainer.querySelector('.edit-post-title');
                         const editTextArea = editContainer.querySelector('.edit-post-textarea');
-                        editTextArea.value = post.post.body;
-                        editTextArea.focus();
+                        editTitleInput.value = post.post.name;
+                        editTextArea.value = post.post.body || '';
+                        editTitleInput.focus();
                     }},
                     { label: `${ICONS.delete} Delete`, action: () => {
                         if (confirm('Are you sure you want to delete this post?')) {
@@ -218,9 +221,11 @@ export function renderLemmyCard(post, actions) {
                 { label: `${ICONS.edit} Edit`, action: () => {
                     const editContainer = card.querySelector('.edit-post-container');
                     editContainer.style.display = 'block';
+                    const editTitleInput = editContainer.querySelector('.edit-post-title');
                     const editTextArea = editContainer.querySelector('.edit-post-textarea');
-                    editTextArea.value = post.post.body;
-                    editTextArea.focus();
+                    editTitleInput.value = post.post.name;
+                    editTextArea.value = post.post.body || '';
+                    editTitleInput.focus();
                 }},
                 { label: `${ICONS.delete} Delete`, action: () => {
                     if (confirm('Are you sure you want to delete this post?')) {
@@ -288,18 +293,26 @@ export function renderLemmyCard(post, actions) {
     
     card.querySelector('.save-edit-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
-        const newContent = card.querySelector('.edit-post-textarea').value.trim();
-        if (newContent) {
-            try {
-                const editedPost = await actions.lemmyEditPost({
-                    body: newContent,
-                    post_id: post.post.id
-                });
-                card.querySelector('.lemmy-post-body').innerHTML = new showdown.Converter().makeHtml(editedPost.post_view.post.body);
-                card.querySelector('.edit-post-container').style.display = 'none';
-            } catch (err) {
-                alert('Failed to edit post.');
-            }
+        const newTitle = card.querySelector('.edit-post-title').value.trim();
+        const newBody = card.querySelector('.edit-post-textarea').value.trim();
+
+        if (!newTitle) {
+            alert('Title cannot be empty.');
+            return;
+        }
+
+        try {
+            const editedPost = await actions.lemmyEditPost({
+                post_id: post.post.id,
+                name: newTitle,
+                body: newBody
+            });
+            card.querySelector('.lemmy-title').textContent = editedPost.post_view.post.name;
+            card.querySelector('.lemmy-post-body').innerHTML = new showdown.Converter().makeHtml(editedPost.post_view.post.body || '');
+            card.querySelector('.edit-post-container').style.display = 'none';
+        } catch (err) {
+            alert('Failed to edit post.');
+            console.error('Edit post error:', err);
         }
     });
 
