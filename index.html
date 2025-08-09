@@ -23,6 +23,7 @@
                         <a href="#" class="main-feed-link" id="mastodon-main-link">Mastodon</a>
                         <a href="#" data-timeline="home">Home</a>
                         <a href="#" class="main-feed-link" id="lemmy-main-link">Lemmy</a>
+                        <a href="#" class="main-feed-link" id="pixelfed-main-link">Pixelfed</a>
                     </div>
                 </div>
                 <button id="discover-btn" class="nav-button">Discover</button>
@@ -180,6 +181,17 @@
                 <input type="text" class="username-input" placeholder="Username">
                 <input type="password" class="password-input" placeholder="Password">
                 <button type="submit" class="connect-btn">Connect</button>
+            </form>
+        </div>
+    </template>
+    
+    <template id="pixelfed-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Pixelfed</h3>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., pixelfed.social">
+                <input type="text" class="token-input" placeholder="Paste your Access Token">
+                <button type="submit" class="connect-btn">Login</button>
             </form>
         </div>
     </template>
