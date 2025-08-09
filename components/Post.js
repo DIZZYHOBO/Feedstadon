@@ -1,251 +1,218 @@
 import { ICONS } from './icons.js';
-import { formatTimestamp, getWordFilter, shouldFilterContent } from './utils.js';
 import { apiFetch } from './api.js';
-import { showImageModal } from './ui.js';
 
-function renderPoll(poll, statusId, actions) {
-    const container = document.createElement('div');
-    container.className = 'poll-container';
-
-    if (poll.voted) {
-        // Render results
-        poll.options.forEach((option, index) => {
-            const percentage = poll.votes_count > 0 ? (option.votes_count / poll.votes_count * 100).toFixed(1) : 0;
-            const result = document.createElement('div');
-            result.className = 'poll-result';
-            if (poll.own_votes.includes(index)) {
-                result.classList.add('voted');
-            }
-            result.innerHTML = `
-                <div class="poll-result-bar" style="width: ${percentage}%;"></div>
-                <span class="poll-result-label">${option.title}</span>
-                <span class="poll-result-percent">${percentage}%</span>
-            `;
-            container.appendChild(result);
-        });
-    } else {
-        // Render options
-        poll.options.forEach((option, index) => {
-            const optionEl = document.createElement('button');
-            optionEl.className = 'poll-option';
-            optionEl.textContent = option.title;
-            optionEl.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                try {
-                    const updatedPoll = await actions.voteInPoll(poll.id, [index]);
-                    const pollContainer = e.target.closest('.poll-container');
-                    const newPoll = renderPoll(updatedPoll, statusId, actions);
-                    pollContainer.replaceWith(newPoll);
-                } catch (error) {
-                    console.error('Failed to vote:', error);
-                }
-            });
-            container.appendChild(optionEl);
-        });
-    }
-    
-    const info = document.createElement('div');
-    info.className = 'poll-info';
-    info.textContent = `${poll.votes_count} votes · ${poll.expired ? 'Final results' : 'Poll ends soon'}`;
-    container.appendChild(info);
-
-    return container;
+function timeSince(date) {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "m";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m";
+    return Math.floor(seconds) + "s";
 }
 
-function renderConversationPost(post, currentUser, actions) {
-    const postEl = document.createElement('div');
-    postEl.className = 'status conversation-post';
-    postEl.innerHTML = `
-        <div class="status-header">
-             <img class="avatar" src="${post.account.avatar}" alt="${post.account.display_name} avatar">
-             <div>
-                <span class="display-name">${post.account.display_name}</span>
-                <span class="acct">@${post.account.acct}</span>
-             </div>
-        </div>
-        <div class="status-content">${post.content}</div>
-        <div class="status-footer">
-            <button class="status-action reply-to-comment-btn" data-acct="@${post.account.acct}">Reply</button>
-        </div>
-    `;
-    
-    postEl.querySelector('.reply-to-comment-btn').addEventListener('click', (e) => {
-        const acct = e.target.dataset.acct;
-        const mainReplyTextarea = postEl.closest('.conversation-container').querySelector('.conversation-reply-textarea');
-        mainReplyTextarea.value = `${acct} `;
-        mainReplyTextarea.focus();
-    });
-
-    return postEl;
-}
-
-export function renderStatus(status, currentUser, actions, settings, isTimelineContext = false) {
-    const post = status.reblog || status;
-    const author = post.account;
-    const isOwnPost = currentUser && currentUser.id === author.id;
-    
-    if (settings && settings.hideNsfw && post.sensitive) {
-        return document.createDocumentFragment();
-    }
-    
-    const filterList = getWordFilter();
-    if (shouldFilterContent(post.content, filterList)) {
-        return document.createDocumentFragment();
-    }
-
+export function renderStatus(status, currentUser, actions, settings, platform = 'mastodon') {
     const card = document.createElement('div');
     card.className = 'status';
-    card.dataset.id = post.id;
+    card.dataset.id = status.id;
+    card.dataset.platform = platform;
 
-    let boosterInfo = '';
     if (status.reblog) {
-        boosterInfo = `<div class="booster-info">${ICONS.boost} Boosted by ${status.account.display_name}</div>`;
-    }
-    
-    let inReplyToInfo = '';
-    if (post.in_reply_to_account_id) {
-        inReplyToInfo = `<div class="reply-info" data-action="view-thread">${ICONS.reply} Replying to some folks...</div>`;
+        const reblogInfo = document.createElement('div');
+        reblogInfo.className = 'reblog-info';
+        reblogInfo.innerHTML = `${ICONS.reblog} Reblogged by ${status.account.display_name}`;
+        card.appendChild(reblogInfo);
+        status = status.reblog; // Show the reblogged status as the main content
     }
 
-    let mediaHTML = '';
-    if (post.media_attachments.length > 0) {
-        const attachment = post.media_attachments[0];
-        if (attachment.type === 'image') {
-            mediaHTML = `<div class="status-media"><img src="${attachment.url}" alt="${attachment.description || 'Post media'}" loading="lazy"></div>`;
-        } else if (attachment.type === 'video') {
-            mediaHTML = `<div class="status-media"><video src="${attachment.url}" controls></video></div>`;
+    const avatar = document.createElement('img');
+    avatar.className = 'avatar';
+    avatar.src = status.account.avatar;
+    avatar.addEventListener('click', () => {
+        if (status.account && status.account.id) {
+            actions.showProfilePage(platform, status.account.id);
         }
-    }
-    
-    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const youtubeMatch = post.content.match(youtubeRegex);
-    if (youtubeMatch) {
-        mediaHTML += `
-            <div class="video-embed-container">
-                <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
-            </div>
-        `;
-    }
-    
-    let pollHTML = '';
-    if (post.poll) {
-        pollHTML = renderPoll(post.poll, post.id, actions).outerHTML;
-    }
-
-    let optionsMenuHTML = `
-        <div class="post-options-container">
-            <button class="post-options-btn">${ICONS.more}</button>
-            <div class="post-options-menu">
-                <button data-action="mention">Mention @${author.acct}</button>
-                ${isOwnPost ? `<button data-action="edit">${ICONS.edit} Edit</button><button data-action="delete">${ICONS.delete} Delete</button>` : ''}
-                <button data-action="mute">Mute @${author.acct}</button>
-                <button data-action="block">Block @${author.acct}</button>
-            </div>
-        </div>
-    `;
-
-    card.innerHTML = `
-        ${boosterInfo}
-        <div class="status-body-content">
-            ${inReplyToInfo}
-            <div class="status-header">
-                <div class="status-header-main" data-action="view-profile">
-                    <img class="avatar" src="${author.avatar}" alt="${author.display_name} avatar">
-                    <div>
-                        <span class="display-name">${author.display_name}</span>
-                        <span class="acct">@${author.acct}</span>
-                        <span class="timestamp">· ${formatTimestamp(post.created_at)}</span>
-                    </div>
-                </div>
-                <div class="status-header-side">
-                    ${optionsMenuHTML}
-                    <div class="platform-icon-indicator">${ICONS.mastodon}</div>
-                </div>
-            </div>
-            <div class="status-content">${post.content}</div>
-            ${mediaHTML}
-            ${pollHTML}
-            <div class="status-footer">
-                <button class="status-action" data-action="reply">${ICONS.reply} ${post.replies_count}</button>
-                <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="reblog">${ICONS.boost} ${post.reblogs_count}</button>
-                <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favorite">${ICONS.favorite} ${post.favourites_count}</button>
-                <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark">${ICONS.bookmark}</button>
-            </div>
-        </div>
-        <div class="edit-post-container"></div>
-        <div class="conversation-container"></div>
-    `;
-    
-    card.querySelector('[data-action="view-profile"]').addEventListener('click', e => {
-        e.stopPropagation();
-        actions.showProfilePage('mastodon', author.id);
     });
 
-    const mediaImg = card.querySelector('.status-media img');
-    if (mediaImg) {
-        mediaImg.style.cursor = 'pointer';
-        mediaImg.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showImageModal(mediaImg.src);
-        });
-    }
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'content-wrapper';
 
-    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
-        actions.showStatusDetail(post.id);
+    const header = document.createElement('div');
+    header.className = 'status-header';
+    const displayName = document.createElement('span');
+    displayName.className = 'display-name';
+    displayName.textContent = status.account.display_name;
+    displayName.addEventListener('click', () => {
+        if (status.account && status.account.id) {
+            actions.showProfilePage(platform, status.account.id);
+        }
     });
+
+    const acct = document.createElement('span');
+    acct.className = 'acct';
+    acct.textContent = `@${status.account.acct}`;
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = `· ${timeSince(status.created_at)}`;
+
+    header.append(displayName, acct, time);
+
+    const content = document.createElement('div');
+    content.className = 'status-content';
+    content.innerHTML = status.content;
+    content.querySelectorAll('a').forEach(a => a.target = '_blank');
     
-    card.querySelectorAll('.status-action').forEach(button => {
-        button.addEventListener('click', e => {
-            e.stopPropagation();
-            const action = e.target.closest('.status-action').dataset.action;
-            switch(action) {
-                case 'reply':
-                    if (isTimelineContext) {
-                        actions.replyToStatus(post, card);
-                    } else {
-                        // In detail view, you might want to focus a main reply box, not implemented here.
-                    }
-                    break;
-                case 'reblog':
-                case 'favorite':
-                case 'bookmark':
-                    actions.toggleAction(action, status, e.target.closest('.status-action'));
-                    break;
+    // Media attachments
+    if (status.media_attachments && status.media_attachments.length > 0) {
+        const mediaGrid = document.createElement('div');
+        mediaGrid.className = `media-grid media-grid-${status.media_attachments.length}`;
+        status.media_attachments.forEach(media => {
+            if (media.type === 'image') {
+                const img = document.createElement('img');
+                img.src = media.preview_url || media.url;
+                img.className = 'media-attachment';
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    actions.showImageModal(media.url);
+                });
+                mediaGrid.appendChild(img);
+            } else if (media.type === 'video' || media.type === 'gifv') {
+                const video = document.createElement('video');
+                video.src = media.url;
+                video.className = 'media-attachment';
+                video.controls = true;
+                mediaGrid.appendChild(video);
             }
         });
+        content.appendChild(mediaGrid);
+    }
+    
+    // Polls
+    if (status.poll) {
+        const pollContainer = document.createElement('div');
+        pollContainer.className = 'poll-container';
+        status.poll.options.forEach(option => {
+            const pollOption = document.createElement('div');
+            pollOption.className = 'poll-option';
+            pollOption.textContent = option.title;
+            const voteCount = document.createElement('span');
+            voteCount.textContent = ` (${option.votes_count || 0} votes)`;
+            pollOption.appendChild(voteCount);
+            pollContainer.appendChild(pollOption);
+        });
+        content.appendChild(pollContainer);
+    }
+
+    const actionsBar = document.createElement('div');
+    actionsBar.className = 'status-actions';
+    const replyBtn = document.createElement('button');
+    replyBtn.innerHTML = ICONS.reply;
+    replyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.replyToStatus(status, card);
+    });
+
+    const reblogBtn = document.createElement('button');
+    reblogBtn.innerHTML = ICONS.reblog;
+    if (status.reblogged) reblogBtn.classList.add('active');
+    reblogBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.toggleAction('reblog', status, reblogBtn);
+    });
+
+    const favoriteBtn = document.createElement('button');
+    favoriteBtn.innerHTML = ICONS.favorite;
+    if (status.favourited) favoriteBtn.classList.add('active');
+    favoriteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.toggleAction('favorite', status, favoriteBtn);
+    });
+
+    const bookmarkBtn = document.createElement('button');
+    bookmarkBtn.innerHTML = ICONS.bookmark;
+    if (status.bookmarked) bookmarkBtn.classList.add('active');
+    bookmarkBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.toggleAction('bookmark', status, bookmarkBtn);
+    });
+
+    const moreBtn = document.createElement('button');
+    moreBtn.innerHTML = ICONS.more;
+    moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menuItems = [
+            { label: 'Copy Link', action: () => navigator.clipboard.writeText(status.url) },
+            { label: 'Screenshot', action: () => actions.showScreenshotPage(null, status) }
+        ];
+        if (currentUser && currentUser.id === status.account.id) {
+            menuItems.push({ label: 'Delete', action: () => actions.deleteStatus(status.id) });
+            menuItems.push({ label: 'Edit', action: () => actions.editStatus(status.id, prompt("Enter new content:")) });
+        }
+        actions.showContextMenu(e, menuItems);
     });
     
+    actionsBar.append(replyBtn, reblogBtn, favoriteBtn, bookmarkBtn, moreBtn);
+
+    const conversationContainer = document.createElement('div');
+    conversationContainer.className = 'conversation-container';
+    conversationContainer.style.display = 'none';
+
+    contentWrapper.append(header, content, actionsBar, conversationContainer);
+    card.append(avatar, contentWrapper);
+    
+    card.addEventListener('click', (e) => {
+        // Avoid navigating when clicking on links, buttons, or the interactive part of the card
+        if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON' && !e.target.closest('.status-actions')) {
+             actions.showStatusDetail(status.id, platform);
+        }
+    });
+
     return card;
 }
 
-
-export async function renderStatusDetail(state, statusId, actions) {
-    const container = document.getElementById('status-detail-view');
-    container.innerHTML = 'Loading post...';
+export async function renderStatusDetail(state, statusId, actions, platform = 'mastodon') {
+    const view = document.getElementById('status-detail-view');
+    view.innerHTML = 'Loading post...';
+    
+    const instanceUrl = platform === 'pixelfed' ? state.pixelfedInstanceUrl : state.instanceUrl;
+    const accessToken = platform === 'pixelfed' ? state.pixelfedAccessToken : state.accessToken;
 
     try {
-        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
-        const { data: mainStatus } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        const { data: status } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${statusId}`);
+        const { data: context } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${statusId}/context`);
         
-        container.innerHTML = '';
-        
-        if (context.ancestors) {
-            context.ancestors.forEach(status => {
-                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+        view.innerHTML = '';
+        const mainStatusCard = renderStatus(status, state.currentUser, actions, state.settings, platform);
+        view.appendChild(mainStatusCard);
+
+        const contextContainer = document.createElement('div');
+        contextContainer.className = 'context-container';
+        if (context.ancestors && context.ancestors.length > 0) {
+            const ancestorsDiv = document.createElement('div');
+            ancestorsDiv.className = 'ancestors';
+            context.ancestors.forEach(ancestor => {
+                ancestorsDiv.appendChild(renderStatus(ancestor, state.currentUser, actions, state.settings, platform));
             });
+            contextContainer.appendChild(ancestorsDiv);
         }
         
-        const mainPost = renderStatus(mainStatus, state.currentUser, actions, state.settings);
-        mainPost.classList.add('main-thread-post');
-        container.appendChild(mainPost);
-        
-        if (context.descendants) {
-            context.descendants.forEach(status => {
-                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+        if (context.descendants && context.descendants.length > 0) {
+            const descendantsDiv = document.createElement('div');
+            descendantsDiv.className = 'descendants';
+            context.descendants.forEach(descendant => {
+                descendantsDiv.appendChild(renderStatus(descendant, state.currentUser, actions, state.settings, platform));
             });
+            contextContainer.appendChild(descendantsDiv);
         }
         
+        view.appendChild(contextContainer);
+
     } catch (error) {
-        container.innerHTML = `<p>Could not load post. ${error.message}</p>`;
+        view.innerHTML = `<p>Could not load post details. ${error.message}</p>`;
     }
 }
