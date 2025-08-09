@@ -118,7 +118,7 @@ async function fetchAndRenderComments(state, postId, container, actions) {
     }
 }
 
-export function renderCommentNode(commentView, actions) {
+function renderCommentNode(commentView, actions) {
     const comment = commentView.comment;
     const creator = commentView.creator;
     const counts = commentView.counts;
@@ -144,7 +144,7 @@ export function renderCommentNode(commentView, actions) {
     commentWrapper.innerHTML = `
         <div class="status-body-content">
             <div class="status-header">
-                <div class="status-header-main" data-action="view-creator">
+                <div class="status-header-main">
                     <img class="avatar" src="${creator.avatar}" alt="${creator.name} avatar" onerror="this.onerror=null;this.src='./images/php.png';">
                     <div>
                         <span class="display-name">${creator.display_name || creator.name}</span>
@@ -156,7 +156,7 @@ export function renderCommentNode(commentView, actions) {
                     ${optionsMenuHTML}
                 </div>
             </div>
-            <div class="status-content"></div>
+            <div class="status-content">${comment.content}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                     <button class="status-action lemmy-vote-btn ${commentView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
@@ -166,24 +166,8 @@ export function renderCommentNode(commentView, actions) {
                 <button class="status-action" data-action="reply">${ICONS.reply}</button>
             </div>
         </div>
-        <div class="quick-reply-container">
-            <div class="quick-reply-box">
-                <textarea class="edit-comment-textarea" placeholder="Edit your comment..."></textarea>
-                <button class="button-primary save-edit-btn">Save</button>
-            </div>
-        </div>
     `;
     
-    const contentDiv = commentWrapper.querySelector('.status-content');
-    if (contentDiv) {
-        contentDiv.innerHTML = new showdown.Converter().makeHtml(comment.content);
-    }
-
-    commentWrapper.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        actions.showLemmyProfile(`${creator.name}@${new URL(creator.actor_id).hostname}`);
-    });
-
     let pressTimer;
     commentWrapper.addEventListener('touchstart', (e) => {
         pressTimer = setTimeout(() => {
@@ -197,18 +181,8 @@ export function renderCommentNode(commentView, actions) {
             ];
             if (isOwn) {
                  menuItems.push(
-                    { label: `${ICONS.edit} Edit`, action: () => {
-                        const editContainer = commentWrapper.querySelector('.quick-reply-container');
-                        editContainer.style.display = 'block';
-                        const editTextArea = editContainer.querySelector('.edit-comment-textarea');
-                        editTextArea.value = comment.content;
-                        editTextArea.focus();
-                    }},
-                    { label: `${ICONS.delete} Delete`, action: () => {
-                        if (confirm('Are you sure you want to delete this comment?')) {
-                            actions.lemmyDeleteComment(comment.id, commentWrapper);
-                        }
-                    }}
+                    { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
+                    { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
                 );
             }
             actions.showContextMenu(e, menuItems);
@@ -231,18 +205,8 @@ export function renderCommentNode(commentView, actions) {
         ];
         if (isOwn) {
              menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => {
-                    const editContainer = commentWrapper.querySelector('.quick-reply-container');
-                    editContainer.style.display = 'block';
-                    const editTextArea = editContainer.querySelector('.edit-comment-textarea');
-                    editTextArea.value = comment.content;
-                    editTextArea.focus();
-                }},
-                { label: `${ICONS.delete} Delete`, action: () => {
-                    if (confirm('Are you sure you want to delete this comment?')) {
-                        actions.lemmyDeleteComment(comment.id, commentWrapper);
-                    }
-                }}
+                { label: `${ICONS.edit} Edit`, action: () => { /* TODO: Add Lemmy edit logic */ }},
+                { label: `${ICONS.delete} Delete`, action: () => { /* TODO: Add Lemmy delete logic */ }}
             );
         }
         actions.showContextMenu(e, menuItems);
@@ -274,28 +238,6 @@ export function renderCommentNode(commentView, actions) {
         });
         menu.addEventListener('click', (e) => e.stopPropagation());
     }
-    
-    commentWrapper.querySelector('.save-edit-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const newContent = commentWrapper.querySelector('.edit-comment-textarea').value.trim();
-        if (newContent) {
-            try {
-                const editedComment = await actions.lemmyEditComment({
-                    content: newContent,
-                    comment_id: comment.id
-                });
-                if (editedComment && editedComment.comment_view) {
-                    contentDiv.innerHTML = new showdown.Converter().makeHtml(editedComment.comment_view.comment.content);
-                    commentWrapper.querySelector('.quick-reply-container').style.display = 'none';
-                } else {
-                    throw new Error('Server did not return edited comment.');
-                }
-            } catch (err) {
-                alert('Failed to edit comment.');
-                console.error('Edit comment error:', err);
-            }
-        }
-    });
 
     return commentWrapper;
 }

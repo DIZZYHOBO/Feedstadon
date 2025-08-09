@@ -1,75 +1,110 @@
-import { showLoadingBar, hideLoadingBar } from './ui.js';
-
-export async function apiFetch(instance, token, endpoint, options = {}, authType = 'mastodon', params = null) {
-    showLoadingBar();
+// A generic fetch wrapper with Mastodon and Lemmy authentication logic
+export async function apiFetch(instance, token, endpoint, options = {}, authType = 'mastodon', params = {}) {
+    const url = new URL(`https://${instance}${endpoint}`);
     
-    let url;
-    if (instance.startsWith('http')) {
-        url = new URL(instance);
-        url.pathname = endpoint;
-    } else {
-        url = new URL(`https://${instance}${endpoint}`);
-    }
+    // Add query parameters if any
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
-    if (params) {
-        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-    }
+    options.headers = options.headers || {};
 
-    const headers = {};
-    if (authType === 'mastodon' && token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    // Authentication logic
+    if (authType === 'mastodon') {
+        if (token) {
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
     } else if (authType === 'lemmy') {
-        const jwt = localStorage.getItem('lemmy_jwt');
-        if (jwt) {
-            headers['Authorization'] = `Bearer ${jwt}`;
-        }
-    }
-
-    let body;
-    if (options.body) {
-        // BUG FIX: The Lemmy API (v3) rejects requests if auth is present in both the header and the body.
-        // This ensures the `auth` token from the body is removed for Lemmy requests,
-        // relying solely on the correct Authorization header method.
-        if (authType === 'lemmy' && options.body.auth) {
-            delete options.body.auth;
-        }
-        
-        if (options.body instanceof FormData) {
-            body = options.body;
-        } else {
-            headers['Content-Type'] = 'application/json';
-            body = JSON.stringify(options.body);
-        }
-    }
-
-    try {
-        const response = await fetch(url, {
-            method: options.method || 'GET',
-            headers: headers,
-            body: body
-        });
-
-        if (!response.ok) {
-            let errorMsg = `HTTP error! status: ${response.status}`;
-            try {
-                const errorBody = await response.json();
-                errorMsg = errorBody.error || errorMsg;
-            } catch (e) {
-                // Ignore if response is not JSON
+        const lemmyToken = localStorage.getItem('lemmy_jwt');
+        if (lemmyToken) {
+            options.headers['Authorization'] = `Bearer ${lemmyToken}`;
+            
+            // Add 'auth' to the body for POST/PUT requests
+            if (options.method === 'POST' || options.method === 'PUT') {
+                if (options.body) {
+                    options.body.auth = lemmyToken;
+                } else {
+                    options.body = { auth: lemmyToken };
+                }
             }
-            const error = new Error(errorMsg);
-            error.response = response;
-            throw error;
         }
-
-        const responseData = await response.json();
-
-        return { data: responseData, headers: response.headers };
-
-    } catch (error) {
-        console.error('API Fetch Error:', error);
-        throw error;
-    } finally {
-        hideLoadingBar();
     }
+
+    if (options.body && typeof options.body === 'object') {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(options.body);
+    }
+    
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            let errorBody;
+            try {
+                errorBody = await response.json();
+            } catch (e) {
+                errorBody = { error: 'Could not read error response body.' };
+            }
+            throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorBody)}`);
+        }
+        const data = await response.json();
+        return { data, headers: response.headers };
+    } catch (err) {
+        console.error('API Fetch Error:', err);
+        throw err;
+    }
+}
+
+// Specific wrapper for updating credentials with multipart/form-data
+export async function apiUpdateCredentials(state, formData) {
+    const url = `https://${state.instanceUrl}/api/v1/accounts/update_credentials`;
+    const options = {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${state.accessToken}` },
+        body: formData,
+    };
+
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+}
+
+
+// Wrapper for uploading media to Mastodon
+export async function apiUploadMedia(state, file) {
+    const url = `https://${state.instanceUrl}/api/v2/media`;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const options = {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${state.accessToken}` },
+        body: formData,
+    };
+    
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+}
+
+// Wrapper for uploading an image to Lemmy's pictrs
+export async function apiUploadLemmyImage(instance, token, file) {
+    const url = `https://${instance}/pictrs/image`;
+    const formData = new FormData();
+    formData.append('images[]', file);
+
+    const options = {
+        method: 'POST',
+        // Pictrs uses a cookie/jwt for auth, which should be handled by the browser's fetch automatically if logged in
+        // but we'll include it in the headers just in case for some setups
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
+    };
+    
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
 }
