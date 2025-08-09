@@ -6,6 +6,7 @@
     <title>Feedstodon</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -78,6 +79,7 @@
         <div class="modal-content">
             <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
             <div class="compose-actions">
+                <span id="character-count">500</span>
                 <button id="cancel-compose-btn" class="button-secondary">Cancel</button>
                 <button id="post-btn">Post</button>
             </div>
