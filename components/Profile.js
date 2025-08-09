@@ -24,7 +24,8 @@ async function getLemmyProfile(userAcct) {
     if (!lemmyInstance) return null;
     try {
         const [name] = userAcct.split('@');
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}`, {}, 'lemmy');
+        // Fetch user details, posts, and comments in parallel
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50`, {}, 'lemmy');
         return response.data;
     } catch (error) {
         console.error(`Failed to fetch Lemmy profile for ${userAcct}:`, error);
@@ -152,6 +153,12 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 <button class="tab-button" data-tab="mastodon">Mastodon</button>
                 <button class="tab-button" data-tab="lemmy">Lemmy</button>
             </div>
+            <div id="lemmy-profile-controls" style="display: none;">
+                <select id="lemmy-content-filter">
+                    <option value="comments">Comments</option>
+                    <option value="posts">Posts</option>
+                </select>
+            </div>
         </div>
         <div class="profile-feed-content"></div>
     `;
@@ -163,15 +170,47 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     const noteEl = view.querySelector('.note');
     const statsEl = view.querySelector('.stats');
     const feedContainer = view.querySelector('.profile-feed-content');
+    const lemmyControls = view.querySelector('#lemmy-profile-controls');
+    const lemmyFilter = view.querySelector('#lemmy-content-filter');
+
+    let currentLemmyProfile = null;
+
+    const renderLemmyFeed = (filter) => {
+        feedContainer.innerHTML = '';
+        if (!currentLemmyProfile) return;
+
+        if (filter === 'comments') {
+            currentLemmyProfile.comments.forEach(comment => {
+                feedContainer.appendChild(renderLemmyComment(comment, state, actions));
+            });
+        } else if (filter === 'posts') {
+            currentLemmyProfile.posts.forEach(post => {
+                feedContainer.appendChild(renderLemmyCard(post, actions));
+            });
+        }
+    };
+
+    lemmyFilter.addEventListener('change', (e) => {
+        renderLemmyFeed(e.target.value);
+    });
 
     const switchTab = async (targetTab) => {
         view.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
         view.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
         feedContainer.innerHTML = 'Loading feed...';
+        lemmyControls.style.display = 'none';
 
         if (targetTab === 'mastodon') {
             const mastodonProfile = await getMastodonProfile(state, accountId);
             if (mastodonProfile) {
+                const account = mastodonProfile.account;
+                bannerImg.src = account.header_static || '';
+                avatarImg.src = account.avatar_static || '';
+                displayNameEl.textContent = account.display_name;
+                acctEl.textContent = `@${account.acct}`;
+                noteEl.innerHTML = account.note;
+                statsEl.innerHTML = `<span><strong>${account.followers_count}</strong> Followers</span><span><strong>${account.following_count}</strong> Following</span>`;
+
                 feedContainer.innerHTML = '';
                 mastodonProfile.statuses.forEach(status => {
                     feedContainer.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
@@ -180,19 +219,21 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 feedContainer.innerHTML = '<p>Could not load Mastodon feed.</p>';
             }
         } else if (targetTab === 'lemmy') {
-            const lemmyProfile = await getLemmyProfile(userAcct);
-            if (lemmyProfile) {
-                feedContainer.innerHTML = '';
-                lemmyProfile.posts.forEach(post => {
-                    feedContainer.appendChild(renderLemmyCard(post, actions));
-                });
-                lemmyProfile.comments.forEach(comment => {
-                    // This is a simplified comment view for the profile page
-                    const commentEl = document.createElement('div');
-                    commentEl.className = 'status lemmy-comment-on-profile';
-                    commentEl.innerHTML = `<div class="status-body-content"><div class="comment-context">Commented on: <strong>${comment.post.name}</strong></div><div class="status-content">${new showdown.Converter().makeHtml(comment.comment.content)}</div></div>`;
-                    feedContainer.appendChild(commentEl);
-                });
+            currentLemmyProfile = await getLemmyProfile(userAcct);
+            if (currentLemmyProfile) {
+                const person = currentLemmyProfile.person_view.person;
+                const counts = currentLemmyProfile.person_view.counts;
+                
+                bannerImg.src = person.banner || '';
+                avatarImg.src = person.avatar || '';
+                displayNameEl.textContent = person.display_name || person.name;
+                acctEl.textContent = `@${person.name}@${new URL(person.actor_id).hostname}`;
+                noteEl.innerHTML = new showdown.Converter().makeHtml(person.bio || '');
+                statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
+
+                lemmyControls.style.display = 'flex';
+                lemmyFilter.value = 'comments'; // Default to comments
+                renderLemmyFeed('comments');
             } else {
                 feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
             }
@@ -202,35 +243,13 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     view.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', () => switchTab(button.dataset.tab));
     });
-
-    // Initial load of the profile header and the selected tab
-    if (platform === 'mastodon') {
-        const mastodonProfile = await getMastodonProfile(state, accountId);
-        if (mastodonProfile) {
-            const account = mastodonProfile.account;
-            bannerImg.src = account.header_static;
-            avatarImg.src = account.avatar_static;
-            displayNameEl.textContent = account.display_name;
-            acctEl.textContent = `@${account.acct}`;
-            noteEl.innerHTML = account.note;
-            statsEl.innerHTML = `<span><strong>${account.followers_count}</strong> Followers</span><span><strong>${account.following_count}</strong> Following</span>`;
-        }
-    } else if (platform === 'lemmy') {
-        const lemmyProfile = await getLemmyProfile(userAcct);
-        if (lemmyProfile) {
-            const person = lemmyProfile.person_view.person;
-            const counts = lemmyProfile.person_view.counts;
-            bannerImg.src = person.banner || '';
-            avatarImg.src = person.avatar || '';
-            displayNameEl.textContent = person.display_name || person.name;
-            acctEl.textContent = `@${person.name}`;
-            noteEl.innerHTML = new showdown.Converter().makeHtml(person.bio || '');
-            statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
-        }
-    }
     
-    // Trigger the initial tab load
-    switchTab(platform);
+    // Set initial state based on the entry platform
+    if (platform === 'lemmy') {
+        await switchTab('lemmy');
+    } else {
+        await switchTab('mastodon');
+    }
 }
 
 export function renderEditProfilePage(state, actions) {
