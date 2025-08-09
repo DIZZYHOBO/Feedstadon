@@ -2,36 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Feeds</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedstadon</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
 </head>
-<body>
+<body data-theme="feedstodon">
 
     <div id="app-view">
-        <div id="pull-to-refresh-indicator"></div>
-        <nav class="top-nav">
-             <div class="nav-left">
-                <button id="refresh-btn" class="icon-button"></button>
-                <div class="dropdown" id="feeds-dropdown">
-                    <button class="nav-button">Feeds</button>
+        <header class="top-nav">
+            <div class="nav-left">
+                <div id="feeds-dropdown" class="dropdown">
+                    <button id="feeds-btn">Feeds</button>
                     <div class="dropdown-content">
-                        <a href="#" class="main-feed-link" id="mastodon-main-link">Mastodon</a>
-                        <a href="#" data-timeline="home">Home</a>
-                        <a href="#" class="main-feed-link" id="lemmy-main-link">Lemmy</a>
+                        <a href="#" id="home-timeline-link" data-timeline="home">Home</a>
+                        <a href="#" id="mastodon-main-link">Mastodon</a>
+                        <a href="#" id="lemmy-main-link">Lemmy</a>
                     </div>
                 </div>
-                <button id="discover-btn" class="nav-button">Discover</button>
             </div>
-
             <div class="nav-center">
-                 </div>
-
+                <input type="text" id="search-bar" placeholder="Search...">
+                <div id="hashtag-suggestions"></div>
+            </div>
             <div class="nav-right">
-                <div class="dropdown" id="user-dropdown">
-                    <button class="nav-button">Menu</button>
+                <button id="notifications-btn"></button>
+                <button id="discover-btn">Discover</button>
+                <div id="user-dropdown" class="dropdown">
+                    <button id="user-btn">
+                        <i class="fa-solid fa-user"></i>
+                    </button>
                     <div class="dropdown-content">
                         <a href="#" id="new-post-link">New Post</a>
                         <a href="#" id="profile-link">Profile</a>
@@ -39,138 +40,90 @@
                         <a href="#" id="help-link">Help</a>
                     </div>
                 </div>
-                <button id="notifications-btn" class="icon-button"></button>
+                <button id="refresh-btn">
+                    <div id="refresh-spinner"></div>
+                </button>
             </div>
-        </nav>
-        
-        <div id="loading-bar"></div>
+        </header>
 
-        <div class="container">
-            <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
-            <div id="timeline" class="view-container"></div>
-            <div id="notifications-view" class="view-container"></div>
-            <div id="discover-view" class="view-container"></div>
-            <div id="screenshot-view" class="view-container"></div>
-            <div id="merged-post-view" class="view-container"></div>
-            <div id="profile-page-view" class="view-container"></div>
-            <div id="edit-profile-view" class="view-container"></div>
-            <div id="search-results-view" class="view-container"></div>
-            <div id="settings-view" class="view-container"></div>
-            <div id="status-detail-view" class="view-container"></div>
-            <div id="lemmy-post-view" class="view-container"></div>
-            <div id="lemmy-community-view" class="view-container"></div>
-            <div id="scroll-loader"><p>Loading more posts...</p></div>
+        <div id="timeline-sub-nav" style="display: none;"></div>
+        
+        <div id="pull-to-refresh-indicator"></div>
+        <div id="loading-bar"></div>
+        <div id="toast-notification"></div>
+        
+        <main id="timeline" class="timeline-container"></main>
+        
+        <div id="scroll-loader"></div>
+
+        <div id="context-menu"></div>
+
+        <div id="notifications-view" style="display:none;"></div>
+        <div id="discover-view" style="display:none;"></div>
+        <div id="screenshot-view" style="display:none;"></div>
+        <div id="merged-post-view" style="display:none;"></div>
+        <div id="profile-page-view" style="display:none;"></div>
+        <div id="edit-profile-view" style="display:none;"></div>
+        <div id="search-results-view" style="display:none;"></div>
+        <div id="settings-view" style="display:none;"></div>
+        <div id="status-detail-view" style="display:none;"></div>
+        <div id="lemmy-post-view" style="display:none;"></div>
+        <div id="lemmy-community-view" style="display:none;"></div>
+
+    </div>
+
+    <div id="compose-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div id="in-reply-to-container" style="display: none;">
+                <small>Replying to <span id="reply-to-user"></span></small>
+            </div>
+            <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+            <div class="compose-footer">
+                <span id="char-count">500</span>
+                <button id="post-btn">Post</button>
+            </div>
         </div>
-        <div id="refresh-spinner"></div>
+    </div>
+
+    <div id="image-modal" class="modal">
+        <div class="modal-content">
+            <img id="fullscreen-image" src="" alt="Fullscreen Image">
+            <button id="save-image-btn"></button>
+        </div>
     </div>
     
-    <div id="context-menu"></div>
-    
-    <div id="toast-notification"></div>
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+             <span id="close-help-btn" class="close-btn">&times;</span>
+            <h2>Help</h2>
+            <p>Welcome to Feedstadon! This is a simple client for Mastodon and Lemmy.</p>
+        </div>
+    </div>
 
-    <div class="modal-overlay" id="compose-modal">
-         <div class="modal-content">
-            <div class="compose-tabs">
-                <button class="tab-button active" data-tab="mastodon-compose">Mastodon</button>
-                <button class="tab-button" data-tab="lemmy-compose">Lemmy</button>
+
+    <template id="login-prompt-template">
+        <div class="login-prompt">
+            <div id="mastodon-login-section">
+                <h3>Login to Mastodon</h3>
+                <form class="mastodon-login-form">
+                    <input type="text" class="instance-url" placeholder="your.mastodon.instance">
+                    <input type="password" class="access-token" placeholder="Access Token">
+                    <button type="submit">Login</button>
+                </form>
             </div>
-            <div class="compose-tab-content active" id="mastodon-compose-tab">
-                <div id="reply-to-info"></div>
-                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                <div id="cw-creator-container"></div>
-                <div id="poll-creator-container"></div>
-                 <div class="modal-actions">
-                    <div class="compose-options">
-                        <input type="file" id="media-upload-input" style="display: none;" accept="image/*,video/*">
-                        <button class="icon-button" id="media-upload-btn"></button>
-                        <button class="icon-button" id="poll-btn"></button>
-                        <button class="icon-button" id="cw-btn"></button>
-                        <span id="media-filename-preview"></span>
-                    </div>
-                    <div>
-                        <button class="button-secondary" id="cancel-compose-btn">Cancel</button>
-                        <button type="submit" id="submit-compose-btn">Post</button>
-                    </div>
-                </div>
-            </div>
-            <div class="compose-tab-content" id="lemmy-compose-tab">
-                <form id="lemmy-compose-form">
-                    <div class="lemmy-post-type-selector">
-                        <button type="button" class="lemmy-post-type-btn active" data-type="text">Text</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="url">Link</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="image">Image</button>
-                    </div>
-                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., technology)">
-                    <input type="text" id="lemmy-title-input" placeholder="Title">
-                    <input type="url" id="lemmy-url-input" placeholder="URL" style="display:none;">
-                    <textarea id="lemmy-body-textarea" placeholder="Text (optional)"></textarea>
-                    <div class="modal-actions">
-                        <button class="button-secondary" id="cancel-lemmy-compose-btn">Cancel</button>
-                        <button type="submit" id="submit-lemmy-compose-btn">Post</button>
-                    </div>
+            <div id="lemmy-login-section">
+                <h3>Login to Lemmy</h3>
+                <form class="lemmy-login-form">
+                    <input type="text" class="lemmy-instance-input" placeholder="lemmy.world">
+                    <input type="text" class="lemmy-username-input" placeholder="Username">
+                    <input type="password" class="lemmy-password-input" placeholder="Password">
+                    <button type="submit">Login</button>
                 </form>
             </div>
         </div>
-    </div>
-    
-    <div class="modal-overlay" id="image-modal">
-        <div class="image-modal-content">
-            <img id="fullscreen-image" src="">
-            <button class="icon-button" id="save-image-btn" title="Save Image"></button>
-        </div>
-    </div>
-    
-    <div class="modal-overlay" id="help-modal">
-        <div class="modal-content help-modal-content">
-            <button id="close-help-btn" class="close-btn">close</button>
-            <h3>Markdown Guide</h3>
-            <div class="markdown-guide">
-                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
-                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
-                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
-                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
-                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
-                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
-                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
-                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
-            </div>
-        </div>
-    </div>
-
-    <template id="mastodon-login-template">
-        <div class="login-prompt">
-            <h3>Connect to Mastodon</h3>
-            <form class="login-form">
-                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
-                <input type="text" class="token-input" placeholder="Paste your Access Token">
-                <button type="submit" class="connect-btn">Login</button>
-            </form>
-        </div>
     </template>
 
-    <template id="lemmy-login-template">
-        <div class="login-prompt">
-            <h3>Connect to Lemmy</h3>
-            <form class="login-form">
-                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
-                <input type="text" class="username-input" placeholder="Username">
-                <input type="password" class="password-input" placeholder="Password">
-                <button type="submit" class="connect-btn">Connect</button>
-            </form>
-        </div>
-    </template>
-
-    <script src="app.js" type="module"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, err => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-            });
-        }
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
