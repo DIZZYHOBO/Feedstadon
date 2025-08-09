@@ -6,20 +6,24 @@ let currentCommentView = null;
 
 async function captureScreenshot(state) {
     const content = document.getElementById('screenshot-content');
-    const canvas = await html2canvas(content, {
-        backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg-color'),
-        useCORS: true,
-        scale: 2 // Higher scale for better resolution
-    });
-    const dataUrl = canvas.toDataURL('image/png');
-    
-    // Create a link and trigger download
-    const link = document.createElement('a');
-    link.download = `feedstadon-screenshot-${Date.now()}.png`;
-    link.href = dataUrl;
-    link.click();
+    try {
+        const canvas = await html2canvas(content, {
+            backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg-color'),
+            useCORS: true,
+            scale: 2 // Higher scale for better resolution
+        });
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Create a link and trigger download
+        const link = document.createElement('a');
+        link.download = `feedstadon-screenshot-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+    } catch (error) {
+        console.error("Failed to capture screenshot:", error);
+        alert("Sorry, something went wrong while creating the screenshot.");
+    }
 }
-
 
 export async function renderScreenshotPage(state, commentView, postView, actions) {
     const view = document.getElementById('screenshot-view');
@@ -37,10 +41,22 @@ export async function renderScreenshotPage(state, commentView, postView, actions
     currentCommentView = commentView;
 
     const commentArea = view.querySelector('#screenshot-comment-area');
-    commentArea.appendChild(currentPostView);
-    commentArea.appendChild(currentCommentView);
+    
+    // Clear previous content
+    commentArea.innerHTML = '';
+    
+    // **FIX:** Clone the nodes before appending them.
+    // This prevents the "parameter is not of type 'Node'" error.
+    if (currentPostView && currentPostView.cloneNode) {
+        commentArea.appendChild(currentPostView.cloneNode(true));
+    }
+    if (currentCommentView && currentCommentView.cloneNode) {
+        commentArea.appendChild(currentCommentView.cloneNode(true));
+    }
 
     const controlsContainer = view.querySelector('#screenshot-controls-container');
+    // Clear previous controls
+    controlsContainer.innerHTML = '';
     const controlsTemplate = document.getElementById('screenshot-controls-template').content.cloneNode(true);
     controlsContainer.appendChild(controlsTemplate);
     
