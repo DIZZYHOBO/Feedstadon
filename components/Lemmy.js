@@ -3,10 +3,7 @@ import { formatTimestamp, timeAgo, getWordFilter, shouldFilterContent, processSp
 import { showToast, renderLoginPrompt, showImageModal } from './ui.js';
 import { apiFetch } from './api.js';
 
-export function renderLemmyCard(post, actions, settings) {
-    if (settings && settings.hideNsfw && post.post.nsfw) {
-        return document.createDocumentFragment();
-    }
+export function renderLemmyCard(post, actions) {
     const filterList = getWordFilter();
     const combinedContent = `${post.post.name} ${post.post.body || ''}`;
     if (shouldFilterContent(combinedContent, filterList)) {
@@ -171,7 +168,7 @@ export function renderLemmyCard(post, actions, settings) {
                 }},
             ];
             if (isOwn) {
-                menuItems.push(
+                 menuItems.push(
                     { label: `${ICONS.edit} Edit`, action: () => {
                         const replyContainer = card.querySelector('.quick-reply-container');
                         replyContainer.style.display = 'block';
@@ -375,7 +372,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
                 state.lemmyPage = 1;
             }
             posts.forEach(post_view => {
-                const postCard = renderLemmyCard(post_view, actions, state.settings);
+                const postCard = renderLemmyCard(post_view, actions);
                 state.timelineDiv.appendChild(postCard);
             });
             state.lemmyHasMore = true;

@@ -28,10 +28,8 @@ export async function fetchTimeline(state, actions, loadMore = false, onLoginSuc
         }
         
         data.forEach(status => {
-            const statusCard = renderStatus(status, state, actions, true);
-            if (statusCard) {
-                state.timelineDiv.appendChild(statusCard);
-            }
+            const statusCard = renderStatus(status, state.currentUser, actions, state.settings, true);
+            state.timelineDiv.appendChild(statusCard);
         });
 
         state.nextPageUrl = next;
