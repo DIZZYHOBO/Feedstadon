@@ -107,37 +107,37 @@ async function fetchAndRenderComments(state, postId, userCommentsContainer, othe
         const commentsData = response.data.comments;
 
         const loggedInUsername = localStorage.getItem('lemmy_username');
-        const userComments = [];
-        const otherComments = [];
+        
+        // Build the full comment tree first to maintain parent-child relationships
+        const allCommentThreads = buildCommentTree(commentsData);
 
-        if (loggedInUsername && commentsData) {
-            commentsData.forEach(commentView => {
-                if (commentView.creator.name === loggedInUsername) {
-                    userComments.push(commentView);
-                } else {
-                    otherComments.push(commentView);
-                }
-            });
-        } else if (commentsData) {
-            otherComments.push(...commentsData);
-        }
+        const userCommentThreads = [];
+        const otherCommentThreads = [];
 
+        // Separate threads based on the top-level comment's author
+        allCommentThreads.forEach(thread => {
+            if (loggedInUsername && thread.creator.name === loggedInUsername) {
+                userCommentThreads.push(thread);
+            } else {
+                otherCommentThreads.push(thread);
+            }
+        });
 
-        if (userComments.length > 0) {
-            const userCommentTree = buildCommentTree(userComments);
-            renderCommentTree(userCommentTree, userCommentsContainer, actions);
+        // Render the user's comment threads, with all replies included
+        if (userCommentThreads.length > 0) {
+            renderCommentTree(userCommentThreads, userCommentsContainer, actions);
             userCommentsContainer.style.display = 'block';
         } else {
             userCommentsContainer.style.display = 'none';
         }
 
-
-        if (otherComments.length > 0) {
-            const otherCommentTree = buildCommentTree(otherComments);
-            renderCommentTree(otherCommentTree, otherCommentsContainer, actions);
+        // Render the remaining comment threads
+        if (otherCommentThreads.length > 0) {
+            renderCommentTree(otherCommentThreads, otherCommentsContainer, actions);
         } else {
             otherCommentsContainer.innerHTML = '<div class="status-body-content"><p>No other comments yet.</p></div>';
         }
+
     } catch (err) {
         console.error("Failed to load Lemmy comments:", err);
         otherCommentsContainer.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
@@ -157,12 +157,17 @@ export function renderCommentNode(commentView, actions) {
         commentWrapper.classList.add('top-level-comment');
     }
 
+    const isOwnComment = creator.name === localStorage.getItem('lemmy_username');
+
     let optionsMenuHTML = `
         <div class="post-options-container">
             <button class="post-options-btn">${ICONS.more}</button>
             <div class="post-options-menu">
+                <button data-action="screenshot-comment">${ICONS.screenshot} Screenshot</button>
+                ${isOwnComment ? `
                 <button data-action="edit-comment">${ICONS.edit} Edit</button>
                 <button data-action="delete-comment">${ICONS.delete} Delete</button>
+                ` : ''}
             </div>
         </div>
     `;
@@ -207,15 +212,18 @@ export function renderCommentNode(commentView, actions) {
     let pressTimer;
     commentWrapper.addEventListener('touchstart', (e) => {
         pressTimer = setTimeout(() => {
-            const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
-            let menuItems = [
+            const menuItems = [
+                { label: `${ICONS.screenshot} Screenshot`, action: () => {
+                    const postView = document.querySelector('.main-thread-post');
+                    actions.showScreenshotPage(commentWrapper, postView);
+                }},
                 { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
                     if (confirm('Are you sure you want to block this user?')) {
                         actions.lemmyBlockUser(commentView.creator.id, true);
                     }
                 }},
             ];
-            if (isOwn) {
+            if (isOwnComment) {
                  menuItems.push(
                     { label: `${ICONS.edit} Edit`, action: () => {
                         showReplyBox(commentWrapper, commentView, actions);
@@ -247,47 +255,9 @@ export function renderCommentNode(commentView, actions) {
     commentWrapper.addEventListener('touchend', () => {
         clearTimeout(pressTimer);
     });
-
-    commentWrapper.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
-        let menuItems = [
-            { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
-                if (confirm('Are you sure you want to block this user?')) {
-                    actions.lemmyBlockUser(commentView.creator.id, true);
-                }
-            }},
-        ];
-        if (isOwn) {
-             menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => {
-                    showReplyBox(commentWrapper, commentView, actions);
-                    const replyBox = commentWrapper.querySelector('.lemmy-reply-box');
-                    const textarea = replyBox.querySelector('textarea');
-                    textarea.value = comment.content;
-                    const button = replyBox.querySelector('.submit-reply-btn');
-                    button.textContent = 'Save';
-                    button.onclick = async (e) => {
-                        e.stopPropagation();
-                        const newContent = textarea.value.trim();
-                        if (newContent) {
-                            await actions.lemmyEditComment(comment.id, newContent);
-                            replyBox.remove();
-                        }
-                    };
-                }},
-                { label: `${ICONS.delete} Delete`, action: () => {
-                    if (confirm('Are you sure you want to delete this comment?')) {
-                        actions.lemmyDeleteComment(comment.id);
-                    }
-                }}
-            );
-        }
-        actions.showContextMenu(e, menuItems);
-    });
     
-    // Event listeners
-    commentWrapper.querySelectorAll('.status-action').forEach(button => {
+    // Event listeners for action buttons in the footer
+    commentWrapper.querySelectorAll('.status-footer .status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = e.currentTarget.dataset.action;
@@ -310,6 +280,15 @@ export function renderCommentNode(commentView, actions) {
             e.stopPropagation();
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
+
+        // Add listeners for menu items
+        menu.querySelector('[data-action="screenshot-comment"]')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const postView = document.querySelector('.main-thread-post');
+            actions.showScreenshotPage(commentWrapper, postView);
+            menu.style.display = 'none';
+        });
+
         menu.addEventListener('click', (e) => e.stopPropagation());
     }
 
