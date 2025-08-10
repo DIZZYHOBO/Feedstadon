@@ -1410,3 +1410,17 @@ button:disabled {
         display: none; /* Hide timestamp on very small screens to save space */
     }
 }
+/* --- Lemmy User Comments Box --- */
+.lemmy-user-comments-container {
+    background-color: var(--card-color);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    margin: 15px 0;
+    padding: 10px;
+    display: none; /* Hidden by default */
+}
+
+.lemmy-user-comments-container .status {
+    border: none;
+    box-shadow: none;
+}
