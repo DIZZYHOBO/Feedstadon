@@ -63,6 +63,10 @@ function renderLemmyComment(commentView, state, actions) {
         </div>
     `;
 
+    commentDiv.addEventListener('dblclick', () => {
+        actions.showLemmyPostDetail(commentView);
+    });
+
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
     const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
 
