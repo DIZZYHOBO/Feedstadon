@@ -4,7 +4,7 @@ import { formatTimestamp, getWordFilter, shouldFilterContent, processSpoilers } 
 import { renderLoginPrompt } from './ui.js';
 import { showImageModal } from './ui.js';
 
-export function renderLemmyCard(post, actions) {
+export function renderLemmyCard(post, actions, settings) {
     const filterList = getWordFilter();
     const combinedContent = `${post.post.name} ${post.post.body || ''}`;
     if (shouldFilterContent(combinedContent, filterList)) {
@@ -14,6 +14,9 @@ export function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
     card.className = 'status lemmy-card';
     card.dataset.id = post.post.id;
+
+    const isNsfw = post.post.nsfw;
+    const shouldBlur = isNsfw && settings.hideNsfw;
 
     let mediaHTML = '';
     const url = post.post.url;
@@ -99,6 +102,22 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
     
+    if (shouldBlur) {
+        card.classList.add('nsfw-post', 'blurred');
+        
+        const showButton = document.createElement('button');
+        showButton.className = 'nsfw-show-button overlay';
+        showButton.textContent = 'Show NSFW Content';
+        
+        card.appendChild(showButton);
+
+        showButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            card.classList.remove('blurred');
+            showButton.remove();
+        });
+    }
+
     card.querySelectorAll('.spoiler-toggle-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -353,7 +372,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 3
+            limit: 20 // Increased limit
         };
         if (state.currentLemmyFeed !== 'All') {
             params.type_ = state.currentLemmyFeed;
@@ -373,7 +392,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
                 state.lemmyPage = 1;
             }
             posts.forEach(post_view => {
-                const postCard = renderLemmyCard(post_view, actions);
+                const postCard = renderLemmyCard(post_view, actions, state.settings);
                 state.timelineDiv.appendChild(postCard);
             });
             state.lemmyHasMore = true;
