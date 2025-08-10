@@ -1,146 +1,324 @@
 import { apiFetch } from './api.js';
-import { renderLemmyCard } from './Lemmy.js';
+import { renderStatus } from './Post.js';
 import { ICONS } from './icons.js';
-import showdown from 'showdown';
 
-export async function renderLemmyCommunityPage(state, actions, communityName) {
-    const view = document.getElementById('lemmy-community-view');
-    view.innerHTML = `<div class="loading-spinner">${ICONS.refresh}</div>`;
+// --- Mastodon Discover Section ---
 
+export async function loadMoreMastodonTrendingPosts(state, actions) {
+    const container = document.querySelector('#mastodon-discover-content');
+    await fetchMastodonTrendingPosts(state, actions, container, true);
+}
+
+async function fetchMastodonTrendingPosts(state, actions, container, loadMore = false) {
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+    
     try {
-        const [name, instance] = communityName.split('@');
-        const lemmyInstance = instance || localStorage.getItem('lemmy_instance');
-        if (!lemmyInstance) throw new Error("Lemmy instance not found.");
+        const { data } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/statuses', {
+            params: { offset: loadMore ? state.mastodonTrendingPage * 20 : 0 }
+        });
 
-        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community', {}, 'lemmy', { name: name });
-        const communityView = data.community_view;
-        const postsResponse = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', { community_name: name, sort: 'New' });
-        const posts = postsResponse.data.posts;
-
-        const community = communityView.community;
-
-        let followButton = '';
-        if (localStorage.getItem('lemmy_jwt')) {
-            followButton = `<button class="button follow-btn ${communityView.subscribed === 'Subscribed' ? 'subscribed' : ''}">${communityView.subscribed === 'Subscribed' ? 'Following' : 'Follow'}</button>`;
+        if (!loadMore) container.innerHTML = '';
+        
+        if (data.length > 0) {
+            data.forEach(status => {
+                container.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
+            });
+            state.mastodonTrendingPage++;
+            state.mastodonTrendingHasMore = true;
+        } else {
+            state.mastodonTrendingHasMore = false;
         }
+    } catch (error) {
+        container.innerHTML = `<p>Could not load trending posts.</p>`;
+    } finally {
+        state.isLoadingMore = false;
+    }
+}
 
-        const converter = new showdown.Converter();
-        const fullDescription = community.description || '';
-        const fullDescriptionHtml = converter.makeHtml(fullDescription);
-
-        const words = fullDescription.split(/\s+/);
-        const firstPeriodIndex = fullDescription.indexOf('.');
-
-        let isTruncated = false;
-        let truncatedDescription = '';
-        let descriptionBlock = '';
-
-        if (words.length > 30) {
-            truncatedDescription = words.slice(0, 30).join(' ') + '...';
-            isTruncated = true;
-        } else if (firstPeriodIndex !== -1 && firstPeriodIndex < fullDescription.length - 1) {
-            truncatedDescription = fullDescription.substring(0, firstPeriodIndex + 1);
-            isTruncated = true;
-        }
-
-        if (isTruncated) {
-            const truncatedHtml = converter.makeHtml(truncatedDescription);
-            descriptionBlock = `
-                <div class="community-bio">
-                    <div class="bio-content">${truncatedHtml}</div>
-                    <a href="#" class="read-more-bio">read more</a>
+async function fetchMastodonTrendingHashtags(state, actions, container) {
+    try {
+        const { data } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/tags');
+        container.innerHTML = '';
+        data.forEach(tag => {
+            const tagEl = document.createElement('div');
+            tagEl.className = 'discover-list-item';
+            tagEl.innerHTML = `
+                <div>
+                    <div class="discover-item-title">#${tag.name}</div>
+                    <div class="discover-item-subtitle">${tag.history[0].uses} posts this week</div>
                 </div>
             `;
-        } else {
-            descriptionBlock = `<div class="community-bio">${fullDescriptionHtml}</div>`;
-        }
+            tagEl.addEventListener('click', () => actions.showHashtagTimeline(tag.name));
+            container.appendChild(tagEl);
+        });
+    } catch (error) {
+        container.innerHTML = `<p>Could not load trending hashtags.</p>`;
+    }
+}
 
-        view.innerHTML = `
-            <div class="profile-card lemmy-community-card">
-                <div class="profile-header">
-                    <div class="banner" style="background-image: url('${community.banner || ''}'); background-color: var(--primary-color);"></div>
-                    <img class="avatar" src="${community.icon || './images/logo.png'}" alt="${community.name} avatar" onerror="this.onerror=null;this.src='./images/logo.png';">
+async function fetchMastodonSuggestedFollows(state, actions, container) {
+    try {
+        const { data } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/suggestions');
+        container.innerHTML = '';
+        data.forEach(account => {
+            const accountEl = document.createElement('div');
+            accountEl.className = 'discover-list-item';
+            accountEl.innerHTML = `
+                <img src="${account.avatar}" class="avatar" />
+                <div>
+                    <div class="discover-item-title">${account.display_name}</div>
+                    <div class="discover-item-subtitle">@${account.acct}</div>
                 </div>
-                <div class="profile-actions">
-                    ${followButton}
+                <button class="button-secondary follow-btn">Follow</button>
+            `;
+            accountEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const success = await actions.mastodonFollow(account.id, true);
+                if (success) {
+                    e.target.textContent = 'Followed';
+                    e.target.disabled = true;
+                }
+            });
+            container.appendChild(accountEl);
+        });
+    } catch (error) {
+        container.innerHTML = `<p>Could not load suggested follows.</p>`;
+    }
+}
+
+async function fetchMastodonTrendingNews(state, actions, container) {
+     try {
+        const { data } = await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/links');
+        container.innerHTML = '';
+        data.forEach(link => {
+            const linkEl = document.createElement('div');
+            linkEl.className = 'discover-list-item news-item';
+            linkEl.innerHTML = `
+                <div class="news-item-content">
+                    <div class="discover-item-title">${link.title}</div>
+                    <div class="discover-item-subtitle">${link.provider_name}</div>
                 </div>
-                <div class="profile-info">
-                    <h2 class="display-name">${community.name}</h2>
-                    <div class="acct">${community.actor_id.split('/')[2]}</div>
-                    <div class="note">${descriptionBlock}</div>
-                    <div class="stats">
-                        <span><strong>${communityView.counts.subscribers}</strong> Subscribers</span>
-                        <span><strong>${communityView.counts.users_active_day}</strong> Active Today</span>
-                    </div>
-                </div>
+                ${link.image ? `<img src="${link.image}" class="news-item-thumbnail" />` : ''}
+            `;
+            linkEl.addEventListener('click', () => window.open(link.url, '_blank'));
+            container.appendChild(linkEl);
+        });
+    } catch (error) {
+        container.innerHTML = `<p>Could not load trending news.</p>`;
+    }
+}
+
+
+function renderMastodonDiscover(state, actions, container) {
+    container.innerHTML = `
+        <div class="discover-sub-nav">
+            <button class="discover-sub-nav-btn active" data-tab="trending">Trending</button>
+            <button class="discover-sub-nav-btn" data-tab="hashtags">Hashtags</button>
+            <button class="discover-sub-nav-btn" data-tab="people">People</button>
+            <button class="discover-sub-nav-btn" data-tab="news">News</button>
+        </div>
+        <div id="mastodon-discover-content" class="discover-content-area"></div>
+    `;
+
+    const contentArea = container.querySelector('#mastodon-discover-content');
+    const tabs = container.querySelectorAll('.discover-sub-nav-btn');
+
+    const switchTab = (tabName) => {
+        contentArea.innerHTML = `<p>Loading...</p>`;
+        tabs.forEach(t => t.classList.remove('active'));
+        container.querySelector(`.discover-sub-nav-btn[data-tab="${tabName}"]`).classList.add('active');
+        state.currentDiscoverTab = `mastodon-${tabName}`;
+        
+        switch(tabName) {
+            case 'trending': 
+                state.mastodonTrendingPage = 1;
+                fetchMastodonTrendingPosts(state, actions, contentArea); 
+                break;
+            case 'hashtags': fetchMastodonTrendingHashtags(state, actions, contentArea); break;
+            case 'people': fetchMastodonSuggestedFollows(state, actions, contentArea); break;
+            case 'news': fetchMastodonTrendingNews(state, actions, contentArea); break;
+        }
+    };
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    // Load initial tab
+    fetchMastodonTrendingPosts(state, actions, contentArea);
+}
+
+
+// --- Lemmy Discover Section ---
+
+function renderCommunityList(communities, actions, container) {
+    if (communities.length === 0) {
+        container.innerHTML = '<p>No communities found.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    communities.forEach(communityView => {
+        const community = communityView.community;
+        const communityEl = document.createElement('div');
+        communityEl.className = 'discover-list-item';
+        
+        const isSubscribed = communityView.subscribed === "Subscribed";
+        
+        communityEl.innerHTML = `
+            <img src="${community.icon}" class="avatar" onerror="this.src='./images/logo.png'"/>
+            <div>
+                <div class="discover-item-title">${community.name}</div>
+                <div class="discover-item-subtitle">${community.actor_id.split('/')[2]}</div>
             </div>
-            <div class="profile-feed"></div>
+            <button class="button-secondary follow-btn">${isSubscribed ? 'Unfollow' : 'Follow'}</button>
         `;
 
-        const feedContainer = view.querySelector('.profile-feed');
-        if (posts && posts.length > 0) {
-            posts.forEach(post => {
-                feedContainer.appendChild(renderLemmyCard(post, actions));
-            });
-        } else {
-            feedContainer.innerHTML = '<p>No posts in this community yet.</p>';
-        }
+        communityEl.addEventListener('click', () => {
+            const instance = new URL(community.actor_id).hostname;
+            actions.showLemmyCommunity(`${community.name}@${instance}`);
+        });
 
-        if (isTruncated) {
-            const readMoreBtn = view.querySelector('.read-more-bio');
-            const bioContent = view.querySelector('.bio-content');
-            const bioContainer = view.querySelector('.community-bio');
-            let isExpanded = false;
+        communityEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const currentlySubscribed = e.target.textContent === 'Unfollow';
+            const success = await actions.lemmyFollowCommunity(community.id, !currentlySubscribed);
+            if (success) {
+                e.target.textContent = currentlySubscribed ? 'Follow' : 'Unfollow';
+            }
+        });
 
-            const truncatedHtml = converter.makeHtml(truncatedDescription);
+        container.appendChild(communityEl);
+    });
+}
 
-            readMoreBtn.addEventListener('click', (e) => {
+export async function loadMoreLemmyCommunities(state, actions) {
+    await renderLemmyDiscover(state, actions, null, true);
+}
+
+async function renderLemmyDiscover(state, actions, container, loadMore = false) {
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+    
+    const contentArea = document.querySelector('#lemmy-discover-content-area');
+    
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        
+        if (!loadMore) {
+            container.innerHTML = `
+                <form id="lemmy-community-search-form">
+                    <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
+                </form>
+                <div id="lemmy-search-results-container" style="display: none;"></div>
+                <div id="lemmy-discover-content-area" class="discover-content-area"></div>
+            `;
+            
+            const searchForm = container.querySelector('#lemmy-community-search-form');
+            const searchInput = container.querySelector('#lemmy-community-search');
+            const searchResultsContainer = container.querySelector('#lemmy-search-results-container');
+
+            searchForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                e.stopPropagation();
-
-                isExpanded = !isExpanded;
-                bioContainer.style.maxHeight = 'none'; // Allow container to resize
-
-                if (isExpanded) {
-                    bioContent.innerHTML = fullDescriptionHtml;
-                    readMoreBtn.textContent = 'close';
-                    // Animate the expansion
-                    const initialHeight = bioContent.clientHeight;
-                    bioContent.style.maxHeight = '0px';
-                    bioContent.style.overflow = 'hidden';
-                    bioContent.style.transition = 'max-height 0.4s ease-in-out';
-                    
-                    // Use a timeout to allow the DOM to update before animating
-                    setTimeout(() => {
-                        bioContent.style.maxHeight = initialHeight + 'px';
-                    }, 0);
-
+                const query = searchInput.value.trim();
+                if (query.length > 0) {
+                    const { data } = await apiFetch(lemmyInstance, null, '/api/v3/search', {}, 'lemmy', { q: query, type_: 'Communities', sort: 'TopAll' });
+                    renderCommunityList(data.communities, actions, searchResultsContainer);
+                    searchResultsContainer.style.display = 'block';
                 } else {
-                    bioContent.innerHTML = truncatedHtml;
-                    readMoreBtn.textContent = 'read more';
-                     bioContent.style.maxHeight = '100%'; // Reset to default
+                    searchResultsContainer.style.display = 'none';
                 }
             });
         }
-
-        const followBtn = view.querySelector('.follow-btn');
-        if (followBtn) {
-            followBtn.addEventListener('click', async () => {
-                const isSubscribed = followBtn.classList.contains('subscribed');
-                const success = await actions.lemmyFollowCommunity(community.id, !isSubscribed);
-                if (success) {
-                    followBtn.classList.toggle('subscribed');
-                    followBtn.textContent = isSubscribed ? 'Follow' : 'Following';
-                    // Optimistically update subscriber count
-                    const subscriberCountEl = view.querySelector('.stats span:first-child strong');
-                    let currentCount = parseInt(subscriberCountEl.textContent);
-                    subscriberCountEl.textContent = isSubscribed ? currentCount - 1 : currentCount + 1;
-                }
-            });
+        
+        const communityContainer = container ? container.querySelector('#lemmy-discover-content-area') : contentArea;
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { 
+            sort: 'TopDay',
+            page: loadMore ? state.lemmyDiscoverPage : 1
+        });
+        
+        if (data.communities.length > 0) {
+            if (!loadMore) communityContainer.innerHTML = '';
+            renderCommunityList(data.communities, actions, communityContainer);
+            state.lemmyDiscoverPage++;
+            state.lemmyDiscoverHasMore = true;
+        } else {
+            state.lemmyDiscoverHasMore = false;
         }
-
     } catch (error) {
-        console.error("Failed to load Lemmy community:", error);
-        view.innerHTML = `<p>Could not load community. ${error.message}</p>`;
+        if (!loadMore) container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
+    } finally {
+        state.isLoadingMore = false;
     }
+}
+
+async function renderSubscribedLemmy(state, actions, container) {
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
+            type_: 'Subscribed',
+            sort: 'TopDay',
+            limit: 50
+        });
+        renderCommunityList(data.communities, actions, container);
+    } catch (error) {
+        container.innerHTML = `<p>Could not load subscribed communities.</p>`;
+    } finally {
+        state.isLoadingMore = false;
+    }
+}
+
+
+// --- Main Discover Page ---
+
+export function renderDiscoverPage(state, actions) {
+    const view = document.getElementById('discover-view');
+    view.innerHTML = `
+        <div class="profile-tabs">
+            <button class="tab-button active" data-discover-tab="subscribed">Subbed</button>
+            <button class="tab-button" data-discover-tab="lemmy">Lemmy</button>
+            <button class="tab-button" data-discover-tab="mastodon">Mastodon</button>
+        </div>
+        <div id="subscribed-discover-content" class="discover-tab-content active"></div>
+        <div id="lemmy-discover-content" class="discover-tab-content"></div>
+        <div id="mastodon-discover-content" class="discover-tab-content"></div>
+    `;
+
+    const tabs = view.querySelectorAll('.profile-tabs .tab-button');
+    const subscribedContent = view.querySelector('#subscribed-discover-content');
+    const lemmyContent = view.querySelector('#lemmy-discover-content');
+    const mastodonContent = view.querySelector('#mastodon-discover-content');
+
+    function switchTab(platform) {
+        tabs.forEach(t => t.classList.remove('active'));
+        subscribedContent.classList.remove('active');
+        lemmyContent.classList.remove('active');
+        mastodonContent.classList.remove('active');
+
+        view.querySelector(`[data-discover-tab="${platform}"]`).classList.add('active');
+        state.currentDiscoverTab = platform;
+
+        if (platform === 'subscribed') {
+            subscribedContent.classList.add('active');
+            renderSubscribedLemmy(state, actions, subscribedContent);
+        } else if (platform === 'lemmy') {
+            lemmyContent.classList.add('active');
+            state.lemmyDiscoverPage = 1;
+            renderLemmyDiscover(state, actions, lemmyContent);
+        } else {
+            mastodonContent.classList.add('active');
+            renderMastodonDiscover(state, actions, mastodonContent);
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.discoverTab));
+    });
+
+    // Initial load
+    switchTab('subscribed');
 }
