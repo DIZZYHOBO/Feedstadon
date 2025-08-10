@@ -1,5 +1,6 @@
 import { ICONS } from './icons.js';
 import { apiFetch } from './api.js';
+import { formatTimestamp } from './utils.js';
 
 export function renderStatus(status, currentUser, actions, settings) {
     const card = document.createElement('div');
@@ -32,7 +33,7 @@ export function renderStatus(status, currentUser, actions, settings) {
                     </div>
                 </div>
                 <div class="status-header-side">
-                    <a href="#status/${status.id}" class="timestamp">${new Date(status.created_at).toLocaleString()}</a>
+                    <a href="#status/${status.id}" class="timestamp">${formatTimestamp(status.created_at)}</a>
                 </div>
             </div>
             <div class="status-content">${status.content}</div>
@@ -40,7 +41,7 @@ export function renderStatus(status, currentUser, actions, settings) {
         </div>
         <div class="status-footer">
             <button class="status-action reply-btn">${ICONS.comments} <span>${status.replies_count}</span></button>
-            <button class="status-action reblog-btn ${status.reblogged ? 'active' : ''}">${ICONS.reblog} <span>${status.reblogs_count}</span></button>
+            <button class="status-action reblog-btn ${status.reblogged ? 'active' : ''}">${ICONS.boost} <span>${status.reblogs_count}</span></button>
             <button class="status-action favorite-btn ${status.favourited ? 'active' : ''}">${ICONS.favorite} <span>${status.favourites_count}</span></button>
             <button class="status-action bookmark-btn ${status.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
         </div>
