@@ -175,11 +175,6 @@ function renderCommunityList(communities, actions, container) {
             <button class="button-secondary follow-btn">${isSubscribed ? 'Unfollow' : 'Follow'}</button>
         `;
 
-        communityEl.addEventListener('click', () => {
-            const instance = new URL(community.actor_id).hostname;
-            actions.showLemmyCommunity(`${community.name}@${instance}`);
-        });
-
         communityEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
             const currentlySubscribed = e.target.textContent === 'Unfollow';

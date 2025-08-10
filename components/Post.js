@@ -1,121 +1,121 @@
-import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
+import { apiFetch } from './api.js';
+import { formatTimestamp } from './utils.js';
 
-function renderActionButtons(post, currentUser, actions, settings) {
-    if (!currentUser) return '';
-    return `
-        <div class="post-actions">
-            <button class="action-btn reply-btn">${ICONS.reply}</button>
-            <button class="action-btn boost-btn ${post.reblogged ? 'active' : ''}">${ICONS.boost}</button>
-            <button class="action-btn favorite-btn ${post.favourited ? 'active' : ''}">${ICONS.favorite}</button>
-            <button class="action-btn bookmark-btn ${post.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
-        </div>
-    `;
-}
+export function renderStatus(status, currentUser, actions, settings) {
+    const card = document.createElement('div');
+    card.className = 'status';
+    card.dataset.id = status.id;
 
-export function renderStatus(post, currentUser, actions, settings) {
-    const postContainer = document.createElement('div');
-    postContainer.className = 'post';
-    postContainer.dataset.postId = post.id;
+    const isNsfw = status.sensitive;
+    const shouldBlur = isNsfw && settings.hideNsfw;
 
-    const postContent = `
-        <div class="post-header">
-            <img src="${post.account.avatar}" class="avatar" alt="${post.account.display_name}'s avatar">
-            <div class="post-author">
-                <span class="display-name">${post.account.display_name}</span>
-                <span class="acct">@${post.account.acct}</span>
-            </div>
-            <div class="post-timestamp">${new Date(post.created_at).toLocaleString()}</div>
-        </div>
-        <div class="post-body">${post.content}</div>
-        ${renderActionButtons(post, currentUser, actions, settings)}
-    `;
-
-    postContainer.innerHTML = postContent;
-
-    if (currentUser) {
-        postContainer.querySelector('.reply-btn').addEventListener('click', () => actions.replyToPost(post));
-        postContainer.querySelector('.boost-btn').addEventListener('click', () => actions.boostPost(post.id, !post.reblogged));
-        postContainer.querySelector('.favorite-btn').addEventListener('click', () => actions.favoritePost(post.id, !post.favourited));
-        postContainer.querySelector('.bookmark-btn').addEventListener('click', () => actions.bookmarkPost(post.id, !post.bookmarked));
-    }
-
-    postContainer.addEventListener('click', (e) => {
-        if (!e.target.closest('.action-btn, a, .post-author')) {
-            actions.showFullPost(post.id);
-        }
-    });
-
-    return postContainer;
-}
-
-export async function renderFullPost(postId, state, actions) {
-    const { instanceUrl, accessToken, currentUser } = state;
-    const postView = document.getElementById('full-post-view');
-    postView.innerHTML = `<div class="loading-spinner">${ICONS.refresh}</div>`;
-    postView.style.display = 'block';
-
-    try {
-        const { data: post } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${postId}`);
-        const { data: context } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${postId}/context`);
-        
-        const replies = context.descendants || [];
-        const userComments = [];
-        const otherComments = [];
-
-        if (currentUser) {
-            replies.forEach(reply => {
-                if (reply.account.id === currentUser.id) {
-                    userComments.push(reply);
-                } else {
-                    otherComments.push(reply);
-                }
-            });
-        } else {
-            otherComments.push(...replies);
-        }
-
-        let commentsHtml = otherComments.map(reply => renderStatus(reply, currentUser, actions, state.settings).outerHTML).join('');
-        
-        if (userComments.length > 0) {
-            commentsHtml += `
-                <div class="user-comments-box">
-                    <h3>Your Comments</h3>
-                    ${userComments.map(reply => renderStatus(reply, currentUser, actions, state.settings).outerHTML).join('')}
-                </div>
-            `;
-        }
-
-        postView.innerHTML = `
-            <div class="full-post-container">
-                <button class="close-btn">${ICONS.close}</button>
-                <div class="post-main">
-                    ${renderStatus(post, currentUser, actions, state.settings).outerHTML}
-                </div>
-                <div class="post-replies">
-                    ${commentsHtml}
-                </div>
-            </div>
-        `;
-
-        postView.querySelector('.close-btn').addEventListener('click', () => postView.style.display = 'none');
-        
-        // Re-attach event listeners for dynamically added elements
-        postView.querySelectorAll('.post').forEach(postEl => {
-            const id = postEl.dataset.postId;
-            if (id !== postId) { // Don't re-add listeners to the main post
-                 const replyPost = replies.find(r => r.id === id);
-                 if(replyPost) {
-                    postEl.querySelector('.reply-btn')?.addEventListener('click', () => actions.replyToPost(replyPost));
-                    postEl.querySelector('.boost-btn')?.addEventListener('click', () => actions.boostPost(id, !replyPost.reblogged));
-                    postEl.querySelector('.favorite-btn')?.addEventListener('click', () => actions.favoritePost(id, !replyPost.favourited));
-                    postEl.querySelector('.bookmark-btn')?.addEventListener('click', () => actions.bookmarkPost(id, !replyPost.bookmarked));
-                 }
+    let mediaAttachmentsHTML = '';
+    if (status.media_attachments && status.media_attachments.length > 0) {
+        const gridClass = `media-grid-${status.media_attachments.length}`;
+        mediaAttachmentsHTML += `<div class="media-grid ${gridClass}">`;
+        status.media_attachments.forEach(attachment => {
+            if (attachment.type === 'image') {
+                mediaAttachmentsHTML += `<img src="${attachment.url}" alt="${attachment.description || 'Status media'}" class="media-attachment" loading="lazy">`;
             }
         });
+        mediaAttachmentsHTML += `</div>`;
+    }
 
+    card.innerHTML = `
+        <div class="status-body-content">
+            <div class="status-header">
+                <div class="status-header-main" data-account-id="${status.account.id}">
+                    <img src="${status.account.avatar}" alt="${status.account.display_name}'s avatar" class="avatar">
+                    <div>
+                        <div class="display-name">${status.account.display_name}</div>
+                        <div class="acct">@${status.account.acct}</div>
+                    </div>
+                </div>
+                <div class="status-header-side">
+                    <a href="#status/${status.id}" class="timestamp">${formatTimestamp(status.created_at)}</a>
+                </div>
+            </div>
+            <div class="status-content">${status.content}</div>
+            ${mediaAttachmentsHTML}
+        </div>
+        <div class="status-footer">
+            <button class="status-action reply-btn">${ICONS.comments} <span>${status.replies_count}</span></button>
+            <button class="status-action reblog-btn ${status.reblogged ? 'active' : ''}">${ICONS.boost} <span>${status.reblogs_count}</span></button>
+            <button class="status-action favorite-btn ${status.favourited ? 'active' : ''}">${ICONS.favorite} <span>${status.favourites_count}</span></button>
+            <button class="status-action bookmark-btn ${status.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
+        </div>
+    `;
+
+    if (shouldBlur) {
+        card.classList.add('nsfw-post');
+        const contentToBlur = card.querySelector('.status-content');
+        const mediaToBlur = card.querySelector('.media-grid');
+        const bodyContent = card.querySelector('.status-body-content');
+
+        if (contentToBlur) contentToBlur.remove();
+        if (mediaToBlur) mediaToBlur.remove();
+
+        const spoilerContainer = document.createElement('div');
+        spoilerContainer.className = 'nsfw-spoiler';
+
+        const showButton = document.createElement('button');
+        showButton.className = 'nsfw-show-button';
+        showButton.textContent = 'Show Potentially Sensitive Content';
+        
+        spoilerContainer.appendChild(showButton);
+        
+        if (contentToBlur) spoilerContainer.appendChild(contentToBlur);
+        if (mediaToBlur) spoilerContainer.appendChild(mediaToBlur);
+
+        bodyContent.appendChild(spoilerContainer);
+
+        showButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            spoilerContainer.classList.add('revealed');
+        });
+    }
+
+    card.querySelector('.status-header-main').addEventListener('click', (e) => {
+        e.preventDefault();
+        actions.showProfilePage('mastodon', status.account.id, status.account.acct);
+    });
+
+    card.querySelector('.reply-btn').addEventListener('click', () => actions.replyToStatus(status, card));
+    card.querySelector('.reblog-btn').addEventListener('click', (e) => actions.toggleAction('reblog', status, e.currentTarget));
+    card.querySelector('.favorite-btn').addEventListener('click', (e) => actions.toggleAction('favorite', status, e.currentTarget));
+    card.querySelector('.bookmark-btn').addEventListener('click', (e) => actions.toggleAction('bookmark', status, e.currentTarget));
+
+    return card;
+}
+
+export async function renderStatusDetail(state, statusId, actions) {
+    const view = document.getElementById('status-detail-view');
+    view.innerHTML = 'Loading post...';
+    
+    try {
+        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
+        const { data: status } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
+        
+        view.innerHTML = '';
+        
+        if (context.ancestors) {
+            context.ancestors.forEach(ancestor => {
+                view.appendChild(renderStatus(ancestor, state.currentUser, actions, state.settings));
+            });
+        }
+        
+        const mainStatusCard = renderStatus(status, state.currentUser, actions, state.settings);
+        mainStatusCard.classList.add('main-thread-post');
+        view.appendChild(mainStatusCard);
+
+        if (context.descendants) {
+            context.descendants.forEach(descendant => {
+                view.appendChild(renderStatus(descendant, state.currentUser, actions, state.settings));
+            });
+        }
     } catch (error) {
-        postView.innerHTML = `<p>Error loading post. <button class="close-btn">${ICONS.close}</button></p>`;
-        postView.querySelector('.close-btn').addEventListener('click', () => postView.style.display = 'none');
+        console.error('Failed to render status detail:', error);
+        view.innerHTML = '<p>Could not load post details.</p>';
     }
 }

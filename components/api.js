@@ -1,110 +1,55 @@
-// A generic fetch wrapper with Mastodon and Lemmy authentication logic
-export async function apiFetch(instance, token, endpoint, options = {}, authType = 'mastodon', params = {}) {
-    const url = new URL(`https://${instance}${endpoint}`);
-    
-    // Add query parameters if any
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-
-    options.headers = options.headers || {};
-
-    // Authentication logic
-    if (authType === 'mastodon') {
-        if (token) {
-            options.headers['Authorization'] = `Bearer ${token}`;
-        }
-    } else if (authType === 'lemmy') {
-        const lemmyToken = localStorage.getItem('lemmy_jwt');
-        if (lemmyToken) {
-            options.headers['Authorization'] = `Bearer ${lemmyToken}`;
-            
-            // Add 'auth' to the body for POST/PUT requests
-            if (options.method === 'POST' || options.method === 'PUT') {
-                if (options.body) {
-                    options.body.auth = lemmyToken;
-                } else {
-                    options.body = { auth: lemmyToken };
-                }
-            }
-        }
+export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}) {
+    if (!instanceUrl || !accessToken) {
+        console.error("API call without credentials. Endpoint:", endpoint);
+        // Silently fail if no credentials, as it's likely during login flow.
+        return Promise.reject("Missing credentials");
     }
 
-    if (options.body && typeof options.body === 'object') {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(options.body);
+    const isLemmyApi = endpoint.startsWith('/api/v3/');
+    // TODO: Make the Lemmy instance configurable
+    const lemmyInstance = 'https://lemmy.world';
+    
+    const url = new URL(isLemmyApi ? `${lemmyInstance}${endpoint}` : `${instanceUrl}${endpoint}`);
+
+    const headers = {
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    if (options.method === 'POST' && !(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
     }
     
+    const config = {
+        method: options.method || 'GET',
+        headers: headers,
+        ...options
+    };
+    
+    const finalUrl = options.endpointOverride ? new URL(`${instanceUrl}${options.endpointOverride}`) : url;
+
     try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            let errorBody;
-            try {
-                errorBody = await response.json();
-            } catch (e) {
-                errorBody = { error: 'Could not read error response body.' };
-            }
-            throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorBody)}`);
+        const response = await fetch(finalUrl, config);
+        
+        if (response.status === 204 || response.status === 201) { // No Content or Created
+            return { response, data: {} };
         }
+
         const data = await response.json();
-        return { data, headers: response.headers };
-    } catch (err) {
-        console.error('API Fetch Error:', err);
-        throw err;
+
+        if (!response.ok) {
+            throw new Error(data.error || 'API request failed');
+        }
+
+        return { response, data };
+    } catch (error) {
+        console.error(`API Fetch Error to ${finalUrl.toString()}:`, error);
+        throw error;
     }
 }
 
-// Specific wrapper for updating credentials with multipart/form-data
-export async function apiUpdateCredentials(state, formData) {
-    const url = `https://${state.instanceUrl}/api/v1/accounts/update_credentials`;
-    const options = {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${state.accessToken}` },
-        body: formData,
+export function getPersistedCredentials() {
+    return {
+        instanceUrl: localStorage.getItem('feedstadon_instance'),
+        accessToken: localStorage.getItem('feedstadon_token')
     };
-
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-}
-
-
-// Wrapper for uploading media to Mastodon
-export async function apiUploadMedia(state, file) {
-    const url = `https://${state.instanceUrl}/api/v2/media`;
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const options = {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${state.accessToken}` },
-        body: formData,
-    };
-    
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-}
-
-// Wrapper for uploading an image to Lemmy's pictrs
-export async function apiUploadLemmyImage(instance, token, file) {
-    const url = `https://${instance}/pictrs/image`;
-    const formData = new FormData();
-    formData.append('images[]', file);
-
-    const options = {
-        method: 'POST',
-        // Pictrs uses a cookie/jwt for auth, which should be handled by the browser's fetch automatically if logged in
-        // but we'll include it in the headers just in case for some setups
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData,
-    };
-    
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
 }
