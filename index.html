@@ -81,8 +81,24 @@
         <div id="edit-profile-view" class="app-view" style="display: none;"></div>
     </div>
     
-    <div id="compose-modal" class="modal-overlay"></div>
-    <div id="image-modal" class="modal-overlay"></div>
+    <div id="compose-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn">&times;</button>
+            <h3>New Post</h3>
+            <form id="compose-form">
+                <textarea id="compose-textarea" maxlength="500" placeholder="What's on your mind?"></textarea>
+                <div id="char-counter">500</div>
+                <div class="modal-actions">
+                    <button type="submit">Post</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="image-modal" class="modal-overlay">
+         <div class="image-modal-content">
+            <img id="fullscreen-image" src="">
+        </div>
+    </div>
     <div id="context-menu"></div>
     
     <script src="./app.js" type="module"></script>
