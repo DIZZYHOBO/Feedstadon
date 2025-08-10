@@ -1,14 +1,10 @@
 import { ICONS } from './icons.js';
-import { apiFetch } from './api.js';
 import { formatTimestamp } from './utils.js';
 
 export function renderStatus(status, currentUser, actions, settings) {
     const card = document.createElement('div');
     card.className = 'status';
     card.dataset.id = status.id;
-
-    const isNsfw = status.sensitive;
-    const shouldBlur = isNsfw && settings.hideNsfw;
 
     let mediaAttachmentsHTML = '';
     if (status.media_attachments && status.media_attachments.length > 0) {
@@ -46,36 +42,7 @@ export function renderStatus(status, currentUser, actions, settings) {
             <button class="status-action bookmark-btn ${status.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
         </div>
     `;
-
-    if (shouldBlur) {
-        card.classList.add('nsfw-post');
-        const contentToBlur = card.querySelector('.status-content');
-        const mediaToBlur = card.querySelector('.media-grid');
-        const bodyContent = card.querySelector('.status-body-content');
-
-        if (contentToBlur) contentToBlur.remove();
-        if (mediaToBlur) mediaToBlur.remove();
-
-        const spoilerContainer = document.createElement('div');
-        spoilerContainer.className = 'nsfw-spoiler';
-
-        const showButton = document.createElement('button');
-        showButton.className = 'nsfw-show-button';
-        showButton.textContent = 'Show Potentially Sensitive Content';
-        
-        spoilerContainer.appendChild(showButton);
-        
-        if (contentToBlur) spoilerContainer.appendChild(contentToBlur);
-        if (mediaToBlur) spoilerContainer.appendChild(mediaToBlur);
-
-        bodyContent.appendChild(spoilerContainer);
-
-        showButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            spoilerContainer.classList.add('revealed');
-        });
-    }
-
+    
     card.querySelector('.status-header-main').addEventListener('click', (e) => {
         e.preventDefault();
         actions.showProfilePage('mastodon', status.account.id, status.account.acct);
@@ -87,35 +54,4 @@ export function renderStatus(status, currentUser, actions, settings) {
     card.querySelector('.bookmark-btn').addEventListener('click', (e) => actions.toggleAction('bookmark', status, e.currentTarget));
 
     return card;
-}
-
-export async function renderStatusDetail(state, statusId, actions) {
-    const view = document.getElementById('status-detail-view');
-    view.innerHTML = 'Loading post...';
-    
-    try {
-        const { data: context } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}/context`);
-        const { data: status } = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`);
-        
-        view.innerHTML = '';
-        
-        if (context.ancestors) {
-            context.ancestors.forEach(ancestor => {
-                view.appendChild(renderStatus(ancestor, state.currentUser, actions, state.settings));
-            });
-        }
-        
-        const mainStatusCard = renderStatus(status, state.currentUser, actions, state.settings);
-        mainStatusCard.classList.add('main-thread-post');
-        view.appendChild(mainStatusCard);
-
-        if (context.descendants) {
-            context.descendants.forEach(descendant => {
-                view.appendChild(renderStatus(descendant, state.currentUser, actions, state.settings));
-            });
-        }
-    } catch (error) {
-        console.error('Failed to render status detail:', error);
-        view.innerHTML = '<p>Could not load post details.</p>';
-    }
 }
