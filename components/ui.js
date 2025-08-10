@@ -1,78 +1,104 @@
-export function showModal(modalId) {
-    const modal = document.getElementById(modalId);
+import { ICONS } from './icons.js';
+import { apiFetch } from './api.js';
+
+export function showLoadingBar() {
+    document.getElementById('loading-bar').classList.add('loading');
+}
+
+export function hideLoadingBar() {
+    document.getElementById('loading-bar').classList.remove('loading');
+}
+
+export function timeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.round((now - date) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const hours = Math.round(minutes / 60);
+    const days = Math.round(hours / 24);
+
+    if (seconds < 60) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    return `${days}d`;
+}
+
+// **FIX:** This function now properly shows the modal with a given image source.
+export function showImageModal(src) {
+    const modal = document.getElementById('image-modal');
+    const img = document.getElementById('fullscreen-image');
+    if (modal && img) {
+        img.src = src;
+        modal.classList.add('visible');
+    }
+}
+
+export function initImageModal() {
+    const modal = document.getElementById('image-modal');
+    const img = document.getElementById('fullscreen-image');
+    const saveBtn = document.getElementById('save-image-btn');
+    
+    if (saveBtn) {
+        saveBtn.innerHTML = ICONS.save;
+        saveBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'image.png';
+            link.click();
+        });
+    }
+
     if (modal) {
-        modal.style.display = 'block';
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('visible');
+            }
+        });
     }
 }
 
-export function hideModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
+export function renderLoginPrompt(container, platform, onLoginSuccess) {
+    const templateId = platform === 'mastodon' ? 'mastodon-login-template' : 'lemmy-login-template';
+    const template = document.getElementById(templateId);
+    if (!template) {
+        console.error(`Login template not found for ${platform}`);
+        return;
     }
-}
+    const loginPrompt = template.content.cloneNode(true);
+    const form = loginPrompt.querySelector('.login-form');
 
-export function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add('fade-out');
-        toast.addEventListener('transitionend', () => toast.remove());
-    }, 4000);
-}
-
-export function updateCharacterCount() {
-    const textarea = document.getElementById('compose-textarea');
-    const charCount = document.getElementById('char-count');
-    if (!textarea || !charCount) return;
-    const count = textarea.value.length;
-    const limit = 500;
-    charCount.textContent = `${count} / ${limit}`;
-    if (count > limit) {
-        charCount.classList.add('over-limit');
-    } else {
-        charCount.classList.remove('over-limit');
-    }
-}
-
-export function renderLoginPrompt(container, platform, actions) {
-    container.innerHTML = `
-        <div class="login-prompt">
-            <img src="./images/login.png" alt="Login illustration" class="login-illustration">
-            <h3>Connect to ${platform === 'lemmy' ? 'Lemmy' : 'Mastodon'}</h3>
-            <p>Log in to see your feed, post, and interact with the community.</p>
-            <form id="${platform}-login-form">
-                <input type="text" id="${platform}-instance-url" placeholder="${platform === 'lemmy' ? 'lemmy.world' : 'mastodon.social'}" required>
-                ${platform === 'lemmy' ? '<input type="text" id="lemmy-username" placeholder="Username" required><input type="password" id="lemmy-password" placeholder="Password" required>' : ''}
-                <button type="submit" class="button-primary">${platform === 'lemmy' ? 'Log In' : 'Authorize'}</button>
-            </form>
-            <p id="${platform}-login-error" class="error-message"></p>
-        </div>
-    `;
-
-    const form = document.getElementById(`${platform}-login-form`);
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const instanceUrlInput = document.getElementById(`${platform}-instance-url`);
-        const instanceUrl = (instanceUrlInput.value.trim() || instanceUrlInput.placeholder).replace(/^https?:\/\//, '');
-
-        if (platform === 'lemmy') {
-            const username = document.getElementById('lemmy-username').value.trim();
-            const password = document.getElementById('lemmy-password').value.trim();
-            try {
-                const success = await actions.onLemmyLogin(instanceUrl, username, password);
-                if (success) {
-                    actions.navigateTo('home');
-                }
-            } catch (error) {
-                document.getElementById('lemmy-login-error').textContent = `Login failed: ${error.message}`;
+        const instanceUrl = form.querySelector('.instance-url-input').value.trim();
+        
+        if (platform === 'mastodon') {
+            const accessToken = form.querySelector('.token-input').value.trim();
+            if (instanceUrl && accessToken) {
+                onLoginSuccess(instanceUrl, accessToken);
             }
-        } else {
-            // Mastodon auth flow would go here
+        } else { // Lemmy
+            const username = form.querySelector('.username-input').value.trim();
+            const password = form.querySelector('.password-input').value.trim();
+            if (instanceUrl && username && password) {
+                onLoginSuccess(instanceUrl, username, password);
+            }
         }
     });
+    
+    container.innerHTML = '';
+    container.appendChild(loginPrompt);
 }
+
+export const showToast = (message) => {
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('visible');
+    setTimeout(() => {
+        toast.classList.remove('visible');
+    }, 3000);
+};

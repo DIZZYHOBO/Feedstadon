@@ -1,73 +1,52 @@
-import { renderStatus } from './Post.js';
+import { apiFetch } from './api.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { renderCommentNode } from './LemmyPost.js';
-import { ICONS } from './icons.js';
 
-function renderComments(comments, currentUser, actions, state, isLemmy) {
-    if (isLemmy) {
-        return comments.map(comment => renderCommentNode(comment, actions, state).outerHTML).join('');
-    } else {
-        const userComments = [];
-        const otherComments = [];
+async function fetchAndRenderComments(instance, postId, container, actions) {
+    try {
+        const { data } = await apiFetch(instance, null, '/api/v3/post', {}, 'lemmy', { id: postId });
+        const postView = data.post_view;
+        const comments = data.comments;
 
-        if (currentUser) {
-            comments.forEach(reply => {
-                if (reply.account.id === currentUser.id) {
-                    userComments.push(reply);
-                } else {
-                    otherComments.push(reply);
-                }
-            });
-        } else {
-            otherComments.push(...comments);
-        }
+        const header = document.createElement('div');
+        header.className = 'merged-section-header';
+        header.innerHTML = `
+            <img src="${postView.community.icon}" class="avatar" />
+            <h3>${postView.community.name}</h3>
+        `;
+        container.appendChild(header);
 
-        let commentsHtml = otherComments.map(reply => renderStatus(reply, currentUser, actions, state.settings).outerHTML).join('');
-        
-        if (userComments.length > 0) {
-            commentsHtml += `
-                <div class="user-comments-box">
-                    <h3>Your Comments</h3>
-                    ${userComments.map(reply => renderStatus(reply, currentUser, actions, state.settings).outerHTML).join('')}
-                </div>
-            `;
-        }
-        return commentsHtml;
+        comments.forEach(comment => {
+            container.appendChild(renderCommentNode(comment, actions));
+        });
+    } catch (error) {
+        container.innerHTML += `<p>Could not load comments for post ${postId}.</p>`;
     }
 }
 
-
-export function renderMergedPost(post, state, actions) {
+export async function renderMergedPostPage(state, postView, actions) {
     const view = document.getElementById('merged-post-view');
-    view.innerHTML = `<div class="loading-spinner">${ICONS.refresh}</div>`;
-    view.style.display = 'block';
-
-    const isLemmyPost = !!post.post; 
-    
-    let mainPostHtml;
-    let comments = [];
-
-    if (isLemmyPost) {
-        mainPostHtml = renderLemmyCard(post, actions).outerHTML;
-        // You would fetch Lemmy comments here, for now we assume they are part of the object
-        comments = post.comments || [];
-    } else {
-        mainPostHtml = renderStatus(post, state.currentUser, actions, state.settings).outerHTML;
-        // You would fetch Mastodon replies here
-        comments = post.replies || [];
-    }
-    
     view.innerHTML = `
-        <div class="full-post-container">
-            <button class="close-btn">${ICONS.close}</button>
-            <div class="post-main">
-                ${mainPostHtml}
-            </div>
-            <div class="post-replies">
-                ${renderComments(comments, state.currentUser, actions, state, isLemmyPost)}
-            </div>
+        <div id="merged-post-card"></div>
+        <div class="merged-comments-container">
+            <div id="original-post-comments" class="merged-comments-column"></div>
+            <div id="crosspost-comments" class="merged-comments-column"></div>
         </div>
     `;
 
-    view.querySelector('.close-btn').addEventListener('click', () => view.style.display = 'none');
+    const cardContainer = view.querySelector('#merged-post-card');
+    const originalContainer = view.querySelector('#original-post-comments');
+    const crosspostContainer = view.querySelector('#crosspost-comments');
+
+    // Render the main card
+    cardContainer.appendChild(renderLemmyCard(postView, actions));
+
+    // Fetch and render comments for both posts
+    const crosspostInstance = new URL(postView.post.ap_id).hostname;
+    fetchAndRenderComments(crosspostInstance, postView.post.id, crosspostContainer, actions);
+
+    if (postView.cross_post) {
+        const originalInstance = new URL(postView.cross_post.ap_id).hostname;
+        fetchAndRenderComments(originalInstance, postView.cross_post.id, originalContainer, actions);
+    }
 }

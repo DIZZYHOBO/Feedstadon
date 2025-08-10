@@ -1,12 +1,10 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
-// The renderLoginPrompt is no longer needed here as it's handled differently now.
+import { renderLoginPrompt } from './ui.js';
 
 export async function fetchTimeline(state, actions, loadMore = false, onLoginSuccess, mastodonOnly = false) {
     if (!state.accessToken && !loadMore) {
-        // This part is now handled by the main app logic when a user is not logged in.
-        // renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
-        state.timelineDiv.innerHTML = '<p>Please log in to see your timeline.</p>';
+        renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
         return;
     }
     
