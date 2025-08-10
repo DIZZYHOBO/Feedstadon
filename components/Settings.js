@@ -43,6 +43,7 @@ export function renderSettingsPage(state) {
             </div>
             <div class="settings-section">
                 <h3>Default Start Page</h3>
+                <p>Changes will be applied after refreshing the app.</p>
                 <div class="form-group">
                     <label for="start-page-select">Choose your default start page</label>
                     <select id="start-page-select">
@@ -70,6 +71,7 @@ export function renderSettingsPage(state) {
                         <option value="TopDay">Top Day</option>
                     </select>
                 </div>
+                <button id="save-settings-btn" class="button-primary">Save and Refresh</button>
             </div>
             <div class="settings-section">
                 <h3>Word Filter</h3>
@@ -121,6 +123,7 @@ export function renderSettingsPage(state) {
     const feedTypeSelect = document.getElementById('feed-type-select');
     const lemmySortSelect = document.getElementById('lemmy-sort-select');
     const lemmySortSettings = document.getElementById('lemmy-sort-settings');
+    const saveButton = document.getElementById('save-settings-btn');
 
     startPageSelect.value = localStorage.getItem('defaultStartPage') || 'lemmy';
     feedTypeSelect.value = localStorage.getItem('defaultFeedType') || 'Subscribed';
@@ -139,5 +142,9 @@ export function renderSettingsPage(state) {
 
     lemmySortSelect.addEventListener('change', (e) => {
         localStorage.setItem('lemmySortType', e.target.value);
+    });
+
+    saveButton.addEventListener('click', () => {
+        location.reload();
     });
 }
