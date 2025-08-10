@@ -66,14 +66,32 @@ function renderLemmyComment(commentView, state, actions) {
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
     const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
 
+    // Pass both the comment ID and the post ID to the toggle function
     viewRepliesBtn.addEventListener('click', () => {
-        toggleLemmyReplies(commentView.comment.id, repliesContainer, state, actions);
+        toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions);
     });
 
     return commentDiv;
 }
 
-async function toggleLemmyReplies(commentId, container, state, actions) {
+// Helper function to recursively find a comment in the nested reply tree
+function findCommentView(targetId, commentViews) {
+    for (const view of commentViews) {
+        if (view.comment.id === targetId) {
+            return view;
+        }
+        // Check if there are replies and recurse
+        if (view.replies && view.replies.length > 0) {
+            const found = findCommentView(targetId, view.replies);
+            if (found) {
+                return found;
+            }
+        }
+    }
+    return null;
+}
+
+async function toggleLemmyReplies(commentId, postId, container, state, actions) {
     const isVisible = container.style.display === 'block';
     if (isVisible) {
         container.style.display = 'none';
@@ -90,15 +108,22 @@ async function toggleLemmyReplies(commentId, container, state, actions) {
     }
 
     try {
-        // Add max_depth to ensure the full reply tree is fetched from the API
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}&max_depth=8`, { method: 'GET' }, 'lemmy');
-        const replies = response?.data?.replies;
+        // --- The Root Cause Fix ---
+        // 1. Fetch the entire post, which includes the full comment tree.
+        const postResponse = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${postId}`, { method: 'GET' }, 'lemmy');
+        const allComments = postResponse.data.comments;
+
+        // 2. Find the specific comment the user clicked on within the full tree.
+        const targetCommentView = findCommentView(commentId, allComments);
+        const replies = targetCommentView ? targetCommentView.replies : [];
+        
         container.innerHTML = '';
 
+        // 3. Render the replies from the now-complete data.
         if (Array.isArray(replies) && replies.length > 0) {
-            replies.forEach(reply => {
-                if (reply.comment_view) {
-                    container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
+            replies.forEach(replyView => {
+                if (replyView) { // The reply itself is a CommentView
+                    container.appendChild(renderLemmyComment(replyView, state, actions));
                 }
             });
         } else {
@@ -271,4 +296,3 @@ export function renderEditProfilePage(state, actions) {
         </div>
     `;
 }
-
