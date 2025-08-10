@@ -2,122 +2,197 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedstadon</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Feeds</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#3498db"/>
-    <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
-    <div id="pull-to-refresh-indicator">Pull to refresh</div>
-
     <div id="app-view">
+        <div id="pull-to-refresh-indicator"></div>
         <nav class="top-nav">
-            <div class="nav-group">
+             <div class="nav-left">
+                <button id="refresh-btn" class="icon-button"></button>
                 <div class="dropdown" id="feeds-dropdown">
-                    <button id="feeds-btn">
-                        <span class="logo">Feedstadon</span>
-                    </button>
+                    <button class="nav-button">Feeds</button>
                     <div class="dropdown-content">
-                        <a href="#" data-timeline="home">
-                            <div class="logo-container">
-                                <span>Home</span>
-                            </div>
-                        </a>
-                        <a href="#" id="lemmy-main-link">
-                             <div class="logo-container">
-                                <span id="lemmy-logo-container"></span>
-                                <span>Lemmy</span>
-                            </div>
-                        </a>
-                        <a href="#" id="mastodon-main-link">
-                             <div class="logo-container">
-                                <span id="mastodon-logo-container"></span>
-                                <span>Mastodon</span>
-                            </div>
-                        </a>
+                        <a href="#" data-timeline="home">Home</a>
+                        <a href="#" class="main-feed-link" id="mastodon-main-link">Mastodon <span id="mastodon-logo-container"></span></a>
+                        <a href="#" class="main-feed-link" id="lemmy-main-link">Lemmy <span id="lemmy-logo-container"></span></a>
                     </div>
                 </div>
-
+                <button id="discover-btn" class="nav-button">Discover</button>
             </div>
-            <div class="nav-group">
-                <button id="refresh-btn" class="nav-button"></button>
-                <div id="refresh-spinner" class="nav-button"></div>
-                <button id="discover-btn" class="nav-button">🔍</button>
-                <button id="notifications-btn" class="nav-button"></button>
+
+            <div class="nav-center">
+                 </div>
+
+            <div class="nav-right">
                 <div class="dropdown" id="user-dropdown">
-                    <button id="user-btn" class="nav-button">👤</button>
+                    <button class="nav-button">Menu</button>
                     <div class="dropdown-content">
                         <a href="#" id="new-post-link">New Post</a>
                         <a href="#" id="profile-link">Profile</a>
                         <a href="#" id="settings-link">Settings</a>
-                        <a href="#" id="help-link">Help & About</a>
+                        <a href="#" id="help-link">Help</a>
+                    </div>
+                </div>
+                <button id="notifications-btn" class="icon-button"></button>
+            </div>
+        </nav>
+        
+        <div id="loading-bar"></div>
+
+        <div class="container">
+            <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
+            <div id="timeline" class="view-container"></div>
+            <div id="notifications-view" class="view-container"></div>
+            <div id="discover-view" class="view-container"></div>
+            <div id="screenshot-view" class="view-container"></div>
+            <div id="merged-post-view" class="view-container"></div>
+            <div id="profile-page-view" class="view-container"></div>
+            <div id="edit-profile-view" class="view-container"></div>
+            <div id="search-results-view" class="view-container"></div>
+            <div id="settings-view" class="view-container"></div>
+            <div id="status-detail-view" class="view-container"></div>
+            <div id="lemmy-post-view" class="view-container"></div>
+            <div id="lemmy-community-view" class="view-container"></div>
+            <div id="scroll-loader"><p>Loading more posts...</p></div>
+        </div>
+        <div id="refresh-spinner"></div>
+    </div>
+    
+    <div id="context-menu"></div>
+    
+    <div id="toast-notification"></div>
+
+    <div class="modal-overlay" id="compose-modal">
+         <div class="modal-content">
+            <div class="compose-tabs">
+                <button class="tab-button active" data-tab="mastodon-compose">Mastodon</button>
+                <button class="tab-button" data-tab="lemmy-compose">Lemmy</button>
+            </div>
+            <div class="compose-tab-content active" id="mastodon-compose-tab">
+                <div id="reply-to-info"></div>
+                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+                <div id="cw-creator-container"></div>
+                <div id="poll-creator-container"></div>
+                 <div class="modal-actions">
+                    <div class="compose-options">
+                        <input type="file" id="media-upload-input" style="display: none;" accept="image/*,video/*">
+                        <button class="icon-button" id="media-upload-btn"></button>
+                        <button class="icon-button" id="poll-btn"></button>
+                        <button class="icon-button" id="cw-btn"></button>
+                        <span id="media-filename-preview"></span>
+                    </div>
+                    <div>
+                        <span id="character-count">500</span>
+                        <button class="button-secondary" id="cancel-compose-btn">Cancel</button>
+                        <button type="submit" id="submit-compose-btn">Post</button>
                     </div>
                 </div>
             </div>
-        </nav>
-
-        <nav id="timeline-sub-nav" style="display: none;"></nav>
-
-        <main id="main-content">
-            <div id="timeline" class="timeline-container"></div>
-            <div id="notifications-view" style="display: none;"></div>
-            <div id="discover-view" style="display: none;"></div>
-            <div id="screenshot-view" style="display: none;" class="single-page-view"></div>
-            <div id="profile-page-view" style="display: none;"></div>
-             <div id="edit-profile-view" style="display: none;" class="single-page-view"></div>
-            <div id="search-results-view" style="display: none;"></div>
-            <div id="settings-view" style="display: none;"></div>
-            <div id="status-detail-view" style="display: none;" class="single-page-view"></div>
-            <div id="lemmy-post-view" style="display: none;" class="single-page-view"></div>
-             <div id="lemmy-community-view" style="display: none;" class="single-page-view"></div>
-             <div id="merged-post-view" style="display: none;" class="single-page-view"></div>
-            <div id="scroll-loader">Loading more...</div>
-        </main>
-    </div>
-
-    <div id="context-menu"></div>
-    <div id="toast-notification"></div>
-
-    <div id="image-modal" class="modal">
-        <span class="modal-close">&times;</span>
-        <img class="modal-content" id="modal-image">
-    </div>
-    
-    <div id="compose-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" id="close-compose-btn">&times;</span>
-            <h3>New Post</h3>
-            <div id="compose-container"></div>
+            <div class="compose-tab-content" id="lemmy-compose-tab">
+                <form id="lemmy-compose-form">
+                    <div class="lemmy-post-type-selector">
+                        <button type="button" class="lemmy-post-type-btn active" data-type="text">Text</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="url">Link</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="image">Image</button>
+                    </div>
+                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., technology)">
+                    <input type="text" id="lemmy-title-input" placeholder="Title">
+                    <input type="url" id="lemmy-url-input" placeholder="URL" style="display:none;">
+                    <textarea id="lemmy-body-textarea" placeholder="Text (optional)"></textarea>
+                    <div class="modal-actions">
+                        <button class="button-secondary" id="cancel-lemmy-compose-btn">Cancel</button>
+                        <button type="submit" id="submit-lemmy-compose-btn">Post</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
     
-    <div id="help-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" id="close-help-btn">&times;</span>
-            <h2>About Feedstadon</h2>
-            <p>Feedstadon is a simple client for Mastodon and Lemmy.</p>
-            <h3>Features</h3>
-            <ul>
-                <li>View timelines from both Mastodon and Lemmy.</li>
-                <li>Post to Mastodon.</li>
-                <li>Interact with posts (reply, reblog, favorite, etc.).</li>
-            </ul>
+    <div class="modal-overlay" id="image-modal">
+        <div class="image-modal-content">
+            <img id="fullscreen-image" src="">
+            <button class="icon-button" id="save-image-btn" title="Save Image"></button>
         </div>
     </div>
+    
+    <div class="modal-overlay" id="help-modal">
+        <div class="modal-content help-modal-content">
+            <button id="close-help-btn" class="close-btn">close</button>
+            <h3>Markdown Guide</h3>
+            <div class="markdown-guide">
+                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
+                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
+                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
+                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
+                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
+                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
+                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
+                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
+            </div>
+        </div>
+    </div>
+
+    <template id="screenshot-controls-template">
+        <div class="screenshot-controls">
+            <div class="control-group">
+                <label>Parent Comments:</label>
+                <button data-action="parents-up">↑</button>
+                <button data-action="parents-down">↓</button>
+            </div>
+            <div class="control-group">
+                <input type="checkbox" id="include-replies-checkbox">
+                <label for="include-replies-checkbox">Include Replies</label>
+            </div>
+            <div class="control-group" id="replies-controls" style="display: none;">
+                 <label>Replies:</label>
+                <button data-action="replies-up">↑</button>
+                <button data-action="replies-down">↓</button>
+            </div>
+            <button id="capture-btn">Capture Screenshot</button>
+        </div>
+        <div id="screenshot-preview-area"></div>
+    </template>
+
+    <template id="mastodon-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Mastodon</h3>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
+                <input type="text" class="token-input" placeholder="Paste your Access Token">
+                <button type="submit" class="connect-btn">Login</button>
+            </form>
+        </div>
+    </template>
+
+    <template id="lemmy-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Lemmy</h3>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
+                <input type="text" class="username-input" placeholder="Username">
+                <input type="password" class="password-input" placeholder="Password">
+                <button type="submit" class="connect-btn">Connect</button>
+            </form>
+        </div>
+    </template>
 
     <script src="app.js" type="module"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-            .then(function(registration) {
-                console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(function(err) {
-                console.log('ServiceWorker registration failed: ', err);
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
             });
         }
     </script>
