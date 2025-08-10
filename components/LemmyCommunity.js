@@ -1,6 +1,7 @@
 import { apiFetch } from './api.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { ICONS } from './icons.js';
+import showdown from 'showdown';
 
 export async function renderLemmyCommunityPage(state, actions, communityName) {
     const view = document.getElementById('lemmy-community-view');
@@ -22,39 +23,37 @@ export async function renderLemmyCommunityPage(state, actions, communityName) {
         if (localStorage.getItem('lemmy_jwt')) {
             followButton = `<button class="button follow-btn ${communityView.subscribed === 'Subscribed' ? 'subscribed' : ''}">${communityView.subscribed === 'Subscribed' ? 'Following' : 'Follow'}</button>`;
         }
-        
+
+        const converter = new showdown.Converter();
         const fullDescription = community.description || '';
-        const fullDescriptionHtml = new showdown.Converter().makeHtml(fullDescription);
+        const fullDescriptionHtml = converter.makeHtml(fullDescription);
+
         const words = fullDescription.split(/\s+/);
         const firstPeriodIndex = fullDescription.indexOf('.');
 
         let isTruncated = false;
         let truncatedDescription = '';
+        let descriptionBlock = '';
 
         if (words.length > 30) {
             truncatedDescription = words.slice(0, 30).join(' ') + '...';
             isTruncated = true;
-        } else if (firstPeriodIndex > 0 && fullDescription.substring(firstPeriodIndex + 1).trim().length > 0) {
+        } else if (firstPeriodIndex !== -1 && firstPeriodIndex < fullDescription.length - 1) {
             truncatedDescription = fullDescription.substring(0, firstPeriodIndex + 1);
             isTruncated = true;
         }
 
-        let descriptionBlock;
         if (isTruncated) {
-            const truncatedHtml = new showdown.Converter().makeHtml(truncatedDescription);
+            const truncatedHtml = converter.makeHtml(truncatedDescription);
             descriptionBlock = `
                 <div class="community-bio">
-                    <div class="bio-truncated">${truncatedHtml}</div>
-                    <div class="bio-full" style="max-height: 0px; overflow: hidden; transition: max-height 0.4s ease-out;">
-                        ${fullDescriptionHtml}
-                    </div>
-                    <a href="#" class="read-more-bio" style="display: block; text-align: right; font-size: small; cursor: pointer; font-weight: bold; color: var(--accent-color);">read more</a>
+                    <div class="bio-content">${truncatedHtml}</div>
+                    <a href="#" class="read-more-bio">read more</a>
                 </div>
             `;
         } else {
-            descriptionBlock = fullDescriptionHtml;
+            descriptionBlock = `<div class="community-bio">${fullDescriptionHtml}</div>`;
         }
-
 
         view.innerHTML = `
             <div class="profile-card lemmy-community-card">
@@ -77,7 +76,7 @@ export async function renderLemmyCommunityPage(state, actions, communityName) {
             </div>
             <div class="profile-feed"></div>
         `;
-        
+
         const feedContainer = view.querySelector('.profile-feed');
         if (posts && posts.length > 0) {
             posts.forEach(post => {
@@ -89,16 +88,38 @@ export async function renderLemmyCommunityPage(state, actions, communityName) {
 
         if (isTruncated) {
             const readMoreBtn = view.querySelector('.read-more-bio');
-            const bioFull = view.querySelector('.bio-full');
-            const bioTruncated = view.querySelector('.bio-truncated');
-            
+            const bioContent = view.querySelector('.bio-content');
+            const bioContainer = view.querySelector('.community-bio');
+            let isExpanded = false;
+
+            const truncatedHtml = converter.makeHtml(truncatedDescription);
+
             readMoreBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
-                bioTruncated.style.display = 'none';
-                readMoreBtn.style.display = 'none';
-                bioFull.style.maxHeight = bioFull.scrollHeight + 'px';
+                isExpanded = !isExpanded;
+                bioContainer.style.maxHeight = 'none'; // Allow container to resize
+
+                if (isExpanded) {
+                    bioContent.innerHTML = fullDescriptionHtml;
+                    readMoreBtn.textContent = 'close';
+                    // Animate the expansion
+                    const initialHeight = bioContent.clientHeight;
+                    bioContent.style.maxHeight = '0px';
+                    bioContent.style.overflow = 'hidden';
+                    bioContent.style.transition = 'max-height 0.4s ease-in-out';
+                    
+                    // Use a timeout to allow the DOM to update before animating
+                    setTimeout(() => {
+                        bioContent.style.maxHeight = initialHeight + 'px';
+                    }, 0);
+
+                } else {
+                    bioContent.innerHTML = truncatedHtml;
+                    readMoreBtn.textContent = 'read more';
+                     bioContent.style.maxHeight = '100%'; // Reset to default
+                }
             });
         }
 
@@ -110,6 +131,10 @@ export async function renderLemmyCommunityPage(state, actions, communityName) {
                 if (success) {
                     followBtn.classList.toggle('subscribed');
                     followBtn.textContent = isSubscribed ? 'Follow' : 'Following';
+                    // Optimistically update subscriber count
+                    const subscriberCountEl = view.querySelector('.stats span:first-child strong');
+                    let currentCount = parseInt(subscriberCountEl.textContent);
+                    subscriberCountEl.textContent = isSubscribed ? currentCount - 1 : currentCount + 1;
                 }
             });
         }
