@@ -1,9 +1,9 @@
-import { apiFetch, getPersistedCredentials } from './api.js';
-import { showModal, hideModal, showImageModal, showToast, updateCharacterCount } from './ui.js';
+import { apiFetch, getPersistedCredentials } from './components/api.js';
+import { showModal, hideModal, showImageModal, showToast, updateCharacterCount } from './components/ui.js';
 import { renderStatus } from './components/Post.js';
 import { renderLemmyPost } from './components/LemmyPost.js';
-import { formatTimestamp, timeSince } from './utils.js';
-import { AppActions } from './actions.js'; // Import the new actions class
+import { formatTimestamp, timeSince } from './components/utils.js';
+import { AppActions } from './actions.js';
 
 class App {
     constructor() {
