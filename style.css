@@ -205,13 +205,14 @@ a:hover {
 
 .status-content {
     margin-top: 0.5rem;
-    word-wrap: break-word;
+    word-wrap: break-word; /* Prevents long strings from overflowing */
 }
 
 .status-content p {
     margin: 0.5rem 0;
 }
 
+/* This targets all images inside post/comment content */
 .status-content img {
     max-width: 100%;
     height: auto;
@@ -219,6 +220,7 @@ a:hover {
     margin-top: 0.5rem;
 }
 
+/* This is a more specific rule for Mastodon media attachments */
 .media-attachment img {
     max-width: 100%;
     height: auto;
