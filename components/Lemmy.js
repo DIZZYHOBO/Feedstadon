@@ -1,10 +1,12 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { renderLoginPrompt } from './ui.js';
+import { renderStatus } from './Post.js'; // Assuming Lemmy posts will use a similar render function
 
 export async function fetchLemmyFeed(state, actions, loadMore = false) {
+    const timelineContainer = document.getElementById('timeline');
     if (!localStorage.getItem('lemmy_jwt') && !loadMore) {
-        renderLoginPrompt(state.timelineDiv, 'lemmy', () => fetchLemmyFeed(state, actions));
+        renderLoginPrompt(timelineContainer, 'lemmy', actions);
         return;
     }
 
@@ -15,9 +17,9 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
     }
     
     state.isLoadingMore = true;
-    if (loadMore) state.scrollLoader.classList.add('loading');
-    else document.getElementById('refresh-btn').classList.add('loading');
-
+    const scrollLoader = document.getElementById('scroll-loader');
+    if (loadMore) scrollLoader.classList.add('loading');
+    else document.getElementById('refresh-btn')?.classList.add('loading');
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -27,51 +29,44 @@ export async function fetchLemmyFeed(state, actions, loadMore = false) {
 
         const params = {
             sort: state.currentLemmySort || 'Active',
-            page: loadMore ? state.lemmyPage + 1 : 1,
+            page: loadMore ? (state.lemmyPage || 1) + 1 : 1,
             limit: 20
         };
-        if (state.currentLemmyFeed !== 'All') {
-            params.type_ = state.currentLemmyFeed;
-        }
         
-        const {data: {posts}} = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', params);
+        const {data: {posts}} = await apiFetch(lemmyInstance, localStorage.getItem('lemmy_jwt'), '/api/v3/post/list', {}, 'lemmy', params);
 
         if (!loadMore) {
-            state.timelineDiv.innerHTML = '';
+            timelineContainer.innerHTML = '';
         }
 
         if (posts && posts.length > 0) {
-            if (loadMore) {
-                state.lemmyPage++;
-            } else {
-                state.lemmyPage = 1;
-            }
+            state.lemmyPage = params.page;
             posts.forEach(post_view => {
+                // NOTE: Using renderLemmyCard, which you already have.
                 const postCard = renderLemmyCard(post_view, actions);
-                state.timelineDiv.appendChild(postCard);
+                timelineContainer.appendChild(postCard);
             });
             state.lemmyHasMore = true;
         } else {
             if (!loadMore) {
-                state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
+                timelineContainer.innerHTML = '<p>Nothing to see here.</p>';
             }
             state.lemmyHasMore = false;
         }
 
         if (!state.lemmyHasMore) {
-            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+            scrollLoader.innerHTML = '<p>No more posts.</p>';
         } else {
-             state.scrollLoader.innerHTML = '<p></p>';
+             scrollLoader.innerHTML = '';
         }
 
     } catch (error) {
         console.error('Failed to fetch Lemmy feed:', error);
-        actions.showToast(`Could not load Lemmy feed: ${error.message}`);
-        state.timelineDiv.innerHTML = `<p>Error loading feed.</p>`;
+        timelineContainer.innerHTML = `<p>Error loading Lemmy feed.</p>`;
     } finally {
         state.isLoadingMore = false;
-        if (loadMore) state.scrollLoader.classList.remove('loading');
-        else document.getElementById('refresh-btn').classList.remove('loading');
+        if (loadMore) scrollLoader.classList.remove('loading');
+        else document.getElementById('refresh-btn')?.classList.remove('loading');
     }
 }
 
@@ -84,7 +79,7 @@ function getBestThumbnail(post) {
 
 export function renderLemmyCard(post, actions) {
     const card = document.createElement('div');
-    card.className = 'lemmy-card';
+    card.className = 'lemmy-card status'; // Added 'status' class for consistent styling
     card.dataset.postId = post.post.id;
     const thumbnailUrl = getBestThumbnail(post);
 
@@ -98,20 +93,20 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
 
-    card.addEventListener('click', () => actions.showLemmyPost(post.post.id));
+    card.addEventListener('click', () => actions.showLemmyPostDetail(post));
     return card;
 }
 
 
-export async function renderLemmyPostPage(postId, state, actions) {
+export async function renderLemmyPostPage(postData, state, actions) {
     const view = document.getElementById('lemmy-post-view');
     view.innerHTML = `<div class="loading-spinner">${ICONS.refresh}</div>`;
     view.style.display = 'block';
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post`, {}, 'lemmy', { id: postId });
-        const { data: commentsResponse } = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', { post_id: postId, sort: 'Hot', max_depth: 8 });
+        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post`, {}, 'lemmy', { id: postData.post.id });
+        const { data: commentsResponse } = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', { post_id: postData.post.id, sort: 'Hot', max_depth: 8 });
         
         const post = data.post_view;
         const allComments = commentsResponse.comments || [];
@@ -158,11 +153,11 @@ export async function renderLemmyPostPage(postId, state, actions) {
             </div>
         `;
         
-        view.querySelector('.close-btn').addEventListener('click', () => view.style.display = 'none');
+        view.querySelector('.close-btn').addEventListener('click', () => actions.navigateTo('home'));
 
     } catch (error) {
         view.innerHTML = `<p>Error loading post. <button class="close-btn">${ICONS.close}</button></p>`;
-        view.querySelector('.close-btn').addEventListener('click', () => view.style.display = 'none');
+        view.querySelector('.close-btn').addEventListener('click', () => actions.navigateTo('home'));
     }
 }
 
