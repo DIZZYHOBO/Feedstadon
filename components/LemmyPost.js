@@ -215,7 +215,13 @@ export function renderCommentNode(commentView, actions) {
             const menuItems = [
                 { label: `${ICONS.screenshot} Screenshot`, action: () => {
                     const postView = document.querySelector('.main-thread-post');
-                    actions.showScreenshotPage(commentWrapper, postView);
+                    let prevComments = [];
+                    let sibling = commentWrapper.previousElementSibling;
+                    while(sibling) {
+                        prevComments.unshift(sibling); // Add to the beginning to maintain order
+                        sibling = sibling.previousElementSibling;
+                    }
+                    actions.showScreenshotPage(commentWrapper, postView, prevComments);
                 }},
                 { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
                     if (confirm('Are you sure you want to block this user?')) {
@@ -285,7 +291,16 @@ export function renderCommentNode(commentView, actions) {
         menu.querySelector('[data-action="screenshot-comment"]')?.addEventListener('click', (e) => {
             e.stopPropagation();
             const postView = document.querySelector('.main-thread-post');
-            actions.showScreenshotPage(commentWrapper, postView);
+            
+            // Gather previous sibling comments
+            let prevComments = [];
+            let sibling = commentWrapper.previousElementSibling;
+            while(sibling) {
+                prevComments.unshift(sibling); // Add to beginning to keep oldest first
+                sibling = sibling.previousElementSibling;
+            }
+            
+            actions.showScreenshotPage(commentWrapper, postView, prevComments);
             menu.style.display = 'none';
         });
 
