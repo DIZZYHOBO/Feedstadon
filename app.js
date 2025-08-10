@@ -22,14 +22,20 @@ class App {
                 lemmySort: 'Hot',
             },
         };
-        this.router = new Router(this);
-        this.actions = new AppActions(this.state, this);
-        this.init();
+
+        // Initialize components after constructor
+        document.addEventListener('DOMContentLoaded', () => {
+            this.router = new Router(this);
+            this.actions = new AppActions(this.state, this);
+            this.init();
+        });
     }
     
     init() {
         this.setupDynamicContent();
+        this.setupEventListeners(); // This is now safe to call
         this.loadSettings();
+        
         const credentials = getPersistedCredentials();
         if (credentials.instanceUrl && credentials.accessToken) {
             this.state.instanceUrl = credentials.instanceUrl;
@@ -38,7 +44,6 @@ class App {
         } else {
             this.router.navigateTo('login');
         }
-        this.setupEventListeners();
     }
 
     setupDynamicContent() {
@@ -52,7 +57,12 @@ class App {
         try {
             const { data } = await this.actions.apiFetch('/api/v1/accounts/verify_credentials');
             this.state.currentUser = data;
-            this.router.navigateTo('home');
+            // If hash is empty or login, go home. Otherwise, let router handle it.
+            if (!window.location.hash || window.location.hash === '#login') {
+                this.router.navigateTo('home');
+            } else {
+                this.router.handleRouteChange();
+            }
         } catch (error) {
             console.error('Credential verification failed:', error);
             this.actions.showToast('Login failed. Please check your instance and token.', 'error');
@@ -60,7 +70,6 @@ class App {
         }
     }
 
-    // --- CORRECTED: Only loads settings, doesn't touch the DOM ---
     loadSettings() {
         const savedSettings = localStorage.getItem('feedstadon_settings');
         if (savedSettings) {
@@ -218,6 +227,7 @@ class App {
 
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
         document.getElementById('compose-btn').addEventListener('click', () => this.actions.showModal('compose-modal'));
+        document.querySelector('#compose-modal .close-btn').addEventListener('click', () => this.actions.hideModal('compose-modal'));
         document.getElementById('compose-form').addEventListener('submit', (e) => {
              e.preventDefault();
              this.actions.postStatus({ status: document.getElementById('compose-textarea').value });
@@ -266,21 +276,22 @@ class Router {
             'status': this.showStatusDetail.bind(this),
         };
         window.addEventListener('hashchange', () => this.handleRouteChange());
-        this.handleRouteChange(); // Handle initial route
+        this.handleRouteChange();
     }
 
     handleRouteChange() {
         const hash = window.location.hash.substring(1);
         const [view, param] = hash.split('/');
-        this.navigateTo(view || 'login', { param });
+        // Default to login if no token and no specific view is requested
+        if (!this.app.state.accessToken) {
+            this.navigateTo('login');
+            return;
+        }
+        this.navigateTo(view || 'home', { param });
     }
 
     navigateTo(view, options = {}) {
         const { param = null, forceReload = false } = options;
-        if (!this.app.state.accessToken && view !== 'login') {
-            this.navigateTo('login');
-            return;
-        }
 
         if (!forceReload && this.app.state.currentView === view && this.app.state.currentParam === param) {
             return;
@@ -307,7 +318,6 @@ class Router {
     }
 
     async showHomeTimeline() {
-        // --- CORRECTED: Set the dropdown value now that the element exists ---
         const lemmySortSelect = document.getElementById('lemmy-sort-select');
         if (lemmySortSelect) {
             lemmySortSelect.value = this.app.state.settings.lemmySort;
@@ -463,6 +473,5 @@ class Router {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new App();
-});
+// Start the app
+new App();
