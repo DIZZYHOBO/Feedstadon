@@ -66,15 +66,15 @@ function renderLemmyComment(commentView, state, actions) {
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
     const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
 
-    // The only ID needed to fetch replies is the comment's own ID.
+    // Pass both the comment ID and the post ID to the toggle function
     viewRepliesBtn.addEventListener('click', () => {
-        toggleLemmyReplies(commentView.comment.id, repliesContainer, state, actions);
+        toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions);
     });
 
     return commentDiv;
 }
 
-async function toggleLemmyReplies(commentId, container, state, actions) {
+async function toggleLemmyReplies(commentId, postId, container, state, actions) {
     const isVisible = container.style.display === 'block';
     if (isVisible) {
         container.style.display = 'none';
@@ -91,29 +91,63 @@ async function toggleLemmyReplies(commentId, container, state, actions) {
     }
 
     try {
-        // --- The Correct Root-Cause Fix ---
-        // 1. Use the correct '/api/v3/comment' endpoint to get the comment and its replies.
-        //    'max_depth' is crucial to ask the server to include the reply tree.
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}&max_depth=8`, { method: 'GET' }, 'lemmy');
+        // --- The Definitive Root-Cause Fix ---
+        // 1. Fetch ALL comments for the entire post using the post_id.
+        //    This gives us the complete, raw data for the whole conversation.
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
         
-        // 2. The replies are in the 'replies' array of the response.
-        const replies = response?.data?.replies;
+        const allCommentsFlat = response?.data?.comments;
+
+        if (!Array.isArray(allCommentsFlat)) {
+            console.error("Could not retrieve a valid comment list for the post.", response.data);
+            container.innerHTML = 'Failed to load conversation.';
+            return;
+        }
+
+        // 2. Build the comment tree on the client-side to ensure accuracy.
+        const commentsById = new Map(allCommentsFlat.map(c => [c.comment.id, c]));
+        const commentTree = [];
+
+        allCommentsFlat.forEach(c => {
+            // Initialize a replies array for every comment
+            c.replies = []; 
+            if (c.comment.path.split('.').length > 1) {
+                const parentId = c.comment.path.split('.').slice(-2, -1)[0];
+                const parent = commentsById.get(parseInt(parentId));
+                if (parent) {
+                    // This is a nested array, but it's for our own tree structure
+                    if (!parent.replies) {
+                        parent.replies = [];
+                    }
+                    parent.replies.push(c);
+                } else {
+                    // It's a top-level comment
+                    commentTree.push(c);
+                }
+            } else {
+                // It's a top-level comment
+                commentTree.push(c);
+            }
+        });
+
+        // 3. Find the specific comment the user clicked on within our newly built tree.
+        const targetCommentView = commentsById.get(commentId);
+        const replies = targetCommentView ? targetCommentView.replies : [];
         
         container.innerHTML = '';
 
-        // 3. Render the replies if they exist.
-        if (Array.isArray(replies) && replies.length > 0) {
-            replies.forEach(reply => {
-                // The items in the 'replies' array are full CommentView objects
-                if (reply.comment_view) {
-                    container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
+        // 4. Render the replies, which are now guaranteed to be correct.
+        if (replies.length > 0) {
+            replies.forEach(replyView => {
+                if (replyView) {
+                    container.appendChild(renderLemmyComment(replyView, state, actions));
                 }
             });
         } else {
             container.innerHTML = 'No replies found.';
         }
     } catch (error) {
-        console.error('Failed to fetch replies:', error);
+        console.error('Failed to fetch and process replies:', error);
         container.innerHTML = 'Failed to load replies.';
     }
 }
