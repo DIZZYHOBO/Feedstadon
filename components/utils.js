@@ -15,6 +15,12 @@ export function formatTimestamp(isoString) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/**
+ * Calculates the time elapsed since a given date and returns a short-form string.
+ * e.g., "5m", "2h", "3d"
+ * @param {Date} date The date to compare against now.
+ * @returns {string} A short string representing the time since the date.
+ */
 export function timeSince(date) {
     const seconds = Math.floor((new Date() - date) / 1000);
     let interval = seconds / 31536000;
