@@ -97,24 +97,50 @@ function renderCommentTree(comments, container, actions) {
     });
 }
 
-async function fetchAndRenderComments(state, postId, container, actions) {
-    container.innerHTML = ``;
+async function fetchAndRenderComments(state, postId, userCommentsContainer, otherCommentsContainer, actions) {
+    userCommentsContainer.innerHTML = '';
+    otherCommentsContainer.innerHTML = ``;
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const params = { post_id: postId, max_depth: 15, sort: 'New', type_: 'All' };
         const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {}, 'lemmy', params);
         const commentsData = response.data.comments;
 
-        container.innerHTML = '';
-        if (commentsData && commentsData.length > 0) {
-            const commentTree = buildCommentTree(commentsData);
-            renderCommentTree(commentTree, container, actions);
+        const loggedInUsername = localStorage.getItem('lemmy_username');
+        const userComments = [];
+        const otherComments = [];
+
+        if (loggedInUsername && commentsData) {
+            commentsData.forEach(commentView => {
+                if (commentView.creator.name === loggedInUsername) {
+                    userComments.push(commentView);
+                } else {
+                    otherComments.push(commentView);
+                }
+            });
+        } else if (commentsData) {
+            otherComments.push(...commentsData);
+        }
+
+
+        if (userComments.length > 0) {
+            const userCommentTree = buildCommentTree(userComments);
+            renderCommentTree(userCommentTree, userCommentsContainer, actions);
+            userCommentsContainer.style.display = 'block';
         } else {
-            container.innerHTML = '<div class="status-body-content"><p>No comments yet.</p></div>';
+            userCommentsContainer.style.display = 'none';
+        }
+
+
+        if (otherComments.length > 0) {
+            const otherCommentTree = buildCommentTree(otherComments);
+            renderCommentTree(otherCommentTree, otherCommentsContainer, actions);
+        } else {
+            otherCommentsContainer.innerHTML = '<div class="status-body-content"><p>No other comments yet.</p></div>';
         }
     } catch (err) {
         console.error("Failed to load Lemmy comments:", err);
-        container.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
+        otherCommentsContainer.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
     }
 }
 
@@ -306,12 +332,18 @@ export async function renderLemmyPostPage(state, post, actions) {
         mainPostCard.classList.add('main-thread-post');
         container.appendChild(mainPostCard);
 
-        // Add a dedicated container for the comments
+        // Add a dedicated container for the logged-in user's comments
+        const userCommentsContainer = document.createElement('div');
+        userCommentsContainer.className = 'lemmy-user-comments-container';
+        container.appendChild(userCommentsContainer);
+
+
+        // Add a dedicated container for the other comments
         const threadContainer = document.createElement('div');
         threadContainer.className = 'lemmy-comment-thread';
         container.appendChild(threadContainer);
-        
-        fetchAndRenderComments(state, postView.post.id, threadContainer, actions);
+
+        fetchAndRenderComments(state, postView.post.id, userCommentsContainer, threadContainer, actions);
         
     } catch (error) {
         console.error("Failed to load Lemmy post detail:", error);
