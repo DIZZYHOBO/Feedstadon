@@ -89,13 +89,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
     document.body.dataset.theme = savedTheme;
 
-    // Setup UI Elements
+    // **FIX:** Safely find elements and inject icons after the DOM is loaded
     const notificationsBtn = document.getElementById('notifications-btn');
-    notificationsBtn.innerHTML = ICONS.notifications + '<div class="notification-dot"></div>';
+    if (notificationsBtn) {
+        notificationsBtn.innerHTML = ICONS.notifications + '<div class="notification-dot"></div>';
+    }
     const refreshBtn = document.getElementById('refresh-btn');
-    refreshBtn.innerHTML = ICONS.refresh;
+    if (refreshBtn) {
+        refreshBtn.innerHTML = ICONS.refresh;
+    }
     const refreshSpinner = document.getElementById('refresh-spinner');
-    refreshSpinner.innerHTML = ICONS.refresh;
+    if (refreshSpinner) {
+        refreshSpinner.innerHTML = ICONS.refresh;
+    }
+    const lemmyLogoContainer = document.getElementById('lemmy-logo-container');
+    if (lemmyLogoContainer) {
+        lemmyLogoContainer.innerHTML = ICONS.lemmy;
+    }
+    const mastodonLogoContainer = document.getElementById('mastodon-logo-container');
+    if (mastodonLogoContainer) {
+        mastodonLogoContainer.innerHTML = ICONS.mastodon;
+    }
+    const scrollLoader = document.getElementById('scroll-loader');
+    if (scrollLoader) {
+        scrollLoader.innerHTML = ICONS.refresh;
+    }
 
 
     const state = {
@@ -110,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentLemmySort: localStorage.getItem('lemmySortType') || 'New',
         currentDiscoverTab: 'lemmy',
         timelineDiv: document.getElementById('timeline'),
-        scrollLoader: document.getElementById('scroll-loader'),
+        scrollLoader: scrollLoader, // Assign the element here
         isLoadingMore: false,
         nextPageUrl: null,
         lemmyPage: 1,
@@ -280,7 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterContainer = document.createElement('div');
             filterContainer.id = 'lemmy-filter-container';
             filterContainer.innerHTML = `
-                 <select id="lemmy-sort-select">
+                <select id="lemmy-sort-select">
                     <option value="New">New</option>
                     <option value="Active">Active</option>
                     <option value="Hot">Hot</option>
@@ -749,23 +767,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     initComposeModal(state, () => actions.showHomeTimeline());
     initImageModal();
     
-    refreshBtn.addEventListener('click', () => {
-        if (state.currentView === 'timeline') {
-            if (state.currentTimeline) {
-                actions.showHomeTimeline();
-            } else if (state.currentLemmyFeed) {
-                actions.showLemmyFeed(state.currentLemmyFeed);
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            if (state.currentView === 'timeline') {
+                if (state.currentTimeline) {
+                    actions.showHomeTimeline();
+                } else if (state.currentLemmyFeed) {
+                    actions.showLemmyFeed(state.currentLemmyFeed);
+                }
             }
-        }
-    });
+        });
+    }
 
-    notificationsBtn.addEventListener('click', () => {
-        actions.showNotifications();
-    });
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', () => {
+            actions.showNotifications();
+        });
+    }
     
-    document.getElementById('discover-btn').addEventListener('click', () => {
-        actions.showDiscoverPage();
-    });
+    const discoverBtn = document.getElementById('discover-btn');
+    if (discoverBtn) {
+        discoverBtn.addEventListener('click', () => {
+            actions.showDiscoverPage();
+        });
+    }
 
     // --- Initial Load ---
     await verifyUserCredentials();
@@ -781,62 +806,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         switchView(initialView, false);
     }
 
-    document.getElementById('lemmy-logo-container').innerHTML = ICONS.lemmy;
-    document.getElementById('mastodon-logo-container').innerHTML = ICONS.mastodon;
+    const feedsDropdown = document.getElementById('feeds-dropdown');
+    if (feedsDropdown) {
+        feedsDropdown.querySelector('.dropdown-content').addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('a');
+            if (!target) return;
 
-    document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = e.target.closest('a');
-        if (!target) return;
+            if (target.id === 'lemmy-main-link') {
+                actions.showLemmyFeed('Subscribed');
+            } else if (target.id === 'mastodon-main-link') {
+                actions.showMastodonTimeline('home');
+            } else if (target.dataset.timeline === 'home') {
+                actions.showHomeTimeline();
+            }
+            feedsDropdown.classList.remove('active');
+        });
+    }
 
-        if (target.id === 'lemmy-main-link') {
-            actions.showLemmyFeed('Subscribed');
-        } else if (target.id === 'mastodon-main-link') {
-            actions.showMastodonTimeline('home');
-        } else if (target.dataset.timeline === 'home') {
-            actions.showHomeTimeline();
-        }
-        document.getElementById('feeds-dropdown').classList.remove('active');
-    });
-
-    document.getElementById('user-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
-        e.preventDefault();
-        const target = e.target.closest('a');
-        if (!target) return;
-        
-        switch (target.id) {
-            case 'new-post-link':
-                showComposeModal(state);
-                break;
-            case 'profile-link':
-                if (state.currentUser) {
-                    actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
-                } else if (localStorage.getItem('lemmy_jwt')) {
-                    const lemmyUsername = localStorage.getItem('lemmy_username');
-                    const lemmyInstance = localStorage.getItem('lemmy_instance');
-                    if (lemmyUsername && lemmyInstance) {
-                        const userAcct = `${lemmyUsername}@${lemmyInstance}`;
-                        actions.showLemmyProfile(userAcct);
+    const userDropdown = document.getElementById('user-dropdown');
+    if (userDropdown) {
+        userDropdown.querySelector('.dropdown-content').addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('a');
+            if (!target) return;
+            
+            switch (target.id) {
+                case 'new-post-link':
+                    showComposeModal(state);
+                    break;
+                case 'profile-link':
+                    if (state.currentUser) {
+                        actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
+                    } else if (localStorage.getItem('lemmy_jwt')) {
+                        const lemmyUsername = localStorage.getItem('lemmy_username');
+                        const lemmyInstance = localStorage.getItem('lemmy_instance');
+                        if (lemmyUsername && lemmyInstance) {
+                            const userAcct = `${lemmyUsername}@${lemmyInstance}`;
+                            actions.showLemmyProfile(userAcct);
+                        } else {
+                            showToast("Could not determine Lemmy user profile.");
+                        }
                     } else {
-                        showToast("Could not determine Lemmy user profile.");
+                        showToast("Please log in to view your profile.");
                     }
-                } else {
-                    showToast("Please log in to view your profile.");
-                }
-                break;
-            case 'settings-link':
-                actions.showSettings();
-                break;
-            case 'help-link':
-                document.getElementById('help-modal').classList.add('visible');
-                break;
-        }
-        document.getElementById('user-dropdown').classList.remove('active');
-    });
-
-    document.getElementById('close-help-btn').addEventListener('click', () => {
-        document.getElementById('help-modal').classList.remove('visible');
-    });
+                    break;
+                case 'settings-link':
+                    actions.showSettings();
+                    break;
+                case 'help-link':
+                    document.getElementById('help-modal').classList.add('visible');
+                    break;
+            }
+            userDropdown.classList.remove('active');
+        });
+    }
+    const closeHelpBtn = document.getElementById('close-help-btn');
+    if (closeHelpBtn) {
+        closeHelpBtn.addEventListener('click', () => {
+            document.getElementById('help-modal').classList.remove('visible');
+        });
+    }
     
     window.addEventListener('scroll', () => {
         if (state.isLoadingMore) return;
