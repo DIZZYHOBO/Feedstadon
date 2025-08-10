@@ -1,5 +1,80 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
+import { renderLoginPrompt } from './ui.js';
+
+export async function fetchLemmyFeed(state, actions, loadMore = false) {
+    if (!localStorage.getItem('lemmy_jwt') && !loadMore) {
+        renderLoginPrompt(state.timelineDiv, 'lemmy', () => fetchLemmyFeed(state, actions));
+        return;
+    }
+
+    if (state.isLoadingMore) return;
+
+    if (!loadMore) {
+        window.scrollTo(0, 0);
+    }
+    
+    state.isLoadingMore = true;
+    if (loadMore) state.scrollLoader.classList.add('loading');
+    else document.getElementById('refresh-btn').classList.add('loading');
+
+
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        if (!lemmyInstance) {
+            throw new Error("Lemmy instance not found. Please log in.");
+        }
+
+        const params = {
+            sort: state.currentLemmySort || 'Active',
+            page: loadMore ? state.lemmyPage + 1 : 1,
+            limit: 20
+        };
+        if (state.currentLemmyFeed !== 'All') {
+            params.type_ = state.currentLemmyFeed;
+        }
+        
+        const {data: {posts}} = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', params);
+
+        if (!loadMore) {
+            state.timelineDiv.innerHTML = '';
+        }
+
+        if (posts && posts.length > 0) {
+            if (loadMore) {
+                state.lemmyPage++;
+            } else {
+                state.lemmyPage = 1;
+            }
+            posts.forEach(post_view => {
+                const postCard = renderLemmyCard(post_view, actions);
+                state.timelineDiv.appendChild(postCard);
+            });
+            state.lemmyHasMore = true;
+        } else {
+            if (!loadMore) {
+                state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
+            }
+            state.lemmyHasMore = false;
+        }
+
+        if (!state.lemmyHasMore) {
+            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+        } else {
+             state.scrollLoader.innerHTML = '<p></p>';
+        }
+
+    } catch (error) {
+        console.error('Failed to fetch Lemmy feed:', error);
+        actions.showToast(`Could not load Lemmy feed: ${error.message}`);
+        state.timelineDiv.innerHTML = `<p>Error loading feed.</p>`;
+    } finally {
+        state.isLoadingMore = false;
+        if (loadMore) state.scrollLoader.classList.remove('loading');
+        else document.getElementById('refresh-btn').classList.remove('loading');
+    }
+}
+
 
 function getBestThumbnail(post) {
     if (post.post.thumbnail_url) return post.post.thumbnail_url;
