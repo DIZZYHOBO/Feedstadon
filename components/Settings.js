@@ -42,6 +42,36 @@ export function renderSettingsPage(state) {
                 </div>
             </div>
             <div class="settings-section">
+                <h3>Default Start Page</h3>
+                <div class="form-group">
+                    <label for="start-page-select">Choose your default start page</label>
+                    <select id="start-page-select">
+                        <option value="lemmy">Lemmy</option>
+                        <option value="mastodon">Mastodon</option>
+                    </select>
+                </div>
+                 <div class="form-group">
+                    <label for="feed-type-select">Default Feed Type</label>
+                    <select id="feed-type-select">
+                        <option value="Subscribed">Subscribed</option>
+                        <option value="Local">Local</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+                <div class="form-group" id="lemmy-sort-settings">
+                    <label for="lemmy-sort-select">Default Lemmy Feed Sort</label>
+                    <select id="lemmy-sort-select">
+                        <option value="New">New</option>
+                        <option value="Active">Active</option>
+                        <option value="Hot">Hot</option>
+                        <option value="TopHour">Top Hour</option>
+                        <option value="TopSixHour">Top Six Hour</option>
+                        <option value="TopTwelveHour">Top Twelve Hour</option>
+                        <option value="TopDay">Top Day</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-section">
                 <h3>Word Filter</h3>
                 <p>Hide posts from your feeds that contain these words (case-insensitive). This filter is local to this device.</p>
                 <form id="word-filter-form">
@@ -85,4 +115,29 @@ export function renderSettingsPage(state) {
     });
 
     renderWordFilterList(wordFilterListContainer);
+    
+    // New settings logic
+    const startPageSelect = document.getElementById('start-page-select');
+    const feedTypeSelect = document.getElementById('feed-type-select');
+    const lemmySortSelect = document.getElementById('lemmy-sort-select');
+    const lemmySortSettings = document.getElementById('lemmy-sort-settings');
+
+    startPageSelect.value = localStorage.getItem('defaultStartPage') || 'lemmy';
+    feedTypeSelect.value = localStorage.getItem('defaultFeedType') || 'Subscribed';
+    lemmySortSelect.value = localStorage.getItem('lemmySortType') || 'Hot';
+
+    lemmySortSettings.style.display = startPageSelect.value === 'lemmy' ? 'block' : 'none';
+
+    startPageSelect.addEventListener('change', (e) => {
+        localStorage.setItem('defaultStartPage', e.target.value);
+        lemmySortSettings.style.display = e.target.value === 'lemmy' ? 'block' : 'none';
+    });
+
+    feedTypeSelect.addEventListener('change', (e) => {
+        localStorage.setItem('defaultFeedType', e.target.value);
+    });
+
+    lemmySortSelect.addEventListener('change', (e) => {
+        localStorage.setItem('lemmySortType', e.target.value);
+    });
 }
