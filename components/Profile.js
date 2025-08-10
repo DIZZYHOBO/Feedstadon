@@ -8,16 +8,22 @@ import { showToast } from './ui.js';
 // --- Helper Functions to Fetch Profile Data ---
 async function getMastodonProfile(state, accountId) {
     try {
-        const [account, statuses] = await Promise.all([
+        const [account, statuses, relationships] = await Promise.all([
             apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`),
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses`)
+            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses`),
+            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/relationships?id[]=${accountId}`)
         ]);
-        return { account: account.data, statuses: statuses.data };
+        const profileData = { account: account.data, statuses: statuses.data };
+        if (relationships.data && relationships.data.length > 0) {
+            profileData.relationship = relationships.data[0];
+        }
+        return profileData;
     } catch (error) {
         console.error("Failed to fetch Mastodon profile:", error);
         return null;
     }
 }
+
 
 async function getLemmyProfile(userAcct) {
     const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -191,6 +197,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                     <img class="avatar" src="" alt="Profile avatar">
                 </div>
                 <div class="profile-info">
+                    <div class="profile-actions"></div>
                     <h2 class="display-name">Loading...</h2>
                     <p class="acct"></p>
                     <div class="note"></div>
@@ -220,8 +227,57 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     const feedContainer = view.querySelector('.profile-feed-content');
     const lemmyControls = view.querySelector('#lemmy-profile-controls');
     const lemmyFilter = view.querySelector('#lemmy-content-filter');
+    const profileActionsContainer = view.querySelector('.profile-actions');
 
     let currentLemmyProfile = null;
+    let currentMastoProfile = null;
+
+    // --- Event Listener for Profile Actions ---
+    profileActionsContainer.addEventListener('click', async (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+
+        const action = button.id;
+        
+        switch(action) {
+            case 'profile-screenshot-btn': {
+                const profileCard = view.querySelector('.profile-card');
+                actions.showScreenshotPage(null, profileCard);
+                break;
+            }
+            case 'follow-btn': {
+                if (!currentMastoProfile) return;
+                const relationship = currentMastoProfile.relationship;
+                const isFollowing = relationship ? relationship.following : false;
+                const result = await actions.toggleFollow(currentMastoProfile.account.id, isFollowing);
+                if (result) {
+                    relationship.following = !isFollowing;
+                    button.textContent = relationship.following ? 'Unfollow' : 'Follow';
+                    showToast(relationship.following ? `Following ${currentMastoProfile.account.acct}` : `Unfollowed ${currentMastoProfile.account.acct}`);
+                }
+                break;
+            }
+            case 'profile-more-btn': {
+                if (!currentMastoProfile) return;
+                const account = currentMastoProfile.account;
+                const menuItems = [
+                    { label: `Mention @${account.acct}`, action: () => actions.openCompose(`@${account.acct} `) },
+                    { label: 'View on original server', action: () => window.open(account.url, '_blank') }
+                ];
+                actions.showContextMenu(e, menuItems);
+                break;
+            }
+            case 'lemmy-block-btn': {
+                 if (!currentLemmyProfile) return;
+                 const person = currentLemmyProfile.person_view.person;
+                 if (confirm(`Are you sure you want to block ${person.name}?`)) {
+                     actions.lemmyBlockUser(person.id, true);
+                     showToast(`Blocked ${person.name}.`);
+                 }
+                 break;
+            }
+        }
+    });
 
     const renderLemmyFeed = (filter) => {
         feedContainer.innerHTML = '';
@@ -255,11 +311,13 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         view.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
         feedContainer.innerHTML = 'Loading feed...';
         lemmyControls.style.display = 'none';
+        profileActionsContainer.innerHTML = ''; // Clear actions
 
         if (targetTab === 'mastodon') {
-            const mastodonProfile = await getMastodonProfile(state, accountId);
-            if (mastodonProfile) {
-                const account = mastodonProfile.account;
+            currentMastoProfile = await getMastodonProfile(state, accountId);
+            if (currentMastoProfile) {
+                const account = currentMastoProfile.account;
+                const relationship = currentMastoProfile.relationship;
                 bannerImg.src = account.header_static || '';
                 avatarImg.src = account.avatar_static || '';
                 displayNameEl.textContent = account.display_name;
@@ -267,8 +325,15 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 noteEl.innerHTML = account.note;
                 statsEl.innerHTML = `<span><strong>${account.followers_count}</strong> Followers</span><span><strong>${account.following_count}</strong> Following</span>`;
 
+                // Set up action buttons for Mastodon
+                profileActionsContainer.innerHTML = `
+                    <button id="follow-btn" class="button">${relationship && relationship.following ? 'Unfollow' : 'Follow'}</button>
+                    <button id="profile-screenshot-btn" class="button-secondary">${ICONS.screenshot}</button>
+                    <button id="profile-more-btn" class="button-secondary">${ICONS.more}</button>
+                `;
+
                 feedContainer.innerHTML = '';
-                mastodonProfile.statuses.forEach(status => {
+                currentMastoProfile.statuses.forEach(status => {
                     feedContainer.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
                 });
             } else {
@@ -286,6 +351,12 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 acctEl.textContent = `@${person.name}@${new URL(person.actor_id).hostname}`;
                 noteEl.innerHTML = new showdown.Converter().makeHtml(person.bio || '');
                 statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
+                
+                // Set up action buttons for Lemmy
+                profileActionsContainer.innerHTML = `
+                    <button id="profile-screenshot-btn" class="button-secondary">${ICONS.screenshot}</button>
+                    <button id="lemmy-block-btn" class="button-secondary">${ICONS.delete}</button>
+                `;
 
                 lemmyControls.style.display = 'flex';
                 lemmyFilter.value = 'comments'; // Default to comments
