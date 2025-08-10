@@ -1,5 +1,5 @@
-import { apiFetch } from './api.js';
-import { showModal, hideModal, showImageModal, showToast } from './ui.js';
+import { apiFetch } from './components/api.js';
+import { showModal, hideModal, showImageModal, showToast } from './components/ui.js';
 import { renderStatus } from './components/Post.js';
 
 export class AppActions {
