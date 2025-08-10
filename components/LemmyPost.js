@@ -190,6 +190,7 @@ export function renderCommentNode(commentView, actions) {
                     <button class="status-action lemmy-vote-btn ${commentView.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                 </div>
                 <button class="status-action" data-action="reply">${ICONS.reply}</button>
+                <button class="status-action" data-action="screenshot">${ICONS.screenshot}</button>
             </div>
         </div>
     `;
@@ -298,6 +299,10 @@ export function renderCommentNode(commentView, actions) {
                     break;
                 case 'reply':
                     showReplyBox(commentWrapper, commentView, actions);
+                    break;
+                case 'screenshot':
+                    const postView = document.querySelector('.main-thread-post');
+                    actions.showScreenshotPage(commentWrapper, postView);
                     break;
             }
         });
