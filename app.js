@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         conversations: [],
         lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'leminal.space'],
         settings: {
-            hideNsfw: JSON.parse(localStorage.getItem('settings-hideNsfw')) || false,
+            hideNsfw: false,
         },
         actions: {}
     };
@@ -328,7 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         showSettings: () => {
             switchView('settings');
-            renderSettingsPage(state, actions, onMastodonLoginSuccess, onLemmyLoginSuccess);
+            renderSettingsPage(state);
         },
         showNotifications: async () => {
             showLoadingBar();
@@ -811,7 +811,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const lemmyUsername = localStorage.getItem('lemmy_username');
                     const lemmyInstance = localStorage.getItem('lemmy_instance');
                     if (lemmyUsername && lemmyInstance) {
-                        const userAcct = `${lemmyUsername}@${new URL(lemmyInstance).hostname}`;
+                        const userAcct = `${lemmyUsername}@${lemmyInstance}`;
                         actions.showLemmyProfile(userAcct);
                     } else {
                         showToast("Could not determine Lemmy user profile.");
