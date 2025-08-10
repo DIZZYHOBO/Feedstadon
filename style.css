@@ -1136,6 +1136,14 @@ button:disabled {
     font-weight: bold;
     margin-bottom: 10px;
 }
+.lemmy-comment-on-profile .comment-context a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+.lemmy-comment-on-profile .comment-context a:hover {
+    text-decoration: underline;
+}
+
 
 /* --- Edit Profile Page --- */
 .edit-profile-container {
@@ -1410,7 +1418,6 @@ button:disabled {
         display: none; /* Hide timestamp on very small screens to save space */
     }
 }
-/* --- Lemmy User Comments Box --- */
 .lemmy-user-comments-container {
     background-color: var(--card-color);
     border: 1px solid var(--accent-color);
