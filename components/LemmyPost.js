@@ -157,12 +157,17 @@ export function renderCommentNode(commentView, actions) {
         commentWrapper.classList.add('top-level-comment');
     }
 
+    const isOwnComment = creator.name === localStorage.getItem('lemmy_username');
+
     let optionsMenuHTML = `
         <div class="post-options-container">
             <button class="post-options-btn">${ICONS.more}</button>
             <div class="post-options-menu">
+                <button data-action="screenshot-comment">${ICONS.screenshot} Screenshot</button>
+                ${isOwnComment ? `
                 <button data-action="edit-comment">${ICONS.edit} Edit</button>
                 <button data-action="delete-comment">${ICONS.delete} Delete</button>
+                ` : ''}
             </div>
         </div>
     `;
@@ -190,7 +195,6 @@ export function renderCommentNode(commentView, actions) {
                     <button class="status-action lemmy-vote-btn ${commentView.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1">${ICONS.lemmyDownvote}</button>
                 </div>
                 <button class="status-action" data-action="reply">${ICONS.reply}</button>
-                <button class="status-action" data-action="screenshot">${ICONS.screenshot}</button>
             </div>
         </div>
     `;
@@ -208,15 +212,18 @@ export function renderCommentNode(commentView, actions) {
     let pressTimer;
     commentWrapper.addEventListener('touchstart', (e) => {
         pressTimer = setTimeout(() => {
-            const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
-            let menuItems = [
+            const menuItems = [
+                { label: `${ICONS.screenshot} Screenshot`, action: () => {
+                    const postView = document.querySelector('.main-thread-post');
+                    actions.showScreenshotPage(commentWrapper, postView);
+                }},
                 { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
                     if (confirm('Are you sure you want to block this user?')) {
                         actions.lemmyBlockUser(commentView.creator.id, true);
                     }
                 }},
             ];
-            if (isOwn) {
+            if (isOwnComment) {
                  menuItems.push(
                     { label: `${ICONS.edit} Edit`, action: () => {
                         showReplyBox(commentWrapper, commentView, actions);
@@ -248,47 +255,9 @@ export function renderCommentNode(commentView, actions) {
     commentWrapper.addEventListener('touchend', () => {
         clearTimeout(pressTimer);
     });
-
-    commentWrapper.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const isOwn = commentView.creator.name === localStorage.getItem('lemmy_username');
-        let menuItems = [
-            { label: `${ICONS.delete} Block @${commentView.creator.name}`, action: () => {
-                if (confirm('Are you sure you want to block this user?')) {
-                    actions.lemmyBlockUser(commentView.creator.id, true);
-                }
-            }},
-        ];
-        if (isOwn) {
-             menuItems.push(
-                { label: `${ICONS.edit} Edit`, action: () => {
-                    showReplyBox(commentWrapper, commentView, actions);
-                    const replyBox = commentWrapper.querySelector('.lemmy-reply-box');
-                    const textarea = replyBox.querySelector('textarea');
-                    textarea.value = comment.content;
-                    const button = replyBox.querySelector('.submit-reply-btn');
-                    button.textContent = 'Save';
-                    button.onclick = async (e) => {
-                        e.stopPropagation();
-                        const newContent = textarea.value.trim();
-                        if (newContent) {
-                            await actions.lemmyEditComment(comment.id, newContent);
-                            replyBox.remove();
-                        }
-                    };
-                }},
-                { label: `${ICONS.delete} Delete`, action: () => {
-                    if (confirm('Are you sure you want to delete this comment?')) {
-                        actions.lemmyDeleteComment(comment.id);
-                    }
-                }}
-            );
-        }
-        actions.showContextMenu(e, menuItems);
-    });
     
-    // Event listeners
-    commentWrapper.querySelectorAll('.status-action').forEach(button => {
+    // Event listeners for action buttons in the footer
+    commentWrapper.querySelectorAll('.status-footer .status-action').forEach(button => {
         button.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = e.currentTarget.dataset.action;
@@ -299,10 +268,6 @@ export function renderCommentNode(commentView, actions) {
                     break;
                 case 'reply':
                     showReplyBox(commentWrapper, commentView, actions);
-                    break;
-                case 'screenshot':
-                    const postView = document.querySelector('.main-thread-post');
-                    actions.showScreenshotPage(commentWrapper, postView);
                     break;
             }
         });
@@ -315,13 +280,16 @@ export function renderCommentNode(commentView, actions) {
             e.stopPropagation();
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         });
-        menu.addEventListener('click', (e) => e.stopPropagation());
-    }
 
-    const loggedInUsername = localStorage.getItem('lemmy_username');
-    const screenshotButton = commentWrapper.querySelector('[data-action="screenshot"]');
-    if (creator.name !== loggedInUsername) {
-        screenshotButton.style.display = 'none';
+        // Add listeners for menu items
+        menu.querySelector('[data-action="screenshot-comment"]')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const postView = document.querySelector('.main-thread-post');
+            actions.showScreenshotPage(commentWrapper, postView);
+            menu.style.display = 'none';
+        });
+
+        menu.addEventListener('click', (e) => e.stopPropagation());
     }
 
     return commentWrapper;
