@@ -42,7 +42,7 @@ export async function renderSearchResults(state, query) {
                 postsHeader.textContent = 'Posts';
                 container.appendChild(postsHeader);
                 results.statuses.forEach(status => {
-                    const statusElement = renderStatus(status, state, state.actions, true);
+                    const statusElement = renderStatus(status, state, state.actions, state.settings);
                     if (statusElement) container.appendChild(statusElement);
                 });
             }
@@ -85,7 +85,8 @@ export async function renderSearchResults(state, query) {
             const posts = response.data.search.posts;
             if (posts.length > 0) {
                 posts.forEach(post_view => {
-                    container.appendChild(renderLemmyCard(post_view, state.actions, state.settings));
+                    const postCard = renderLemmyCard(post_view, state.actions, state.settings);
+                    container.appendChild(postCard);
                 });
             } else {
                 container.innerHTML = `<p>No results found for "${query}" on Lemmy.</p>`;
@@ -106,7 +107,7 @@ async function fetchHashtagTimeline(state, hashtag) {
         container.innerHTML = `<h3>#${hashtag}</h3>`;
         if (timeline.length > 0) {
             timeline.forEach(status => {
-                 const statusElement = renderStatus(status, state, state.actions, true);
+                 const statusElement = renderStatus(status, state, state.actions, state.settings);
                  if (statusElement) container.appendChild(statusElement);
             });
         } else {
@@ -146,4 +147,32 @@ export function renderSearchPage(state, showView) {
              apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/tags')
                 .then(tags => renderHashtagSuggestions(tags, searchSuggestions, state))
                 .catch(err => {
-                    console.
+                    console.error("Couldn't fetch trending tags", err);
+                    searchSuggestions.innerHTML = '<p>Could not load suggestions.</p>';
+                });
+        } else {
+             searchSuggestions.innerHTML = '<p>Trending tags are not available for Lemmy or when not logged in.</p>';
+        }
+    }
+
+    searchInput.oninput = (e) => {
+        if (e.target.value.length > 0) {
+            searchSuggestions.style.display = 'none';
+        } else {
+            searchSuggestions.style.display = 'block';
+             if (state.currentDiscoverTab === 'mastodon' && state.accessToken) {
+                apiFetch(state.instanceUrl, state.accessToken, '/api/v1/trends/tags')
+                    .then(tags => renderHashtagSuggestions(tags, searchSuggestions, state))
+                    .catch(err => console.error("Couldn't fetch trending tags", err));
+            }
+        }
+    };
+    
+    document.getElementById('search-form').onsubmit = (e) => {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (query) {
+            navigate(`/search?q=${encodeURIComponent(query)}`);
+        }
+    };
+}
