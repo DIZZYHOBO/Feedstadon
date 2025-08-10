@@ -1,6 +1,7 @@
 import { apiFetch } from './components/api.js';
 import { showModal, hideModal, showImageModal, showToast } from './components/ui.js';
 import { renderStatus } from './components/Post.js';
+import { renderLemmyPost } from './components/LemmyPost.js';
 
 export class AppActions {
     constructor(state, app) {
@@ -8,19 +9,15 @@ export class AppActions {
         this.app = app;
     }
 
-    // --- Generic Helpers ---
     apiFetch(endpoint, options = {}) {
-        // Centralized API fetcher using the app's current state
         return apiFetch(this.state.instanceUrl, this.state.accessToken, endpoint, options);
     }
     
-    // --- UI Actions ---
     showToast(message, type = 'info') { showToast(message, type); }
     showModal(modalId) { showModal(modalId); }
     hideModal(modalId) { hideModal(modalId); }
     showImageModal(src) { showImageModal(src); }
     
-    // --- Status/Post Actions ---
     async postStatus(payload) {
         try {
             const { data } = await this.apiFetch('/api/v1/statuses', {
@@ -29,7 +26,7 @@ export class AppActions {
             });
             this.showToast('Status posted successfully!', 'success');
             this.hideModal('compose-modal');
-            this.app.refreshCurrentView(); // Tell the main app to refresh
+            this.app.refreshCurrentView();
             return data;
         } catch (error) {
             console.error("Failed to post status:", error);
@@ -43,7 +40,6 @@ export class AppActions {
         const isCurrentlyActive = button.classList.contains('active');
         
         try {
-            // Use the endpointOverride for un-actions, a clever Mastodon API feature
             const { data: updatedStatus } = await this.apiFetch(endpoint, {
                 method: 'POST',
                 body: JSON.stringify({}),
@@ -54,7 +50,6 @@ export class AppActions {
             
             const countSpan = button.querySelector('span');
             if (countSpan) {
-                // Update counts dynamically
                 const countMap = {
                     'favorite': 'favourites_count',
                     'reblog': 'reblogs_count'
@@ -79,13 +74,11 @@ export class AppActions {
         const isVisible = replyContainer && replyContainer.style.display === 'block';
     
         if (isVisible) {
-            // Hide if already open
             replyContainer.style.display = 'none';
             if (conversationContainer) conversationContainer.style.display = 'none';
         } else {
-            // Create and show if hidden
             if (!replyContainer) {
-                replyContainer = this.app.createQuickReplyBox(status, card); // Delegate UI creation to app.js
+                replyContainer = this.app.createQuickReplyBox(status, card);
             }
     
             if (!conversationContainer) {
@@ -94,24 +87,22 @@ export class AppActions {
                 card.appendChild(conversationContainer);
             }
     
-            // Show everything
             replyContainer.style.display = 'block';
             conversationContainer.style.display = 'block';
             replyContainer.querySelector('textarea').focus();
     
             conversationContainer.innerHTML = '<p class="loading-notice">Loading recent replies...</p>';
     
-            // Fetch and render the recent replies
             try {
                 const { data: context } = await this.apiFetch(`/api/v1/statuses/${status.id}/context`);
                 
-                conversationContainer.innerHTML = ''; // Clear loading
+                conversationContainer.innerHTML = '';
     
                 if (context.descendants && context.descendants.length > 0) {
-                    const recentReplies = context.descendants.slice(-3); // Get the last 3 replies
+                    const recentReplies = context.descendants.slice(-3);
                     
                     recentReplies.forEach(reply => {
-                        const replyCard = renderStatus(reply, this.state.currentUser, this.app.actions, this.state.settings);
+                        const replyCard = renderStatus(reply, this.state.currentUser, this, this.state.settings);
                         replyCard.classList.add('nested-reply');
                         conversationContainer.appendChild(replyCard);
                     });
@@ -140,7 +131,6 @@ export class AppActions {
         }
     }
     
-    // --- Profile Actions ---
     async showProfilePage(platform, accountId, accountAcct) {
         this.state.currentProfile = { platform, accountId, accountAcct };
         this.app.router.navigateTo('profile');
@@ -152,11 +142,11 @@ export class AppActions {
             if (platform === 'mastodon') {
                 const { data: account } = await this.apiFetch(`/api/v1/accounts/${accountId}`);
                 const { data: statuses } = await this.apiFetch(`/api/v1/accounts/${accountId}/statuses`);
-                this.app.renderProfilePage(account, statuses); // Delegate rendering back to app.js
+                this.app.renderProfilePage(account, statuses);
             } else if (platform === 'lemmy') {
                 const { data: personView } = await this.apiFetch(`/api/v3/user?username=${accountAcct}`);
                 const { data: posts } = await this.apiFetch(`/api/v3/user?username=${accountAcct}&sort=New&page=1&limit=20&saved_only=false`);
-                this.app.renderLemmyProfilePage(personView, posts.posts, posts.comments); // Delegate rendering
+                this.app.renderLemmyProfilePage(personView, posts.posts, posts.comments);
             }
         } catch(error) {
             console.error('Error loading profile:', error);
