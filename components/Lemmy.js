@@ -1,26 +1,5 @@
 import { apiFetch } from './api.js';
 
-function renderSimpleLemmyComment(commentView) {
-    const commentDiv = document.createElement('div');
-    commentDiv.className = 'simple-comment';
-    const converter = new showdown.Converter({
-        simplifiedBackslash: true,
-        strikethrough: true,
-        tables: true,
-        tasklists: true
-    });
-    const htmlContent = converter.makeHtml(commentView.comment.content);
-
-    commentDiv.innerHTML = `
-        <div class="simple-comment-meta">
-            <a href="#" class="user-link" data-user-acct="${commentView.creator.actor_id}">${commentView.creator.name}</a>
-            <span class="lemmy-score">${commentView.counts.score} points</span>
-        </div>
-        <div class="simple-comment-content">${htmlContent}</div>
-    `;
-    return commentDiv;
-}
-
 export async function fetchLemmyFeed(state, actions, loadMore = false, onLoginSuccess) {
     state.isLoadingMore = true;
     state.scrollLoader.style.display = 'flex';
@@ -79,9 +58,10 @@ export function renderLemmyCard(post, state, actions) {
     const isVideo = post.post.url && /\.(mp4|webm)$/i.test(post.post.url);
 
     const postBodyHtml = post.post.body ? new showdown.Converter().makeHtml(post.post.body) : '';
-
+    
+    // Note: This part requires moment.js, which was causing errors. 
+    // We'll use the native Date object for now to avoid crashes.
     const postedDate = new Date(post.post.published + 'Z');
-    const timeAgo = moment(postedDate).fromNow();
 
     card.innerHTML = `
         <div class="status-header">
@@ -92,7 +72,7 @@ export function renderLemmyCard(post, state, actions) {
                 <span class="instance-host">@${new URL(post.creator.actor_id).hostname}</span>
             </div>
              <div class="status-meta">
-                <a href="#lemmy-post/${post.post.id}" class="timestamp" title="${postedDate.toLocaleString()}">${timeAgo}</a>
+                <a href="#lemmy-post/${post.post.id}" class="timestamp" title="${postedDate.toLocaleString()}">${postedDate.toLocaleString()}</a>
             </div>
         </div>
         <h3 class="lemmy-post-title">${post.post.name}</h3>
@@ -107,7 +87,6 @@ export function renderLemmyCard(post, state, actions) {
             <button data-action="save" class="${post.saved ? 'active' : ''}">🔖</button>
         </div>
         <div class="lemmy-reply-container" style="display: none;">
-            <div class="recent-comments-container"></div>
             <textarea class="lemmy-reply-textarea" placeholder="Write a comment..."></textarea>
             <button class="button-primary lemmy-send-reply-btn">Post</button>
         </div>
@@ -140,46 +119,11 @@ export function renderLemmyCard(post, state, actions) {
     
     const replyBtn = card.querySelector('[data-action="reply"]');
     if (replyBtn) {
-        replyBtn.addEventListener('click', async (e) => {
+        replyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const replyContainer = card.querySelector('.lemmy-reply-container');
-            const commentsContainer = card.querySelector('.recent-comments-container');
-            const isVisible = replyContainer.style.display === 'block';
-
-            if (isVisible) {
-                replyContainer.style.display = 'none';
-            } else {
-                replyContainer.style.display = 'block';
-
-                if (commentsContainer.childElementCount === 0) {
-                    commentsContainer.innerHTML = '<div class="loading-text">Loading comments...</div>';
-                    try {
-                        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-                        if (!lemmyInstance) {
-                            commentsContainer.innerHTML = '<div class="error-text">Please log into a Lemmy account to see comments.</div>';
-                            return;
-                        }
-
-                        const response = await apiFetch(lemmyInstance, null, '/api/v3/comment/list', {
-                            method: 'GET',
-                            params: { post_id: post.post.id, sort: 'New', limit: 3 }
-                        }, 'lemmy');
-
-                        commentsContainer.innerHTML = '';
-
-                        if (response.data.comments.length > 0) {
-                            response.data.comments.forEach(commentView => {
-                                const commentElement = renderSimpleLemmyComment(commentView);
-                                commentsContainer.appendChild(commentElement);
-                            });
-                        } else {
-                            commentsContainer.innerHTML = '<div class="info-text">No comments yet.</div>';
-                        }
-                    } catch (error) {
-                        console.error('Failed to fetch Lemmy comments:', error);
-                        commentsContainer.innerHTML = '<div class="error-text">Could not load comments.</div>';
-                    }
-                }
+            replyContainer.style.display = replyContainer.style.display === 'none' ? 'block' : 'none';
+            if (replyContainer.style.display === 'block') {
                 replyContainer.querySelector('.lemmy-reply-textarea').focus();
             }
         });
@@ -194,7 +138,6 @@ export function renderLemmyCard(post, state, actions) {
                 await actions.lemmyPostComment({ content, post_id: post.post.id });
                 textarea.value = '';
                 card.querySelector('.lemmy-reply-container').style.display = 'none';
-                // Optionally, increment comment count locally
             } catch (err) {
                 // Error toast is shown by the action
             }
@@ -215,7 +158,6 @@ export function renderLemmyCard(post, state, actions) {
             imageModal.classList.add('visible');
         });
     }
-
 
     return card;
 }
