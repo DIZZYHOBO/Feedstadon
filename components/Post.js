@@ -1,97 +1,122 @@
+import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { timeAgo } from './utils.js';
-// **FIX:** Importing the newly exported showImageModal function.
-import { showImageModal } from './ui.js';
+import { renderLemmyPostPage } from './Lemmy.js';
 
-function renderMedia(attachments) {
-    if (!attachments || attachments.length === 0) return '';
-    return attachments.map(att => {
-        if (att.type === 'image') {
-            return `<div class="status-media"><img src="${att.url}" alt="${att.description || 'Status media'}" loading="lazy"></div>`;
-        } else if (att.type === 'video') {
-            return `<div class="status-media"><video src="${att.url}" controls loop playsinline></video></div>`;
-        } else if (att.type === 'gifv') {
-            return `<div class="status-media"><video src="${att.url}" autoplay muted loop playsinline></video></div>`;
-        }
-        return '';
-    }).join('');
+function renderActionButtons(post, currentUser, actions, settings) {
+    if (!currentUser) return '';
+    return `
+        <div class="post-actions">
+            <button class="action-btn reply-btn">${ICONS.reply}</button>
+            <button class="action-btn boost-btn ${post.reblogged ? 'active' : ''}">${ICONS.boost}</button>
+            <button class="action-btn favorite-btn ${post.favourited ? 'active' : ''}">${ICONS.favorite}</button>
+            <button class="action-btn bookmark-btn ${post.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
+        </div>
+    `;
 }
 
 export function renderStatus(post, currentUser, actions, settings) {
-    const card = document.createElement('div');
-    card.className = 'status';
-    card.dataset.id = post.id;
-    card.dataset.acct = post.account.acct;
+    const postContainer = document.createElement('div');
+    postContainer.className = 'post';
+    postContainer.dataset.postId = post.id;
 
-    const htmlContent = post.content;
-
-    card.innerHTML = `
-        <div class="status-body-content">
-            <div class="status-header">
-                <a href="#/profile/mastodon/${post.account.id}" class="status-header-main">
-                    <img src="${post.account.avatar}" class="avatar" alt="${post.account.display_name}'s avatar">
-                    <div>
-                        <span class="display-name">${post.account.display_name}</span>
-                        <span class="acct">@${post.account.acct}</span>
-                    </div>
-                </a>
-                <div class="status-header-side">
-                    <span class="timestamp">${timeAgo(post.created_at)}</span>
-                    <div class="post-options-container"></div>
-                </div>
+    const postContent = `
+        <div class="post-header">
+            <img src="${post.account.avatar}" class="avatar" alt="${post.account.display_name}'s avatar">
+            <div class="post-author">
+                <span class="display-name">${post.account.display_name}</span>
+                <span class="acct">@${post.account.acct}</span>
             </div>
-            <div class="status-content">${htmlContent}</div>
-            ${renderMedia(post.media_attachments)}
-            <div class="status-footer">
-                <button class="status-action reply-btn">${ICONS.reply}</button>
-                <button class="status-action boost-btn ${post.reblogged ? 'active' : ''}">${ICONS.boost} <span>${post.reblogs_count}</span></button>
-                <button class="status-action favorite-btn ${post.favourited ? 'active' : ''}">${ICONS.favorite} <span>${post.favourites_count}</span></button>
-                <button class="status-action bookmark-btn ${post.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
-            </div>
-            <div class="quick-reply-container" style="display: none;"></div>
-            <div class="conversation-container" style="display: none;"></div>
+            <div class="post-timestamp">${new Date(post.created_at).toLocaleString()}</div>
         </div>
+        <div class="post-body">${post.content}</div>
+        ${renderActionButtons(post, currentUser, actions, settings)}
     `;
 
-    // **FIX:** Add click listeners to images to open the modal.
-    card.querySelectorAll('.status-media img').forEach(img => {
-        img.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showImageModal(img.src);
-        });
+    postContainer.innerHTML = postContent;
+
+    if (currentUser) {
+        postContainer.querySelector('.reply-btn').addEventListener('click', () => actions.replyToPost(post));
+        postContainer.querySelector('.boost-btn').addEventListener('click', () => actions.boostPost(post.id, !post.reblogged));
+        postContainer.querySelector('.favorite-btn').addEventListener('click', () => actions.favoritePost(post.id, !post.favourited));
+        postContainer.querySelector('.bookmark-btn').addEventListener('click', () => actions.bookmarkPost(post.id, !post.bookmarked));
+    }
+
+    postContainer.addEventListener('click', (e) => {
+        if (!e.target.closest('.action-btn, a, .post-author')) {
+            actions.showFullPost(post.id);
+        }
     });
 
-    card.querySelector('.reply-btn').addEventListener('click', () => actions.replyToStatus(post, card));
-    card.querySelector('.boost-btn').addEventListener('click', (e) => actions.toggleAction('reblog', post, e.currentTarget));
-    card.querySelector('.favorite-btn').addEventListener('click', (e) => actions.toggleAction('favorite', post, e.currentTarget));
-    card.querySelector('.bookmark-btn').addEventListener('click', (e) => actions.toggleAction('bookmark', post, e.currentTarget));
-    
-    return card;
+    return postContainer;
 }
 
-export async function renderStatusDetail(state, statusId, actions) {
-    const view = document.getElementById('status-detail-view');
-    view.innerHTML = `<div class="status-list"></div>`;
-    const list = view.querySelector('.status-list');
+export async function renderFullPost(postId, state, actions) {
+    const { instanceUrl, accessToken, currentUser } = state;
+    const postView = document.getElementById('full-post-view');
+    postView.innerHTML = `<div class="loading-spinner">${ICONS.refresh}</div>`;
+    postView.style.display = 'block';
 
     try {
-        const { data: status } = await state.api.v1.statuses.fetch(statusId);
-        const { data: context } = await state.api.v1.statuses.fetchContext(statusId);
-
-        context.ancestors.forEach(p => list.appendChild(renderStatus(p, state.currentUser, actions, state.settings)));
+        const { data: post } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${postId}`);
+        const { data: context } = await apiFetch(instanceUrl, accessToken, `/api/v1/statuses/${postId}/context`);
         
-        const mainPost = renderStatus(status, state.currentUser, actions, state.settings);
-        mainPost.classList.add('main-thread-post');
-        list.appendChild(mainPost);
+        const replies = context.descendants || [];
+        const userComments = [];
+        const otherComments = [];
 
-        context.descendants.forEach(p => {
-            const replyContainer = document.createElement('div');
-            replyContainer.className = 'comment-replies-container';
-            replyContainer.appendChild(renderStatus(p, state.currentUser, actions, state.settings));
-            list.appendChild(replyContainer);
+        if (currentUser) {
+            replies.forEach(reply => {
+                if (reply.account.id === currentUser.id) {
+                    userComments.push(reply);
+                } else {
+                    otherComments.push(reply);
+                }
+            });
+        } else {
+            otherComments.push(...replies);
+        }
+
+        let commentsHtml = otherComments.map(reply => renderStatus(reply, currentUser, actions, state.settings).outerHTML).join('');
+        
+        if (userComments.length > 0) {
+            commentsHtml += `
+                <div class="user-comments-box">
+                    <h3>Your Comments</h3>
+                    ${userComments.map(reply => renderStatus(reply, currentUser, actions, state.settings).outerHTML).join('')}
+                </div>
+            `;
+        }
+
+        postView.innerHTML = `
+            <div class="full-post-container">
+                <button class="close-btn">${ICONS.close}</button>
+                <div class="post-main">
+                    ${renderStatus(post, currentUser, actions, state.settings).outerHTML}
+                </div>
+                <div class="post-replies">
+                    ${commentsHtml}
+                </div>
+            </div>
+        `;
+
+        postView.querySelector('.close-btn').addEventListener('click', () => postView.style.display = 'none');
+        
+        // Re-attach event listeners for dynamically added elements
+        postView.querySelectorAll('.post').forEach(postEl => {
+            const id = postEl.dataset.postId;
+            if (id !== postId) { // Don't re-add listeners to the main post
+                 const replyPost = replies.find(r => r.id === id);
+                 if(replyPost) {
+                    postEl.querySelector('.reply-btn')?.addEventListener('click', () => actions.replyToPost(replyPost));
+                    postEl.querySelector('.boost-btn')?.addEventListener('click', () => actions.boostPost(id, !replyPost.reblogged));
+                    postEl.querySelector('.favorite-btn')?.addEventListener('click', () => actions.favoritePost(id, !replyPost.favourited));
+                    postEl.querySelector('.bookmark-btn')?.addEventListener('click', () => actions.bookmarkPost(id, !replyPost.bookmarked));
+                 }
+            }
         });
+
     } catch (error) {
-        console.error('Failed to render status detail:', error);
-        view.innerHTML = `<p>Could not load post details. It may have been deleted.</p>`;
+        postView.innerHTML = `<p>Error loading post. <button class="close-btn">${ICONS.close}</button></p>`;
+        postView.querySelector('.close-btn').addEventListener('click', () => postView.style.display = 'none');
     }
 }
