@@ -30,9 +30,6 @@ export async function renderScreenshotPage(state, commentView, postView, actions
     view.innerHTML = `
         <div id="screenshot-content">
             <div id="screenshot-comment-area"></div>
-            <div id="screenshot-watermark">
-                ${ICONS.watermark}
-            </div>
         </div>
         <div id="screenshot-controls-container"></div>
     `;
