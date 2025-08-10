@@ -145,6 +145,8 @@ export function renderSettingsPage(state) {
     });
 
     saveButton.addEventListener('click', () => {
-        location.reload();
+        // Navigate to the root of the app, which will trigger a reload
+        // and cause the app to read the new default settings on startup.
+        window.location.href = window.location.pathname;
     });
 }
