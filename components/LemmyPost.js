@@ -107,37 +107,37 @@ async function fetchAndRenderComments(state, postId, userCommentsContainer, othe
         const commentsData = response.data.comments;
 
         const loggedInUsername = localStorage.getItem('lemmy_username');
-        const userComments = [];
-        const otherComments = [];
+        
+        // Build the full comment tree first to maintain parent-child relationships
+        const allCommentThreads = buildCommentTree(commentsData);
 
-        if (loggedInUsername && commentsData) {
-            commentsData.forEach(commentView => {
-                if (commentView.creator.name === loggedInUsername) {
-                    userComments.push(commentView);
-                } else {
-                    otherComments.push(commentView);
-                }
-            });
-        } else if (commentsData) {
-            otherComments.push(...commentsData);
-        }
+        const userCommentThreads = [];
+        const otherCommentThreads = [];
 
+        // Separate threads based on the top-level comment's author
+        allCommentThreads.forEach(thread => {
+            if (loggedInUsername && thread.creator.name === loggedInUsername) {
+                userCommentThreads.push(thread);
+            } else {
+                otherCommentThreads.push(thread);
+            }
+        });
 
-        if (userComments.length > 0) {
-            const userCommentTree = buildCommentTree(userComments);
-            renderCommentTree(userCommentTree, userCommentsContainer, actions);
+        // Render the user's comment threads, with all replies included
+        if (userCommentThreads.length > 0) {
+            renderCommentTree(userCommentThreads, userCommentsContainer, actions);
             userCommentsContainer.style.display = 'block';
         } else {
             userCommentsContainer.style.display = 'none';
         }
 
-
-        if (otherComments.length > 0) {
-            const otherCommentTree = buildCommentTree(otherComments);
-            renderCommentTree(otherCommentTree, otherCommentsContainer, actions);
+        // Render the remaining comment threads
+        if (otherCommentThreads.length > 0) {
+            renderCommentTree(otherCommentThreads, otherCommentsContainer, actions);
         } else {
             otherCommentsContainer.innerHTML = '<div class="status-body-content"><p>No other comments yet.</p></div>';
         }
+
     } catch (err) {
         console.error("Failed to load Lemmy comments:", err);
         otherCommentsContainer.innerHTML = `<p>Could not load comments. ${err.message}</p>`;
