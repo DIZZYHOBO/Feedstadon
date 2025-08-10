@@ -1,8 +1,8 @@
-import { apiFetch, getPersistedCredentials } from './components/api.js';
+import { getPersistedCredentials } from './components/api.js';
 import { showModal, hideModal, showImageModal, showToast, updateCharacterCount } from './components/ui.js';
 import { renderStatus } from './components/Post.js';
 import { renderLemmyPost } from './components/LemmyPost.js';
-import { formatTimestamp, timeSince } from './components/utils.js';
+import { timeSince } from './components/utils.js';
 import { AppActions } from './actions.js';
 
 class App {
@@ -22,11 +22,10 @@ class App {
             },
         };
         this.router = new Router(this);
-        this.actions = new AppActions(this.state, this); // Instantiate the actions class
+        this.actions = new AppActions(this.state, this);
         this.init();
     }
     
-    // --- Initialization ---
     init() {
         this.loadSettings();
         const credentials = getPersistedCredentials();
@@ -52,7 +51,6 @@ class App {
         }
     }
 
-    // --- Core App Logic & State Management ---
     loadSettings() {
         const savedSettings = localStorage.getItem('feedstadon_settings');
         if (savedSettings) {
@@ -77,7 +75,7 @@ class App {
         
         sendBtn.onclick = async () => {
             if (textarea.value.trim()) {
-                await this.actions.postStatus({ // Use this.actions
+                await this.actions.postStatus({
                     status: textarea.value,
                     in_reply_to_id: status.id,
                 });
@@ -96,7 +94,6 @@ class App {
         return replyContainer;
     }
 
-    // --- Rendering ---
     renderProfilePage(account, statuses) {
         const view = document.getElementById('profile-page-view');
         view.innerHTML = `
@@ -124,7 +121,6 @@ class App {
 
         const feedContainer = view.querySelector('.profile-feed');
         statuses.forEach(status => {
-            // Pass this.actions to renderStatus
             feedContainer.appendChild(renderStatus(status, this.state.currentUser, this.actions, this.state.settings));
         });
 
@@ -159,7 +155,6 @@ class App {
     
         const postsContainer = view.querySelector('#profile-posts-tab');
         posts.forEach(post => {
-            // Pass this.actions to renderLemmyPost
             postsContainer.appendChild(renderLemmyPost(post, this.actions, this.state.settings));
         });
     
@@ -195,7 +190,6 @@ class App {
         this.router.navigateTo(this.state.currentView, { forceReload: true });
     }
 
-    // --- Event Listeners ---
     setupEventListeners() {
         document.getElementById('login-form-mastodon').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -203,6 +197,8 @@ class App {
             const accessToken = document.getElementById('access_token').value;
             this.state.instanceUrl = instanceUrl;
             this.state.accessToken = accessToken;
+            localStorage.setItem('feedstadon_instance', instanceUrl);
+            localStorage.setItem('feedstadon_token', accessToken);
             await this.verifyCredentialsAndLoadApp();
         });
 
@@ -215,8 +211,6 @@ class App {
         });
         document.getElementById('compose-textarea').addEventListener('input', updateCharacterCount);
 
-
-        // Timeline navigation
         document.querySelectorAll('.timeline-sub-nav-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.state.currentTimeline = e.target.dataset.timeline;
@@ -224,7 +218,6 @@ class App {
             });
         });
         
-        // Lemmy Sort Selector
         document.getElementById('lemmy-sort-select').addEventListener('change', (e) => {
             this.state.settings.lemmySort = e.target.value;
             this.saveSettings();
@@ -233,7 +226,6 @@ class App {
             }
         });
         
-        // General nav buttons
         document.getElementById('home-btn').addEventListener('click', () => this.router.navigateTo('home'));
         document.getElementById('notifications-btn').addEventListener('click', () => this.router.navigateTo('notifications'));
     }
@@ -244,6 +236,7 @@ class App {
         this.state.instanceUrl = null;
         this.state.accessToken = null;
         this.state.currentUser = null;
+        window.location.hash = '';
         this.router.navigateTo('login');
     }
 }
@@ -270,12 +263,17 @@ class Router {
 
     navigateTo(view, options = {}) {
         const { param = null, forceReload = false } = options;
+        if (!this.app.state.accessToken && view !== 'login') {
+            this.navigateTo('login');
+            return;
+        }
 
         if (!forceReload && this.app.state.currentView === view && this.app.state.currentParam === param) {
             return;
         }
 
         document.querySelectorAll('.app-view').forEach(v => v.style.display = 'none');
+        document.querySelector('.top-nav').style.display = (view === 'login') ? 'none' : 'flex';
         
         const routeHandler = this.routes[view];
         if (routeHandler) {
@@ -292,13 +290,9 @@ class Router {
 
     showLoginView() {
         document.getElementById('login-view').style.display = 'flex';
-        document.querySelector('.top-nav').style.display = 'none';
     }
 
     async showHomeTimeline() {
-        document.querySelector('.top-nav').style.display = 'flex';
-        const timelineView = document.getElementById('timeline-view');
-        timelineView.style.display = 'flex';
         const container = document.getElementById('timeline');
         container.innerHTML = 'Loading timeline...';
         
@@ -381,7 +375,7 @@ class Router {
         }
     }
 
-    showProfile() {
+    showProfile(profileId) {
         if (this.app.state.currentProfile) {
             const { platform, accountId, accountAcct } = this.app.state.currentProfile;
             this.app.actions.showProfilePage(platform, accountId, accountAcct);
