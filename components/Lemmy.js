@@ -1,6 +1,7 @@
 import { ICONS } from './icons.js';
 import { formatTimestamp, timeAgo, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
 import { showToast, renderLoginPrompt, showImageModal } from './ui.js';
+import { apiFetch } from './api.js';
 
 export function renderLemmyCard(post, actions) {
     const filterList = getWordFilter();
