@@ -318,6 +318,12 @@ export function renderCommentNode(commentView, actions) {
         menu.addEventListener('click', (e) => e.stopPropagation());
     }
 
+    const loggedInUsername = localStorage.getItem('lemmy_username');
+    const screenshotButton = commentWrapper.querySelector('[data-action="screenshot"]');
+    if (creator.name !== loggedInUsername) {
+        screenshotButton.style.display = 'none';
+    }
+
     return commentWrapper;
 }
 
