@@ -11,15 +11,14 @@
 <body>
     <nav class="top-nav">
         <div class="nav-left">
-            <div class="dropdown">
-                <button id="main-feed-link" class="nav-button dropdown-toggle">Feed</button>
-                <div class="dropdown-content"></div>
-            </div>
+            <button id="home-btn" class="nav-button">Home</button>
         </div>
         <div class="nav-center"></div>
         <div class="nav-right">
             <button id="compose-btn" class="nav-button icon-button" aria-label="Compose new post"></button>
-            <button id="notifications-btn" class="nav-button icon-button" aria-label="Notifications"><div class="notification-dot"></div></button>
+            <button id="notifications-btn" class="nav-button icon-button" aria-label="Notifications">
+                <div class="notification-dot"></div>
+            </button>
             <button id="logout-btn" class="nav-button" aria-label="Logout">Logout</button>
         </div>
     </nav>
@@ -52,7 +51,22 @@
         </div>
         
         <div id="timeline-view" class="app-view" style="display: none;">
-            <nav class="timeline-sub-nav"></nav>
+            <nav class="timeline-sub-nav">
+                <div class="timeline-sub-nav-tabs">
+                    <button class="timeline-sub-nav-btn" data-timeline="home">Home</button>
+                    <button class="timeline-sub-nav-btn" data-timeline="local">Local</button>
+                    <button class="timeline-sub-nav-btn" data-timeline="federated">Federated</button>
+                    <button class="timeline-sub-nav-btn" data-timeline="lemmy">Lemmy</button>
+                </div>
+                <div id="lemmy-filter-container">
+                    <select id="lemmy-sort-select">
+                        <option value="Hot">Hot</option>
+                        <option value="New">New</option>
+                        <option value="TopDay">Top Day</option>
+                        <option value="TopWeek">Top Week</option>
+                    </select>
+                </div>
+            </nav>
             <div id="timeline" class="status-list"></div>
         </div>
 
