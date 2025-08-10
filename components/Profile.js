@@ -203,8 +203,8 @@ export async function renderProfilePage(state, actions, platform, accountId, use
             </div>
             <div id="lemmy-profile-controls" style="display: none;">
                 <select id="lemmy-content-filter">
-                    <option value="posts">Posts</option>
                     <option value="comments">Comments</option>
+                    <option value="posts">Posts</option>
                 </select>
             </div>
         </div>
@@ -288,8 +288,8 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
 
                 lemmyControls.style.display = 'flex';
-                lemmyFilter.value = 'posts'; // Default to posts
-                renderLemmyFeed('posts');
+                lemmyFilter.value = 'comments'; 
+                renderLemmyFeed('comments');
             } else {
                 feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
             }
@@ -300,12 +300,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         button.addEventListener('click', () => switchTab(button.dataset.tab));
     });
     
-    // Set initial state based on the entry platform
-    if (platform === 'mastodon') {
-        await switchTab('mastodon');
-    } else {
-        await switchTab('lemmy');
-    }
+    await switchTab('lemmy');
 }
 
 export function renderEditProfilePage(state, actions) {
