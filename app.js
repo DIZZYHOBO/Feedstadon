@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentProfileTab: 'mastodon',
         currentTimeline: 'home',
         currentLemmyFeed: null,
-        currentLemmySort: 'New',
+        currentLemmySort: localStorage.getItem('lemmySortType') || 'New',
         currentDiscoverTab: 'lemmy',
         timelineDiv: document.getElementById('timeline'),
         scrollLoader: document.getElementById('scroll-loader'),
@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderMergedPostPage(state, post, actions);
             hideLoadingBar();
         },
-         showLemmyFeed: async (feedType, sortType = 'New') => {
+         showLemmyFeed: async (feedType, sortType = state.currentLemmySort) => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = feedType;
@@ -392,10 +392,20 @@ document.addEventListener('DOMContentLoaded', async () => {
          showHomeTimeline: async () => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
-            state.currentLemmyFeed = null;
-            state.currentTimeline = 'home';
-            switchView('timeline');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess);
+
+            const defaultStartPage = localStorage.getItem('defaultStartPage') || 'lemmy';
+            const defaultFeedType = localStorage.getItem('defaultFeedType') || 'Subscribed';
+            const defaultLemmySort = localStorage.getItem('lemmySortType') || 'Hot';
+
+            if (defaultStartPage === 'lemmy') {
+                actions.showLemmyFeed(defaultFeedType, defaultLemmySort);
+            } else {
+                let timeline = 'home';
+                if (defaultFeedType === 'All') timeline = 'public';
+                if (defaultFeedType === 'Local') timeline = 'public?local=true';
+                actions.showMastodonTimeline(timeline);
+            }
+
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
@@ -766,13 +776,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     if (initialView === 'timeline') {
-        if (state.accessToken) { 
-            actions.showHomeTimeline();
-        } else if (localStorage.getItem('lemmy_jwt')) {
-            actions.showLemmyFeed('Subscribed');
-        } else {
-            actions.showHomeTimeline(); 
-        }
+        actions.showHomeTimeline();
     } else {
         switchView(initialView, false);
     }
