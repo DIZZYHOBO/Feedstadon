@@ -9,16 +9,11 @@
     <meta name="theme-color" content="#1a1a1a">
 </head>
 <body>
-    <nav class="top-nav">
+    <nav class="top-nav" style="display: none;">
         <div class="nav-left">
-            <div class="dropdown">
-                <button id="main-feed-link" class="nav-button dropdown-toggle">Feed</button>
-                <div class="dropdown-content">
-                    </div>
-            </div>
+            <button id="home-btn" class="nav-button">Home</button>
         </div>
-        <div class="nav-center">
-            </div>
+        <div class="nav-center"></div>
         <div class="nav-right">
             <button id="compose-btn" class="nav-button icon-button" aria-label="Compose new post"></button>
             <button id="notifications-btn" class="nav-button icon-button" aria-label="Notifications">
@@ -99,7 +94,6 @@
             <img id="fullscreen-image" src="">
         </div>
     </div>
-    <div id="context-menu"></div>
     
     <script src="./app.js" type="module"></script>
     <script>
