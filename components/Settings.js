@@ -1,4 +1,3 @@
-// dizzyhobo/feedstadon/Feedstadon-6ccd4f649f7f6474a63329d3357b817688251173/components/Settings.js
 import { getWordFilter, saveWordFilter } from './utils.js';
 
 function renderWordFilterList(container) {
@@ -115,7 +114,7 @@ export function renderSettingsPage(state) {
         state.settings.hideNsfw = isChecked;
         localStorage.setItem('hideNsfw', isChecked);
     });
-    
+
     const wordFilterForm = document.getElementById('word-filter-form');
     const wordFilterInput = document.getElementById('word-filter-input');
     const wordFilterListContainer = document.getElementById('word-filter-list');
@@ -135,7 +134,7 @@ export function renderSettingsPage(state) {
     });
 
     renderWordFilterList(wordFilterListContainer);
-    
+
     // New settings logic
     const startPageSelect = document.getElementById('start-page-select');
     const feedTypeSelect = document.getElementById('feed-type-select');
