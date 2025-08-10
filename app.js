@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         accessToken: localStorage.getItem('fediverse-token') || null,
         currentUser: null,
         currentView: null,
-        currentProfileTab: 'mastodon',
+        currentProfileTab: 'lemmy',
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: localStorage.getItem('lemmySortType') || 'New',
@@ -760,7 +760,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     notificationsBtn.addEventListener('click', () => {
-        actions.showNotifications();
+        if (state.currentUser) {
+            actions.showProfilePage('lemmy', state.currentUser.id, state.currentUser.acct);
+        } else if (localStorage.getItem('lemmy_jwt')) {
+            const lemmyUsername = localStorage.getItem('lemmy_username');
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            if (lemmyUsername && lemmyInstance) {
+                const userAcct = `${lemmyUsername}@${lemmyInstance}`;
+                actions.showLemmyProfile(userAcct);
+            } else {
+                showToast("Could not determine Lemmy user profile.");
+            }
+        } else {
+            showToast("Please log in to view your profile.");
+        }
     });
     
     document.getElementById('discover-btn').addEventListener('click', () => {
