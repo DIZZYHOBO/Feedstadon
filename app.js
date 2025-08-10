@@ -4,6 +4,7 @@ import { renderStatus } from './components/Post.js';
 import { renderLemmyPost } from './components/LemmyPost.js';
 import { timeSince } from './components/utils.js';
 import { AppActions } from './actions.js';
+import { ICONS } from './components/icons.js';
 
 class App {
     constructor() {
@@ -27,6 +28,7 @@ class App {
     }
     
     init() {
+        this.setupDynamicContent();
         this.loadSettings();
         const credentials = getPersistedCredentials();
         if (credentials.instanceUrl && credentials.accessToken) {
@@ -37,6 +39,13 @@ class App {
             this.router.navigateTo('login');
         }
         this.setupEventListeners();
+    }
+
+    setupDynamicContent() {
+        document.getElementById('mastodon-login-logo').innerHTML = ICONS.mastodonLogo;
+        document.getElementById('lemmy-login-logo').innerHTML = ICONS.lemmyLogo;
+        document.getElementById('compose-btn').innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.7,5.2a3.1,3.1,0,0,0-4.4,0L4.5,17,3,21l4-1.5L18.8,7.6a3.1,3.1,0,0,0,1.9-2.4Z"/></svg>`;
+        document.getElementById('notifications-btn').insertAdjacentHTML('beforeend', `<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12,22a2,2,0,0,0,2-2H10A2,2,0,0,0,12,22Zm5-4H7V12a5,5,0,0,1,10,0Z"/></svg>`);
     }
 
     async verifyCredentialsAndLoadApp() {
@@ -51,12 +60,12 @@ class App {
         }
     }
 
+    // --- CORRECTED: Only loads settings, doesn't touch the DOM ---
     loadSettings() {
         const savedSettings = localStorage.getItem('feedstadon_settings');
         if (savedSettings) {
             this.state.settings = JSON.parse(savedSettings);
         }
-        document.getElementById('lemmy-sort-select').value = this.state.settings.lemmySort;
     }
 
     saveSettings() {
@@ -202,9 +211,13 @@ class App {
             await this.verifyCredentialsAndLoadApp();
         });
 
+        document.getElementById('login-form-lemmy').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.actions.showToast("Lemmy login coming soon!", "info");
+        });
+
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
         document.getElementById('compose-btn').addEventListener('click', () => this.actions.showModal('compose-modal'));
-        document.querySelector('#compose-modal .close-btn').addEventListener('click', () => this.actions.hideModal('compose-modal'));
         document.getElementById('compose-form').addEventListener('submit', (e) => {
              e.preventDefault();
              this.actions.postStatus({ status: document.getElementById('compose-textarea').value });
@@ -253,12 +266,13 @@ class Router {
             'status': this.showStatusDetail.bind(this),
         };
         window.addEventListener('hashchange', () => this.handleRouteChange());
+        this.handleRouteChange(); // Handle initial route
     }
 
     handleRouteChange() {
         const hash = window.location.hash.substring(1);
         const [view, param] = hash.split('/');
-        this.navigateTo(view || 'home', { param });
+        this.navigateTo(view || 'login', { param });
     }
 
     navigateTo(view, options = {}) {
@@ -293,6 +307,12 @@ class Router {
     }
 
     async showHomeTimeline() {
+        // --- CORRECTED: Set the dropdown value now that the element exists ---
+        const lemmySortSelect = document.getElementById('lemmy-sort-select');
+        if (lemmySortSelect) {
+            lemmySortSelect.value = this.app.state.settings.lemmySort;
+        }
+        
         const container = document.getElementById('timeline');
         container.innerHTML = 'Loading timeline...';
         
