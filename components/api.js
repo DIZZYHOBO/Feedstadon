@@ -1,110 +1,79 @@
-// A generic fetch wrapper with Mastodon and Lemmy authentication logic
-export async function apiFetch(instance, token, endpoint, options = {}, authType = 'mastodon', params = {}) {
-    const url = new URL(`https://${instance}${endpoint}`);
-    
-    // Add query parameters if any
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-
-    options.headers = options.headers || {};
-
-    // Authentication logic
-    if (authType === 'mastodon') {
-        if (token) {
-            options.headers['Authorization'] = `Bearer ${token}`;
-        }
-    } else if (authType === 'lemmy') {
-        const lemmyToken = localStorage.getItem('lemmy_jwt');
-        if (lemmyToken) {
-            options.headers['Authorization'] = `Bearer ${lemmyToken}`;
-            
-            // Add 'auth' to the body for POST/PUT requests
-            if (options.method === 'POST' || options.method === 'PUT') {
-                if (options.body) {
-                    options.body.auth = lemmyToken;
-                } else {
-                    options.body = { auth: lemmyToken };
-                }
-            }
-        }
+/**
+ * A generic fetch wrapper for making API requests. It automatically handles
+ * adding the authorization token for Mastodon requests.
+ *
+ * @param {string} instanceUrl - The base URL of the Mastodon or Lemmy instance.
+ * @param {string|null} token - The user's access token (for Mastodon).
+ * @param {string} endpoint - The API endpoint to call (e.g., '/api/v1/timelines/home').
+ * @param {object} options - Standard Fetch API options (method, body, etc.).
+ * @returns {Promise<object>} - The JSON response from the API.
+ */
+export async function apiFetch(instanceUrl, token, endpoint, options = {}) {
+    const defaultHeaders = {};
+    if (token) {
+        defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
 
     if (options.body && typeof options.body === 'object') {
-        options.headers['Content-Type'] = 'application/json';
         options.body = JSON.stringify(options.body);
+        defaultHeaders['Content-Type'] = 'application/json';
     }
-    
-    try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            let errorBody;
-            try {
-                errorBody = await response.json();
-            } catch (e) {
-                errorBody = { error: 'Could not read error response body.' };
-            }
-            throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorBody)}`);
-        }
-        const data = await response.json();
-        return { data, headers: response.headers };
-    } catch (err) {
-        console.error('API Fetch Error:', err);
-        throw err;
-    }
-}
 
-// Specific wrapper for updating credentials with multipart/form-data
-export async function apiUpdateCredentials(state, formData) {
-    const url = `https://${state.instanceUrl}/api/v1/accounts/update_credentials`;
-    const options = {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${state.accessToken}` },
-        body: formData,
-    };
+    const response = await fetch(`${instanceUrl}${endpoint}`, {
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...options.headers,
+        },
+    });
 
-    const response = await fetch(url, options);
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.error || error.message || 'API request failed');
     }
-    return response.json();
+
+    // For HEAD requests or responses with no content
+    if (response.status === 204) {
+        return;
+    }
+
+    // Extract pagination link from headers for Mastodon
+    const linkHeader = response.headers.get('Link');
+    const nextUrl = linkHeader ? linkHeader.match(/<([^>]+)>; rel="next"/) : null;
+
+    return {
+        data: await response.json(),
+        next: nextUrl ? nextUrl[1] : null,
+    };
 }
 
 
-// Wrapper for uploading media to Mastodon
-export async function apiUploadMedia(state, file) {
-    const url = `https://${state.instanceUrl}/api/v2/media`;
-    const formData = new FormData();
-    formData.append('file', file);
+/**
+ * A specialized fetch wrapper for the Lemmy API. It handles GraphQL-style queries.
+ *
+ * @param {string} instanceUrl - The base URL of the Lemmy instance.
+ * @param {object} graphqlQuery - The GraphQL query to send.
+ * @returns {Promise<object>} - The JSON response from the Lemmy API.
+ */
+export async function lemmyFetch(instanceUrl, graphqlQuery) {
+    const jwt = localStorage.getItem('lemmy_jwt');
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+    if (jwt) {
+        headers['Authorization'] = `Bearer ${jwt}`;
+    }
 
-    const options = {
+    const response = await fetch(`${instanceUrl}/api/v3/post/list`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${state.accessToken}` },
-        body: formData,
-    };
-    
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-}
+        headers: headers,
+        body: JSON.stringify(graphqlQuery)
+    });
 
-// Wrapper for uploading an image to Lemmy's pictrs
-export async function apiUploadLemmyImage(instance, token, file) {
-    const url = `https://${instance}/pictrs/image`;
-    const formData = new FormData();
-    formData.append('images[]', file);
-
-    const options = {
-        method: 'POST',
-        // Pictrs uses a cookie/jwt for auth, which should be handled by the browser's fetch automatically if logged in
-        // but we'll include it in the headers just in case for some setups
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData,
-    };
-    
-    const response = await fetch(url, options);
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || 'Lemmy API request failed');
     }
+
     return response.json();
 }
