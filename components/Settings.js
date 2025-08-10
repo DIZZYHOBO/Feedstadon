@@ -1,3 +1,4 @@
+// dizzyhobo/feedstadon/Feedstadon-6ccd4f649f7f6474a63329d3357b817688251173/components/Settings.js
 import { getWordFilter, saveWordFilter } from './utils.js';
 
 function renderWordFilterList(container) {
@@ -39,6 +40,15 @@ export function renderSettingsPage(state) {
                         <option value="git">Git</option>
                         <option value="voyage">Voyage</option>
                     </select>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h3>Filters</h3>
+                <div class="form-group">
+                    <label for="nsfw-toggle" style="display: flex; align-items: center; justify-content: space-between;">
+                        Hide NSFW Content
+                        <input type="checkbox" id="nsfw-toggle">
+                    </label>
                 </div>
             </div>
             <div class="settings-section">
@@ -96,6 +106,14 @@ export function renderSettingsPage(state) {
         const selectedTheme = e.target.value;
         document.body.dataset.theme = selectedTheme;
         localStorage.setItem('feedstodon-theme', selectedTheme);
+    });
+
+    const nsfwToggle = document.getElementById('nsfw-toggle');
+    nsfwToggle.checked = state.settings.hideNsfw;
+    nsfwToggle.addEventListener('change', () => {
+        const isChecked = nsfwToggle.checked;
+        state.settings.hideNsfw = isChecked;
+        localStorage.setItem('hideNsfw', isChecked);
     });
     
     const wordFilterForm = document.getElementById('word-filter-form');
