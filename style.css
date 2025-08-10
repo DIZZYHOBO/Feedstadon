@@ -205,10 +205,18 @@ a:hover {
 
 .status-content {
     margin-top: 0.5rem;
+    word-wrap: break-word;
 }
 
 .status-content p {
     margin: 0.5rem 0;
+}
+
+.status-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 0.5rem;
 }
 
 .media-attachment img {
@@ -435,7 +443,7 @@ textarea, input, select {
     border-top: 1px solid var(--border-color);
 }
 
-/* --- Profile Page Comment Styling --- */
+/* --- Profile Page Comment Styling (Corrected & Complete) --- */
 .lemmy-comment-on-profile {
     background-color: var(--card-bg); /* Match other cards */
     border: 1px solid var(--border-color);
@@ -450,11 +458,6 @@ textarea, input, select {
     margin-bottom: 0.75rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border-color);
-}
-
-.lemmy-comment-on-profile .comment-context a {
-    color: var(--link-color);
-    font-weight: 500;
 }
 
 .lemmy-comment-on-profile .status-content {
