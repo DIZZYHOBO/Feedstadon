@@ -66,32 +66,15 @@ function renderLemmyComment(commentView, state, actions) {
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
     const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
 
-    // Pass both the comment ID and the post ID to the toggle function
+    // The only ID needed to fetch replies is the comment's own ID.
     viewRepliesBtn.addEventListener('click', () => {
-        toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions);
+        toggleLemmyReplies(commentView.comment.id, repliesContainer, state, actions);
     });
 
     return commentDiv;
 }
 
-// Helper function to recursively find a comment in the nested reply tree
-function findCommentView(targetId, commentViews) {
-    for (const view of commentViews) {
-        if (view.comment.id === targetId) {
-            return view;
-        }
-        // Check if there are replies and recurse
-        if (view.replies && view.replies.length > 0) {
-            const found = findCommentView(targetId, view.replies);
-            if (found) {
-                return found;
-            }
-        }
-    }
-    return null;
-}
-
-async function toggleLemmyReplies(commentId, postId, container, state, actions) {
+async function toggleLemmyReplies(commentId, container, state, actions) {
     const isVisible = container.style.display === 'block';
     if (isVisible) {
         container.style.display = 'none';
@@ -108,28 +91,22 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions) 
     }
 
     try {
-        // 1. Fetch the entire post, which includes the full comment tree.
-        const postResponse = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${postId}`, { method: 'GET' }, 'lemmy');
+        // --- The Correct Root-Cause Fix ---
+        // 1. Use the correct '/api/v3/comment' endpoint to get the comment and its replies.
+        //    'max_depth' is crucial to ask the server to include the reply tree.
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment?id=${commentId}&max_depth=8`, { method: 'GET' }, 'lemmy');
         
-        // 2. Defensively check that the comments array exists before using it.
-        const allComments = postResponse?.data?.comments;
-        if (!Array.isArray(allComments)) {
-            console.error("Invalid comment data received from post API:", postResponse.data);
-            container.innerHTML = 'Failed to parse comment thread.';
-            return;
-        }
-
-        // 3. Find the specific comment the user clicked on within the full tree.
-        const targetCommentView = findCommentView(commentId, allComments);
-        const replies = targetCommentView ? targetCommentView.replies : [];
+        // 2. The replies are in the 'replies' array of the response.
+        const replies = response?.data?.replies;
         
         container.innerHTML = '';
 
-        // 4. Render the replies from the now-complete data.
+        // 3. Render the replies if they exist.
         if (Array.isArray(replies) && replies.length > 0) {
-            replies.forEach(replyView => {
-                if (replyView) { 
-                    container.appendChild(renderLemmyComment(replyView, state, actions));
+            replies.forEach(reply => {
+                // The items in the 'replies' array are full CommentView objects
+                if (reply.comment_view) {
+                    container.appendChild(renderLemmyComment(reply.comment_view, state, actions));
                 }
             });
         } else {
