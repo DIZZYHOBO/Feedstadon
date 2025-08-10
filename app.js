@@ -115,6 +115,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         scrollLoader.innerHTML = ICONS.refresh;
     }
 
+    const navBar = document.getElementById('nav-bar');
+    if (navBar) {
+        navBar.querySelector('[data-view="timeline-view"]').innerHTML = ICONS.home;
+        navBar.querySelector('[data-view="lemmy-timeline-view"]').innerHTML = ICONS.lemmy;
+        navBar.querySelector('[data-view="notifications-view"]').innerHTML = ICONS.notifications + '<span id="notification-badge" class="badge" style="display:none;"></span>';
+        navBar.querySelector('[data-view="discover-view"]').innerHTML = ICONS.discover;
+        navBar.querySelector('[data-view="conversations-view"]').innerHTML = ICONS.messages;
+        navBar.querySelector('[data-view="settings-view"]').innerHTML = ICONS.settings;
+    }
+
 
     const state = {
         history: [],
