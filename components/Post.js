@@ -1,6 +1,5 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
-import { renderLemmyPostPage } from './Lemmy.js';
 
 function renderActionButtons(post, currentUser, actions, settings) {
     if (!currentUser) return '';
