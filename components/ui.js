@@ -25,7 +25,6 @@ export function showImageModal(src) {
 
 export function showToast(message, type = 'info', duration = 3000) {
     const container = document.body;
-    // Remove any existing toasts to prevent overlap
     const existingToast = document.querySelector('.toast');
     if (existingToast) {
         existingToast.remove();
@@ -37,12 +36,10 @@ export function showToast(message, type = 'info', duration = 3000) {
 
     container.appendChild(toast);
 
-    // Animate in
     setTimeout(() => {
         toast.classList.add('show');
     }, 10);
 
-    // Animate out and remove
     setTimeout(() => {
         toast.classList.remove('show');
         toast.addEventListener('transitionend', () => toast.remove());
@@ -57,10 +54,6 @@ export function updateCharacterCount() {
     counter.textContent = maxLength - currentLength;
 }
 
-/**
- * NEW: Renders a prompt for the user to log into their Lemmy account.
- * This is called when an action requires Lemmy credentials that are missing.
- */
 export function renderLoginPrompt() {
-    showToast('Please add your Lemmy account in Settings to vote or comment.', 'warning', 5000);
+    showToast('Please add your Lemmy account in Settings to interact.', 'warning', 5000);
 }
