@@ -321,8 +321,13 @@ export async function renderLemmyPostPage(state, post, actions) {
     container.innerHTML = '';
 
     try {
+        const postId = post.post?.id || post.id;
+        if (!postId) {
+            throw new Error("Post ID not found in the provided object.");
+        }
+
         const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${post.post.id}`, {}, 'lemmy');
+        const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${postId}`, {}, 'lemmy');
         const postView = data.post_view;
 
         container.innerHTML = ''; // Clear loading message
