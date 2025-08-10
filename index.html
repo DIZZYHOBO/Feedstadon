@@ -13,20 +13,13 @@
         <div class="nav-left">
             <div class="dropdown">
                 <button id="main-feed-link" class="nav-button dropdown-toggle">Feed</button>
-                <div class="dropdown-content">
-                    </div>
+                <div class="dropdown-content"></div>
             </div>
         </div>
-        <div class="nav-center">
-            </div>
+        <div class="nav-center"></div>
         <div class="nav-right">
-            <button id="compose-btn" class="nav-button icon-button" aria-label="Compose new post">
-                <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.7,5.2a3.1,3.1,0,0,0-4.4,0L4.5,17,3,21l4-1.5L18.8,7.6a3.1,3.1,0,0,0,1.9-2.4Z"/></svg>
-            </button>
-            <button id="notifications-btn" class="nav-button icon-button" aria-label="Notifications">
-                <div class="notification-dot"></div>
-                <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12,22a2,2,0,0,0,2-2H10A2,2,0,0,0,12,22Zm5-4H7V12a5,5,0,0,1,10,0Z"/></svg>
-            </button>
+            <button id="compose-btn" class="nav-button icon-button" aria-label="Compose new post"></button>
+            <button id="notifications-btn" class="nav-button icon-button" aria-label="Notifications"><div class="notification-dot"></div></button>
             <button id="logout-btn" class="nav-button" aria-label="Logout">Logout</button>
         </div>
     </nav>
@@ -38,16 +31,16 @@
              <div class="login-card">
                 <div class="login-forms-container">
                     <div class="login-form-section">
-                        <h2>Connect to Mastodon</h2>
+                        <div id="mastodon-login-logo" class="login-logo"></div>
                         <form id="login-form-mastodon">
-                            <input type="url" id="instance_url" placeholder="Mastodon Instance URL (e.g., https://mastodon.social)" required>
+                            <input type="url" id="instance_url" placeholder="Mastodon Instance URL" required>
                             <input type="password" id="access_token" placeholder="Access Token" required>
                             <button type="submit" class="connect-btn">Connect</button>
                         </form>
                     </div>
                     <div class="vertical-divider"></div>
                     <div class="login-form-section">
-                        <h2>Connect to Lemmy</h2>
+                        <div id="lemmy-login-logo" class="login-logo"></div>
                         <form id="login-form-lemmy">
                             <input type="text" id="lemmy_username" placeholder="Lemmy Username" required>
                             <input type="password" id="lemmy_password" placeholder="Lemmy Password" required>
@@ -59,62 +52,25 @@
         </div>
         
         <div id="timeline-view" class="app-view" style="display: none;">
-            <nav class="timeline-sub-nav">
-                <div class="timeline-sub-nav-tabs">
-                    <button class="timeline-sub-nav-btn" data-timeline="home">Home</button>
-                    <button class="timeline-sub-nav-btn" data-timeline="local">Local</button>
-                    <button class="timeline-sub-nav-btn" data-timeline="federated">Federated</button>
-                    <button class="timeline-sub-nav-btn" data-timeline="lemmy">Lemmy</button>
-                </div>
-                <div id="lemmy-filter-container">
-                    <select id="lemmy-sort-select">
-                        <option value="Hot">Hot</option>
-                        <option value="New">New</option>
-                        <option value="TopDay">Top Day</option>
-                        <option value="TopWeek">Top Week</option>
-                    </select>
-                </div>
-            </nav>
+            <nav class="timeline-sub-nav"></nav>
             <div id="timeline" class="status-list"></div>
         </div>
 
-        <div id="notifications-view" class="app-view" style="display: none;">
-            <div id="notifications-list"></div>
-        </div>
-
+        <div id="notifications-view" class="app-view" style="display: none;"><div id="notifications-list"></div></div>
         <div id="profile-page-view" class="app-view" style="display: none;"></div>
         <div id="status-detail-view" class="app-view" style="display: none;"></div>
         <div id="edit-profile-view" class="app-view" style="display: none;"></div>
     </div>
     
-    <div id="compose-modal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="close-btn">&times;</button>
-            <h3>New Post</h3>
-            <form id="compose-form">
-                <textarea id="compose-textarea" maxlength="500" placeholder="What's on your mind?"></textarea>
-                <div id="char-counter">500</div>
-                <div class="modal-actions">
-                    <button type="submit">Post</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="image-modal" class="modal-overlay">
-        <div class="image-modal-content">
-            <img id="fullscreen-image" src="">
-        </div>
-    </div>
+    <div id="compose-modal" class="modal-overlay"></div>
+    <div id="image-modal" class="modal-overlay"></div>
+    <div id="context-menu"></div>
     
     <script src="./app.js" type="module"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, err => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
+                navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registered'), err => console.log('SW registration failed: ', err));
             });
         }
     </script>
