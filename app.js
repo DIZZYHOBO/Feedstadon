@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         conversations: [],
         lemmyInstances: ['lemmy.world', 'lemmy.ml', 'sh.itjust.works', 'leminal.space'],
         settings: {
-            hideNsfw: false,
+            hideNsfw: localStorage.getItem('hideNsfw') === null ? true : localStorage.getItem('hideNsfw') === 'true',
         },
         actions: {}
     };
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterContainer = document.createElement('div');
             filterContainer.id = 'lemmy-filter-container';
             filterContainer.innerHTML = `
-                 <select id="lemmy-sort-select">
+                <select id="lemmy-sort-select">
                     <option value="New">New</option>
                     <option value="Active">Active</option>
                     <option value="Hot">Hot</option>
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
         },
         showLemmyProfile: (userAcct) => {
-             actions.showProfilePage('lemmy', null, userAcct);
+            actions.showProfilePage('lemmy', null, userAcct);
         },
         showEditProfile: () => {
             switchView('editProfile');
@@ -336,13 +336,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderNotificationsPage(state, actions);
             hideLoadingBar();
         },
-         showDiscoverPage: async () => {
+        showDiscoverPage: async () => {
             showLoadingBar();
             switchView('discover');
             await renderDiscoverPage(state, actions);
             hideLoadingBar();
         },
-         showScreenshotPage: async (commentView, postView) => {
+        showScreenshotPage: async (commentView, postView) => {
             showLoadingBar();
             switchView('screenshot');
             await renderScreenshotPage(state, commentView, postView, actions);
@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderMergedPostPage(state, post, actions);
             hideLoadingBar();
         },
-         showLemmyFeed: async (feedType, sortType = state.currentLemmySort) => {
+        showLemmyFeed: async (feedType, sortType = state.currentLemmySort) => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = feedType;
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-         showHomeTimeline: async () => {
+        showHomeTimeline: async () => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
 
@@ -437,7 +437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const threadContainer = container.querySelector('.conversation-thread');
                 if (context.descendants) {
                     context.descendants.forEach(reply => {
-                        threadContainer.appendChild(renderStatus(reply, state.currentUser, actions, state.settings));
+                        threadContainer.appendChild(renderStatus(reply, state, actions, true));
                     });
                 }
                 
@@ -586,7 +586,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 'lemmy');
             return response.data;
         },
-         lemmyFollowCommunity: async (communityId, follow = true) => {
+        lemmyFollowCommunity: async (communityId, follow = true) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
                 await apiFetch(lemmyInstance, null, '/api/v3/community/follow', {
@@ -611,7 +611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
-                     actions.showHomeTimeline();
+                    actions.showHomeTimeline();
                 }
             } catch (err) {
                 showToast('Failed to block community.');
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
-                     actions.showHomeTimeline();
+                    actions.showHomeTimeline();
                 }
             } catch (err) {
                 showToast('Failed to block user.');
