@@ -198,13 +198,13 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 </div>
             </div>
             <div class="profile-tabs">
-                <button class="tab-button" data-tab="mastodon">Mastodon</button>
                 <button class="tab-button" data-tab="lemmy">Lemmy</button>
+                <button class="tab-button" data-tab="mastodon">Mastodon</button>
             </div>
             <div id="lemmy-profile-controls" style="display: none;">
                 <select id="lemmy-content-filter">
-                    <option value="comments">Comments</option>
                     <option value="posts">Posts</option>
+                    <option value="comments">Comments</option>
                 </select>
             </div>
         </div>
@@ -288,8 +288,8 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
 
                 lemmyControls.style.display = 'flex';
-                lemmyFilter.value = 'comments'; // Default to comments
-                renderLemmyFeed('comments');
+                lemmyFilter.value = 'posts'; // Default to posts
+                renderLemmyFeed('posts');
             } else {
                 feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
             }
@@ -301,10 +301,10 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     });
     
     // Set initial state based on the entry platform
-    if (platform === 'lemmy') {
-        await switchTab('lemmy');
-    } else {
+    if (platform === 'mastodon') {
         await switchTab('mastodon');
+    } else {
+        await switchTab('lemmy');
     }
 }
 
