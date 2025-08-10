@@ -108,21 +108,27 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions) 
     }
 
     try {
-        // --- The Root Cause Fix ---
         // 1. Fetch the entire post, which includes the full comment tree.
         const postResponse = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${postId}`, { method: 'GET' }, 'lemmy');
-        const allComments = postResponse.data.comments;
+        
+        // 2. Defensively check that the comments array exists before using it.
+        const allComments = postResponse?.data?.comments;
+        if (!Array.isArray(allComments)) {
+            console.error("Invalid comment data received from post API:", postResponse.data);
+            container.innerHTML = 'Failed to parse comment thread.';
+            return;
+        }
 
-        // 2. Find the specific comment the user clicked on within the full tree.
+        // 3. Find the specific comment the user clicked on within the full tree.
         const targetCommentView = findCommentView(commentId, allComments);
         const replies = targetCommentView ? targetCommentView.replies : [];
         
         container.innerHTML = '';
 
-        // 3. Render the replies from the now-complete data.
+        // 4. Render the replies from the now-complete data.
         if (Array.isArray(replies) && replies.length > 0) {
             replies.forEach(replyView => {
-                if (replyView) { // The reply itself is a CommentView
+                if (replyView) { 
                     container.appendChild(renderLemmyComment(replyView, state, actions));
                 }
             });
