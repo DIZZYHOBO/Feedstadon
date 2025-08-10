@@ -211,6 +211,13 @@ a:hover {
     margin: 0.5rem 0;
 }
 
+.media-attachment img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
 .status-footer {
     display: flex;
     justify-content: space-around;
@@ -430,7 +437,7 @@ textarea, input, select {
 
 /* --- Profile Page Comment Styling --- */
 .lemmy-comment-on-profile {
-    background-color: var(--secondary-bg);
+    background-color: var(--card-bg); /* Match other cards */
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1rem;
@@ -440,10 +447,9 @@ textarea, input, select {
 .lemmy-comment-on-profile .comment-context {
     font-size: 0.9rem;
     color: var(--secondary-text);
-    background-color: var(--tertiary-bg);
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
     margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .lemmy-comment-on-profile .comment-context a {
@@ -452,20 +458,38 @@ textarea, input, select {
 }
 
 .lemmy-comment-on-profile .status-content {
-    padding-left: 0.5rem; /* Align with context box */
+    padding: 0;
+    margin: 0;
 }
 
 .lemmy-comment-on-profile .status-footer {
     justify-content: flex-start;
     gap: 1.5rem;
-    padding-left: 0.5rem;
-    border-top: none;
+    border-top: 1px solid var(--border-color);
     padding-top: 0.75rem;
+    margin-top: 1rem;
 }
 
 .lemmy-replies-container {
     border-left: 2px solid var(--accent-color);
     padding-left: 1rem;
     margin-top: 1rem;
-    margin-left: 0.5rem;
+}
+
+/* Fix for broken link styles in specific contexts */
+.lemmy-comment-on-profile .comment-context a,
+.lemmy-card-header .lemmy-community-link,
+.lemmy-card-header .lemmy-user-link {
+    color: var(--link-color) !important;
+    text-decoration: none !important;
+}
+
+.lemmy-card-header .lemmy-user-link {
+    color: var(--secondary-text) !important;
+}
+
+.lemmy-comment-on-profile .comment-context a:hover,
+.lemmy-card-header .lemmy-community-link:hover,
+.lemmy-card-header .lemmy-user-link:hover {
+    text-decoration: underline !important;
 }
