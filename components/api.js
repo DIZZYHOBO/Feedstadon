@@ -1,5 +1,15 @@
 export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}) {
-    const url = new URL(endpoint.startsWith('/api/v3/') ? `https://lemmy.world${endpoint}` : `${instanceUrl}${endpoint}`);
+    if (!instanceUrl || !accessToken) {
+        console.error("API call without credentials. Endpoint:", endpoint);
+        // Silently fail if no credentials, as it's likely during login flow.
+        return Promise.reject("Missing credentials");
+    }
+
+    const isLemmyApi = endpoint.startsWith('/api/v3/');
+    // TODO: Make the Lemmy instance configurable
+    const lemmyInstance = 'https://lemmy.world';
+    
+    const url = new URL(isLemmyApi ? `${lemmyInstance}${endpoint}` : `${instanceUrl}${endpoint}`);
 
     const headers = {
         'Authorization': `Bearer ${accessToken}`
@@ -15,17 +25,26 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {})
         ...options
     };
     
-    // The endpointOverride is a special case for Mastodon's un-favorite/un-reblog actions
     const finalUrl = options.endpointOverride ? new URL(`${instanceUrl}${options.endpointOverride}`) : url;
 
-    const response = await fetch(finalUrl, config);
-    const data = await response.json();
+    try {
+        const response = await fetch(finalUrl, config);
+        
+        if (response.status === 204 || response.status === 201) { // No Content or Created
+            return { response, data: {} };
+        }
 
-    if (!response.ok) {
-        throw new Error(data.error || 'API request failed');
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'API request failed');
+        }
+
+        return { response, data };
+    } catch (error) {
+        console.error(`API Fetch Error to ${finalUrl.toString()}:`, error);
+        throw error;
     }
-
-    return { response, data };
 }
 
 export function getPersistedCredentials() {
