@@ -40,7 +40,7 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
 
     const reblogHeader = status.reblog ? `
         <div class="reblog-header">
-            ${ICONS.reblog} ${status.account.display_name || status.account.username} boosted
+            ${ICONS.reblog || ''} ${status.account.display_name || status.account.username || status.account.acct} boosted
         </div>
     ` : '';
 
@@ -93,7 +93,7 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
                 </a>
                 <div class="status-header-side">
                     <a href="${originalStatus.url}" target="_blank" class="timestamp" title="${formatTimestamp(originalStatus.created_at)}">${timeAgo(originalStatus.created_at)}</a>
-                    <div class="mastodon-icon-indicator">${ICONS.mastodon}</div>
+                    <div class="mastodon-icon-indicator">${ICONS.mastodon || ''}</div>
                 </div>
             </div>
             <div class="status-content">
@@ -103,11 +103,11 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
             ${mediaHTML}
         </div>
         <div class="status-footer">
-            <button class="status-action" data-action="reply" title="Reply">${ICONS.reply}</button>
-            <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="boost" title="Boost">${ICONS.reblog} ${originalStatus.reblogs_count}</button>
-            <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">${ICONS.favourite} ${originalStatus.favourites_count}</button>
-            <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">${ICONS.bookmark}</button>
-            <button class="status-action" data-action="more" title="More">${ICONS.more}</button>
+            <button class="status-action" data-action="reply" title="Reply">${ICONS.reply || ''}</button>
+            <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="boost" title="Boost">${ICONS.reblog || ''} ${originalStatus.reblogs_count || 0}</button>
+            <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">${ICONS.favourite || ''} ${originalStatus.favourites_count || 0}</button>
+            <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">${ICONS.bookmark || ''}</button>
+            <button class="status-action" data-action="more" title="More">${ICONS.more || ''}</button>
         </div>
         <div class="reply-container" style="display: none;"></div>
     `;
