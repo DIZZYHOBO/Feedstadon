@@ -1,84 +1,160 @@
 import { ICONS } from './icons.js';
 import { apiFetch } from './api.js';
-import { renderStatus } from './Post.js';
-import { renderLemmyCard } from './Lemmy.js';
 import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
 
-// --- Helper Functions to Fetch Profile Data ---
-async function getMastodonProfile(state, accountId) {
-    try {
-        const [account, statuses] = await Promise.all([
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`),
-            apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/statuses`)
-        ]);
-        return { account: account.data, statuses: statuses.data };
-    } catch (error) {
-        console.error("Failed to fetch Mastodon profile:", error);
-        return null;
-    }
-}
+function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
+    const commentWrapper = document.createElement('div');
+    commentWrapper.className = 'comment-wrapper';
+    commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
 
-async function getLemmyProfile(userAcct) {
-    const lemmyInstance = localStorage.getItem('lemmy_instance');
-    if (!lemmyInstance) return null;
-    try {
-        const [name] = userAcct.split('@');
-        // Fetch user details, posts, and comments in parallel
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50`, {}, 'lemmy');
-        return response.data;
-    } catch (error) {
-        console.error(`Failed to fetch Lemmy profile for ${userAcct}:`, error);
-        return null;
-    }
-}
-
-function renderLemmyComment(commentView, state, actions) {
     const commentDiv = document.createElement('div');
-    commentDiv.className = 'status lemmy-comment-on-profile';
+    commentDiv.className = 'status lemmy-comment';
+    commentDiv.dataset.commentId = commentView.comment.id;
+
     const converter = new showdown.Converter();
     const htmlContent = converter.makeHtml(commentView.comment.content);
 
+    const isOP = postAuthorId && commentView.creator.id === postAuthorId;
+    const isCreator = state.lemmyUsername && state.lemmyUsername === commentView.creator.name;
+
     commentDiv.innerHTML = `
-        <div class="status-body-content">
-            <div class="comment-context">
-                <span>Commented on:</span>
-                <a href="#" class="post-title">${commentView.post.name}</a>
-                <span>in</span>
-                <a href="#" class="community-link">${commentView.community.name}</a>
+        <div class="status-avatar">
+            <img src="${commentView.creator.avatar || 'images/logo.png'}" alt="${commentView.creator.name}'s avatar" class="avatar">
+        </div>
+        <div class="status-body">
+            <div class="status-header">
+                <span class="display-name">${commentView.creator.display_name || commentView.creator.name}</span>
+                ${isOP ? '<span class="op-badge">OP</span>' : ''}
+                <span class="acct">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+                <span class="time-ago">· ${timeAgo(commentView.comment.published)}</span>
             </div>
             <div class="status-content">${htmlContent}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
+                     <button class="status-action lemmy-vote-btn" data-action="upvote" title="Upvote">${ICONS.lemmyUpvote}</button>
                     <span class="lemmy-score">${commentView.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote" title="Downvote">${ICONS.lemmyDownvote}</button>
                 </div>
-                <button class="status-action view-replies-btn">
-                    ${ICONS.comments}
-                    <span class="reply-count">${commentView.counts.child_count}</span>
-                </button>
+                <button class="status-action reply-btn" title="Reply">${ICONS.comments}</button>
+                <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
             </div>
             <div class="lemmy-replies-container" style="display: none;"></div>
+            <div class="lemmy-reply-box-container" style="display: none;"></div>
         </div>
     `;
 
-    commentDiv.addEventListener('dblclick', () => {
-        actions.showLemmyPostDetail(commentView.post);
+    const upvoteBtn = commentDiv.querySelector('.lemmy-vote-btn[data-action="upvote"]');
+    const downvoteBtn = commentDiv.querySelector('.lemmy-vote-btn[data-action="downvote"]');
+    if (commentView.my_vote === 1) upvoteBtn.classList.add('active');
+    if (commentView.my_vote === -1) downvoteBtn.classList.add('active');
+
+    upvoteBtn.addEventListener('click', () => actions.lemmyCommentVote(commentView.comment.id, 1, commentDiv));
+    downvoteBtn.addEventListener('click', () => actions.lemmyCommentVote(commentView.comment.id, -1, commentDiv));
+
+    const replyBtn = commentDiv.querySelector('.reply-btn');
+    const replyBoxContainer = commentDiv.querySelector('.lemmy-reply-box-container');
+    replyBtn.addEventListener('click', () => {
+        toggleReplyBox(replyBoxContainer, commentView.post.id, commentView.comment.id, actions);
     });
 
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
-    const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
+    if (commentView.counts.child_count > 0) {
+        const viewRepliesBtn = document.createElement('button');
+        viewRepliesBtn.className = 'view-replies-btn';
+        viewRepliesBtn.textContent = `View ${commentView.counts.child_count} replies`;
+        commentDiv.querySelector('.status-footer').insertAdjacentElement('afterend', viewRepliesBtn);
+        viewRepliesBtn.addEventListener('click', () => toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId));
+    }
 
-    // Pass both the comment ID and the post ID to the toggle function
-    viewRepliesBtn.addEventListener('click', () => {
-        toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions);
+    const moreOptionsBtn = commentDiv.querySelector('.more-options-btn');
+    moreOptionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menuItems = [
+            { label: 'Share Comment', action: () => {
+                 navigator.clipboard.writeText(commentView.comment.ap_id);
+                 showToast('Comment URL copied to clipboard!');
+            }},
+            { label: 'Take Screenshot', action: () => actions.showScreenshotPage(commentView, null) }
+        ];
+
+        if (isCreator) {
+            menuItems.push({
+                label: 'Edit Comment',
+                action: () => showEditUI(commentDiv, commentView, actions)
+            });
+            menuItems.push({
+                label: 'Delete Comment',
+                action: () => {
+                    // This should be replaced with a custom modal in the future
+                    if (window.confirm('Are you sure you want to delete this comment?')) {
+                        actions.lemmyDeleteComment(commentView.comment.id);
+                    }
+                }
+            });
+        }
+
+        if (state.lemmyUsername) {
+             menuItems.push({
+                label: `Block @${commentView.creator.name}`,
+                action: () => actions.lemmyBlockUser(commentView.creator.id, true)
+            });
+        }
+
+        actions.showContextMenu(e, menuItems);
     });
 
-    return commentDiv;
+    commentWrapper.appendChild(commentDiv);
+    return commentWrapper;
 }
 
-async function toggleLemmyReplies(commentId, postId, container, state, actions) {
+
+function showEditUI(commentDiv, commentView, actions) {
+    const contentDiv = commentDiv.querySelector('.status-content');
+    const originalContent = commentView.comment.content;
+    const originalHtml = contentDiv.innerHTML;
+
+    contentDiv.innerHTML = `
+        <div class="edit-comment-container">
+            <textarea class="edit-comment-textarea">${originalContent}</textarea>
+            <div class="edit-comment-actions">
+                <button class="button-secondary cancel-edit-btn">Cancel</button>
+                <button class="button-primary save-edit-btn">Save</button>
+            </div>
+        </div>
+    `;
+
+    const textarea = contentDiv.querySelector('.edit-comment-textarea');
+    const saveBtn = contentDiv.querySelector('.save-edit-btn');
+    const cancelBtn = contentDiv.querySelector('.cancel-edit-btn');
+
+    textarea.focus();
+
+    saveBtn.addEventListener('click', async () => {
+        const newContent = textarea.value.trim();
+        if (newContent && newContent !== originalContent) {
+            try {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+                await actions.lemmyEditComment(commentView.comment.id, newContent);
+                // The action in app.js handles the UI update on success.
+            } catch (error) {
+                console.error("Failed to save comment:", error);
+                contentDiv.innerHTML = originalHtml; // Restore original content on failure
+                showToast("Failed to save comment. Please try again.");
+            }
+        } else {
+            contentDiv.innerHTML = originalHtml; // Restore if no changes were made
+        }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        contentDiv.innerHTML = originalHtml;
+    });
+}
+
+
+async function toggleLemmyReplies(commentId, postId, container, state, actions, postAuthorId) {
     const isVisible = container.style.display === 'block';
     if (isVisible) {
         container.style.display = 'none';
@@ -95,220 +171,148 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions) 
     }
 
     try {
-        // --- The Definitive Root-Cause Fix ---
-        // 1. Fetch ALL comments for the entire post using the post_id.
-        //    This gives us the complete, raw data for the whole conversation.
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
-        
-        const allCommentsFlat = response?.data?.comments;
-
-        if (!Array.isArray(allCommentsFlat)) {
-            console.error("Could not retrieve a valid comment list for the post.", response.data);
-            container.innerHTML = 'Failed to load conversation.';
-            return;
-        }
-
-        // 2. Build the comment tree on the client-side to ensure accuracy.
-        const commentsById = new Map(allCommentsFlat.map(c => [c.comment.id, c]));
-        const commentTree = [];
-
-        allCommentsFlat.forEach(c => {
-            // Initialize a replies array for every comment
-            c.replies = []; 
-            if (c.comment.path.split('.').length > 1) {
-                const parentId = c.comment.path.split('.').slice(-2, -1)[0];
-                const parent = commentsById.get(parseInt(parentId));
-                if (parent) {
-                    // This is a nested array, but it's for our own tree structure
-                    if (!parent.replies) {
-                        parent.replies = [];
-                    }
-                    parent.replies.push(c);
-                } else {
-                    // It's a top-level comment
-                    commentTree.push(c);
-                }
-            } else {
-                // It's a top-level comment
-                commentTree.push(c);
-            }
-        });
-
-        // 3. Find the specific comment the user clicked on within our newly built tree.
-        const targetCommentView = commentsById.get(commentId);
-        const replies = targetCommentView ? targetCommentView.replies : [];
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
+        const replies = response?.data?.comments;
         
         container.innerHTML = '';
-
-        // 4. Render the replies, which are now guaranteed to be correct.
-        if (replies.length > 0) {
+        if (replies && replies.length > 0) {
             replies.forEach(replyView => {
-                if (replyView) {
-                    container.appendChild(renderLemmyComment(replyView, state, actions));
-                }
+                container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId));
             });
         } else {
             container.innerHTML = 'No replies found.';
         }
     } catch (error) {
-        console.error('Failed to fetch and process replies:', error);
+        console.error('Failed to fetch replies:', error);
         container.innerHTML = 'Failed to load replies.';
     }
 }
 
-export async function loadMoreLemmyProfile(state, actions) {
-    if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
-    state.isLoadingMore = true;
-    state.scrollLoader.style.display = 'block';
-
-    state.lemmyProfilePage++;
-    const lemmyProfile = await getLemmyProfile(state.currentProfileUserAcct);
-    const content = await fetchLemmyProfileContent(state, actions, lemmyProfile.person_view.person.id, state.lemmyProfilePage);
-    
-    const profileFeed = document.getElementById('lemmy-profile-feed');
-
-    if (content.comments.length > 0) {
-        content.comments.forEach(comment => {
-            profileFeed.appendChild(renderLemmyComment(comment, state, actions));
-        });
-    } else {
-        state.lemmyProfileHasMore = false;
+function toggleReplyBox(container, postId, parentCommentId, actions) {
+    const isVisible = container.style.display === 'block';
+    if (isVisible) {
+        container.style.display = 'none';
+        return;
     }
 
-    state.isLoadingMore = false;
-    state.scrollLoader.style.display = 'none';
-}
-
-
-// --- Main Page Rendering ---
-export async function renderProfilePage(state, actions, platform, accountId, userAcct) {
-    const view = document.getElementById('profile-page-view');
-    view.innerHTML = `
-        <div class="profile-page-header">
-            <div class="profile-card">
-                <div class="profile-header">
-                    <img class="banner" src="" alt="Profile banner">
-                    <img class="avatar" src="" alt="Profile avatar">
-                </div>
-                <div class="profile-info">
-                    <h2 class="display-name">Loading...</h2>
-                    <p class="acct"></p>
-                    <div class="note"></div>
-                    <div class="stats"></div>
-                </div>
-            </div>
-            <div class="profile-tabs">
-                <button class="tab-button" data-tab="lemmy">Lemmy</button>
-                <button class="tab-button" data-tab="mastodon">Mastodon</button>
-            </div>
-            <div id="lemmy-profile-controls" style="display: none;">
-                <select id="lemmy-content-filter">
-                    <option value="comments">Comments</option>
-                    <option value="posts">Posts</option>
-                </select>
-            </div>
+    container.style.display = 'block';
+    container.innerHTML = `
+        <textarea class="lemmy-reply-textarea" placeholder="Write a reply..."></textarea>
+        <div class="reply-box-actions">
+            <button class="button-secondary cancel-reply-btn">Cancel</button>
+            <button class="button-primary send-reply-btn">Reply</button>
         </div>
-        <div class="profile-feed-content"></div>
     `;
 
-    const bannerImg = view.querySelector('.banner');
-    const avatarImg = view.querySelector('.avatar');
-    const displayNameEl = view.querySelector('.display-name');
-    const acctEl = view.querySelector('.acct');
-    const noteEl = view.querySelector('.note');
-    const statsEl = view.querySelector('.stats');
-    const feedContainer = view.querySelector('.profile-feed-content');
-    const lemmyControls = view.querySelector('#lemmy-profile-controls');
-    const lemmyFilter = view.querySelector('#lemmy-content-filter');
+    const textarea = container.querySelector('.lemmy-reply-textarea');
+    const sendBtn = container.querySelector('.send-reply-btn');
+    const cancelBtn = container.querySelector('.cancel-reply-btn');
 
-    let currentLemmyProfile = null;
+    sendBtn.addEventListener('click', async () => {
+        const content = textarea.value.trim();
+        if (!content) return;
 
-    const renderLemmyFeed = (filter) => {
-        feedContainer.innerHTML = '';
-        if (!currentLemmyProfile) return;
-
-        if (filter === 'comments') {
-            if (currentLemmyProfile.comments && currentLemmyProfile.comments.length > 0) {
-                currentLemmyProfile.comments.forEach(comment => {
-                    feedContainer.appendChild(renderLemmyComment(comment, state, actions));
-                });
-            } else {
-                feedContainer.innerHTML = '<p class="empty-feed-message">No comments to display.</p>';
-            }
-        } else if (filter === 'posts') {
-            if (currentLemmyProfile.posts && currentLemmyProfile.posts.length > 0) {
-                currentLemmyProfile.posts.forEach(post => {
-                    feedContainer.appendChild(renderLemmyCard(post, actions));
-                });
-            } else {
-                feedContainer.innerHTML = '<p class="empty-feed-message">No posts to display.</p>';
-            }
+        try {
+            const newComment = await actions.lemmyPostComment({
+                content: content,
+                post_id: postId,
+                parent_id: parentCommentId
+            });
+            showToast('Reply posted!');
+            // Optionally, render the new comment immediately
+            container.style.display = 'none';
+        } catch (error) {
+            showToast('Failed to post reply.');
         }
-    };
-
-    lemmyFilter.addEventListener('change', (e) => {
-        renderLemmyFeed(e.target.value);
     });
 
-    const switchTab = async (targetTab) => {
-        view.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        view.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
-        feedContainer.innerHTML = 'Loading feed...';
-        lemmyControls.style.display = 'none';
-
-        if (targetTab === 'mastodon') {
-            const mastodonProfile = await getMastodonProfile(state, accountId);
-            if (mastodonProfile) {
-                const account = mastodonProfile.account;
-                bannerImg.src = account.header_static || '';
-                avatarImg.src = account.avatar_static || '';
-                displayNameEl.textContent = account.display_name;
-                acctEl.textContent = `@${account.acct}`;
-                noteEl.innerHTML = account.note;
-                statsEl.innerHTML = `<span><strong>${account.followers_count}</strong> Followers</span><span><strong>${account.following_count}</strong> Following</span>`;
-
-                feedContainer.innerHTML = '';
-                mastodonProfile.statuses.forEach(status => {
-                    feedContainer.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
-                });
-            } else {
-                feedContainer.innerHTML = '<p>Could not load Mastodon feed.</p>';
-            }
-        } else if (targetTab === 'lemmy') {
-            currentLemmyProfile = await getLemmyProfile(userAcct);
-            if (currentLemmyProfile) {
-                const person = currentLemmyProfile.person_view.person;
-                const counts = currentLemmyProfile.person_view.counts;
-                
-                bannerImg.src = person.banner || '';
-                avatarImg.src = person.avatar || '';
-                displayNameEl.textContent = person.display_name || person.name;
-                acctEl.textContent = `@${person.name}@${new URL(person.actor_id).hostname}`;
-                noteEl.innerHTML = new showdown.Converter().makeHtml(person.bio || '');
-                statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
-
-                lemmyControls.style.display = 'flex';
-                lemmyFilter.value = 'comments'; 
-                renderLemmyFeed('comments');
-            } else {
-                feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
-            }
-        }
-    };
-
-    view.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => switchTab(button.dataset.tab));
+    cancelBtn.addEventListener('click', () => {
+        container.style.display = 'none';
     });
+}
+
+export async function renderLemmyPostPage(state, postView, actions) {
+    const view = document.getElementById('lemmy-post-view');
+    view.innerHTML = `
+        <div class="lemmy-post-full"></div>
+        <div class="lemmy-comments-section">
+            <h3>Comments</h3>
+            <div class="lemmy-post-reply-box">
+                 <textarea class="lemmy-main-reply-textarea" placeholder="Write a comment..."></textarea>
+                 <button class="button-primary send-main-reply-btn">Comment</button>
+            </div>
+            <div class="lemmy-comments-container">Loading comments...</div>
+        </div>
+    `;
+
+    const postContainer = view.querySelector('.lemmy-post-full');
+    const commentsContainer = view.querySelector('.lemmy-comments-container');
     
-    await switchTab('lemmy');
-}
-
-export function renderEditProfilePage(state, actions) {
-    const view = document.getElementById('edit-profile-view');
-    view.innerHTML = `
-        <div class="edit-profile-container">
-            <h2>Edit Profile</h2>
-            <p>This feature is not yet implemented.</p>
+    // Render the main post card
+    const postCard = document.createElement('div');
+    postCard.innerHTML = `
+        <div class="status lemmy-post" data-id="${postView.post.id}">
+            <div class="status-header">
+                <img src="${postView.creator.avatar || 'images/logo.png'}" class="avatar" alt="avatar">
+                <div>
+                    <a href="#" class="community-link">${postView.community.name}</a>
+                    <span>posted by</span>
+                    <a href="#" class="user-link">${postView.creator.name}</a>
+                    <span class="time-ago">${timeAgo(postView.post.published)}</span>
+                </div>
+            </div>
+            <h3>${postView.post.name}</h3>
+            ${postView.post.body ? `<div class="lemmy-post-body">${new showdown.Converter().makeHtml(postView.post.body)}</div>` : ''}
+            ${postView.post.url ? `<a href="${postView.post.url}" target="_blank" rel="noopener noreferrer" class="post-link-preview">${postView.post.url}</a>` : ''}
+             <div class="status-footer">
+                <div class="lemmy-vote-cluster">
+                    <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${postView.counts.score}</span>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
+                </div>
+                <button class="status-action">
+                    ${ICONS.comments}
+                    <span>${postView.counts.comments}</span>
+                </button>
+                <button class="status-action lemmy-save-btn">${ICONS.bookmark}</button>
+            </div>
         </div>
     `;
+    postContainer.appendChild(postCard);
+
+    // Fetch and render comments
+    const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postView.post.id}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
+        const comments = response?.data?.comments;
+        commentsContainer.innerHTML = '';
+        if (comments && comments.length > 0) {
+            comments.forEach(commentView => {
+                commentsContainer.appendChild(renderLemmyComment(commentView, state, actions, postView.creator.id));
+            });
+        } else {
+            commentsContainer.innerHTML = 'No comments yet.';
+        }
+    } catch (error) {
+        commentsContainer.innerHTML = 'Failed to load comments.';
+    }
+
+    // Main reply box logic
+    const mainReplyTextarea = view.querySelector('.lemmy-main-reply-textarea');
+    const mainReplyBtn = view.querySelector('.send-main-reply-btn');
+    mainReplyBtn.addEventListener('click', async () => {
+        const content = mainReplyTextarea.value.trim();
+        if (!content) return;
+        try {
+            await actions.lemmyPostComment({
+                content: content,
+                post_id: postView.post.id
+            });
+            showToast('Comment posted! Refreshing...');
+            // Refresh comments after posting
+            actions.showLemmyPostDetail(postView);
+        } catch (error) {
+            showToast('Failed to post comment.');
+        }
+    });
 }
