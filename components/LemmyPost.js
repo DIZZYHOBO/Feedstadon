@@ -151,13 +151,14 @@ function showEditUI(commentDiv, commentView, actions) {
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
                 await actions.lemmyEditComment(commentView.comment.id, newContent);
+                // The action in app.js handles the UI update on success.
             } catch (error) {
                 console.error("Failed to save comment:", error);
-                contentDiv.innerHTML = originalHtml;
+                contentDiv.innerHTML = originalHtml; // Restore original content on failure
                 showToast("Failed to save comment. Please try again.");
             }
         } else {
-            contentDiv.innerHTML = originalHtml;
+            contentDiv.innerHTML = originalHtml; // Restore if no changes were made
         }
     });
 
