@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 import { timeAgo } from './utils.js';
-import { renderLemmyPost } from './LemmyPost.js';
+import { renderLemmyCard } from './Lemmy.js';
 
 export async function renderLemmyCommunityPage(communityName, state, actions) {
     const view = document.getElementById('lemmy-community-view');
@@ -13,7 +13,6 @@ export async function renderLemmyCommunityPage(communityName, state, actions) {
         return;
     }
 
-    // Fix: Add a check to ensure communityName is provided before making an API call.
     if (!communityName) {
         console.error("No community name provided to renderLemmyCommunityPage");
         view.innerHTML = '<div class="error">Error: No community specified.</div>';
@@ -65,15 +64,8 @@ export async function renderLemmyCommunityPage(communityName, state, actions) {
         const postsContainer = view.querySelector('.lemmy-community-posts-container');
         if (posts && posts.length > 0) {
             posts.forEach(postView => {
-                // Note: renderLemmyPost from LemmyPost.js might need adjustments if it's not a standalone component
-                // For now, assuming it can be rendered here.
-                const postElement = document.createElement('div');
-                postElement.innerHTML = `<!-- Post ${postView.post.id} would be rendered here -->`;
-                // A more robust solution would be to have a generic post renderer.
-                // This is a placeholder to avoid breaking the page.
-                // postsContainer.appendChild(renderLemmyPost(postView, state, actions));
-                 postsContainer.appendChild(postElement);
-
+                // Use renderLemmyCard to display each post in the community feed
+                postsContainer.appendChild(renderLemmyCard(postView, actions));
             });
         } else {
             postsContainer.innerHTML = '<div class="empty">No posts in this community yet.</div>';
