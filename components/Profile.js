@@ -241,8 +241,10 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                     <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/php.png';">
                     <label class="edit-icon avatar-edit-icon" style="display:none;">${ICONS.edit}<input type="file" class="edit-image-input" data-type="avatar" accept="image/*"></label>
                 </div>
+                <div class="profile-actions">
+                     <button class="button edit-profile-btn" style="display:none;">Edit Profile</button>
+                </div>
                 <div class="profile-info">
-                    <a href="#" class="edit-profile-link" style="display:none;">Edit Profile</a>
                     <h2 class="display-name">Loading...</h2>
                     <p class="acct"></p>
                     <div class="note"></div>
@@ -370,7 +372,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
 }
 
 function setupLemmyProfileEditing(person, actions) {
-    const editProfileLink = document.querySelector('.edit-profile-link');
+    const editProfileBtn = document.querySelector('.edit-profile-btn');
     const profileCard = document.querySelector('.profile-card');
     const noteEl = document.querySelector('.note');
     const bioEditContainer = document.querySelector('.bio-edit-container');
@@ -383,15 +385,15 @@ function setupLemmyProfileEditing(person, actions) {
     let newAvatarFile = null;
     let newBannerFile = null;
 
-    editProfileLink.style.display = 'block';
+    editProfileBtn.style.display = 'block';
 
-    editProfileLink.addEventListener('click', (e) => {
+    editProfileBtn.addEventListener('click', (e) => {
         e.preventDefault();
         profileCard.classList.toggle('edit-mode');
         const isEditing = profileCard.classList.contains('edit-mode');
 
         if (isEditing) {
-            editProfileLink.textContent = 'Finish Editing';
+            editProfileBtn.textContent = 'Finish Editing';
             noteEl.style.display = 'none';
             bioEditContainer.style.display = 'block';
             bioTextarea.value = person.bio || '';
@@ -399,7 +401,7 @@ function setupLemmyProfileEditing(person, actions) {
             avatarEditIcon.style.display = 'flex';
         } else {
             // This is a soft cancel, just hide the controls
-            editProfileLink.textContent = 'Edit Profile';
+            editProfileBtn.textContent = 'Edit Profile';
             noteEl.style.display = 'block';
             bioEditContainer.style.display = 'none';
             bannerEditIcon.style.display = 'none';
@@ -409,7 +411,7 @@ function setupLemmyProfileEditing(person, actions) {
 
     cancelBioBtn.addEventListener('click', () => {
         profileCard.classList.remove('edit-mode');
-        editProfileLink.textContent = 'Edit Profile';
+        editProfileBtn.textContent = 'Edit Profile';
         noteEl.style.display = 'block';
         bioEditContainer.style.display = 'none';
         bannerEditIcon.style.display = 'none';
