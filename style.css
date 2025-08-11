@@ -1685,3 +1685,39 @@ button:disabled {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* --- Comment Card Width & Action Bar Fixes --- */
+.lemmy-comment {
+    padding: 0;
+    gap: 0;
+}
+
+.lemmy-comment .status-avatar {
+    padding: 1rem 0.5rem 1rem 1rem;
+    flex-shrink: 0;
+}
+
+.lemmy-comment .status-body {
+    flex-grow: 1;
+    padding: 1rem 1rem 0 0.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.lemmy-comment .status-content {
+    margin-bottom: 1rem;
+    padding-top: 0.5rem;
+}
+
+.lemmy-comment .status-footer {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border-color);
+    font-weight: 500;
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+}
