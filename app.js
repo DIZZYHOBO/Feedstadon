@@ -6,6 +6,7 @@ import { renderStatusDetail, renderStatus } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderLemmyCommentThreadPage } from './components/LemmyCommentThread.js';
 import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
 import { renderMergedPostPage } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
@@ -142,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusDetail: document.getElementById('status-detail-view'),
         lemmyPost: document.getElementById('lemmy-post-view'),
         lemmyCommunity: document.getElementById('lemmy-community-view'),
+        lemmyCommentThread: document.getElementById('lemmy-comment-thread-view'),
     };
     
     // --- Global Context Menu ---
@@ -353,6 +355,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             showLoadingBar();
             switchView('lemmyPost');
             await renderLemmyPostPage(state, post, actions);
+            hideLoadingBar();
+        },
+        showLemmyCommentThread: async (postId, commentId) => {
+            showLoadingBar();
+            switchView('lemmyCommentThread');
+            await renderLemmyCommentThreadPage(state, actions, postId, commentId);
             hideLoadingBar();
         },
         showLemmyCommunity: async (communityName) => {
