@@ -240,19 +240,6 @@ button:disabled {
     opacity: 1;
 }
 
-#refresh-spinner {
-    position: fixed;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2002;
-    display: none;
-}
-#refresh-spinner .icon {
-    width: 32px;
-    height: 32px;
-    color: var(--accent-color);
-}
 
 .nav-left, .nav-right {
     display: flex;
