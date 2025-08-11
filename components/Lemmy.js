@@ -149,124 +149,153 @@ export function renderLemmyCard(post, actions) {
     return card;
 }
 
-async function fetchLemmyPosts(state, actions, container) {
-    container.innerHTML = '<div class="loading">Loading posts...</div>';
-    const lemmyInstance = localStorage.getItem('lemmy_instance');
-    if (!lemmyInstance) {
-        container.innerHTML = '<div class="error">Lemmy instance not set.</div>';
+export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySuccess) {
+    if (!localStorage.getItem('lemmy_auth_token') && !loadMore && state.currentLemmyFeed === 'Subscribed') {
+        renderLoginPrompt(state.timelineDiv, 'lemmy', onLemmySuccess);
         return;
     }
 
-    try {
-        const { data } = await apiFetch(lemmyInstance, state.lemmyAuthToken, '/api/v3/post/list', {
-            params: {
-                type_: state.lemmyFeedType,
-                sort: state.lemmySortType,
-                limit: 50,
-                page: state.lemmyPage
-            }
-        }, 'lemmy');
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+
+    if (loadMore) {
+        state.scrollLoader.classList.add('loading');
+    } else {
+        window.scrollTo(0, 0);
+        document.getElementById('refresh-btn').classList.add('loading');
         
-        container.innerHTML = '';
-        if (data.posts && data.posts.length > 0) {
-            data.posts.forEach(postView => {
-                container.appendChild(renderLemmyCard(postView, actions));
-            });
-        } else {
-            container.innerHTML = '<div class="empty">No posts found.</div>';
-        }
-    } catch (error) {
-        console.error("Failed to fetch Lemmy posts:", error);
-        container.innerHTML = '<div class="error">Failed to load posts.</div>';
-    }
-}
+        // Set default feed and sort types if not already set
+        state.currentLemmyFeed = state.currentLemmyFeed || 'Subscribed';
+        state.currentLemmySort = state.currentLemmySort || 'Hot';
+        state.lemmyPage = 1;
 
-
-export function renderLemmyPage(state, actions) {
-    const view = document.getElementById('lemmy-view');
-
-    // Set default feed and sort types if not already set
-    state.lemmyFeedType = state.lemmyFeedType || 'Subscribed';
-    state.lemmySortType = state.lemmySortType || 'Hot';
-    state.lemmyPage = state.lemmyPage || 1;
-
-    view.innerHTML = `
-        <div class="lemmy-header">
-            <div class="lemmy-feed-tabs">
-                <button class="tab-button" data-feed="Subscribed">Subscribed</button>
-                <button class="tab-button" data-feed="All">All</button>
-                <button class="tab-button" data-feed="Local">Local</button>
-            </div>
-            <div class="custom-dropdown">
-                <button class="dropdown-toggle">
-                    <span class="dropdown-label">Hot</span>
-                    <span class="icon">${ICONS.lemmyDownvote}</span>
-                </button>
-                <div class="dropdown-menu" style="display: none;">
-                    <a href="#" data-value="Hot">Hot</a>
-                    <a href="#" data-value="New">New</a>
-                    <a href="#" data-value="TopDay">Top Day</a>
-                    <a href="#" data-value="TopWeek">Top Week</a>
-                    <a href="#" data-value="TopMonth">Top Month</a>
-                    <a href="#" data-value="TopYear">Top Year</a>
-                    <a href="#" data-value="TopAll">Top All</a>
+        state.timelineDiv.innerHTML = `
+            <div class="lemmy-header">
+                <div class="lemmy-feed-tabs">
+                    <button class="tab-button" data-feed="Subscribed">Subscribed</button>
+                    <button class="tab-button" data-feed="All">All</button>
+                    <button class="tab-button" data-feed="Local">Local</button>
+                </div>
+                <div class="custom-dropdown">
+                    <button class="dropdown-toggle">
+                        <span class="dropdown-label">Hot</span>
+                        <span class="icon">${ICONS.lemmyDownvote}</span>
+                    </button>
+                    <div class="dropdown-menu" style="display: none;">
+                        <a href="#" data-value="Hot">Hot</a>
+                        <a href="#" data-value="New">New</a>
+                        <a href="#" data-value="TopDay">Top Day</a>
+                        <a href="#" data-value="TopWeek">Top Week</a>
+                        <a href="#" data-value="TopMonth">Top Month</a>
+                        <a href="#" data-value="TopYear">Top Year</a>
+                        <a href="#" data-value="TopAll">Top All</a>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div id="lemmy-feed-container" class="feed-container"></div>
-    `;
+            <div id="lemmy-feed-container" class="feed-container"></div>
+        `;
 
-    const feedContainer = view.querySelector('#lemmy-feed-container');
-    const feedTabs = view.querySelectorAll('.lemmy-feed-tabs .tab-button');
-    const dropdown = view.querySelector('.custom-dropdown');
-    const toggleBtn = dropdown.querySelector('.dropdown-toggle');
-    const dropdownLabel = dropdown.querySelector('.dropdown-label');
-    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+        const feedContainer = state.timelineDiv.querySelector('#lemmy-feed-container');
+        const feedTabs = state.timelineDiv.querySelectorAll('.lemmy-feed-tabs .tab-button');
+        const dropdown = state.timelineDiv.querySelector('.custom-dropdown');
+        const toggleBtn = dropdown.querySelector('.dropdown-toggle');
+        const dropdownLabel = dropdown.querySelector('.dropdown-label');
+        const dropdownMenu = dropdown.querySelector('.dropdown-menu');
 
-    function updateActiveUI() {
-        // Update active tab
-        feedTabs.forEach(t => t.classList.remove('active'));
-        view.querySelector(`.tab-button[data-feed="${state.lemmyFeedType}"]`).classList.add('active');
+        function updateActiveUI() {
+            feedTabs.forEach(t => t.classList.remove('active'));
+            state.timelineDiv.querySelector(`.tab-button[data-feed="${state.currentLemmyFeed}"]`).classList.add('active');
+            const currentSortOption = dropdownMenu.querySelector(`a[data-value="${state.currentLemmySort}"]`);
+            dropdownLabel.textContent = currentSortOption ? currentSortOption.textContent : state.currentLemmySort;
+        }
+
+        feedTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                state.currentLemmyFeed = tab.dataset.feed;
+                updateActiveUI();
+                fetchLemmyFeed(state, actions, false); // Trigger a reload
+            });
+        });
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target)) {
+                dropdownMenu.style.display = 'none';
+            }
+        });
+
+        dropdownMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                state.currentLemmySort = e.target.dataset.value;
+                dropdownMenu.style.display = 'none';
+                updateActiveUI();
+                fetchLemmyFeed(state, actions, false); // Trigger a reload
+            });
+        });
         
-        // Update dropdown label
-        const currentSortOption = dropdownMenu.querySelector(`a[data-value="${state.lemmySortType}"]`);
-        dropdownLabel.textContent = currentSortOption ? currentSortOption.textContent : state.lemmySortType;
+        updateActiveUI();
     }
 
-    // Event listeners for feed tabs
-    feedTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            state.lemmyFeedType = tab.dataset.feed;
-            state.lemmyPage = 1; // Reset page number
-            updateActiveUI();
-            fetchLemmyPosts(state, actions, feedContainer);
-        });
-    });
+    const feedContainer = state.timelineDiv.querySelector('#lemmy-feed-container');
 
-    // Event listeners for sort dropdown
-    toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
-    });
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        if (!lemmyInstance) throw new Error("Lemmy instance not found. Please log in.");
 
-    document.addEventListener('click', (e) => {
-        if (!dropdown.contains(e.target)) {
-            dropdownMenu.style.display = 'none';
+        const params = {
+            sort: state.currentLemmySort,
+            page: loadMore ? state.lemmyPage + 1 : 1,
+            limit: 20,
+            type_: state.currentLemmyFeed
+        };
+        
+        const response = await apiFetch(lemmyInstance, state.lemmyAuthToken, '/api/v3/post/list', { params }, 'lemmy');
+        const posts = response.data.posts;
+
+        if (!loadMore) {
+            feedContainer.innerHTML = '';
         }
-    });
 
-    dropdownMenu.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            state.lemmySortType = e.target.dataset.value;
-            state.lemmyPage = 1; // Reset page number
-            dropdownMenu.style.display = 'none';
-            updateActiveUI();
-            fetchLemmyPosts(state, actions, feedContainer);
-        });
-    });
+        if (posts && posts.length > 0) {
+            if (loadMore) {
+                state.lemmyPage++;
+            } else {
+                state.lemmyPage = 1;
+            }
+            posts.forEach(post_view => {
+                feedContainer.appendChild(renderLemmyCard(post_view, actions));
+            });
+            state.lemmyHasMore = true;
+        } else {
+            if (!loadMore) {
+                feedContainer.innerHTML = '<p>Nothing to see here.</p>';
+            }
+            state.lemmyHasMore = false;
+        }
 
-    // Initial load
-    updateActiveUI();
-    fetchLemmyPosts(state, actions, feedContainer);
+        if (!state.lemmyHasMore) {
+            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+        } else {
+            state.scrollLoader.innerHTML = '';
+        }
+
+    } catch (error) {
+        console.error('Failed to fetch Lemmy feed:', error);
+        showToast(`Could not load Lemmy feed: ${error.message}`);
+        if (!loadMore) {
+            feedContainer.innerHTML = `<p>Error loading feed.</p>`;
+        }
+    } finally {
+        state.isLoadingMore = false;
+        if (loadMore) {
+            state.scrollLoader.classList.remove('loading');
+        } else {
+            document.getElementById('refresh-btn').classList.remove('loading');
+        }
+    }
 }
