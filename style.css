@@ -1721,3 +1721,32 @@ button:disabled {
     font-size: 0.9em;
     color: var(--font-color-muted);
 }
+
+/* --- Lemmy Post Header Layout --- */
+.status-header .user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: nowrap;
+}
+
+.user-info .user-info-line1 {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: var(--font-color);
+}
+
+.user-info .user-info-line2 {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+}
+
+.user-info .user-info-line2 .user-link {
+    color: var(--font-color-muted);
+    text-decoration: none;
+}
+.user-info .user-info-line2 .user-link:hover {
+    text-decoration: underline;
+}
