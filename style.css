@@ -500,6 +500,7 @@ button:disabled {
     line-height: 1.6;
     font-size: 1.05em;
     overflow-wrap: break-word;
+    word-break: break-word; /* Ensures long strings wrap */
 }
 .status-content a, .profile-info .note a {
     color: var(--link-color);
@@ -1525,7 +1526,12 @@ button:disabled {
     height: auto;
     border-radius: var(--border-radius);
     margin-top: 1rem;
-    background-color: var(--card-color);
+}
+
+.lemmy-card-image {
+    background-color: white;
+    padding: 1px;
+    border-radius: var(--border-radius);
 }
 
 .broken-image-fallback {
