@@ -1613,7 +1613,7 @@ button:disabled {
     display: flex;
     justify-content: flex-end;
     padding: 15px 15px 0 15px;
-    height: 0; /* This div is only for positioning the button */
+    height: 10; /* This div is only for positioning the button */
     position: relative;
     top: -50px; /* Adjust to position correctly below the banner */
     margin-bottom: -35px; /* Pull the content below it up */
