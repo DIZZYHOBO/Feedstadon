@@ -40,11 +40,11 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
 
     const reblogHeader = status.reblog ? `
         <div class="reblog-header">
-            ${ICONS.reblog} ${status.account.display_name} boosted
+            ${ICONS.reblog} ${status.account.display_name || status.account.username} boosted
         </div>
     ` : '';
 
-    let contentHTML = originalStatus.content; // FIX: Initialize with status content
+    let contentHTML = originalStatus.content;
     let mediaHTML = '';
 
     if (originalStatus.media_attachments.length > 0) {
@@ -73,7 +73,6 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
         `;
     }
 
-    // Poll rendering
     if (originalStatus.poll) {
         contentHTML = renderPoll(originalStatus.poll, actions, originalStatus.id);
     }
@@ -105,9 +104,9 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
         </div>
         <div class="status-footer">
             <button class="status-action" data-action="reply" title="Reply">${ICONS.reply}</button>
-            <button class="status-action ${originalStatus.reblogged ? 'active' : ''}" data-action="boost" title="Boost">${ICONS.reblog} ${originalStatus.reblogs_count}</button>
-            <button class="status-action ${originalStatus.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">${ICONS.favourite} ${originalStatus.favourites_count}</button>
-            <button class="status-action ${originalStatus.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">${ICONS.bookmark}</button>
+            <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="boost" title="Boost">${ICONS.reblog} ${originalStatus.reblogs_count}</button>
+            <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">${ICONS.favourite} ${originalStatus.favourites_count}</button>
+            <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">${ICONS.bookmark}</button>
             <button class="status-action" data-action="more" title="More">${ICONS.more}</button>
         </div>
         <div class="reply-container" style="display: none;"></div>
