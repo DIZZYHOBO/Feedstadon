@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         instanceUrl: localStorage.getItem('fediverse-instance') || null,
         accessToken: localStorage.getItem('fediverse-token') || null,
         currentUser: null,
+        lemmyUsername: localStorage.getItem('lemmy_username') || null,
         currentView: null,
         currentProfileTab: 'lemmy',
         currentTimeline: 'home',
@@ -696,6 +697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (err) {
                 showToast('Failed to edit comment.');
+                throw err;
             }
         },
         showContextMenu: showContextMenu
@@ -732,6 +734,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('lemmy_jwt', response.data.jwt);
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
+                state.lemmyUsername = username;
                 showToast('Lemmy login successful!');
                 updateNotificationBell();
                 actions.showLemmyFeed('Subscribed');
