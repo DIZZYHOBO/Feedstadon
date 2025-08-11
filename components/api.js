@@ -81,11 +81,11 @@ export async function lemmyImageUpload(file) {
     formData.append('images[]', file);
 
     try {
-        // Pictrs uses cookie-based auth, so we need to send credentials
+        // The CORS issue prevents us from sending credentials to this endpoint from a different origin.
+        // We must upload anonymously.
         const response = await fetch(`https://${lemmyInstance}/pictrs/image`, {
             method: 'POST',
             body: formData,
-            credentials: 'include', // Important: This sends the auth cookie
         });
 
         if (!response.ok) {
