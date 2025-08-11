@@ -1,110 +1,87 @@
-// A generic fetch wrapper with Mastodon and Lemmy authentication logic
-export async function apiFetch(instance, token, endpoint, options = {}, authType = 'mastodon', params = {}) {
-    const url = new URL(`https://${instance}${endpoint}`);
-    
-    // Add query parameters if any
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+import { showToast } from './ui.js';
 
-    options.headers = options.headers || {};
+export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}, platform = 'mastodon') {
+    const defaultHeaders = {
+        'Content-Type': 'application/json',
+    };
 
-    // Authentication logic
-    if (authType === 'mastodon') {
-        if (token) {
-            options.headers['Authorization'] = `Bearer ${token}`;
+    if (platform === 'mastodon') {
+        if (accessToken) {
+            defaultHeaders['Authorization'] = `Bearer ${accessToken}`;
         }
-    } else if (authType === 'lemmy') {
-        const lemmyToken = localStorage.getItem('lemmy_jwt');
-        if (lemmyToken) {
-            options.headers['Authorization'] = `Bearer ${lemmyToken}`;
-            
-            // Add 'auth' to the body for POST/PUT requests
-            if (options.method === 'POST' || options.method === 'PUT') {
-                if (options.body) {
-                    options.body.auth = lemmyToken;
-                } else {
-                    options.body = { auth: lemmyToken };
-                }
+    }
+    
+    const config = {
+        method: options.method || 'GET',
+        headers: { ...defaultHeaders, ...options.headers },
+    };
+
+    if (options.body) {
+        config.body = JSON.stringify(options.body);
+    }
+    
+    if (platform === 'lemmy') {
+        const jwt = localStorage.getItem('lemmy_jwt');
+        if (jwt) {
+             // Lemmy uses a different auth method for some requests
+            if (config.body) {
+                const body = JSON.parse(config.body);
+                body.auth = jwt;
+                config.body = JSON.stringify(body);
             }
         }
     }
 
-    if (options.body && typeof options.body === 'object') {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(options.body);
-    }
-    
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(`https://${instanceUrl}${endpoint}`, config);
+
         if (!response.ok) {
-            let errorBody;
-            try {
-                errorBody = await response.json();
-            } catch (e) {
-                errorBody = { error: 'Could not read error response body.' };
-            }
-            throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorBody)}`);
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message}`);
         }
+
         const data = await response.json();
         return { data, headers: response.headers };
-    } catch (err) {
-        console.error('API Fetch Error:', err);
-        throw err;
+
+    } catch (error) {
+        console.error('API Fetch Error:', error);
+        showToast(`API Request Failed: ${error.message}`);
+        throw error;
     }
 }
 
-// Specific wrapper for updating credentials with multipart/form-data
-export async function apiUpdateCredentials(state, formData) {
-    const url = `https://${state.instanceUrl}/api/v1/accounts/update_credentials`;
-    const options = {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${state.accessToken}` },
-        body: formData,
-    };
-
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+export async function lemmyImageUpload(file) {
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) {
+        showToast("Lemmy instance not found.");
+        return null;
     }
-    return response.json();
-}
 
-
-// Wrapper for uploading media to Mastodon
-export async function apiUploadMedia(state, file) {
-    const url = `https://${state.instanceUrl}/api/v2/media`;
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const options = {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${state.accessToken}` },
-        body: formData,
-    };
-    
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-}
-
-// Wrapper for uploading an image to Lemmy's pictrs
-export async function apiUploadLemmyImage(instance, token, file) {
-    const url = `https://${instance}/pictrs/image`;
     const formData = new FormData();
     formData.append('images[]', file);
 
-    const options = {
-        method: 'POST',
-        // Pictrs uses a cookie/jwt for auth, which should be handled by the browser's fetch automatically if logged in
-        // but we'll include it in the headers just in case for some setups
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData,
-    };
-    
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+        const response = await fetch(`https://${lemmyInstance}/pictrs/image`, {
+            method: 'POST',
+            body: formData,
+            // Note: Don't set Content-Type header, the browser does it for FormData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.msg || 'Image upload failed');
+        }
+
+        const result = await response.json();
+        if (result.files && result.files.length > 0) {
+            // The URL is constructed using the instance and the returned file key
+            return `https://${lemmyInstance}/pictrs/image/${result.files[0].file}`;
+        } else {
+            throw new Error('Image upload returned no files.');
+        }
+    } catch (error) {
+        console.error('Lemmy Image Upload Error:', error);
+        showToast(`Image Upload Failed: ${error.message}`);
+        return null;
     }
-    return response.json();
 }
