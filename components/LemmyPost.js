@@ -3,7 +3,7 @@ import { apiFetch } from './api.js';
 import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
 
-function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
+export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
     const commentWrapper = document.createElement('div');
     commentWrapper.className = 'comment-wrapper';
     commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
