@@ -1,97 +1,154 @@
 import { ICONS } from './icons.js';
-import { timeAgo } from './utils.js';
-// **FIX:** Importing the newly exported showImageModal function.
+import { timeAgo, formatTimestamp, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
 import { showImageModal } from './ui.js';
 
-function renderMedia(attachments) {
-    if (!attachments || attachments.length === 0) return '';
-    return attachments.map(att => {
-        if (att.type === 'image') {
-            return `<div class="status-media"><img src="${att.url}" alt="${att.description || 'Status media'}" loading="lazy"></div>`;
-        } else if (att.type === 'video') {
-            return `<div class="status-media"><video src="${att.url}" controls loop playsinline></video></div>`;
-        } else if (att.type === 'gifv') {
-            return `<div class="status-media"><video src="${att.url}" autoplay muted loop playsinline></video></div>`;
-        }
-        return '';
-    }).join('');
+function renderPoll(poll, actions, statusId) {
+    const options = poll.options.map((option, index) => `
+        <div class="poll-option">
+            <button class="button-secondary" data-action="vote-poll" data-index="${index}">${option.title}</button>
+            <span class="poll-votes">${option.votes_count || 0} votes</span>
+        </div>
+    `).join('');
+
+    return `
+        <div class="poll-container" data-status-id="${statusId}">
+            ${options}
+            <div class="poll-footer">
+                <span>${poll.votes_count} votes · ${poll.expired ? 'Final results' : 'Poll ends soon'}</span>
+            </div>
+        </div>
+    `;
 }
 
-export function renderStatus(post, currentUser, actions, settings) {
-    const card = document.createElement('div');
-    card.className = 'status';
-    card.dataset.id = post.id;
-    card.dataset.acct = post.account.acct;
+export function renderStatus(status, currentUser, actions, settings, isReply = false) {
+    if (!status || !status.account) {
+        return document.createDocumentFragment();
+    }
 
-    const htmlContent = post.content;
+    const filterList = getWordFilter();
+    const combinedContent = `${status.content} ${status.spoiler_text}`;
+    if (shouldFilterContent(combinedContent, filterList)) {
+        return document.createDocumentFragment();
+    }
+
+    const originalStatus = status.reblog || status;
+    const isSelf = currentUser && currentUser.id === originalStatus.account.id;
+
+    const card = document.createElement('div');
+    card.className = `status ${isReply ? 'reply-status' : ''}`;
+    card.dataset.id = originalStatus.id;
+
+    const reblogHeader = status.reblog ? `
+        <div class="reblog-header">
+            ${ICONS.reblog} ${status.account.display_name} boosted
+        </div>
+    ` : '';
+
+    let contentHTML = originalStatus.content; // FIX: Initialize with status content
+    let mediaHTML = '';
+
+    if (originalStatus.media_attachments.length > 0) {
+        mediaHTML = '<div class="status-media">';
+        originalStatus.media_attachments.forEach(media => {
+            if (media.type === 'image') {
+                mediaHTML += `<img src="${media.preview_url}" alt="${media.description || 'Status media'}" loading="lazy" data-full-url="${media.url}">`;
+            } else if (media.type === 'video' || media.type === 'gifv') {
+                mediaHTML += `<video src="${media.url}" controls ${media.type === 'gifv' ? 'autoplay loop muted' : ''}></video>`;
+            }
+        });
+        mediaHTML += '</div>';
+    } else if (originalStatus.card) {
+        const cardData = originalStatus.card;
+        mediaHTML = `
+            <a href="${cardData.url}" target="_blank" rel="noopener noreferrer" class="status-card-link">
+                <div class="status-card">
+                    ${cardData.image ? `<img src="${cardData.image}" alt="${cardData.title}" class="status-card-image">` : ''}
+                    <div class="status-card-info">
+                        <span class="status-card-title">${cardData.title}</span>
+                        <span class="status-card-description">${cardData.description}</span>
+                        <span class="status-card-url">${cardData.provider_name || new URL(cardData.url).hostname}</span>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    // Poll rendering
+    if (originalStatus.poll) {
+        contentHTML = renderPoll(originalStatus.poll, actions, originalStatus.id);
+    }
+
+    const spoilerText = originalStatus.spoiler_text;
+    const hasSpoiler = spoilerText && spoilerText.trim().length > 0;
 
     card.innerHTML = `
-        <div class="status-body-content">
+        ${reblogHeader}
+        <div class="status-body-content" ${hasSpoiler ? 'tabindex="0"' : ''}>
             <div class="status-header">
-                <a href="#/profile/mastodon/${post.account.id}" class="status-header-main">
-                    <img src="${post.account.avatar}" class="avatar" alt="${post.account.display_name}'s avatar">
+                <a href="#" class="status-header-main" data-id="${originalStatus.account.id}">
+                    <img src="${originalStatus.account.avatar_static}" alt="${originalStatus.account.display_name}'s avatar" class="avatar">
                     <div>
-                        <span class="display-name">${post.account.display_name}</span>
-                        <span class="acct">@${post.account.acct}</span>
+                        <span class="display-name">${originalStatus.account.display_name}</span>
+                        <span class="acct">@${originalStatus.account.acct}</span>
                     </div>
                 </a>
                 <div class="status-header-side">
-                    <span class="timestamp">${timeAgo(post.created_at)}</span>
-                    <div class="post-options-container"></div>
+                    <a href="${originalStatus.url}" target="_blank" class="timestamp" title="${formatTimestamp(originalStatus.created_at)}">${timeAgo(originalStatus.created_at)}</a>
+                    <div class="mastodon-icon-indicator">${ICONS.mastodon}</div>
                 </div>
             </div>
-            <div class="status-content">${htmlContent}</div>
-            ${renderMedia(post.media_attachments)}
-            <div class="status-footer">
-                <button class="status-action reply-btn">${ICONS.reply}</button>
-                <button class="status-action boost-btn ${post.reblogged ? 'active' : ''}">${ICONS.boost} <span>${post.reblogs_count}</span></button>
-                <button class="status-action favorite-btn ${post.favourited ? 'active' : ''}">${ICONS.favorite} <span>${post.favourites_count}</span></button>
-                <button class="status-action bookmark-btn ${post.bookmarked ? 'active' : ''}">${ICONS.bookmark}</button>
+            <div class="status-content">
+                ${hasSpoiler ? `<p class="spoiler-text">${spoilerText} <button class="spoiler-toggle">Show</button></p>` : ''}
+                <div class="status-text ${hasSpoiler ? 'spoiler' : ''}">${contentHTML}</div>
             </div>
-            <div class="quick-reply-container" style="display: none;"></div>
-            <div class="conversation-container" style="display: none;"></div>
+            ${mediaHTML}
         </div>
+        <div class="status-footer">
+            <button class="status-action" data-action="reply" title="Reply">${ICONS.reply}</button>
+            <button class="status-action ${originalStatus.reblogged ? 'active' : ''}" data-action="boost" title="Boost">${ICONS.reblog} ${originalStatus.reblogs_count}</button>
+            <button class="status-action ${originalStatus.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">${ICONS.favourite} ${originalStatus.favourites_count}</button>
+            <button class="status-action ${originalStatus.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">${ICONS.bookmark}</button>
+            <button class="status-action" data-action="more" title="More">${ICONS.more}</button>
+        </div>
+        <div class="reply-container" style="display: none;"></div>
     `;
 
-    // **FIX:** Add click listeners to images to open the modal.
+    // Add event listeners
+    card.querySelector('.status-header-main').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showProfilePage('mastodon', e.currentTarget.dataset.id);
+    });
+
+    card.querySelector('.status-body-content').addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        actions.showPostDetail(originalStatus.id);
+    });
+
+    if (hasSpoiler) {
+        const content = card.querySelector('.status-text');
+        const toggle = card.querySelector('.spoiler-toggle');
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            content.classList.toggle('spoiler');
+            toggle.textContent = content.classList.contains('spoiler') ? 'Show' : 'Hide';
+        });
+    }
+
     card.querySelectorAll('.status-media img').forEach(img => {
         img.addEventListener('click', (e) => {
             e.stopPropagation();
-            showImageModal(img.src);
+            showImageModal(img.dataset.fullUrl);
         });
     });
 
-    card.querySelector('.reply-btn').addEventListener('click', () => actions.replyToStatus(post, card));
-    card.querySelector('.boost-btn').addEventListener('click', (e) => actions.toggleAction('reblog', post, e.currentTarget));
-    card.querySelector('.favorite-btn').addEventListener('click', (e) => actions.toggleAction('favorite', post, e.currentTarget));
-    card.querySelector('.bookmark-btn').addEventListener('click', (e) => actions.toggleAction('bookmark', post, e.currentTarget));
-    
-    return card;
-}
-
-export async function renderStatusDetail(state, statusId, actions) {
-    const view = document.getElementById('status-detail-view');
-    view.innerHTML = `<div class="status-list"></div>`;
-    const list = view.querySelector('.status-list');
-
-    try {
-        const { data: status } = await state.api.v1.statuses.fetch(statusId);
-        const { data: context } = await state.api.v1.statuses.fetchContext(statusId);
-
-        context.ancestors.forEach(p => list.appendChild(renderStatus(p, state.currentUser, actions, state.settings)));
-        
-        const mainPost = renderStatus(status, state.currentUser, actions, state.settings);
-        mainPost.classList.add('main-thread-post');
-        list.appendChild(mainPost);
-
-        context.descendants.forEach(p => {
-            const replyContainer = document.createElement('div');
-            replyContainer.className = 'comment-replies-container';
-            replyContainer.appendChild(renderStatus(p, state.currentUser, actions, state.settings));
-            list.appendChild(replyContainer);
+    card.querySelectorAll('.status-footer .status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+            actions.handleStatusAction(action, originalStatus.id, card, isSelf);
         });
-    } catch (error) {
-        console.error('Failed to render status detail:', error);
-        view.innerHTML = `<p>Could not load post details. It may have been deleted.</p>`;
-    }
+    });
+
+    return card;
 }
