@@ -7,6 +7,10 @@ import { showToast } from './ui.js';
 
 // --- Helper Functions to Fetch Profile Data ---
 async function getMastodonProfile(state, accountId) {
+    // Guard against making a fetch call with null values
+    if (!state.instanceUrl || !state.accessToken || !accountId) {
+        return null;
+    }
     try {
         const [account, statuses] = await Promise.all([
             apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}`),
@@ -19,13 +23,13 @@ async function getMastodonProfile(state, accountId) {
     }
 }
 
-async function getLemmyProfile(userAcct) {
+async function getLemmyProfile(userAcct, page = 1) {
     const lemmyInstance = localStorage.getItem('lemmy_instance');
     if (!lemmyInstance) return null;
     try {
         const [name] = userAcct.split('@');
-        // Fetch user details, posts, and comments in parallel
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50`, {}, 'lemmy');
+        // Fetch user details, posts, and comments in parallel, with pagination
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
         return response.data;
     } catch (error) {
         console.error(`Failed to fetch Lemmy profile for ${userAcct}:`, error);
@@ -195,15 +199,25 @@ export async function loadMoreLemmyProfile(state, actions) {
     state.scrollLoader.style.display = 'block';
 
     state.lemmyProfilePage++;
-    const lemmyProfile = await getLemmyProfile(state.currentProfileUserAcct);
-    const content = await fetchLemmyProfileContent(state, actions, lemmyProfile.person_view.person.id, state.lemmyProfilePage);
+    const newContent = await getLemmyProfile(state.currentProfileUserAcct, state.lemmyProfilePage);
     
-    const profileFeed = document.getElementById('lemmy-profile-feed');
+    const profileFeed = document.querySelector('#profile-page-view .profile-feed-content');
 
-    if (content.comments.length > 0) {
-        content.comments.forEach(comment => {
-            profileFeed.appendChild(renderLemmyComment(comment, state, actions));
-        });
+    if (newContent) {
+        const currentFilter = document.getElementById('lemmy-content-filter').value;
+        const itemsToRender = currentFilter === 'comments' ? newContent.comments : newContent.posts;
+
+        if (itemsToRender && itemsToRender.length > 0) {
+            itemsToRender.forEach(item => {
+                if (currentFilter === 'comments') {
+                    profileFeed.appendChild(renderLemmyComment(item, state, actions));
+                } else {
+                    profileFeed.appendChild(renderLemmyCard(item, actions));
+                }
+            });
+        } else {
+            state.lemmyProfileHasMore = false;
+        }
     } else {
         state.lemmyProfileHasMore = false;
     }
@@ -261,22 +275,20 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         feedContainer.innerHTML = '';
         if (!currentLemmyProfile) return;
 
-        if (filter === 'comments') {
-            if (currentLemmyProfile.comments && currentLemmyProfile.comments.length > 0) {
-                currentLemmyProfile.comments.forEach(comment => {
-                    feedContainer.appendChild(renderLemmyComment(comment, state, actions));
-                });
-            } else {
-                feedContainer.innerHTML = '<p class="empty-feed-message">No comments to display.</p>';
-            }
-        } else if (filter === 'posts') {
-            if (currentLemmyProfile.posts && currentLemmyProfile.posts.length > 0) {
-                currentLemmyProfile.posts.forEach(post => {
-                    feedContainer.appendChild(renderLemmyCard(post, actions));
-                });
-            } else {
-                feedContainer.innerHTML = '<p class="empty-feed-message">No posts to display.</p>';
-            }
+        const itemsToRender = filter === 'comments' ? currentLemmyProfile.comments : currentLemmyProfile.posts;
+        const renderFunction = filter === 'comments' ? renderLemmyComment : renderLemmyCard;
+        const emptyMessage = filter === 'comments' ? 'No comments to display.' : 'No posts to display.';
+
+        if (itemsToRender && itemsToRender.length > 0) {
+            itemsToRender.forEach(item => {
+                if (filter === 'comments') {
+                     feedContainer.appendChild(renderLemmyComment(item, state, actions));
+                } else {
+                     feedContainer.appendChild(renderLemmyCard(item, actions));
+                }
+            });
+        } else {
+            feedContainer.innerHTML = `<p class="empty-feed-message">${emptyMessage}</p>`;
         }
     };
 
@@ -310,7 +322,11 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 feedContainer.innerHTML = '<p>Could not load Mastodon feed.</p>';
             }
         } else if (targetTab === 'lemmy') {
-            currentLemmyProfile = await getLemmyProfile(userAcct);
+            // Reset pagination when switching to the Lemmy tab
+            state.lemmyProfilePage = 1;
+            state.lemmyProfileHasMore = true;
+            currentLemmyProfile = await getLemmyProfile(userAcct, state.lemmyProfilePage);
+            
             if (currentLemmyProfile) {
                 const person = currentLemmyProfile.person_view.person;
                 const counts = currentLemmyProfile.person_view.counts;
