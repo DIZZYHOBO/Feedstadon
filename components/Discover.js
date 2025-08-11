@@ -315,4 +315,3 @@ export function renderDiscoverPage(state, actions) {
     // Initial load
     switchTab('subscribed');
 }
-
