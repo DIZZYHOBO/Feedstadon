@@ -164,6 +164,13 @@ function renderMastodonDiscover(state, actions, container) {
 
 // --- Lemmy Discover Section (Corrected Implementation) ---
 
+// Added this function back to prevent the app from crashing.
+export function loadMoreLemmyCommunities(state, actions) {
+    console.log("loadMoreLemmyCommunities is deprecated and no longer used.");
+    // This function is no longer needed with the new search/discover implementation,
+    // but it's kept here to prevent an import error in app.js.
+}
+
 function renderCommunityListItem(communityView, actions) {
     const item = document.createElement('div');
     item.className = 'community-list-item';
