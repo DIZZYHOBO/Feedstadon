@@ -81,10 +81,11 @@ export async function lemmyImageUpload(file) {
     formData.append('images[]', file);
 
     try {
+        // Pictrs uses cookie-based auth, so we need to send credentials
         const response = await fetch(`https://${lemmyInstance}/pictrs/image`, {
             method: 'POST',
             body: formData,
-            // Note: Don't set Content-Type header, the browser does it for FormData
+            credentials: 'include', // Important: This sends the auth cookie
         });
 
         if (!response.ok) {
@@ -94,7 +95,6 @@ export async function lemmyImageUpload(file) {
 
         const result = await response.json();
         if (result.files && result.files.length > 0) {
-            // The URL is constructed using the instance and the returned file key
             return `https://${lemmyInstance}/pictrs/image/${result.files[0].file}`;
         } else {
             throw new Error('Image upload returned no files.');
