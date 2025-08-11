@@ -246,20 +246,24 @@ async function renderLemmyDiscover(state, actions, container) {
 
 async function renderSubscribedLemmy(state, actions, container) {
     container.innerHTML = '<p>Loading...</p>';
-    if (!state.lemmyAuthToken) {
+    const lemmyAuthToken = state.lemmyAuthToken || localStorage.getItem('lemmy_auth_token');
+    if (!lemmyAuthToken) {
         container.innerHTML = `<p>You must be logged in to see subscribed communities.</p>`;
         return;
     }
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const { data } = await apiFetch(lemmyInstance, state.lemmyAuthToken, '/api/v3/community/list', {}, 'lemmy', {
-            type_: 'Subscribed',
-            sort: 'TopDay',
-            limit: 50
-        });
+        const { data } = await apiFetch(lemmyInstance, lemmyAuthToken, '/api/v3/community/list', {
+            params: {
+                type_: 'Subscribed',
+                sort: 'TopDay',
+                limit: 50
+            }
+        }, 'lemmy');
         renderCommunityList(data.communities, actions, container);
     } catch (error) {
+        console.error("Failed to fetch subscribed Lemmy communities:", error);
         container.innerHTML = `<p>Could not load subscribed communities.</p>`;
     }
 }
