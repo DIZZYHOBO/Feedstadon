@@ -13,14 +13,27 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     commentDiv.dataset.commentId = commentView.comment.id;
 
     const converter = new showdown.Converter();
-    const htmlContent = converter.makeHtml(commentView.comment.content);
+    let htmlContent = converter.makeHtml(commentView.comment.content);
+    
+    // Add error handling for images in post body
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    tempDiv.querySelectorAll('img').forEach(img => {
+        img.onerror = function() {
+            this.onerror=null;
+            this.src='images/404.png';
+            this.classList.add('broken-image-fallback');
+        };
+    });
+    htmlContent = tempDiv.innerHTML;
+
 
     const isOP = postAuthorId && commentView.creator.id === postAuthorId;
     const isCreator = state.lemmyUsername && state.lemmyUsername === commentView.creator.name;
 
     commentDiv.innerHTML = `
         <div class="status-avatar">
-            <img src="${commentView.creator.avatar || 'images/logo.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/404.png';">
+            <img src="${commentView.creator.avatar || 'images/pfp.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
         </div>
         <div class="status-body">
             <div class="status-header">
@@ -250,10 +263,26 @@ export async function renderLemmyPostPage(state, postView, actions) {
     
     // Render the main post card
     const postCard = document.createElement('div');
+    
+    const converter = new showdown.Converter();
+    let bodyHtml = postView.post.body ? converter.makeHtml(postView.post.body) : '';
+
+    // Add error handling for images in post body
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = bodyHtml;
+    tempDiv.querySelectorAll('img').forEach(img => {
+        img.onerror = function() {
+            this.onerror=null;
+            this.src='images/404.png';
+            this.classList.add('broken-image-fallback');
+        };
+    });
+    bodyHtml = tempDiv.innerHTML;
+
     postCard.innerHTML = `
         <div class="status lemmy-post" data-id="${postView.post.id}">
             <div class="status-header">
-                <img src="${postView.creator.avatar || 'images/logo.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/404.png';">
+                <img src="${postView.creator.avatar || 'images/pfp.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
                 <div>
                     <a href="#" class="community-link">${postView.community.name}</a>
                     <span>posted by</span>
@@ -262,7 +291,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
                 </div>
             </div>
             <h3>${postView.post.name}</h3>
-            ${postView.post.body ? `<div class="lemmy-post-body">${new showdown.Converter().makeHtml(postView.post.body)}</div>` : ''}
+            <div class="lemmy-post-body">${bodyHtml}</div>
             ${postView.post.url ? `<a href="${postView.post.url}" target="_blank" rel="noopener noreferrer" class="post-link-preview">${postView.post.url}</a>` : ''}
              <div class="status-footer">
                 <div class="lemmy-vote-cluster">
