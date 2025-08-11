@@ -5,9 +5,13 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
         'Content-Type': 'application/json',
     };
 
-    if (platform === 'mastodon') {
-        if (accessToken) {
-            defaultHeaders['Authorization'] = `Bearer ${accessToken}`;
+    // Handle authentication based on the platform
+    if (platform === 'mastodon' && accessToken) {
+        defaultHeaders['Authorization'] = `Bearer ${accessToken}`;
+    } else if (platform === 'lemmy') {
+        const jwt = localStorage.getItem('lemmy_jwt');
+        if (jwt) {
+            defaultHeaders['Authorization'] = `Bearer ${jwt}`;
         }
     }
     
@@ -19,25 +23,13 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
     if (options.body) {
         config.body = JSON.stringify(options.body);
     }
-    
-    if (platform === 'lemmy') {
-        const jwt = localStorage.getItem('lemmy_jwt');
-        if (jwt) {
-             // Lemmy uses a different auth method for some requests
-            if (config.body) {
-                const body = JSON.parse(config.body);
-                body.auth = jwt;
-                config.body = JSON.stringify(body);
-            }
-        }
-    }
 
     try {
         const response = await fetch(`https://${instanceUrl}${endpoint}`, config);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message}`);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || errorData.message || 'Unknown error'}`);
         }
 
         const data = await response.json();
@@ -113,4 +105,3 @@ export async function lemmyImageUpload(file) {
         return null;
     }
 }
-
