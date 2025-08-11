@@ -235,8 +235,8 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         <div class="profile-page-header">
             <div class="profile-card">
                 <div class="profile-header">
-                    <img class="banner" src="" alt="Profile banner">
-                    <img class="avatar" src="" alt="Profile avatar">
+                    <img class="banner" src="" alt="Profile banner" onerror="this.onerror=null;this.src='images/404.png';">
+                    <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
                 </div>
                 <div class="profile-info">
                     <h2 class="display-name">Loading...</h2>
@@ -307,8 +307,8 @@ export async function renderProfilePage(state, actions, platform, accountId, use
             const mastodonProfile = await getMastodonProfile(state, accountId);
             if (mastodonProfile) {
                 const account = mastodonProfile.account;
-                bannerImg.src = account.header_static || '';
-                avatarImg.src = account.avatar_static || '';
+                bannerImg.src = account.header_static || 'images/404.png';
+                avatarImg.src = account.avatar_static || 'images/pfp.png';
                 displayNameEl.textContent = account.display_name;
                 acctEl.textContent = `@${account.acct}`;
                 noteEl.innerHTML = account.note;
@@ -331,8 +331,8 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 const person = currentLemmyProfile.person_view.person;
                 const counts = currentLemmyProfile.person_view.counts;
                 
-                bannerImg.src = person.banner || '';
-                avatarImg.src = person.avatar || '';
+                bannerImg.src = person.banner || 'images/404.png';
+                avatarImg.src = person.avatar || 'images/pfp.png';
                 displayNameEl.textContent = person.display_name || person.name;
                 acctEl.textContent = `@${person.name}@${new URL(person.actor_id).hostname}`;
                 noteEl.innerHTML = new showdown.Converter().makeHtml(person.bio || '');
