@@ -265,9 +265,11 @@ export async function renderLemmyPostPage(state, postView, actions) {
     
     // Render the main post card
     const postCard = document.createElement('div');
+    const post = postView.post;
+    const isImageUrl = post.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(post.url);
     
     const converter = new showdown.Converter();
-    let bodyHtml = postView.post.body ? converter.makeHtml(postView.post.body) : '';
+    let bodyHtml = post.body ? converter.makeHtml(post.body) : '';
 
     // Add error handling for images in post body
     const tempDiv = document.createElement('div');
@@ -282,19 +284,24 @@ export async function renderLemmyPostPage(state, postView, actions) {
     bodyHtml = tempDiv.innerHTML;
 
     postCard.innerHTML = `
-        <div class="status lemmy-post" data-id="${postView.post.id}">
+        <div class="status lemmy-post" data-id="${post.id}">
             <div class="status-header">
                 <img src="${postView.creator.avatar || 'images/php.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/php.png';">
                 <div class="user-info">
                     <a href="#" class="user-link">${postView.creator.name}</a>
                     <span>posted in</span>
                     <a href="#" class="community-link">${postView.community.name}</a>
-                    <span class="time-ago">· ${timeAgo(postView.post.published)}</span>
+                    <span class="time-ago">· ${timeAgo(post.published)}</span>
                 </div>
             </div>
-            <h3>${postView.post.name}</h3>
-            <div class="lemmy-post-body">${bodyHtml}</div>
-            ${postView.post.url ? `<a href="${postView.post.url}" target="_blank" rel="noopener noreferrer" class="post-link-preview">${postView.post.url}</a>` : ''}
+            <h3>${post.name}</h3>
+            <div class="lemmy-post-body">
+                ${bodyHtml}
+                ${isImageUrl 
+                    ? `<div class="lemmy-card-image-container"><img src="${post.url}" alt="${post.name}" class="lemmy-card-image" onerror="this.onerror=null;this.src='images/404.png';"></div>` 
+                    : (post.url ? `<a href="${post.url}" target="_blank" rel="noopener noreferrer" class="post-link-preview">${post.url}</a>` : '')
+                }
+            </div>
              <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                     <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
@@ -314,7 +321,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
     // Fetch and render comments
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
     try {
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postView.post.id}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${post.id}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
         const comments = response?.data?.comments;
         commentsContainer.innerHTML = '';
         if (comments && comments.length > 0) {
@@ -337,7 +344,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
         try {
             await actions.lemmyPostComment({
                 content: content,
-                post_id: postView.post.id
+                post_id: post.id
             });
             showToast('Comment posted! Refreshing...');
             // Refresh comments after posting
