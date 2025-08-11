@@ -204,7 +204,7 @@ export async function loadMoreLemmyProfile(state, actions) {
     const profileFeed = document.querySelector('#profile-page-view .profile-feed-content');
 
     if (newContent) {
-        const currentFilter = document.getElementById('lemmy-content-filter').value;
+        const currentFilter = document.querySelector('#lemmy-profile-controls .dropdown-label').textContent.toLowerCase();
         const itemsToRender = currentFilter === 'comments' ? newContent.comments : newContent.posts;
 
         if (itemsToRender && itemsToRender.length > 0) {
@@ -263,10 +263,16 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 <button class="tab-button" data-tab="mastodon">Mastodon</button>
             </div>
             <div id="lemmy-profile-controls" style="display: none;">
-                <select id="lemmy-content-filter">
-                    <option value="comments">Comments</option>
-                    <option value="posts">Posts</option>
-                </select>
+                <div class="custom-dropdown" style="position: relative;">
+                    <button class="dropdown-toggle" style="background: transparent; border: 1px solid var(--border); color: var(--text-color); padding: 8px 12px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; min-width: 110px;">
+                        <span class="dropdown-label">Comments</span>
+                        <span class="icon" style="margin-left: 8px; display: inline-flex;">${ICONS.lemmyDownvote}</span>
+                    </button>
+                    <div class="dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; background: var(--bg-color, white); border: 1px solid var(--border); border-radius: 5px; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 4px; width: 100%;">
+                        <a href="#" data-value="comments" style="display: block; padding: 8px 12px; color: var(--text-color); text-decoration: none; white-space: nowrap;">Comments</a>
+                        <a href="#" data-value="posts" style="display: block; padding: 8px 12px; color: var(--text-color); text-decoration: none; white-space: nowrap;">Posts</a>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="profile-feed-content"></div>
@@ -280,7 +286,6 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     const statsEl = view.querySelector('.stats');
     const feedContainer = view.querySelector('.profile-feed-content');
     const lemmyControls = view.querySelector('#lemmy-profile-controls');
-    const lemmyFilter = view.querySelector('#lemmy-content-filter');
 
     let currentLemmyProfile = null;
 
@@ -294,9 +299,9 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         if (itemsToRender && itemsToRender.length > 0) {
             itemsToRender.forEach(item => {
                 if (filter === 'comments') {
-                     feedContainer.appendChild(renderLemmyComment(item, state, actions));
+                    feedContainer.appendChild(renderLemmyComment(item, state, actions));
                 } else {
-                     feedContainer.appendChild(renderLemmyCard(item, actions));
+                    feedContainer.appendChild(renderLemmyCard(item, actions));
                 }
             });
         } else {
@@ -304,8 +309,30 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         }
     };
 
-    lemmyFilter.addEventListener('change', (e) => {
-        renderLemmyFeed(e.target.value);
+    const dropdown = lemmyControls.querySelector('.custom-dropdown');
+    const toggleBtn = dropdown.querySelector('.dropdown-toggle');
+    const dropdownLabel = dropdown.querySelector('.dropdown-label');
+    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target)) {
+            dropdownMenu.style.display = 'none';
+        }
+    });
+
+    dropdownMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const newValue = e.target.dataset.value;
+            dropdownLabel.textContent = newValue.charAt(0).toUpperCase() + newValue.slice(1);
+            renderLemmyFeed(newValue);
+            dropdownMenu.style.display = 'none';
+        });
     });
 
     const switchTab = async (targetTab) => {
@@ -351,7 +378,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 statsEl.innerHTML = `<span><strong>${counts.post_count}</strong> Posts</span><span><strong>${counts.comment_count}</strong> Comments</span>`;
 
                 lemmyControls.style.display = 'flex';
-                lemmyFilter.value = 'comments'; 
+                dropdownLabel.textContent = 'Comments'; 
                 renderLemmyFeed('comments');
 
                 // Check if the profile belongs to the logged-in user
