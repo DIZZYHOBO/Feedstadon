@@ -50,6 +50,34 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
     }
 }
 
+export async function apiUploadMedia(instanceUrl, accessToken, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch(`https://${instanceUrl}/api/v2/media`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Media upload failed');
+        }
+
+        const data = await response.json();
+        return data; // This object should contain the media attachment ID
+    } catch (error) {
+        console.error('API Media Upload Error:', error);
+        showToast(`Media Upload Failed: ${error.message}`);
+        throw error;
+    }
+}
+
+
 export async function lemmyImageUpload(file) {
     const lemmyInstance = localStorage.getItem('lemmy_instance');
     if (!lemmyInstance) {
