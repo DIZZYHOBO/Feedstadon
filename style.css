@@ -1431,3 +1431,170 @@ button:disabled {
     border: none;
     box-shadow: none;
 }
+
+/* Lemmy Single Post Page Styles */
+.lemmy-post-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the container */
+    padding: 1rem;
+    background-color: var(--background-color-secondary);
+}
+
+.lemmy-post-view-container {
+    width: 100%;
+    max-width: 800px; /* Constrain width for readability */
+}
+
+/* Card styling for the main post */
+.lemmy-post-full .status.lemmy-post {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.lemmy-post-full .status-header,
+.lemmy-comment .status-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.lemmy-post-full .avatar,
+.lemmy-comment .status-avatar .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover; /* Ensures image covers the area without distortion */
+    flex-shrink: 0; /* Prevents the avatar from shrinking */
+}
+
+.lemmy-comment .status-avatar .avatar {
+    width: 40px;
+    height: 40px;
+}
+
+.lemmy-post-full .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.user-link, .community-link, .post-link-preview {
+    font-weight: bold;
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.user-link:hover, .community-link:hover, .post-link-preview:hover {
+    text-decoration: underline;
+}
+
+.time-ago, .lemmy-post-full .user-info span {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+}
+
+.lemmy-post-full h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.lemmy-post-body {
+    line-height: 1.6;
+}
+
+.lemmy-post-body a, .status-content a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.lemmy-post-body a:hover, .status-content a:hover {
+    text-decoration: underline;
+}
+
+
+.lemmy-post-body img,
+.status-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.broken-image-fallback {
+    max-height: 400px; /* Limit height of fallback image */
+    width: 100%;
+    object-fit: cover;
+    background-color: var(--border-color);
+}
+
+/* Comments Section */
+.lemmy-comments-section h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Comment Reply Box */
+.lemmy-post-reply-box {
+    margin-bottom: 2rem;
+}
+
+.lemmy-main-reply-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-color-secondary);
+    color: var(--text-color-primary);
+    resize: vertical;
+    margin-bottom: 0.5rem;
+}
+
+.send-main-reply-btn {
+    display: block;
+    margin-left: auto; /* Align to the right */
+}
+
+/* Individual Comment Styling */
+.comment-wrapper {
+    margin-bottom: 1.5rem;
+}
+
+.lemmy-comment {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.lemmy-comment .status-header .display-name {
+    font-weight: bold;
+}
+.lemmy-comment .status-header .acct, .lemmy-comment .status-header .time-ago {
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+}
+
+.lemmy-comment .status-content {
+    padding-top: 0.5rem;
+}
+
+.view-replies-btn {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
+    padding: 8px 0;
+    margin-top: 8px;
+}
