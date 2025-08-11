@@ -3,6 +3,73 @@ import { apiFetch } from './api.js';
 import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
 
+// Function to inject styles for Lemmy components, ensuring mobile optimization
+function injectLemmyStyles() {
+    const styleId = 'lemmy-post-styles';
+    if (document.getElementById(styleId)) {
+        return; // Styles already injected
+    }
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.innerHTML = `
+        .lemmy-content {
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            overflow-x: auto; /* Handle code blocks gracefully */
+        }
+        .lemmy-content pre, .lemmy-content code {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status-body, .user-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0; /* Crucial for flexbox truncation */
+        }
+        .status-header, .user-info-line2 {
+            display: flex;
+            flex-wrap: wrap; /* Allow items to wrap on small screens */
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .acct, .user-link {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Truncate long usernames */
+            flex-shrink: 1;
+            min-width: 20px;
+        }
+        /* Mobile-specific optimizations */
+        @media (max-width: 480px) {
+            .status.lemmy-comment, .status.lemmy-post {
+                padding: 10px;
+                gap: 8px;
+            }
+            .status-footer {
+                justify-content: space-between;
+                padding-top: 8px;
+            }
+            .display-name {
+               font-size: 0.9rem;
+            }
+            .acct {
+                font-size: 0.8rem;
+            }
+            .view-replies-btn {
+                font-size: 0.85rem;
+                padding: 6px 10px;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Inject styles when the module is loaded
+injectLemmyStyles();
+
 export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
     const commentWrapper = document.createElement('div');
     commentWrapper.className = 'comment-wrapper';
@@ -42,7 +109,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
                 ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 <span class="time-ago">· ${timeAgo(commentView.comment.published)}</span>
             </div>
-            <div class="status-content" style="word-wrap: break-word; white-space: pre-wrap; overflow-wrap: break-word;">${htmlContent}</div>
+            <div class="status-content lemmy-content">${htmlContent}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                      <button class="status-action lemmy-vote-btn" data-action="upvote" title="Upvote">${ICONS.lemmyUpvote}</button>
@@ -300,7 +367,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
                 </div>
             </div>
             <h3>${post.name}</h3>
-            <div class="lemmy-post-body" style="word-wrap: break-word; white-space: pre-wrap; overflow-wrap: break-word;">
+            <div class="lemmy-post-body lemmy-content">
                 ${bodyHtml}
                 ${isImageUrl 
                     ? `<div class="lemmy-card-image-container"><img src="${post.url}" alt="${post.name}" class="lemmy-card-image" onerror="this.onerror=null;this.src='images/404.png';"></div>` 
@@ -359,3 +426,4 @@ export async function renderLemmyPostPage(state, postView, actions) {
         }
     });
 }
+
