@@ -12,7 +12,7 @@ import { renderNotificationsPage, updateNotificationBell } from './components/No
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
-import { apiFetch } from './components/api.js';
+import { apiFetch, lemmyImageUpload, apiUploadMedia } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
 
 function initDropdowns() {
@@ -698,6 +698,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 showToast('Failed to edit comment.');
                 throw err;
+            }
+        },
+        saveLemmyProfile: async (profileData) => {
+            showLoadingBar();
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            const updatePayload = {
+                bio: profileData.bio,
+                auth: localStorage.getItem('lemmy_jwt')
+            };
+
+            try {
+                if (profileData.avatar) {
+                    const avatarUrl = await lemmyImageUpload(profileData.avatar);
+                    if (avatarUrl) updatePayload.avatar = avatarUrl;
+                }
+                if (profileData.banner) {
+                    const bannerUrl = await lemmyImageUpload(profileData.banner);
+                    if (bannerUrl) updatePayload.banner = bannerUrl;
+                }
+
+                await apiFetch(lemmyInstance, null, '/api/v3/user/save_user_settings', {
+                    method: 'PUT',
+                    body: updatePayload
+                }, 'lemmy');
+
+                showToast('Profile saved successfully!');
+                // Refresh the profile page
+                actions.showLemmyProfile(state.currentProfileUserAcct);
+
+            } catch (error) {
+                showToast('Failed to save profile.');
+            } finally {
+                hideLoadingBar();
             }
         },
         showContextMenu: showContextMenu
