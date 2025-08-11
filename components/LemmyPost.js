@@ -289,12 +289,14 @@ export async function renderLemmyPostPage(state, postView, actions) {
     postCard.innerHTML = `
         <div class="status lemmy-post" data-id="${post.id}">
             <div class="status-header">
-                <img src="${postView.creator.avatar || 'images/php.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/php.png';">
+                <img src="${postView.community.icon || 'images/pfp.png'}" class="avatar" alt="${postView.community.name}" onerror="this.onerror=null;this.src='images/pfp.png';">
                 <div class="user-info">
-                    <a href="#" class="user-link">${postView.creator.name}</a>
-                    <span>posted in</span>
-                    <a href="#" class="community-link">${postView.community.name}</a>
-                    <span class="time-ago">· ${timeAgo(post.published)}</span>
+                    <a href="#" class="community-link user-info-line1">${postView.community.name}</a>
+                    <div class="user-info-line2">
+                        <span>posted by </span>
+                        <a href="#" class="user-link">${postView.creator.name}</a>
+                        <span class="time-ago">· ${timeAgo(post.published)}</span>
+                    </div>
                 </div>
             </div>
             <h3>${post.name}</h3>
