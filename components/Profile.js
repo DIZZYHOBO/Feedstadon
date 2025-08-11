@@ -1,5 +1,5 @@
-import { apiFetch, lemmyImageUpload } from './api.js';
 import { ICONS } from './icons.js';
+import { apiFetch, lemmyImageUpload } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { timeAgo } from './utils.js';
@@ -81,9 +81,9 @@ function showEditUI(commentDiv, commentView, actions) {
 }
 
 
-function renderLemmyCommentOnProfile(commentView, state, actions) {
+function renderLemmyComment(commentView, state, actions) {
     const commentWrapper = document.createElement('div');
-    commentWrapper.className = 'comment-wrapper-profile'; // Use a specific class for profile comments
+    commentWrapper.className = 'comment-wrapper';
     commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
 
     const commentDiv = document.createElement('div');
@@ -96,9 +96,9 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
         <div class="status-body-content">
             <div class="comment-context">
                 <span>Commented on:</span>
-                <a href="#/lemmy/post/${commentView.post.id}" class="post-title">${commentView.post.name}</a>
+                <a href="#" class="post-title">${commentView.post.name}</a>
                 <span>in</span>
-                <a href="#/lemmy/community/${commentView.community.name}" class="community-link">!${commentView.community.name}</a>
+                <a href="#" class="community-link">${commentView.community.name}</a>
             </div>
             <div class="status-content">${htmlContent}</div>
             <div class="status-footer">
@@ -107,13 +107,11 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
                     <span class="lemmy-score">${commentView.counts.score}</span>
                     <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
                 </div>
-                <div class="status-actions-right">
-                    <button class="status-action view-replies-btn">
-                        ${ICONS.comments}
-                        <span class="reply-count">${commentView.counts.child_count}</span>
-                    </button>
-                    <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
-                </div>
+                <button class="status-action view-replies-btn">
+                    ${ICONS.comments}
+                    <span class="reply-count">${commentView.counts.child_count}</span>
+                </button>
+                 <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
             </div>
             <div class="lemmy-replies-container" style="display: none;"></div>
         </div>
@@ -122,13 +120,14 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
     commentDiv.addEventListener('dblclick', () => {
         actions.showLemmyPostDetail(commentView.post);
     });
-    
-    const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
-    viewRepliesBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        actions.showLemmyPostDetail(commentView.post);
-    });
 
+    const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
+    const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
+
+    viewRepliesBtn.addEventListener('click', () => {
+        toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions);
+    });
+    
     const moreOptionsBtn = commentDiv.querySelector('.more-options-btn');
     moreOptionsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -160,6 +159,39 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
     return commentWrapper;
 }
 
+async function toggleLemmyReplies(commentId, postId, container, state, actions) {
+    const isVisible = container.style.display === 'block';
+    if (isVisible) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = 'Loading replies...';
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) {
+        container.innerHTML = 'Could not load replies.';
+        return;
+    }
+
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
+        const replies = response?.data?.comments;
+        
+        container.innerHTML = '';
+        if (replies && replies.length > 0) {
+            replies.forEach(replyView => {
+                container.appendChild(renderLemmyComment(replyView, state, actions));
+            });
+        } else {
+            container.innerHTML = 'No replies found.';
+        }
+    } catch (error) {
+        console.error('Failed to fetch and process replies:', error);
+        container.innerHTML = 'Failed to load replies.';
+    }
+}
 
 export async function loadMoreLemmyProfile(state, actions) {
     if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
@@ -178,7 +210,7 @@ export async function loadMoreLemmyProfile(state, actions) {
         if (itemsToRender && itemsToRender.length > 0) {
             itemsToRender.forEach(item => {
                 if (currentFilter === 'comments') {
-                    profileFeed.appendChild(renderLemmyCommentOnProfile(item, state, actions));
+                    profileFeed.appendChild(renderLemmyComment(item, state, actions));
                 } else {
                     profileFeed.appendChild(renderLemmyCard(item, actions));
                 }
@@ -267,7 +299,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         if (itemsToRender && itemsToRender.length > 0) {
             itemsToRender.forEach(item => {
                 if (filter === 'comments') {
-                    feedContainer.appendChild(renderLemmyCommentOnProfile(item, state, actions));
+                    feedContainer.appendChild(renderLemmyComment(item, state, actions));
                 } else {
                     feedContainer.appendChild(renderLemmyCard(item, actions));
                 }

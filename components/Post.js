@@ -104,22 +104,15 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
         </div>
         <div class="status-footer">
             <button class="status-action" data-action="reply" title="Reply">
-                <span style="display: flex; align-items: center; gap: 0.5em;">
-                    ${ICONS.reply || ''}
-                    <span>${originalStatus.replies_count > 0 ? originalStatus.replies_count : ''}</span>
-                </span>
+                ${ICONS.reply || ''}
             </button>
             <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="boost" title="Boost">
-                <span style="display: flex; align-items: center; gap: 0.5em;">
-                    ${ICONS.reblog || ''}
-                    <span>${originalStatus.reblogs_count || 0}</span>
-                </span>
+                ${ICONS.reblog || ''}
+                <span>${originalStatus.reblogs_count || 0}</span>
             </button>
             <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">
-                <span style="display: flex; align-items: center; gap: 0.5em;">
-                    ${ICONS.favourite || ''}
-                    <span>${originalStatus.favourites_count || 0}</span>
-                </span>
+                ${ICONS.favourite || ''}
+                <span>${originalStatus.favourites_count || 0}</span>
             </button>
             <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">
                 ${ICONS.bookmark || ''}

@@ -2,21 +2,10 @@ import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { ICONS } from './icons.js';
 
-// --- Utility Functions ---
-function debounce(func, delay) {
-    let timeout;
-    return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-}
-
-
-// --- Mastodon Discover Section (Existing Code) ---
+// --- Mastodon Discover Section ---
 
 export async function loadMoreMastodonTrendingPosts(state, actions) {
-    const container = document.querySelector('#mastodon-discover-content .discover-content-area');
+    const container = document.querySelector('#mastodon-discover-content');
     await fetchMastodonTrendingPosts(state, actions, container, true);
 }
 
@@ -129,10 +118,10 @@ function renderMastodonDiscover(state, actions, container) {
             <button class="discover-sub-nav-btn" data-tab="people">People</button>
             <button class="discover-sub-nav-btn" data-tab="news">News</button>
         </div>
-        <div class="discover-content-area"></div>
+        <div id="mastodon-discover-content" class="discover-content-area"></div>
     `;
 
-    const contentArea = container.querySelector('.discover-content-area');
+    const contentArea = container.querySelector('#mastodon-discover-content');
     const tabs = container.querySelectorAll('.discover-sub-nav-btn');
 
     const switchTab = (tabName) => {
@@ -163,13 +152,8 @@ function renderMastodonDiscover(state, actions, container) {
 
 // --- Lemmy Discover Section ---
 
-export function loadMoreLemmyCommunities(state, actions) {
-    // This function is kept for compatibility with app.js but is now deprecated.
-    console.warn("loadMoreLemmyCommunities is deprecated.");
-}
-
 function renderCommunityList(communities, actions, container) {
-    if (!communities || communities.length === 0) {
+    if (communities.length === 0) {
         container.innerHTML = '<p>No communities found.</p>';
         return;
     }
@@ -183,22 +167,23 @@ function renderCommunityList(communities, actions, container) {
         const isSubscribed = communityView.subscribed === "Subscribed";
         
         communityEl.innerHTML = `
-            <img src="${community.icon || './images/logo.png'}" class="avatar" onerror="this.src='./images/logo.png'"/>
+            <img src="${community.icon}" class="avatar" onerror="this.src='./images/logo.png'"/>
             <div>
                 <div class="discover-item-title">${community.name}</div>
-                <div class="discover-item-subtitle">${new URL(community.actor_id).hostname}</div>
+                <div class="discover-item-subtitle">${community.actor_id.split('/')[2]}</div>
             </div>
             <button class="button-secondary follow-btn">${isSubscribed ? 'Unfollow' : 'Follow'}</button>
         `;
 
         communityEl.addEventListener('click', () => {
-             actions.showLemmyCommunity(community.name);
+            const instance = new URL(community.actor_id).hostname;
+            actions.showLemmyCommunity(`${community.name}@${instance}`);
         });
 
         communityEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
             const currentlySubscribed = e.target.textContent === 'Unfollow';
-            const success = await actions.lemmySubscribeCommunity(community.id, !currentlySubscribed);
+            const success = await actions.lemmyFollowCommunity(community.id, !currentlySubscribed);
             if (success) {
                 e.target.textContent = currentlySubscribed ? 'Follow' : 'Unfollow';
             }
@@ -208,64 +193,82 @@ function renderCommunityList(communities, actions, container) {
     });
 }
 
-async function renderLemmyDiscover(state, actions, container) {
-    container.innerHTML = `
-        <form id="lemmy-community-search-form">
-            <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
-        </form>
-        <div id="lemmy-discover-content-area" class="discover-content-area"></div>
-    `;
-    
-    const searchInput = container.querySelector('#lemmy-community-search');
-    const contentArea = container.querySelector('#lemmy-discover-content-area');
+export async function loadMoreLemmyCommunities(state, actions) {
+    await renderLemmyDiscover(state, actions, null, true);
+}
 
-    const fetchAndRender = async (query = '') => {
-        contentArea.innerHTML = '<p>Loading...</p>';
+async function renderLemmyDiscover(state, actions, container, loadMore = false) {
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
+    
+    const contentArea = document.querySelector('#lemmy-discover-content-area');
+    
+    try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const endpoint = query 
-            ? `/api/v3/community/list?q=${encodeURIComponent(query)}&limit=50`
-            : '/api/v3/community/list?sort=TopDay&limit=50';
         
-        try {
-            const { data } = await apiFetch(lemmyInstance, state.lemmyAuthToken, endpoint, {}, 'lemmy');
-            renderCommunityList(data.communities, actions, contentArea);
-        } catch (error) {
-            contentArea.innerHTML = `<p>Could not load communities.</p>`;
+        if (!loadMore) {
+            container.innerHTML = `
+                <form id="lemmy-community-search-form">
+                    <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
+                </form>
+                <div id="lemmy-search-results-container" style="display: none;"></div>
+                <div id="lemmy-discover-content-area" class="discover-content-area"></div>
+            `;
+            
+            const searchForm = container.querySelector('#lemmy-community-search-form');
+            const searchInput = container.querySelector('#lemmy-community-search');
+            const searchResultsContainer = container.querySelector('#lemmy-search-results-container');
+
+            searchForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                if (query.length > 0) {
+                    const { data } = await apiFetch(lemmyInstance, null, '/api/v3/search', {}, 'lemmy', { q: query, type_: 'Communities', sort: 'TopAll' });
+                    renderCommunityList(data.communities, actions, searchResultsContainer);
+                    searchResultsContainer.style.display = 'block';
+                } else {
+                    searchResultsContainer.style.display = 'none';
+                }
+            });
         }
-    };
-
-    const debouncedSearch = debounce(fetchAndRender, 300);
-
-    searchInput.addEventListener('input', (e) => {
-        debouncedSearch(e.target.value.trim());
-    });
-    
-    // Initial load
-    fetchAndRender();
+        
+        const communityContainer = container ? container.querySelector('#lemmy-discover-content-area') : contentArea;
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { 
+            sort: 'TopDay',
+            page: loadMore ? state.lemmyDiscoverPage : 1
+        });
+        
+        if (data.communities.length > 0) {
+            if (!loadMore) communityContainer.innerHTML = '';
+            renderCommunityList(data.communities, actions, communityContainer);
+            state.lemmyDiscoverPage++;
+            state.lemmyDiscoverHasMore = true;
+        } else {
+            state.lemmyDiscoverHasMore = false;
+        }
+    } catch (error) {
+        if (!loadMore) container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
+    } finally {
+        state.isLoadingMore = false;
+    }
 }
 
 async function renderSubscribedLemmy(state, actions, container) {
-    container.innerHTML = '<p>Loading...</p>';
-    const lemmyAuthToken = state.lemmyAuthToken || localStorage.getItem('lemmy_auth_token');
-    if (!lemmyAuthToken) {
-        container.innerHTML = `<p>You must be logged in to see subscribed communities.</p>`;
-        return;
-    }
+    if (state.isLoadingMore) return;
+    state.isLoadingMore = true;
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        // Corrected apiFetch call to pass parameters correctly
-        const { data } = await apiFetch(lemmyInstance, lemmyAuthToken, `/api/v3/community/list`, {
-            params: {
-                type_: 'Subscribed',
-                sort: 'TopDay',
-                limit: 50
-            }
-        }, 'lemmy');
+        const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
+            type_: 'Subscribed',
+            sort: 'TopDay',
+            limit: 50
+        });
         renderCommunityList(data.communities, actions, container);
     } catch (error) {
-        console.error("Failed to fetch subscribed Lemmy communities:", error);
         container.innerHTML = `<p>Could not load subscribed communities.</p>`;
+    } finally {
+        state.isLoadingMore = false;
     }
 }
 
@@ -281,8 +284,8 @@ export function renderDiscoverPage(state, actions) {
             <button class="tab-button" data-discover-tab="mastodon">Mastodon</button>
         </div>
         <div id="subscribed-discover-content" class="discover-tab-content active"></div>
-        <div id="lemmy-discover-content" class="discover-tab-content" style="display: none;"></div>
-        <div id="mastodon-discover-content" class="discover-tab-content" style="display: none;"></div>
+        <div id="lemmy-discover-content" class="discover-tab-content"></div>
+        <div id="mastodon-discover-content" class="discover-tab-content"></div>
     `;
 
     const tabs = view.querySelectorAll('.profile-tabs .tab-button');
@@ -292,21 +295,22 @@ export function renderDiscoverPage(state, actions) {
 
     function switchTab(platform) {
         tabs.forEach(t => t.classList.remove('active'));
-        subscribedContent.style.display = 'none';
-        lemmyContent.style.display = 'none';
-        mastodonContent.style.display = 'none';
+        subscribedContent.classList.remove('active');
+        lemmyContent.classList.remove('active');
+        mastodonContent.classList.remove('active');
 
         view.querySelector(`[data-discover-tab="${platform}"]`).classList.add('active');
         state.currentDiscoverTab = platform;
 
         if (platform === 'subscribed') {
-            subscribedContent.style.display = 'block';
+            subscribedContent.classList.add('active');
             renderSubscribedLemmy(state, actions, subscribedContent);
         } else if (platform === 'lemmy') {
-            lemmyContent.style.display = 'block';
+            lemmyContent.classList.add('active');
+            state.lemmyDiscoverPage = 1;
             renderLemmyDiscover(state, actions, lemmyContent);
         } else {
-            mastodonContent.style.display = 'block';
+            mastodonContent.classList.add('active');
             renderMastodonDiscover(state, actions, mastodonContent);
         }
     }
@@ -318,4 +322,3 @@ export function renderDiscoverPage(state, actions) {
     // Initial load
     switchTab('subscribed');
 }
-
