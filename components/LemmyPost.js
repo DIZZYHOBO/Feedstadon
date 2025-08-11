@@ -18,6 +18,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     const converter = new showdown.Converter();
     let htmlContent = converter.makeHtml(commentView.comment.content);
     
+    // Add error handling for images in post body
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     tempDiv.querySelectorAll('img').forEach(img => {
@@ -365,3 +366,4 @@ export async function renderLemmyPostPage(state, postView, actions) {
         }
     });
 }
+
