@@ -152,3 +152,23 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
 
     return card;
 }
+
+export function renderStatusDetail(status, allReplies, currentUser, actions, settings) {
+    const detailView = document.createElement('div');
+    detailView.className = 'post-detail-view';
+
+    const mainPost = renderStatus(status, currentUser, actions, settings);
+    detailView.appendChild(mainPost);
+
+    const repliesContainer = document.createElement('div');
+    repliesContainer.className = 'replies-container';
+    
+    allReplies.forEach(reply => {
+        const replyCard = renderStatus(reply, currentUser, actions, settings, true);
+        repliesContainer.appendChild(replyCard);
+    });
+
+    detailView.appendChild(repliesContainer);
+
+    return detailView;
+}
