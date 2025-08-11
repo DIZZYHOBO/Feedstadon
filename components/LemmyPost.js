@@ -3,13 +3,10 @@ import { apiFetch } from './api.js';
 import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
 
-export function renderLemmyComment(commentView, state, actions, postAuthorId = null, depth = 0, isFlatView = false) {
+export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
     const commentWrapper = document.createElement('div');
     commentWrapper.className = 'comment-wrapper';
     commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
-    if (depth > 0) {
-        commentWrapper.style.marginLeft = `${depth * 20}px`;
-    }
 
     const commentDiv = document.createElement('div');
     commentDiv.className = 'status lemmy-comment';
@@ -75,12 +72,12 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     });
 
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
-    if (commentView.counts.child_count > 0 && !isFlatView) {
+    if (commentView.counts.child_count > 0) {
         const viewRepliesBtn = document.createElement('button');
         viewRepliesBtn.className = 'view-replies-btn';
         viewRepliesBtn.textContent = `View ${commentView.counts.child_count} replies`;
         commentDiv.querySelector('.status-footer').insertAdjacentElement('afterend', viewRepliesBtn);
-        viewRepliesBtn.addEventListener('click', () => toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId, depth + 1));
+        viewRepliesBtn.addEventListener('click', () => toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId));
     }
 
     const moreOptionsBtn = commentDiv.querySelector('.more-options-btn');
@@ -102,6 +99,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             menuItems.push({
                 label: 'Delete Comment',
                 action: () => {
+                    // This should be replaced with a custom modal in the future
                     if (window.confirm('Are you sure you want to delete this comment?')) {
                         actions.lemmyDeleteComment(commentView.comment.id);
                     }
@@ -169,7 +167,7 @@ function showEditUI(commentDiv, commentView, actions) {
 }
 
 
-async function toggleLemmyReplies(commentId, postId, container, state, actions, postAuthorId, depth) {
+async function toggleLemmyReplies(commentId, postId, container, state, actions, postAuthorId) {
     const isVisible = container.style.display === 'block';
     if (isVisible) {
         container.style.display = 'none';
@@ -186,26 +184,13 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions, 
     }
 
     try {
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=2&sort=New`, { method: 'GET' }, 'lemmy');
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
         const replies = response?.data?.comments;
         
         container.innerHTML = '';
         if (replies && replies.length > 0) {
             replies.forEach(replyView => {
-                if (depth >= 1 && replyView.counts.child_count > 0) {
-                    const threadLink = document.createElement('a');
-                    threadLink.href = '#';
-                    threadLink.className = 'view-full-thread-link';
-                    threadLink.textContent = `View full thread (${replyView.counts.child_count} more)`;
-                    threadLink.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        actions.showLemmyCommentThread(postId, replyView.comment.id);
-                    });
-                    container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId, depth));
-                    container.appendChild(threadLink);
-                } else {
-                    container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId, depth));
-                }
+                container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId));
             });
         } else {
             container.innerHTML = 'No replies found.';
@@ -247,6 +232,7 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
                 parent_id: parentCommentId
             });
             showToast('Reply posted!');
+            // Optionally, render the new comment immediately
             container.style.display = 'none';
         } catch (error) {
             showToast('Failed to post reply.');
@@ -285,6 +271,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
     const converter = new showdown.Converter();
     let bodyHtml = post.body ? converter.makeHtml(post.body) : '';
 
+    // Add error handling for images in post body
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = bodyHtml;
     tempDiv.querySelectorAll('img').forEach(img => {
@@ -360,10 +347,10 @@ export async function renderLemmyPostPage(state, postView, actions) {
                 post_id: post.id
             });
             showToast('Comment posted! Refreshing...');
+            // Refresh comments after posting
             actions.showLemmyPostDetail(postView);
         } catch (error) {
             showToast('Failed to post comment.');
         }
     });
 }
-
