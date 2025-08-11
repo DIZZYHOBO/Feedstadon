@@ -254,13 +254,11 @@ async function renderSubscribedLemmy(state, actions, container) {
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-        const { data } = await apiFetch(lemmyInstance, lemmyAuthToken, '/api/v3/community/list', {
-            params: {
-                type_: 'Subscribed',
-                sort: 'TopDay',
-                limit: 50
-            }
-        }, 'lemmy');
+        const { data } = await apiFetch(lemmyInstance, lemmyAuthToken, '/api/v3/community/list', {}, 'lemmy', {
+            type_: 'Subscribed',
+            sort: 'TopDay',
+            limit: 50
+        });
         renderCommunityList(data.communities, actions, container);
     } catch (error) {
         console.error("Failed to fetch subscribed Lemmy communities:", error);
@@ -317,3 +315,4 @@ export function renderDiscoverPage(state, actions) {
     // Initial load
     switchTab('subscribed');
 }
+
