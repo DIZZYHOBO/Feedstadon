@@ -1,5 +1,5 @@
 import { ICONS } from './icons.js';
-import { apiFetch } from './api.js';
+import { apiFetch, lemmyImageUpload } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
 import { timeAgo } from './utils.js';
@@ -236,12 +236,23 @@ export async function renderProfilePage(state, actions, platform, accountId, use
             <div class="profile-card">
                 <div class="profile-header">
                     <img class="banner" src="" alt="Profile banner" onerror="this.onerror=null;this.src='images/404.png';">
+                    <label class="edit-icon banner-edit-icon" style="display:none;">${ICONS.edit}<input type="file" class="edit-image-input" data-type="banner" accept="image/*"></label>
+                    
                     <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/php.png';">
+                    <label class="edit-icon avatar-edit-icon" style="display:none;">${ICONS.edit}<input type="file" class="edit-image-input" data-type="avatar" accept="image/*"></label>
                 </div>
                 <div class="profile-info">
+                    <a href="#" class="edit-profile-link" style="display:none;">Edit Profile</a>
                     <h2 class="display-name">Loading...</h2>
                     <p class="acct"></p>
                     <div class="note"></div>
+                    <div class="bio-edit-container" style="display:none;">
+                        <textarea class="bio-textarea"></textarea>
+                        <div class="bio-edit-actions">
+                            <button class="button-secondary cancel-bio-btn">Cancel</button>
+                            <button class="button-primary save-bio-btn">Save</button>
+                        </div>
+                    </div>
                     <div class="stats"></div>
                 </div>
             </div>
@@ -276,7 +287,6 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         if (!currentLemmyProfile) return;
 
         const itemsToRender = filter === 'comments' ? currentLemmyProfile.comments : currentLemmyProfile.posts;
-        const renderFunction = filter === 'comments' ? renderLemmyComment : renderLemmyCard;
         const emptyMessage = filter === 'comments' ? 'No comments to display.' : 'No posts to display.';
 
         if (itemsToRender && itemsToRender.length > 0) {
@@ -341,6 +351,11 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 lemmyControls.style.display = 'flex';
                 lemmyFilter.value = 'comments'; 
                 renderLemmyFeed('comments');
+
+                // Check if the profile belongs to the logged-in user
+                if (state.lemmyUsername && person.name === state.lemmyUsername) {
+                    setupLemmyProfileEditing(person, actions);
+                }
             } else {
                 feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
             }
@@ -353,6 +368,83 @@ export async function renderProfilePage(state, actions, platform, accountId, use
     
     await switchTab(platform === 'mastodon' ? 'mastodon' : 'lemmy');
 }
+
+function setupLemmyProfileEditing(person, actions) {
+    const editProfileLink = document.querySelector('.edit-profile-link');
+    const profileCard = document.querySelector('.profile-card');
+    const noteEl = document.querySelector('.note');
+    const bioEditContainer = document.querySelector('.bio-edit-container');
+    const bioTextarea = document.querySelector('.bio-textarea');
+    const saveBioBtn = document.querySelector('.save-bio-btn');
+    const cancelBioBtn = document.querySelector('.cancel-bio-btn');
+    const bannerEditIcon = document.querySelector('.banner-edit-icon');
+    const avatarEditIcon = document.querySelector('.avatar-edit-icon');
+    
+    let newAvatarFile = null;
+    let newBannerFile = null;
+
+    editProfileLink.style.display = 'block';
+
+    editProfileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        profileCard.classList.toggle('edit-mode');
+        const isEditing = profileCard.classList.contains('edit-mode');
+
+        if (isEditing) {
+            editProfileLink.textContent = 'Finish Editing';
+            noteEl.style.display = 'none';
+            bioEditContainer.style.display = 'block';
+            bioTextarea.value = person.bio || '';
+            bannerEditIcon.style.display = 'flex';
+            avatarEditIcon.style.display = 'flex';
+        } else {
+            // This is a soft cancel, just hide the controls
+            editProfileLink.textContent = 'Edit Profile';
+            noteEl.style.display = 'block';
+            bioEditContainer.style.display = 'none';
+            bannerEditIcon.style.display = 'none';
+            avatarEditIcon.style.display = 'none';
+        }
+    });
+
+    cancelBioBtn.addEventListener('click', () => {
+        profileCard.classList.remove('edit-mode');
+        editProfileLink.textContent = 'Edit Profile';
+        noteEl.style.display = 'block';
+        bioEditContainer.style.display = 'none';
+        bannerEditIcon.style.display = 'none';
+        avatarEditIcon.style.display = 'none';
+    });
+
+    saveBioBtn.addEventListener('click', async () => {
+        const newBio = bioTextarea.value;
+        await actions.saveLemmyProfile({
+            bio: newBio,
+            avatar: newAvatarFile,
+            banner: newBannerFile
+        });
+        // Reset file holders after saving
+        newAvatarFile = null;
+        newBannerFile = null;
+    });
+
+    document.querySelectorAll('.edit-image-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const type = e.target.dataset.type;
+            if (type === 'avatar') {
+                newAvatarFile = file;
+                document.querySelector('.avatar').src = URL.createObjectURL(file);
+            } else if (type === 'banner') {
+                newBannerFile = file;
+                document.querySelector('.banner').src = URL.createObjectURL(file);
+            }
+        });
+    });
+}
+
 
 export function renderEditProfilePage(state, actions) {
     const view = document.getElementById('edit-profile-view');
