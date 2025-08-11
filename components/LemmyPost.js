@@ -33,7 +33,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
 
     commentDiv.innerHTML = `
         <div class="status-avatar">
-            <img src="${commentView.creator.avatar || 'images/pfp.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
+            <img src="${commentView.creator.avatar || 'images/php.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/php.png';">
         </div>
         <div class="status-body">
             <div class="status-header">
@@ -282,7 +282,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
     postCard.innerHTML = `
         <div class="status lemmy-post" data-id="${postView.post.id}">
             <div class="status-header">
-                <img src="${postView.creator.avatar || 'images/pfp.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
+                <img src="${postView.creator.avatar || 'images/php.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/php.png';">
                 <div>
                     <a href="#" class="community-link">${postView.community.name}</a>
                     <span>posted by</span>
