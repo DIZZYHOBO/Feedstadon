@@ -1,3 +1,4 @@
+
 import { ICONS } from './icons.js';
 import { formatTimestamp, timeAgo, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
 import { showToast, renderLoginPrompt, showImageModal } from './ui.js';
@@ -11,7 +12,7 @@ export function renderLemmyCard(post, actions) {
     }
     
     const card = document.createElement('div');
-    card.className = 'lemmy-post-card'; // Use the new card style
+    card.className = 'status lemmy-card';
     card.dataset.id = post.post.id;
 
     let mediaHTML = '';
@@ -30,11 +31,15 @@ export function renderLemmyCard(post, actions) {
         } else if (/\.(mp4|webm)$/i.test(url)) {
             mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
         } else if (post.post.thumbnail_url) {
-            // The thumbnail is handled separately now to allow for the image modal
             mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
         }
     }
     
+    let crosspostTag = '';
+    if (post.cross_post) {
+        crosspostTag = `<div class="crosspost-tag">Merged</div>`;
+    }
+
     let optionsMenuHTML = `
         <div class="post-options-container">
             <button class="post-options-btn">${ICONS.more}</button>
@@ -54,30 +59,29 @@ export function renderLemmyCard(post, actions) {
         bodyHTML = new showdown.Converter().makeHtml(processSpoilers(truncatedText)) + '... <a href="#" class="read-more-link">Read More</a>';
     }
 
-    const creator_instance = new URL(post.creator.actor_id).hostname;
-
     card.innerHTML = `
-        <div class="lemmy-post-card-clickable-area">
-            <div class="lemmy-post-card-header">
-                <img src="${post.creator.avatar || 'images/pfp.png'}" class="lemmy-post-card-avatar" data-action="view-creator" onerror="this.onerror=null;this.src='./images/pfp.png';">
-                <div class="lemmy-post-card-user-info">
-                    <span class="lemmy-post-card-username" data-action="view-creator">${post.creator.display_name || post.creator.name}@${creator_instance}</span>
-                    <span class="lemmy-post-card-community" data-action="view-community">c/${post.community.name}</span>
+        ${crosspostTag}
+        <div class="status-body-content">
+            <div class="status-header">
+                <a href="#" class="status-header-main" data-action="view-community">
+                    <img src="${post.community.icon || './images/php.png'}" alt="${post.community.name} icon" class="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <div>
+                        <span class="display-name">${post.community.name}</span>
+                        <span class="acct">posted by <span class="creator-link" data-action="view-creator">${post.creator.name}</span> · ${formatTimestamp(post.post.published)}</span>
+                    </div>
+                </a>
+                <div class="status-header-side">
+                    ${optionsMenuHTML}
+                    <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
                 </div>
-                <span class="lemmy-post-card-time">${timeAgo(post.post.published)}</span>
-                ${optionsMenuHTML}
             </div>
-
-            <h1 class="lemmy-post-card-title">${post.post.name}</h1>
-            
-            ${mediaHTML}
-
-            ${post.post.body ? `<div class="lemmy-post-card-body">${bodyHTML}</div>` : ''}
-            
-            ${post.post.url && !post.post.thumbnail_url ? `<a href="${post.post.url}" target="_blank" rel="noopener noreferrer" class="lemmy-post-link">${post.post.url}</a>` : ''}
+            <div class="status-content">
+                <h3 class="lemmy-title">${post.post.name}</h3>
+                ${mediaHTML}
+                <div class="lemmy-post-body">${bodyHTML}</div>
+            </div>
         </div>
-
-        <div class="lemmy-post-card-footer">
+        <div class="status-footer">
             <div class="lemmy-vote-cluster">
                 <button class="status-action lemmy-vote-btn ${post.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1">${ICONS.lemmyUpvote}</button>
                 <span class="lemmy-score">${post.counts.score}</span>
@@ -87,7 +91,6 @@ export function renderLemmyCard(post, actions) {
             <button class="status-action" data-action="view-post">${ICONS.comments} ${post.counts.comments}</button>
             <button class="status-action ${post.saved ? 'active' : ''}" data-action="save">${ICONS.bookmark}</button>
         </div>
-
         <div class="quick-reply-container">
             <div class="quick-reply-box">
                 <textarea placeholder="Add a comment..."></textarea>
@@ -111,7 +114,7 @@ export function renderLemmyCard(post, actions) {
     });
 
     if (wordCount > 30) {
-        const bodyContainer = card.querySelector('.lemmy-post-card-body');
+        const bodyContainer = card.querySelector('.lemmy-post-body');
         const readMoreLink = bodyContainer.querySelector('.read-more-link');
         readMoreLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -129,7 +132,7 @@ export function renderLemmyCard(post, actions) {
         });
     }
     
-    card.querySelector('.lemmy-post-card-clickable-area').addEventListener('dblclick', () => {
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
         if (post.cross_post) {
             actions.showMergedPost(post);
         } else {
@@ -137,20 +140,16 @@ export function renderLemmyCard(post, actions) {
         }
     });
 
-    card.querySelectorAll('[data-action="view-community"]').forEach(el => {
-        el.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
-        });
+    card.querySelector('[data-action="view-community"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
     });
     
-    card.querySelectorAll('[data-action="view-creator"]').forEach(el => {
-        el.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
-        });
+    card.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
     });
     
     let pressTimer;
@@ -249,7 +248,7 @@ export function renderLemmyCard(post, actions) {
         actions.showContextMenu(e, menuItems);
     });
     
-    card.querySelectorAll('.lemmy-post-card-footer .status-action').forEach(button => {
+    card.querySelectorAll('.status-footer .status-action').forEach(button => {
         button.addEventListener('click', e => {
             e.stopPropagation();
             const action = e.currentTarget.dataset.action;
@@ -354,7 +353,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 20
+            limit: 3
         };
         if (state.currentLemmyFeed !== 'All') {
             params.type_ = state.currentLemmyFeed;
