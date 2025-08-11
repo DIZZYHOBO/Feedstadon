@@ -247,14 +247,16 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
 export async function renderLemmyPostPage(state, postView, actions) {
     const view = document.getElementById('lemmy-post-view');
     view.innerHTML = `
-        <div class="lemmy-post-full"></div>
-        <div class="lemmy-comments-section">
-            <h3>Comments</h3>
-            <div class="lemmy-post-reply-box">
-                 <textarea class="lemmy-main-reply-textarea" placeholder="Write a comment..."></textarea>
-                 <button class="button-primary send-main-reply-btn">Comment</button>
+        <div class="lemmy-post-view-container">
+            <div class="lemmy-post-full"></div>
+            <div class="lemmy-comments-section">
+                <h3>Comments</h3>
+                <div class="lemmy-post-reply-box">
+                     <textarea class="lemmy-main-reply-textarea" placeholder="Write a comment..."></textarea>
+                     <button class="button-primary send-main-reply-btn">Comment</button>
+                </div>
+                <div class="lemmy-comments-container">Loading comments...</div>
             </div>
-            <div class="lemmy-comments-container">Loading comments...</div>
         </div>
     `;
 
