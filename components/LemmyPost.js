@@ -47,7 +47,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
                 <div class="lemmy-vote-cluster">
                      <button class="status-action lemmy-vote-btn" data-action="upvote" title="Upvote">${ICONS.lemmyUpvote}</button>
                     <span class="lemmy-score">${commentView.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote" title="Downvote">${ICONS.lemmyDownvote}</button>
+                     <button class="status-action lemmy-vote-btn" data-action="downvote" title="Downvote">${ICONS.lemmyDownvote}</button>
                 </div>
                 <button class="status-action reply-btn" title="Reply">${ICONS.comments}</button>
                 <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
@@ -187,9 +187,12 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions, 
         const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
         const replies = response?.data?.comments;
         
+        // Filter out the parent comment itself, as we only want to show its children.
+        const filteredReplies = replies.filter(reply => reply.comment.id !== commentId);
+
         container.innerHTML = '';
-        if (replies && replies.length > 0) {
-            replies.forEach(replyView => {
+        if (filteredReplies && filteredReplies.length > 0) {
+            filteredReplies.forEach(replyView => {
                 container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId));
             });
         } else {
