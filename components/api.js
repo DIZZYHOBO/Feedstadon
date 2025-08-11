@@ -72,8 +72,9 @@ export async function apiUploadMedia(instanceUrl, accessToken, file) {
 
 export async function lemmyImageUpload(file) {
     const lemmyInstance = localStorage.getItem('lemmy_instance');
-    if (!lemmyInstance) {
-        showToast("Lemmy instance not found.");
+    const jwt = localStorage.getItem('lemmy_jwt');
+    if (!lemmyInstance || !jwt) {
+        showToast("You must be logged in to upload images.");
         return null;
     }
 
@@ -81,10 +82,11 @@ export async function lemmyImageUpload(file) {
     formData.append('images[]', file);
 
     try {
-        // The CORS issue prevents us from sending credentials to this endpoint from a different origin.
-        // We must upload anonymously.
         const response = await fetch(`https://${lemmyInstance}/pictrs/image`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${jwt}`
+            },
             body: formData,
         });
 
