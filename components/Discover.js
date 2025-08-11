@@ -1,7 +1,18 @@
 import { apiFetch } from './api.js';
 import { renderStatus } from './Post.js';
 import { ICONS } from './icons.js';
-import { debounce } from './utils.js';
+
+// --- Utility Functions ---
+// Debounce function to limit the rate at which a function gets called.
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
 
 // --- Mastodon Discover Section (Existing Code) ---
 
