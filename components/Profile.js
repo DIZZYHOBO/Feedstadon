@@ -236,7 +236,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
             <div class="profile-card">
                 <div class="profile-header">
                     <img class="banner" src="" alt="Profile banner" onerror="this.onerror=null;this.src='images/404.png';">
-                    <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
+                    <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/php.png';">
                 </div>
                 <div class="profile-info">
                     <h2 class="display-name">Loading...</h2>
@@ -308,7 +308,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
             if (mastodonProfile) {
                 const account = mastodonProfile.account;
                 bannerImg.src = account.header_static || 'images/404.png';
-                avatarImg.src = account.avatar_static || 'images/pfp.png';
+                avatarImg.src = account.avatar_static || 'images/php.png';
                 displayNameEl.textContent = account.display_name;
                 acctEl.textContent = `@${account.acct}`;
                 noteEl.innerHTML = account.note;
@@ -332,7 +332,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 const counts = currentLemmyProfile.person_view.counts;
                 
                 bannerImg.src = person.banner || 'images/404.png';
-                avatarImg.src = person.avatar || 'images/pfp.png';
+                avatarImg.src = person.avatar || 'images/php.png';
                 displayNameEl.textContent = person.display_name || person.name;
                 acctEl.textContent = `@${person.name}@${new URL(person.actor_id).hostname}`;
                 noteEl.innerHTML = new showdown.Converter().makeHtml(person.bio || '');
