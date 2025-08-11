@@ -6,33 +6,30 @@ import { showToast } from './ui.js';
 // Function to inject styles for Lemmy components, ensuring mobile optimization
 function injectLemmyStyles() {
     const styleId = 'lemmy-post-styles';
-    if (document.getElementById(styleId)) return; // Styles already injected
+    if (document.getElementById(styleId)) {
+        return; // Styles already injected
+    }
 
     const style = document.createElement('style');
     style.id = styleId;
     style.innerHTML = `
-        /* General content styling */
         .lemmy-content, .lemmy-post-body {
             word-wrap: break-word;
             white-space: pre-wrap;
             overflow-wrap: break-word;
             max-width: 100%;
-            overflow-x: auto;
+            overflow-x: auto; /* Handle code blocks gracefully */
         }
         .lemmy-content pre, .lemmy-content code {
             white-space: pre-wrap;
             word-break: break-all;
         }
-        
-        /* Flexbox setup for correct truncation and layout */
         .status-body, .user-info {
             display: flex;
             flex-direction: column;
             min-width: 0; /* Crucial for flexbox truncation */
             width: 100%;
         }
-
-        /* Comment wrapper for borders */
         .comment-wrapper {
             padding-top: 12px;
             border-bottom: 1px solid var(--border-color, #444);
@@ -40,15 +37,12 @@ function injectLemmyStyles() {
         .comment-wrapper:last-of-type {
             border-bottom: none;
         }
-
-        /* Header styling for both posts and comments */
         .status-header {
             display: flex;
-            flex-wrap: nowrap; /* Prevent wrapping of main header items */
+            flex-wrap: nowrap;
             align-items: center;
             gap: 0.5rem;
         }
-        
         .display-name {
            font-weight: bold;
         }
@@ -60,7 +54,7 @@ function injectLemmyStyles() {
             flex-shrink: 1;
         }
         .time-ago {
-            margin-left: auto; /* Pushes time to the right */
+            margin-left: auto;
             color: var(--text-secondary-color, #aaa);
             padding-left: 0.5rem;
             white-space: nowrap;
@@ -70,10 +64,8 @@ function injectLemmyStyles() {
              display: flex;
              align-items: center;
              gap: 0.25rem;
-             flex-wrap: wrap; /* Allow this part to wrap if needed */
+             flex-wrap: wrap;
         }
-
-        /* Footer styling */
         .status-footer {
             display: flex;
             justify-content: space-between;
@@ -86,8 +78,6 @@ function injectLemmyStyles() {
             align-items: center;
             gap: 1rem;
         }
-
-        /* View Replies Button */
         .view-replies-btn {
             background-color: transparent;
             border: none;
@@ -109,11 +99,9 @@ function injectLemmyStyles() {
             cursor: default;
             text-decoration: none;
         }
-
-        /* Mobile-specific optimizations */
         @media (max-width: 480px) {
             .status.lemmy-comment, .status.lemmy-post {
-                padding: 10px 5px; /* Reduce horizontal padding */
+                padding: 10px 5px;
                 gap: 8px;
             }
             .display-name, .community-link {
@@ -131,7 +119,6 @@ function injectLemmyStyles() {
     document.head.appendChild(style);
 }
 
-// Inject styles when the module is loaded
 injectLemmyStyles();
 
 export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
@@ -146,7 +133,6 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     const converter = new showdown.Converter();
     let htmlContent = converter.makeHtml(commentView.comment.content);
     
-    // Add error handling for images in post body
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     tempDiv.querySelectorAll('img').forEach(img => {
@@ -381,8 +367,33 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
     });
 }
 
-export async function renderLemmyPostPage(state, postView, actions) {
+export async function renderLemmyPostPage(state, postData, actions) {
     const view = document.getElementById('lemmy-post-view');
+    view.innerHTML = '<div class="loading">Loading post...</div>';
+
+    let postView = postData;
+
+    // If we only received a post object (or just an ID), fetch the full post view
+    if (!postData || !postData.post || !postData.community) {
+        const postId = postData.id || postData.post?.id;
+        if (postId) {
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance');
+                const response = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${postId}`, { method: 'GET' }, 'lemmy');
+                postView = response?.data?.post_view;
+                if (!postView) throw new Error('Post not found.');
+            } catch (error) {
+                console.error("Failed to fetch full post view:", error);
+                view.innerHTML = `<div class="error">Failed to load post.</div>`;
+                return;
+            }
+        } else {
+            console.error("renderLemmyPostPage called with invalid data", postData);
+            view.innerHTML = `<div class="error">Failed to load post: Invalid data.</div>`;
+            return;
+        }
+    }
+
     view.innerHTML = `
         <div class="lemmy-post-view-container">
             <div class="lemmy-post-full"></div>
@@ -423,10 +434,10 @@ export async function renderLemmyPostPage(state, postView, actions) {
             <div class="status-header">
                 <img src="${postView.community.icon || 'images/pfp.png'}" class="avatar" alt="${postView.community.name}" onerror="this.onerror=null;this.src='images/pfp.png';">
                 <div class="user-info">
-                    <a href="#" class="community-link user-info-line1">${postView.community.name}</a>
+                    <a href="#/lemmy/community/${postView.community.name}" class="community-link user-info-line1">${postView.community.name}</a>
                     <div class="user-info-line2">
                         <span>posted by </span>
-                        <a href="#" class="user-link">${postView.creator.name}</a>
+                        <a href="#/lemmy/user/${postView.creator.id}" class="user-link">${postView.creator.name}</a>
                         <span class="time-ago">${timeAgo(post.published)}</span>
                     </div>
                 </div>
