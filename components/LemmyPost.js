@@ -38,8 +38,8 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         <div class="status-body">
             <div class="status-header">
                 <span class="display-name">${commentView.creator.display_name || commentView.creator.name}</span>
-                ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 <span class="acct">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+                ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 <span class="time-ago">· ${timeAgo(commentView.comment.published)}</span>
             </div>
             <div class="status-content">${htmlContent}</div>
@@ -285,11 +285,11 @@ export async function renderLemmyPostPage(state, postView, actions) {
         <div class="status lemmy-post" data-id="${postView.post.id}">
             <div class="status-header">
                 <img src="${postView.creator.avatar || 'images/php.png'}" class="avatar" alt="avatar" onerror="this.onerror=null;this.src='images/php.png';">
-                <div>
-                    <a href="#" class="community-link">${postView.community.name}</a>
-                    <span>posted by</span>
+                <div class="user-info">
                     <a href="#" class="user-link">${postView.creator.name}</a>
-                    <span class="time-ago">${timeAgo(postView.post.published)}</span>
+                    <span>posted in</span>
+                    <a href="#" class="community-link">${postView.community.name}</a>
+                    <span class="time-ago">· ${timeAgo(postView.post.published)}</span>
                 </div>
             </div>
             <h3>${postView.post.name}</h3>
