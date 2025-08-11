@@ -42,7 +42,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
                 ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 <span class="time-ago">· ${timeAgo(commentView.comment.published)}</span>
             </div>
-            <div class="status-content">${htmlContent}</div>
+            <div class="status-content" style="word-wrap: break-word; white-space: pre-wrap; overflow-wrap: break-word;">${htmlContent}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                      <button class="status-action lemmy-vote-btn" data-action="upvote" title="Upvote">${ICONS.lemmyUpvote}</button>
@@ -300,7 +300,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
                 </div>
             </div>
             <h3>${post.name}</h3>
-            <div class="lemmy-post-body">
+            <div class="lemmy-post-body" style="word-wrap: break-word; white-space: pre-wrap; overflow-wrap: break-word;">
                 ${bodyHtml}
                 ${isImageUrl 
                     ? `<div class="lemmy-card-image-container"><img src="${post.url}" alt="${post.name}" class="lemmy-card-image" onerror="this.onerror=null;this.src='images/404.png';"></div>` 
