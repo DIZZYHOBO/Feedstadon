@@ -175,13 +175,13 @@
     <template id="lemmy-login-template">
         <div class="login-prompt">
             <h3>Connect to Lemmy</h3>
-            <form class="login-form">
+            <form class="login-form" id="lemmy-login-form">
                 <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
                 <input type="text" class="username-input" placeholder="Username">
                 <input type="password" class="password-input" placeholder="Password">
-                <div class="piefed-login-option">
-                    <input type="checkbox" id="piefed-login-checkbox">
-                    <label for="piefed-login-checkbox">Login with Piefed</label>
+                <div class="piefed-login-option" style="display: flex; align-items: center; margin-top: 10px;">
+                    <input type="checkbox" id="piefed-login-checkbox" style="margin-right: 10px;">
+                    <label for="piefed-login-checkbox">Login with Piefed account</label>
                 </div>
                 <button type="submit" class="connect-btn">Connect</button>
             </form>
