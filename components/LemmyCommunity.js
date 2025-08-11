@@ -86,3 +86,4 @@ export async function renderLemmyCommunityPage(communityName, state, actions) {
         view.innerHTML = `<div class="error">Failed to load community: ${error.message}</div>`;
     }
 }
+ 
