@@ -103,9 +103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         instanceUrl: localStorage.getItem('fediverse-instance') || null,
         accessToken: localStorage.getItem('fediverse-token') || null,
         currentUser: null,
-        lemmyUsername: localStorage.getItem('lemmy_username') || null,
         currentView: null,
-        currentProfileTab: 'lemmy',
+        currentProfileTab: 'mastodon',
         currentTimeline: 'home',
         currentLemmyFeed: null,
         currentLemmySort: localStorage.getItem('lemmySortType') || 'New',
@@ -697,7 +696,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (err) {
                 showToast('Failed to edit comment.');
-                throw err;
             }
         },
         showContextMenu: showContextMenu
@@ -734,7 +732,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('lemmy_jwt', response.data.jwt);
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
-                state.lemmyUsername = username;
                 showToast('Lemmy login successful!');
                 updateNotificationBell();
                 actions.showLemmyFeed('Subscribed');
@@ -763,20 +760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     notificationsBtn.addEventListener('click', () => {
-        if (state.currentUser) {
-            actions.showProfilePage('lemmy', state.currentUser.id, state.currentUser.acct);
-        } else if (localStorage.getItem('lemmy_jwt')) {
-            const lemmyUsername = localStorage.getItem('lemmy_username');
-            const lemmyInstance = localStorage.getItem('lemmy_instance');
-            if (lemmyUsername && lemmyInstance) {
-                const userAcct = `${lemmyUsername}@${lemmyInstance}`;
-                actions.showLemmyProfile(userAcct);
-            } else {
-                showToast("Could not determine Lemmy user profile.");
-            }
-        } else {
-            showToast("Please log in to view your profile.");
-        }
+        actions.showNotifications();
     });
     
     document.getElementById('discover-btn').addEventListener('click', () => {
