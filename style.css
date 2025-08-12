@@ -1128,14 +1128,14 @@ button:disabled {
 .profile-info .stats strong {
     color: var(--font-color);
 }
-.lemmy-comment-on-profile {
+-on-profile {
     border-left: 3px solid var(--accent-color) !important;
     background-color: var(--primary-color); /* Added background color */
     border: 1px solid var(--border-color);
     padding: 10px;
     margin-bottom: 10px;
 }
-.lemmy-comment-on-profile .comment-context {
+-on-profile .comment-context {
     font-size: 0.9em;
     color: var(--font-color-muted);
     margin-bottom: 10px;
@@ -1145,7 +1145,7 @@ button:disabled {
     padding-bottom: 10px;
     border-bottom: 1px solid var(--border-color);
 }
-.lemmy-comment-on-profile .post-title {
+-on-profile .post-title {
     font-weight: bold;
     margin-bottom: 10px;
 }
@@ -1592,7 +1592,7 @@ button:disabled {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 1rem;
+    padding: 0;         /* Remove all padding */
     display: flex;
     gap: 1rem;
 }
