@@ -1,18 +1,46 @@
-// Create: components/actions.js
-import { store } from './store.js';
+// components/actions.js - Centralized actions
 import { apiFetch } from './api.js';
+import { showToast } from './ui.js';
+import { store } from './store.js';
 
-export const actions = {
+// Create actions object
+const actions = {
     // Auth Actions
+    async verifyMastodonCredentials() {
+        if (!window.$store.auth.mastodon.instanceUrl || !window.$store.auth.mastodon.accessToken) {
+            return false;
+        }
+
+        try {
+            const { data: user } = await apiFetch(
+                window.$store.auth.mastodon.instanceUrl, 
+                window.$store.auth.mastodon.accessToken, 
+                '/api/v1/accounts/verify_credentials'
+            );
+            window.$store.auth.mastodon.currentUser = user;
+            console.log('Mastodon credentials verified:', user.display_name);
+            return true;
+        } catch (error) {
+            console.error('Mastodon credential verification failed:', error);
+            // Clear invalid credentials
+            window.$store.auth.mastodon.instanceUrl = '';
+            window.$store.auth.mastodon.accessToken = '';
+            window.$store.auth.mastodon.currentUser = null;
+            return false;
+        }
+    },
+
     async loginMastodon(instanceUrl, accessToken) {
         try {
             const { data: user } = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials');
-            store.auth.mastodon.instanceUrl = instanceUrl;
-            store.auth.mastodon.accessToken = accessToken;
-            store.auth.mastodon.currentUser = user;
+            window.$store.auth.mastodon.instanceUrl = instanceUrl;
+            window.$store.auth.mastodon.accessToken = accessToken;
+            window.$store.auth.mastodon.currentUser = user;
+            showToast('Mastodon login successful!');
             return true;
         } catch (error) {
             console.error('Mastodon login failed:', error);
+            showToast('Mastodon login failed');
             return false;
         }
     },
@@ -24,149 +52,89 @@ export const actions = {
                 body: { username_or_email: username, password }
             }, 'lemmy');
             
-            store.auth.lemmy.instance = instance;
-            store.auth.lemmy.username = username;
-            store.auth.lemmy.jwt = data.jwt;
-            return true;
+            if (data.jwt) {
+                window.$store.auth.lemmy.instance = instance;
+                window.$store.auth.lemmy.username = username;
+                window.$store.auth.lemmy.jwt = data.jwt;
+                showToast('Lemmy login successful!');
+                return true;
+            } else {
+                showToast('Lemmy login failed - no token received');
+                return false;
+            }
         } catch (error) {
             console.error('Lemmy login failed:', error);
+            showToast('Lemmy login failed');
             return false;
         }
     },
 
     // Feed Actions
     async loadTimeline(type = 'home', loadMore = false) {
+        if (!window.$store.auth.mastodon.accessToken) {
+            console.log('No Mastodon credentials for timeline');
+            return;
+        }
+
         if (!loadMore) {
-            store.ui.isLoading = true;
-            store.posts = [];
+            window.$store.ui.isLoading = true;
+            window.$store.posts = [];
         } else {
-            store.ui.loadingMore = true;
+            window.$store.ui.loadingMore = true;
         }
 
         try {
             const { data } = await apiFetch(
-                store.auth.mastodon.instanceUrl,
-                store.auth.mastodon.accessToken,
+                window.$store.auth.mastodon.instanceUrl,
+                window.$store.auth.mastodon.accessToken,
                 `/api/v1/timelines/${type}`
             );
             
+            const postsWithPlatform = data.map(post => ({ ...post, platform: 'mastodon' }));
+            
             if (loadMore) {
-                store.posts.push(...data);
+                window.$store.posts.push(...postsWithPlatform);
             } else {
-                store.posts = data;
+                window.$store.posts = postsWithPlatform;
             }
+            
+            window.$store.ui.hasMore = data.length > 0;
+            console.log('Loaded Mastodon timeline:', data.length, 'posts');
         } catch (error) {
             console.error('Failed to load timeline:', error);
+            showToast('Failed to load timeline');
         } finally {
-            store.ui.isLoading = false;
-            store.ui.loadingMore = false;
+            window.$store.ui.isLoading = false;
+            window.$store.ui.loadingMore = false;
         }
     },
 
     async loadLemmyFeed(feedType = 'Subscribed', sortType = 'Hot', loadMore = false) {
+        if (!window.$store.auth.lemmy.jwt) {
+            console.log('No Lemmy credentials for feed');
+            return;
+        }
+
         if (!loadMore) {
-            store.ui.isLoading = true;
-            store.posts = [];
+            window.$store.ui.isLoading = true;
+            window.$store.posts = [];
         } else {
-            store.ui.loadingMore = true;
+            window.$store.ui.loadingMore = true;
         }
 
         try {
             const { data } = await apiFetch(
-                store.auth.lemmy.instance,
+                window.$store.auth.lemmy.instance,
                 null,
                 '/api/v3/post/list',
                 {},
                 'lemmy',
-                { sort: sortType, type_: feedType, limit: 20 }
+                { 
+                    sort: sortType, 
+                    type_: feedType, 
+                    limit: 20,
+                    page: loadMore ? Math.floor(window.$store.posts.length / 20) + 1 : 1
+                }
             );
             
-            const postsWithPlatform = data.posts.map(post => ({ ...post, platform: 'lemmy' }));
-            
-            if (loadMore) {
-                store.posts.push(...postsWithPlatform);
-            } else {
-                store.posts = postsWithPlatform;
-            }
-        } catch (error) {
-            console.error('Failed to load Lemmy feed:', error);
-        } finally {
-            store.ui.isLoading = false;
-            store.ui.loadingMore = false;
-        }
-    },
-
-    async loadMergedFeed(loadMore = false) {
-        if (!loadMore) {
-            store.ui.isLoading = true;
-            store.posts = [];
-        } else {
-            store.ui.loadingMore = true;
-        }
-
-        try {
-            const [mastodonData, lemmyData] = await Promise.all([
-                store.auth.mastodon.accessToken ? 
-                    apiFetch(store.auth.mastodon.instanceUrl, store.auth.mastodon.accessToken, '/api/v1/timelines/home') :
-                    Promise.resolve({ data: [] }),
-                store.auth.lemmy.jwt ?
-                    apiFetch(store.auth.lemmy.instance, null, '/api/v3/post/list', {}, 'lemmy', { sort: 'Hot', type_: 'Subscribed' }) :
-                    Promise.resolve({ data: { posts: [] } })
-            ]);
-
-            const mastodonPosts = mastodonData.data.map(post => ({ ...post, platform: 'mastodon' }));
-            const lemmyPosts = lemmyData.data.posts.map(post => ({ ...post, platform: 'lemmy' }));
-            
-            const allPosts = [...mastodonPosts, ...lemmyPosts].sort((a, b) => {
-                const dateA = new Date(a.platform === 'lemmy' ? a.post.published : a.created_at);
-                const dateB = new Date(b.platform === 'lemmy' ? b.post.published : b.created_at);
-                return dateB - dateA;
-            });
-
-            if (loadMore) {
-                store.posts.push(...allPosts);
-            } else {
-                store.posts = allPosts;
-            }
-        } catch (error) {
-            console.error('Failed to load merged feed:', error);
-        } finally {
-            store.ui.isLoading = false;
-            store.ui.loadingMore = false;
-        }
-    },
-
-    // Post Actions
-    async votePost(postId, score) {
-        try {
-            await apiFetch(
-                store.auth.lemmy.instance,
-                null,
-                '/api/v3/post/like',
-                { method: 'POST', body: { post_id: postId, score } },
-                'lemmy'
-            );
-            
-            // Update local state
-            const post = store.posts.find(p => p.post?.id === postId);
-            if (post) {
-                post.my_vote = score;
-                post.counts.score += score - (post.my_vote || 0);
-            }
-        } catch (error) {
-            console.error('Failed to vote on post:', error);
-        }
-    },
-
-    // UI Actions
-    setView(viewName) {
-        store.ui.currentView = viewName;
-        window.history.pushState({ view: viewName }, '', `#${viewName}`);
-    },
-
-    setTheme(themeName) {
-        store.settings.theme = themeName;
-        document.body.dataset.theme = themeName;
-        localStorage.setItem('feedstodon-theme', themeName);
-    }
-};
+            const postsWithPlatform
