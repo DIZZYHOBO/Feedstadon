@@ -1,3 +1,4 @@
+<!-- index.html - Update the head section and main content -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,190 +8,214 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Add Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body>
+<body x-data="appData()" x-init="init()">
 
     <div id="app-view">
         <div id="pull-to-refresh-indicator"></div>
-        <nav class="top-nav">
+        <nav class="top-nav" x-data="navComponent()">
              <div class="nav-left">
-                <button id="refresh-btn" class="icon-button"></button>
-                <div class="dropdown" id="feeds-dropdown">
-                    <button class="nav-button">Feeds</button>
-                    <div class="dropdown-content">
-    <a href="#" data-timeline="home">Home</a>
-    <a href="#" data-timeline="merged">Merged</a> <!-- This is the new line -->
-    <hr>
-    <a href="#" id="lemmy-main-link">Lemmy</a>
-    <a href="#" id="mastodon-main-link">Mastodon</a>
-</div>
-                </div>
-                <button id="discover-btn" class="nav-button">Discover</button>
-            </div>
-
-            <div class="nav-center">
-                 </div>
-
-            <div class="nav-right">
-                <div class="dropdown" id="user-dropdown">
-                    <button class="nav-button">Menu</button>
-                    <div class="dropdown-content">
-                        <a href="#" id="new-post-link">New Post</a>
-                        <a href="#" id="profile-link">Profile</a>
-                        <a href="#" id="settings-link">Settings</a>
-                        <a href="#" id="help-link">Help</a>
+                <button id="refresh-btn" 
+                        class="icon-button"
+                        :class="{ 'loading': $store.ui.isLoading }"
+                        @click="refresh()"
+                        x-html="refreshIcon"></button>
+                <div class="dropdown" x-data="{ open: false }">
+                    <button class="nav-button" @click="open = !open">Feeds</button>
+                    <div class="dropdown-content" 
+                         x-show="open" 
+                         @click.away="open = false"
+                         x-transition>
+                        <a href="#" @click="setFeed('home'); open = false" data-timeline="home">Home</a>
+                        <a href="#" @click="setFeed('merged'); open = false" data-timeline="merged">Merged</a>
+                        <hr>
+                        <a href="#" @click="setFeed('lemmy'); open = false" id="lemmy-main-link">Lemmy</a>
+                        <a href="#" @click="setFeed('mastodon'); open = false" id="mastodon-main-link">Mastodon</a>
                     </div>
                 </div>
-                <button id="notifications-btn" class="icon-button"></button>
+                <button id="discover-btn" class="nav-button" @click="$store.ui.currentView = 'discover'">Discover</button>
+            </div>
+
+            <div class="nav-center"></div>
+
+            <div class="nav-right">
+                <div class="dropdown" x-data="{ open: false }">
+                    <button class="nav-button" @click="open = !open">Menu</button>
+                    <div class="dropdown-content" 
+                         x-show="open" 
+                         @click.away="open = false"
+                         x-transition>
+                        <a href="#" @click="showComposeModal(); open = false" id="new-post-link">New Post</a>
+                        <a href="#" @click="showProfile(); open = false" id="profile-link">Profile</a>
+                        <a href="#" @click="$store.ui.currentView = 'settings'; open = false" id="settings-link">Settings</a>
+                        <a href="#" @click="showHelp(); open = false" id="help-link">Help</a>
+                    </div>
+                </div>
+                <button id="notifications-btn" 
+                        class="icon-button"
+                        :class="{ 'unread': hasUnreadNotifications }"
+                        @click="showProfile()"
+                        x-html="notificationIcon"></button>
             </div>
         </nav>
         
-        <div id="loading-bar"></div>
+        <div id="loading-bar" :class="{ 'loading': $store.ui.isLoading }"></div>
 
         <div class="container">
-            <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
-            <div id="timeline" class="view-container"></div>
-            <div id="notifications-view" class="view-container"></div>
-            <div id="discover-view" class="view-container"></div>
-            <div id="screenshot-view" class="view-container"></div>
-            <div id="merged-post-view" class="view-container"></div>
-            <div id="profile-page-view" class="view-container"></div>
-            <div id="edit-profile-view" class="view-container"></div>
-            <div id="search-results-view" class="view-container"></div>
-            <div id="settings-view" class="view-container"></div>
-            <div id="status-detail-view" class="view-container"></div>
-            <div id="lemmy-post-view" class="view-container"></div>
-            <div id="lemmy-community-view" class="view-container"></div>
-            <div id="scroll-loader"><p>Loading more posts...</p></div>
-        </div>
-        <div id="refresh-spinner"></div>
-    </div>
-    
-    <div id="context-menu"></div>
-    
-    <div id="toast-notification"></div>
-
-    <div class="modal-overlay" id="compose-modal">
-         <div class="modal-content">
-            <div class="compose-tabs">
-                <button class="tab-button active" data-tab="mastodon-compose">Mastodon</button>
-                <button class="tab-button" data-tab="lemmy-compose">Lemmy</button>
+            <!-- Timeline Sub Nav -->
+            <div id="timeline-sub-nav" 
+                 class="timeline-sub-nav"
+                 x-show="$store.ui.currentView === 'timeline' && ($store.ui.currentTimeline || $store.ui.currentLemmyFeed)"
+                 x-data="timelineSubNavComponent()">
+                <div class="timeline-sub-nav-tabs">
+                    <template x-if="$store.ui.currentLemmyFeed">
+                        <div class="lemmy-tabs">
+                            <button class="timeline-sub-nav-btn" 
+                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'Subscribed' }"
+                                    @click="setLemmyFeed('Subscribed')">Subbed</button>
+                            <button class="timeline-sub-nav-btn" 
+                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'All' }"
+                                    @click="setLemmyFeed('All')">All</button>
+                            <button class="timeline-sub-nav-btn" 
+                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'Local' }"
+                                    @click="setLemmyFeed('Local')">Local</button>
+                        </div>
+                    </template>
+                    
+                    <template x-if="$store.ui.currentTimeline">
+                        <div class="mastodon-tabs">
+                            <button class="timeline-sub-nav-btn" 
+                                    :class="{ 'active': $store.ui.currentTimeline === 'home' }"
+                                    @click="setMastodonTimeline('home')">Subbed</button>
+                            <button class="timeline-sub-nav-btn" 
+                                    :class="{ 'active': $store.ui.currentTimeline === 'public' }"
+                                    @click="setMastodonTimeline('public')">All</button>
+                            <button class="timeline-sub-nav-btn" 
+                                    :class="{ 'active': $store.ui.currentTimeline === 'public?local=true' }"
+                                    @click="setMastodonTimeline('public?local=true')">Local</button>
+                        </div>
+                    </template>
+                </div>
+                
+                <template x-if="$store.ui.currentLemmyFeed">
+                    <div id="lemmy-filter-container">
+                        <select id="lemmy-sort-select" 
+                                x-model="$store.ui.currentLemmySort"
+                                @change="setLemmyFeed($store.ui.currentLemmyFeed, $event.target.value)">
+                            <option value="New">New</option>
+                            <option value="Active">Active</option>
+                            <option value="Hot">Hot</option>
+                            <option value="TopHour">Top Hour</option>
+                            <option value="TopSixHour">Top Six Hour</option>
+                            <option value="TopTwelveHour">Top Twelve Hour</option>
+                            <option value="TopDay">Top Day</option>
+                        </select>
+                    </div>
+                </template>
             </div>
-            <div class="compose-tab-content active" id="mastodon-compose-tab">
-                <div id="reply-to-info"></div>
-                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                <div id="cw-creator-container"></div>
-                <div id="poll-creator-container"></div>
-                 <div class="modal-actions">
-                    <div class="compose-options">
-                        <input type="file" id="media-upload-input" style="display: none;" accept="image/*,video/*">
-                        <button class="icon-button" id="media-upload-btn"></button>
-                        <button class="icon-button" id="poll-btn"></button>
-                        <button class="icon-button" id="cw-btn"></button>
-                        <span id="media-filename-preview"></span>
+
+            <!-- Main Timeline -->
+            <div id="timeline" 
+                 class="view-container"
+                 x-show="$store.ui.currentView === 'timeline'"
+                 x-data="timelineComponent()" 
+                 x-init="init()">
+                 
+                <!-- Loading State -->
+                <template x-if="$store.ui.isLoading && $store.posts.length === 0">
+                    <div class="loading-spinner">
+                        <div class="loading-message">Loading your feed...</div>
                     </div>
-                    <div>
-                        <span id="character-count">500</span>
-                        <button class="button-secondary" id="cancel-compose-btn">Cancel</button>
-                        <button type="submit" id="submit-compose-btn">Post</button>
+                </template>
+                
+                <!-- Login Prompt -->
+                <template x-if="!$store.ui.isLoading && $store.posts.length === 0 && needsLogin">
+                    <div class="login-prompt" x-data="loginPromptComponent()">
+                        <h3>Connect to get started</h3>
+                        <p>Please log in to see your feed.</p>
+                        <div class="login-options">
+                            <button class="button-primary" @click="showMastodonLogin()">Connect Mastodon</button>
+                            <button class="button-primary" @click="showLemmyLogin()">Connect Lemmy</button>
+                        </div>
                     </div>
+                </template>
+                
+                <!-- Posts -->
+                <template x-if="!$store.ui.isLoading || $store.posts.length > 0">
+                    <div class="posts-container">
+                        <template x-for="(post, index) in $store.posts" :key="getPostKey(post)">
+                            <div x-data="postComponent(post, index)" x-html="renderPost()"></div>
+                        </template>
+                    </div>
+                </template>
+                
+                <!-- Load More -->
+                <div id="scroll-loader" 
+                     x-show="$store.posts.length > 0"
+                     x-intersect="loadMore()">
+                    <template x-if="$store.ui.loadingMore">
+                        <p>Loading more posts...</p>
+                    </template>
+                    <template x-if="!$store.ui.loadingMore && !$store.ui.hasMore">
+                        <p>No more posts.</p>
+                    </template>
                 </div>
             </div>
-            <div class="compose-tab-content" id="lemmy-compose-tab">
-                <form id="lemmy-compose-form">
-                    <div class="lemmy-post-type-selector">
-                        <button type="button" class="lemmy-post-type-btn active" data-type="text">Text</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="url">Link</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="image">Image</button>
-                    </div>
-                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., technology)">
-                    <input type="text" id="lemmy-title-input" placeholder="Title">
-                    <input type="url" id="lemmy-url-input" placeholder="URL" style="display:none;">
-                    <textarea id="lemmy-body-textarea" placeholder="Text (optional)"></textarea>
-                    <div class="modal-actions">
-                        <button class="button-secondary" id="cancel-lemmy-compose-btn">Cancel</button>
-                        <button type="submit" id="submit-lemmy-compose-btn">Post</button>
-                    </div>
-                </form>
-            </div>
+
+            <!-- Other Views (keep existing structure but add x-show) -->
+            <div id="notifications-view" class="view-container" x-show="$store.ui.currentView === 'notifications'"></div>
+            <div id="discover-view" class="view-container" x-show="$store.ui.currentView === 'discover'"></div>
+            <div id="screenshot-view" class="view-container" x-show="$store.ui.currentView === 'screenshot'"></div>
+            <div id="merged-post-view" class="view-container" x-show="$store.ui.currentView === 'mergedPost'"></div>
+            <div id="profile-page-view" class="view-container" x-show="$store.ui.currentView === 'profile'"></div>
+            <div id="edit-profile-view" class="view-container" x-show="$store.ui.currentView === 'editProfile'"></div>
+            <div id="search-results-view" class="view-container" x-show="$store.ui.currentView === 'search'"></div>
+            <div id="settings-view" class="view-container" x-show="$store.ui.currentView === 'settings'"></div>
+            <div id="status-detail-view" class="view-container" x-show="$store.ui.currentView === 'statusDetail'"></div>
+            <div id="lemmy-post-view" class="view-container" x-show="$store.ui.currentView === 'lemmyPost'"></div>
+            <div id="lemmy-community-view" class="view-container" x-show="$store.ui.currentView === 'lemmyCommunity'"></div>
         </div>
+        <div id="refresh-spinner" x-show="$store.ui.isLoading"></div>
+    </div>
+    
+    <!-- Keep all your existing modals and other elements -->
+    <div id="context-menu"></div>
+    <div id="toast-notification"></div>
+    
+    <!-- Existing modals -->
+    <div class="modal-overlay" id="compose-modal">
+        <!-- Keep existing compose modal content -->
     </div>
     
     <div class="modal-overlay" id="image-modal">
-        <div class="image-modal-content">
-            <img id="fullscreen-image" src="">
-            <button class="icon-button" id="save-image-btn" title="Save Image"></button>
-        </div>
+        <!-- Keep existing image modal content -->
     </div>
     
     <div class="modal-overlay" id="help-modal">
-        <div class="modal-content help-modal-content">
-            <button id="close-help-btn" class="close-btn">close</button>
-            <h3>Markdown Guide</h3>
-            <div class="markdown-guide">
-                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
-                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
-                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
-                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
-                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
-                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
-                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
-                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
-            </div>
-        </div>
+        <!-- Keep existing help modal content -->
     </div>
 
+    <!-- Keep existing templates -->
     <template id="screenshot-controls-template">
-        <div class="screenshot-controls">
-            <div class="control-group">
-                <label>Parent Comments:</label>
-                <button data-action="parents-up">↑</button>
-                <button data-action="parents-down">↓</button>
-            </div>
-            <div class="control-group">
-                <input type="checkbox" id="include-replies-checkbox">
-                <label for="include-replies-checkbox">Include Replies</label>
-            </div>
-            <div class="control-group" id="replies-controls" style="display: none;">
-                 <label>Replies:</label>
-                <button data-action="replies-up">↑</button>
-                <button data-action="replies-down">↓</button>
-            </div>
-            <button id="capture-btn">Capture Screenshot</button>
-        </div>
-        <div id="screenshot-preview-area"></div>
+        <!-- Keep existing content -->
     </template>
 
     <template id="mastodon-login-template">
-        <div class="login-prompt">
-            <h3>Connect to Mastodon</h3>
-            <form class="login-form">
-                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
-                <input type="text" class="token-input" placeholder="Paste your Access Token">
-                <button type="submit" class="connect-btn">Login</button>
-            </form>
-        </div>
+        <!-- Keep existing content -->
     </template>
 
     <template id="lemmy-login-template">
-        <div class="login-prompt">
-            <h3>Connect to Lemmy</h3>
-            <form class="login-form" id="lemmy-login-form">
-                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
-                <input type="text" class="username-input" placeholder="Username">
-                <input type="password" class="password-input" placeholder="Password">
-                <div class="piefed-login-option" style="display: flex; align-items: center; margin-top: 10px;">
-                    <input type="checkbox" id="piefed-login-checkbox" style="margin-right: 10px;">
-                    <label for="piefed-login-checkbox">Login with Piefed account</label>
-                </div>
-                <button type="submit" class="connect-btn">Connect</button>
-            </form>
-        </div>
+        <!-- Keep existing content -->
     </template>
 
+    <!-- Update script imports -->
+    <script src="components/store.js" type="module"></script>
+    <script src="components/actions.js" type="module"></script>
+    <script src="components/alpine-components.js" type="module"></script>
     <script src="app.js" type="module"></script>
     <script>
         if ('serviceWorker' in navigator) {
