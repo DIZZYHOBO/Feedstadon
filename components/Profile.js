@@ -2,12 +2,12 @@ import { ICONS } from './icons.js';
 import { apiFetch, lemmyImageUpload } from './api.js';
 import { renderStatus } from './Post.js';
 import { renderLemmyCard } from './Lemmy.js';
-import { timeAgo, formatTimestamp } from './utils.js';
+import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
-import { renderLemmyComment as renderBaseLemmyComment } from './LemmyPost.js';
 
 // --- Helper Functions to Fetch Profile Data ---
 async function getMastodonProfile(state, accountId) {
+    // Guard against making a fetch call with null values
     if (!state.instanceUrl || !state.accessToken || !accountId) {
         return null;
     }
@@ -28,6 +28,7 @@ async function getLemmyProfile(userAcct, page = 1) {
     if (!lemmyInstance) return null;
     try {
         const [name] = userAcct.split('@');
+        // Fetch user details, posts, and comments in parallel, with pagination
         const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
         return response.data;
     } catch (error) {
@@ -36,58 +37,161 @@ async function getLemmyProfile(userAcct, page = 1) {
     }
 }
 
-function renderLemmyCommentOnProfile(commentView, state, actions) {
-    // Use the base renderer to create the main card
-    const commentCard = renderBaseLemmyComment(commentView, state, actions);
+function showEditUI(commentDiv, commentView, actions) {
+    const contentDiv = commentDiv.querySelector('.status-content');
+    const originalContent = commentView.comment.content;
+    const originalHtml = contentDiv.innerHTML;
 
-    // Truncate post title to 4 words
-    const postTitle = commentView.post.name;
-    const truncatedTitle = postTitle.split(' ').slice(0, 4).join(' ') + (postTitle.split(' ').length > 4 ? '...' : '');
-
-    // Create the context bar HTML
-    const contextHTML = `
-        <div class="comment-context">
-            <span>Commented on:</span>
-            <a href="#" class="post-link">${truncatedTitle}</a>
-            <span>in</span>
-            <a href="#" class="community-link">${commentView.community.name}</a>
+    contentDiv.innerHTML = `
+        <div class="edit-comment-container">
+            <textarea class="edit-comment-textarea">${originalContent}</textarea>
+            <div class="edit-comment-actions">
+                <button class="button-secondary cancel-edit-btn">Cancel</button>
+                <button class="button-primary save-edit-btn">Save</button>
+            </div>
         </div>
     `;
-    
-    // Prepend the context bar to the comment's body
-    const contentDiv = commentCard.querySelector('.status-body');
-    if (contentDiv) {
-        contentDiv.insertAdjacentHTML('afterbegin', contextHTML);
-    }
-    commentCard.classList.add('lemmy-comment-on-profile');
 
-    // Add event listeners for the new links
-    const postLink = commentCard.querySelector('.post-link');
-    if (postLink) {
-        postLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            actions.showLemmyPostDetail(commentView);
-        });
-    }
+    const textarea = contentDiv.querySelector('.edit-comment-textarea');
+    const saveBtn = contentDiv.querySelector('.save-edit-btn');
+    const cancelBtn = contentDiv.querySelector('.cancel-edit-btn');
 
-    const communityLink = commentCard.querySelector('.community-link');
-    if (communityLink) {
-        communityLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            actions.showLemmyCommunity(commentView.community.name);
-        });
-    }
-    
-    // Add double-click event listener to navigate to the post
-    commentCard.addEventListener('dblclick', () => {
-        actions.showLemmyPostDetail(commentView);
+    textarea.focus();
+
+    saveBtn.addEventListener('click', async () => {
+        const newContent = textarea.value.trim();
+        if (newContent && newContent !== originalContent) {
+            try {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+                await actions.lemmyEditComment(commentView.comment.id, newContent);
+            } catch (error) {
+                console.error("Failed to save comment:", error);
+                contentDiv.innerHTML = originalHtml;
+                showToast("Failed to save comment. Please try again.");
+            }
+        } else {
+            contentDiv.innerHTML = originalHtml;
+        }
     });
 
-    return commentCard;
+    cancelBtn.addEventListener('click', () => {
+        contentDiv.innerHTML = originalHtml;
+    });
 }
 
+
+function renderLemmyComment(commentView, state, actions) {
+    const commentWrapper = document.createElement('div');
+    commentWrapper.className = 'comment-wrapper';
+    commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
+
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'status lemmy-comment-on-profile';
+    const converter = new showdown.Converter();
+    const htmlContent = converter.makeHtml(commentView.comment.content);
+    const isCreator = state.lemmyUsername && state.lemmyUsername === commentView.creator.name;
+
+    commentDiv.innerHTML = `
+        <div class="status-body-content">
+            <div class="comment-context">
+                <span>Commented on:</span>
+                <a href="#" class="post-title">${commentView.post.name}</a>
+                <span>in</span>
+                <a href="#" class="community-link">${commentView.community.name}</a>
+            </div>
+            <div class="status-content">${htmlContent}</div>
+            <div class="status-footer">
+                <div class="lemmy-vote-cluster">
+                    <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
+                    <span class="lemmy-score">${commentView.counts.score}</span>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
+                </div>
+                <button class="status-action view-replies-btn">
+                    ${ICONS.comments}
+                    <span class="reply-count">${commentView.counts.child_count}</span>
+                </button>
+                 <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
+            </div>
+            <div class="lemmy-replies-container" style="display: none;"></div>
+        </div>
+    `;
+
+    commentDiv.addEventListener('dblclick', () => {
+        actions.showLemmyPostDetail(commentView.post);
+    });
+
+    const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
+    const viewRepliesBtn = commentDiv.querySelector('.view-replies-btn');
+
+    viewRepliesBtn.addEventListener('click', () => {
+        toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions);
+    });
+    
+    const moreOptionsBtn = commentDiv.querySelector('.more-options-btn');
+    moreOptionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menuItems = [];
+
+        if (isCreator) {
+            menuItems.push({
+                label: 'Edit Comment',
+                action: () => showEditUI(commentDiv, commentView, actions)
+            });
+            menuItems.push({
+                label: 'Delete Comment',
+                action: () => {
+                    if (window.confirm('Are you sure you want to delete this comment?')) {
+                        actions.lemmyDeleteComment(commentView.comment.id);
+                    }
+                }
+            });
+        }
+        
+        if(menuItems.length > 0) {
+            actions.showContextMenu(e, menuItems);
+        } else {
+            showToast("No actions available for this comment.");
+        }
+    });
+    
+    commentWrapper.appendChild(commentDiv);
+    return commentWrapper;
+}
+
+async function toggleLemmyReplies(commentId, postId, container, state, actions) {
+    const isVisible = container.style.display === 'block';
+    if (isVisible) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = 'Loading replies...';
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) {
+        container.innerHTML = 'Could not load replies.';
+        return;
+    }
+
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
+        const replies = response?.data?.comments;
+        
+        container.innerHTML = '';
+        if (replies && replies.length > 0) {
+            replies.forEach(replyView => {
+                container.appendChild(renderLemmyComment(replyView, state, actions));
+            });
+        } else {
+            container.innerHTML = 'No replies found.';
+        }
+    } catch (error) {
+        console.error('Failed to fetch and process replies:', error);
+        container.innerHTML = 'Failed to load replies.';
+    }
+}
 
 export async function loadMoreLemmyProfile(state, actions) {
     if (state.isLoadingMore || !state.lemmyProfileHasMore) return;
@@ -106,7 +210,7 @@ export async function loadMoreLemmyProfile(state, actions) {
         if (itemsToRender && itemsToRender.length > 0) {
             itemsToRender.forEach(item => {
                 if (currentFilter === 'comments') {
-                    profileFeed.appendChild(renderLemmyCommentOnProfile(item, state, actions));
+                    profileFeed.appendChild(renderLemmyComment(item, state, actions));
                 } else {
                     profileFeed.appendChild(renderLemmyCard(item, actions));
                 }
@@ -134,11 +238,11 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                     <img class="banner" src="" alt="Profile banner" onerror="this.onerror=null;this.src='images/404.png';">
                     <label class="edit-icon banner-edit-icon" style="display:none;">${ICONS.edit}<input type="file" class="edit-image-input" data-type="banner" accept="image/*"></label>
                     
-                    <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/pfp.png';">
+                    <img class="avatar" src="" alt="Profile avatar" onerror="this.onerror=null;this.src='images/php.png';">
                     <label class="edit-icon avatar-edit-icon" style="display:none;">${ICONS.edit}<input type="file" class="edit-image-input" data-type="avatar" accept="image/*"></label>
                 </div>
                 <div class="profile-actions">
-                         <button class="button edit-profile-btn" style="display:none;">Edit Profile</button>
+                     <button class="button edit-profile-btn" style="display:none;">Edit Profile</button>
                 </div>
                 <div class="profile-info">
                     <h2 class="display-name">Loading...</h2>
@@ -195,7 +299,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
         if (itemsToRender && itemsToRender.length > 0) {
             itemsToRender.forEach(item => {
                 if (filter === 'comments') {
-                    feedContainer.appendChild(renderLemmyCommentOnProfile(item, state, actions));
+                    feedContainer.appendChild(renderLemmyComment(item, state, actions));
                 } else {
                     feedContainer.appendChild(renderLemmyCard(item, actions));
                 }
@@ -257,6 +361,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 feedContainer.innerHTML = '<p>Could not load Mastodon feed.</p>';
             }
         } else if (targetTab === 'lemmy') {
+            // Reset pagination when switching to the Lemmy tab
             state.lemmyProfilePage = 1;
             state.lemmyProfileHasMore = true;
             currentLemmyProfile = await getLemmyProfile(userAcct, state.lemmyProfilePage);
@@ -276,6 +381,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                 dropdownLabel.textContent = 'Comments'; 
                 renderLemmyFeed('comments');
 
+                // Check if the profile belongs to the logged-in user
                 if (state.lemmyUsername && person.name === state.lemmyUsername) {
                     setupLemmyProfileEditing(person, actions);
                 }
@@ -321,6 +427,7 @@ function setupLemmyProfileEditing(person, actions) {
             bannerEditIcon.style.display = 'flex';
             avatarEditIcon.style.display = 'flex';
         } else {
+            // This is a soft cancel, just hide the controls
             editProfileBtn.textContent = 'Edit Profile';
             noteEl.style.display = 'block';
             bioEditContainer.style.display = 'none';
@@ -345,6 +452,7 @@ function setupLemmyProfileEditing(person, actions) {
             avatar: newAvatarFile,
             banner: newBannerFile
         });
+        // Reset file holders after saving
         newAvatarFile = null;
         newBannerFile = null;
     });
