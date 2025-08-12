@@ -1594,7 +1594,6 @@ button:disabled {
     border-radius: var(--border-radius);
     padding: 0;         /* Remove all padding */
     display: flex;
-    flex-direction: column; /* <-- Add this line */
     gap: 1rem;
 }
 
