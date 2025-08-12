@@ -1,6 +1,7 @@
 import { ICONS } from './icons.js';
 import { apiFetch } from './api.js';
-import { renderLemmyComment, renderLemmyCard } from './Lemmy.js'; // Import card renderer
+import { renderLemmyCard } from './Lemmy.js';
+import { renderLemmyComment } from './LemmyPost.js'; // Corrected import path
 import { renderStatus } from './Post.js';
 import { timeAgo } from './utils.js';
 import { renderLoginPrompt } from './ui.js';
