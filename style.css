@@ -915,11 +915,17 @@ button:disabled {
     align-items: center;
     position: relative;
     padding: 20px;
+    overflow: hidden; /* Prevent scrollbars on the container */
 }
 #fullscreen-image {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    cursor: grab; /* Add grab cursor for panning */
+    transition: transform 0.2s ease-out; /* Smooth transitions for zoom/pan */
+}
+#fullscreen-image:active {
+    cursor: grabbing;
 }
 #save-image-btn {
     position: absolute;
@@ -1124,6 +1130,10 @@ button:disabled {
 }
 .lemmy-comment-on-profile {
     border-left: 3px solid var(--accent-color) !important;
+    background-color: var(--primary-color); /* Added background color */
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    margin-bottom: 10px;
 }
 .lemmy-comment-on-profile .comment-context {
     font-size: 0.9em;
@@ -1132,6 +1142,8 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
 }
 .lemmy-comment-on-profile .post-title {
     font-weight: bold;
@@ -1597,6 +1609,7 @@ button:disabled {
     padding-top: 0.5rem;
     white-space: normal !important;
     word-wrap: break-word !important;
+    word-break: break-all; /* ADDED: Forcefully breaks long strings */
 }
 
 .view-replies-btn {
@@ -1678,7 +1691,6 @@ button:disabled {
 
 .refresher {
     transform-origin: center;
-    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {

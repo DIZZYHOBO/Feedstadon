@@ -1,6 +1,16 @@
 import { showToast } from './ui.js';
 
-export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}, platform = 'mastodon') {
+/**
+ * A generic fetch wrapper for making API calls to Mastodon or Lemmy instances.
+ * @param {string} instanceUrl - The base URL of the instance.
+ * @param {string} accessToken - The user's access token (for Mastodon).
+ * @param {string} endpoint - The API endpoint to call (e.g., '/api/v1/timelines/home').
+ * @param {object} options - Standard fetch options (method, body, headers).
+ * @param {string} platform - The platform ('mastodon' or 'lemmy').
+ * @param {object} params - A key-value object of URL query parameters.
+ * @returns {Promise<object>} - A promise that resolves to the JSON response data and headers.
+ */
+export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}, platform = 'mastodon', params = {}) {
     const defaultHeaders = {
         'Content-Type': 'application/json',
     };
@@ -24,8 +34,18 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
         config.body = JSON.stringify(options.body);
     }
 
+    // Construct the URL and append any query parameters
+    const url = new URL(`https://${instanceUrl}${endpoint}`);
+    if (params) {
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null) {
+                url.searchParams.append(key, params[key]);
+            }
+        });
+    }
+
     try {
-        const response = await fetch(`https://${instanceUrl}${endpoint}`, config);
+        const response = await fetch(url.toString(), config);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));

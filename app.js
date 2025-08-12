@@ -7,7 +7,7 @@ import { initComposeModal, showComposeModal, showComposeModalWithReply } from '.
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
-import { renderMergedPostPage } from './components/MergedPost.js';
+import { renderMergedPostPage, fetchMergedTimeline } from './components/MergedPost.js'; // Import fetchMergedTimeline
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
@@ -387,6 +387,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             switchView('timeline');
             renderTimelineSubNav('mastodon');
             await fetchTimeline(state, actions, false, onMastodonLoginSuccess, true); // Added mastodonOnly flag
+            hideLoadingBar();
+            refreshSpinner.style.display = 'none';
+        },
+        showMergedTimeline: async () => {
+            showLoadingBar();
+            refreshSpinner.style.display = 'block';
+            state.currentLemmyFeed = null; // Clear other feed types
+            state.currentTimeline = null;
+            switchView('timeline');
+            renderTimelineSubNav(null); // Hide the sub-nav for the merged feed
+            await fetchMergedTimeline(state, actions, false, onMastodonLoginSuccess);
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
@@ -830,8 +841,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         switchView(initialView, false);
     }
 
-    document.getElementById('lemmy-logo-container').innerHTML = ICONS.lemmy;
-    document.getElementById('mastodon-logo-container').innerHTML = ICONS.mastodon;
+    const lemmyLogoContainer = document.getElementById('lemmy-logo-container');
+    if (lemmyLogoContainer) {
+        lemmyLogoContainer.innerHTML = ICONS.lemmy;
+    }
+    const mastodonLogoContainer = document.getElementById('mastodon-logo-container');
+    if (mastodonLogoContainer) {
+        mastodonLogoContainer.innerHTML = ICONS.mastodon;
+    }
 
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
@@ -844,6 +861,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showMastodonTimeline('home');
         } else if (target.dataset.timeline === 'home') {
             actions.showHomeTimeline();
+        } else if (target.dataset.timeline === 'merged') { // Handle the new merged link
+            actions.showMergedTimeline();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
