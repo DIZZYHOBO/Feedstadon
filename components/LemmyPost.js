@@ -3,9 +3,17 @@ import { apiFetch } from './api.js';
 import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
 
-// ... Any other existing helper function code (such as renderLemmyComment) ...
+// ... Any other existing helper function code ...
 
-// Ensure this function exists and is exported!
+export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
+    // TODO: Implement the comment rendering logic here, or use your existing implementation.
+    const div = document.createElement('div');
+    div.className = 'lemmy-comment';
+    div.textContent = commentView.comment.body || '';
+    return div;
+}
+
+// Full implementation of renderLemmyPostPage
 export async function renderLemmyPostPage(state, postView, actions) {
     const view = document.getElementById('lemmy-post-view');
     view.innerHTML = `
