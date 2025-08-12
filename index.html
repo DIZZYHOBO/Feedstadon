@@ -9,10 +9,287 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Alpine.js - MUST be loaded before our modules -->
+    
+    <!-- Alpine.js with Intersect plugin -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
 <body>
+
+    <!-- Global store and component definitions -->
+    <script>
+        // Global store (will be made reactive when Alpine loads)
+        window.globalState = {
+            // Authentication
+            auth: {
+                mastodon: {
+                    instanceUrl: localStorage.getItem('fediverse-instance') || '',
+                    accessToken: localStorage.getItem('fediverse-token') || '',
+                    currentUser: null
+                },
+                lemmy: {
+                    instance: localStorage.getItem('lemmy_instance') || '',
+                    username: localStorage.getItem('lemmy_username') || '',
+                    jwt: localStorage.getItem('lemmy_jwt') || ''
+                }
+            },
+            
+            // UI State
+            ui: {
+                currentView: 'timeline',
+                currentTimeline: null,
+                currentLemmyFeed: 'Subscribed', // Start with Lemmy
+                currentLemmySort: localStorage.getItem('lemmySortType') || 'Hot',
+                isLoading: false,
+                loadingMore: false,
+                hasMore: true
+            },
+            
+            // Data
+            posts: [],
+            notifications: [],
+            
+            // Settings
+            settings: {
+                theme: localStorage.getItem('feedstodon-theme') || 'feedstodon',
+                defaultStartPage: localStorage.getItem('defaultStartPage') || 'lemmy',
+                defaultFeedType: localStorage.getItem('defaultFeedType') || 'Subscribed',
+                wordFilter: JSON.parse(localStorage.getItem('wordFilter') || '[]')
+            }
+        };
+
+        // Apply theme immediately
+        document.body.dataset.theme = window.globalState.settings.theme;
+
+        // Global component definitions
+        window.appData = function() {
+            return {
+                // Make global state reactive
+                $store: window.globalState,
+                
+                init() {
+                    console.log('App initializing...');
+                    // Make the global state reactive
+                    this.$store = Alpine.reactive(window.globalState);
+                    // Make it globally available
+                    window.$store = this.$store;
+                    
+                    // Load initial content
+                    this.loadInitialContent();
+                },
+
+                async loadInitialContent() {
+                    if (this.$store.auth.lemmy.jwt) {
+                        await this.loadLemmyFeed();
+                    } else {
+                        console.log('No credentials found - showing login prompt');
+                    }
+                }
+            };
+        };
+
+        window.navComponent = function() {
+            return {
+                refreshIcon: `<svg class="icon" viewBox="0 0 24 24"><path class="refresher" fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" /></svg>`,
+                notificationIcon: `<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="currentColor" d="M30.625 12.914H20.254a1 1 0 1 1 0-2h10.371a1 1 0 1 1 0 2zM30.625 20.293h-6.844a1 1 0 1 1 0-2h6.844a1 1 0 1 1 0 2zM30.625 27.672h-4.336a1 1 0 1 1 0-2h4.336a1 1 0 1 1 0 2z"/><g><path fill="currentColor" d="M12.375 14c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm0-12c-2.757 0-5 2.243-5 5s2.243 5 5 5 5-2.243 5-5-2.243-5-5-5zM20.317 32H4.433a4.062 4.062 0 0 1-4.058-4.058c0-6.616 5.383-12 12-12s12 5.384 12 12A4.062 4.062 0 0 1 20.317 32zm-7.942-14.058c-5.514 0-10 4.486-10 10A2.06 2.06 0 0 0 4.433 30h15.884a2.06 2.06 0 0 0 2.058-2.058c0-5.514-4.486-10-10-10z"/></g></svg><div class="notification-dot"></div>`,
+
+                get hasUnreadNotifications() {
+                    return window.$store?.notifications?.some(n => !n.read) || false;
+                },
+
+                refresh() {
+                    if (window.$store?.ui.currentLemmyFeed) {
+                        window.actions?.loadLemmyFeed(window.$store.ui.currentLemmyFeed, window.$store.ui.currentLemmySort);
+                    } else if (window.$store?.ui.currentTimeline) {
+                        window.actions?.loadTimeline(window.$store.ui.currentTimeline);
+                    }
+                },
+
+                setFeed(feedType) {
+                    if (!window.$store) return;
+                    
+                    window.$store.ui.currentView = 'timeline';
+                    
+                    switch (feedType) {
+                        case 'home':
+                            window.$store.ui.currentLemmyFeed = 'Subscribed';
+                            window.$store.ui.currentTimeline = null;
+                            window.actions?.loadLemmyFeed('Subscribed', 'Hot');
+                            break;
+                        case 'lemmy':
+                            window.$store.ui.currentLemmyFeed = 'Subscribed';
+                            window.$store.ui.currentTimeline = null;
+                            window.actions?.loadLemmyFeed('Subscribed', 'Hot');
+                            break;
+                        case 'mastodon':
+                            window.$store.ui.currentTimeline = 'home';
+                            window.$store.ui.currentLemmyFeed = null;
+                            window.actions?.loadTimeline('home');
+                            break;
+                    }
+                },
+
+                showComposeModal() {
+                    document.getElementById('compose-modal').classList.add('visible');
+                },
+
+                showProfile() {
+                    this.showToast("Profile functionality coming soon!");
+                },
+
+                showHelp() {
+                    document.getElementById('help-modal').classList.add('visible');
+                },
+
+                showToast(message) {
+                    const toast = document.getElementById('toast-notification');
+                    toast.textContent = message;
+                    toast.classList.add('visible');
+                    setTimeout(() => toast.classList.remove('visible'), 3000);
+                }
+            };
+        };
+
+        window.timelineComponent = function() {
+            return {
+                needsLogin: true,
+
+                init() {
+                    console.log('Timeline component initializing...');
+                    this.checkLoginStatus();
+                },
+
+                checkLoginStatus() {
+                    const hasAuth = window.$store?.auth.lemmy.jwt || window.$store?.auth.mastodon.accessToken;
+                    this.needsLogin = !hasAuth;
+                    console.log('Login needed:', this.needsLogin);
+                },
+
+                getPostKey(post) {
+                    return post.platform === 'lemmy' ? `lemmy-${post.post.id}` : `mastodon-${post.id}`;
+                }
+            };
+        };
+
+        window.loginPromptComponent = function() {
+            return {
+                showingMastodonLogin: false,
+                showingLemmyLogin: false,
+                
+                lemmyInstance: 'lemmy.world',
+                lemmyUsername: '',
+                lemmyPassword: '',
+
+                showMastodonLogin() {
+                    this.showingMastodonLogin = true;
+                    this.showingLemmyLogin = false;
+                },
+
+                showLemmyLogin() {
+                    this.showingLemmyLogin = true;
+                    this.showingMastodonLogin = false;
+                },
+
+                async loginLemmy() {
+                    if (!this.lemmyInstance || !this.lemmyUsername || !this.lemmyPassword) {
+                        this.showToast('Please fill in all fields');
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`https://${this.lemmyInstance}/api/v3/user/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                username_or_email: this.lemmyUsername,
+                                password: this.lemmyPassword
+                            })
+                        });
+
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        
+                        const data = await response.json();
+                        
+                        if (data.jwt) {
+                            // Store credentials
+                            localStorage.setItem('lemmy_instance', this.lemmyInstance);
+                            localStorage.setItem('lemmy_username', this.lemmyUsername);
+                            localStorage.setItem('lemmy_jwt', data.jwt);
+                            
+                            // Update store
+                            window.$store.auth.lemmy.instance = this.lemmyInstance;
+                            window.$store.auth.lemmy.username = this.lemmyUsername;
+                            window.$store.auth.lemmy.jwt = data.jwt;
+                            
+                            this.showingLemmyLogin = false;
+                            this.needsLogin = false;
+                            this.showToast('Lemmy login successful!');
+                            
+                            // Load feed
+                            if (window.actions?.loadLemmyFeed) {
+                                window.actions.loadLemmyFeed('Subscribed', 'Hot');
+                            }
+                        } else {
+                            throw new Error('No JWT in response');
+                        }
+                    } catch (error) {
+                        console.error('Lemmy login failed:', error);
+                        this.showToast('Lemmy login failed: ' + error.message);
+                    }
+                },
+
+                showToast(message) {
+                    const toast = document.getElementById('toast-notification');
+                    toast.textContent = message;
+                    toast.classList.add('visible');
+                    setTimeout(() => toast.classList.remove('visible'), 3000);
+                }
+            };
+        };
+
+        // Actions
+        window.actions = {
+            async loadLemmyFeed(feedType = 'Subscribed', sortType = 'Hot', loadMore = false) {
+                if (!window.$store?.auth.lemmy.jwt) {
+                    console.log('No Lemmy credentials');
+                    return;
+                }
+
+                if (!loadMore) {
+                    window.$store.ui.isLoading = true;
+                    window.$store.posts = [];
+                } else {
+                    window.$store.ui.loadingMore = true;
+                }
+
+                try {
+                    const response = await fetch(`https://${window.$store.auth.lemmy.instance}/api/v3/post/list?sort=${sortType}&type_=${feedType}&limit=20`, {
+                        headers: {
+                            'Authorization': `Bearer ${window.$store.auth.lemmy.jwt}`
+                        }
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const data = await response.json();
+                    const postsWithPlatform = data.posts.map(post => ({ ...post, platform: 'lemmy' }));
+                    
+                    if (loadMore) {
+                        window.$store.posts.push(...postsWithPlatform);
+                    } else {
+                        window.$store.posts = postsWithPlatform;
+                    }
+                    
+                    console.log('Loaded Lemmy feed:', postsWithPlatform.length, 'posts');
+                } catch (error) {
+                    console.error('Failed to load Lemmy feed:', error);
+                } finally {
+                    window.$store.ui.isLoading = false;
+                    window.$store.ui.loadingMore = false;
+                }
+            }
+        };
+    </script>
 
     <div id="app-view" x-data="appData()" x-init="init()">
         <div id="pull-to-refresh-indicator"></div>
@@ -29,14 +306,12 @@
                          x-show="open" 
                          @click.away="open = false"
                          x-transition>
-                        <a href="#" @click="setFeed('home'); open = false" data-timeline="home">Home</a>
-                        <a href="#" @click="setFeed('merged'); open = false" data-timeline="merged">Merged</a>
-                        <hr>
-                        <a href="#" @click="setFeed('lemmy'); open = false" id="lemmy-main-link">Lemmy</a>
-                        <a href="#" @click="setFeed('mastodon'); open = false" id="mastodon-main-link">Mastodon</a>
+                        <a href="#" @click="setFeed('home'); open = false">Home</a>
+                        <a href="#" @click="setFeed('lemmy'); open = false">Lemmy</a>
+                        <a href="#" @click="setFeed('mastodon'); open = false">Mastodon</a>
                     </div>
                 </div>
-                <button id="discover-btn" class="nav-button" @click="$store.ui.currentView = 'discover'">Discover</button>
+                <button id="discover-btn" class="nav-button">Discover</button>
             </div>
 
             <div class="nav-center"></div>
@@ -48,10 +323,9 @@
                          x-show="open" 
                          @click.away="open = false"
                          x-transition>
-                        <a href="#" @click="showComposeModal(); open = false" id="new-post-link">New Post</a>
-                        <a href="#" @click="showProfile(); open = false" id="profile-link">Profile</a>
-                        <a href="#" @click="$store.ui.currentView = 'settings'; open = false" id="settings-link">Settings</a>
-                        <a href="#" @click="showHelp(); open = false" id="help-link">Help</a>
+                        <a href="#" @click="showComposeModal(); open = false">New Post</a>
+                        <a href="#" @click="showProfile(); open = false">Profile</a>
+                        <a href="#" @click="showHelp(); open = false">Help</a>
                     </div>
                 </div>
                 <button id="notifications-btn" 
@@ -65,58 +339,6 @@
         <div id="loading-bar" :class="{ 'loading': $store.ui.isLoading }"></div>
 
         <div class="container">
-            <!-- Timeline Sub Nav -->
-            <div id="timeline-sub-nav" 
-                 class="timeline-sub-nav"
-                 x-show="$store.ui.currentView === 'timeline' && ($store.ui.currentTimeline || $store.ui.currentLemmyFeed)"
-                 x-data="timelineSubNavComponent()">
-                <div class="timeline-sub-nav-tabs">
-                    <template x-if="$store.ui.currentLemmyFeed">
-                        <div class="lemmy-tabs">
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'Subscribed' }"
-                                    @click="setLemmyFeed('Subscribed')">Subbed</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'All' }"
-                                    @click="setLemmyFeed('All')">All</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'Local' }"
-                                    @click="setLemmyFeed('Local')">Local</button>
-                        </div>
-                    </template>
-                    
-                    <template x-if="$store.ui.currentTimeline">
-                        <div class="mastodon-tabs">
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentTimeline === 'home' }"
-                                    @click="setMastodonTimeline('home')">Subbed</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentTimeline === 'public' }"
-                                    @click="setMastodonTimeline('public')">All</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentTimeline === 'public?local=true' }"
-                                    @click="setMastodonTimeline('public?local=true')">Local</button>
-                        </div>
-                    </template>
-                </div>
-                
-                <template x-if="$store.ui.currentLemmyFeed">
-                    <div id="lemmy-filter-container">
-                        <select id="lemmy-sort-select" 
-                                x-model="$store.ui.currentLemmySort"
-                                @change="setLemmyFeed($store.ui.currentLemmyFeed, $event.target.value)">
-                            <option value="New">New</option>
-                            <option value="Active">Active</option>
-                            <option value="Hot">Hot</option>
-                            <option value="TopHour">Top Hour</option>
-                            <option value="TopSixHour">Top Six Hour</option>
-                            <option value="TopTwelveHour">Top Twelve Hour</option>
-                            <option value="TopDay">Top Day</option>
-                        </select>
-                    </div>
-                </template>
-            </div>
-
             <!-- Main Timeline -->
             <div id="timeline" 
                  class="view-container"
@@ -137,17 +359,6 @@
                         <h3>Connect to get started</h3>
                         <p>Please log in to see your feed.</p>
                         
-                        <!-- Mastodon Login -->
-                        <template x-if="showingMastodonLogin">
-                            <div class="login-form">
-                                <h4>Mastodon Login</h4>
-                                <input type="text" x-model="mastodonInstance" placeholder="Instance (e.g., mastodon.social)">
-                                <input type="text" x-model="mastodonToken" placeholder="Access Token">
-                                <button class="button-primary" @click="loginMastodon()">Connect</button>
-                                <button class="button-secondary" @click="showingMastodonLogin = false">Cancel</button>
-                            </div>
-                        </template>
-                        
                         <!-- Lemmy Login -->
                         <template x-if="showingLemmyLogin">
                             <div class="login-form">
@@ -161,20 +372,45 @@
                         </template>
                         
                         <!-- Login Options -->
-                        <template x-if="!showingMastodonLogin && !showingLemmyLogin">
+                        <template x-if="!showingLemmyLogin">
                             <div class="login-options">
-                                <button class="button-primary" @click="showMastodonLogin()">Connect Mastodon</button>
                                 <button class="button-primary" @click="showLemmyLogin()">Connect Lemmy</button>
+                                <p style="margin-top: 10px; color: var(--font-color-muted);">More platforms coming soon!</p>
                             </div>
                         </template>
                     </div>
                 </template>
                 
                 <!-- Posts -->
-                <template x-if="!$store.ui.isLoading || $store.posts.length > 0">
+                <template x-if="!$store.ui.isLoading && $store.posts.length > 0">
                     <div class="posts-container">
                         <template x-for="(post, index) in $store.posts" :key="getPostKey(post)">
-                            <div x-data="postComponent(post, index)" x-html="renderPost()"></div>
+                            <div class="status lemmy-card">
+                                <div class="status-body-content">
+                                    <div class="status-header">
+                                        <img :src="post.community.icon || './images/php.png'" class="avatar" style="border-radius: 8px;">
+                                        <div>
+                                            <span class="display-name" x-text="post.community.name"></span>
+                                            <span class="acct" x-text="`posted by ${post.creator.name}`"></span>
+                                        </div>
+                                    </div>
+                                    <div class="status-content">
+                                        <h3 class="lemmy-title" x-text="post.post.name"></h3>
+                                        <div class="lemmy-post-body" x-show="post.post.body" x-text="post.post.body"></div>
+                                    </div>
+                                </div>
+                                <div class="status-footer">
+                                    <div class="lemmy-vote-cluster">
+                                        <button class="status-action lemmy-vote-btn">
+                                            ↑ <span x-text="post.counts.score"></span>
+                                        </button>
+                                        <button class="status-action lemmy-vote-btn">↓</button>
+                                    </div>
+                                    <button class="status-action">
+                                        💬 <span x-text="post.counts.comments"></span>
+                                    </button>
+                                </div>
+                            </div>
                         </template>
                     </div>
                 </template>
@@ -182,173 +418,46 @@
                 <!-- Load More -->
                 <div id="scroll-loader" 
                      x-show="$store.posts.length > 0"
-                     x-intersect="loadMore()">
+                     style="text-align: center; padding: 20px;">
                     <template x-if="$store.ui.loadingMore">
                         <p>Loading more posts...</p>
-                    </template>
-                    <template x-if="!$store.ui.loadingMore && !$store.ui.hasMore">
-                        <p>No more posts.</p>
                     </template>
                 </div>
             </div>
 
-            <!-- Other Views (keep existing structure but add x-show) -->
-            <div id="notifications-view" class="view-container" x-show="$store.ui.currentView === 'notifications'"></div>
-            <div id="discover-view" class="view-container" x-show="$store.ui.currentView === 'discover'"></div>
-            <div id="screenshot-view" class="view-container" x-show="$store.ui.currentView === 'screenshot'"></div>
-            <div id="merged-post-view" class="view-container" x-show="$store.ui.currentView === 'mergedPost'"></div>
-            <div id="profile-page-view" class="view-container" x-show="$store.ui.currentView === 'profile'"></div>
-            <div id="edit-profile-view" class="view-container" x-show="$store.ui.currentView === 'editProfile'"></div>
-            <div id="search-results-view" class="view-container" x-show="$store.ui.currentView === 'search'"></div>
-            <div id="settings-view" class="view-container" x-show="$store.ui.currentView === 'settings'"></div>
-            <div id="status-detail-view" class="view-container" x-show="$store.ui.currentView === 'statusDetail'"></div>
-            <div id="lemmy-post-view" class="view-container" x-show="$store.ui.currentView === 'lemmyPost'"></div>
-            <div id="lemmy-community-view" class="view-container" x-show="$store.ui.currentView === 'lemmyCommunity'"></div>
+            <!-- Keep other views hidden for now -->
+            <div id="notifications-view" class="view-container" style="display: none;"></div>
+            <div id="discover-view" class="view-container" style="display: none;"></div>
         </div>
-        <div id="refresh-spinner" x-show="$store.ui.isLoading"></div>
     </div>
     
-    <!-- Keep all your existing modals and other elements -->
+    <!-- Keep existing modals -->
     <div id="context-menu"></div>
     <div id="toast-notification"></div>
     
-    <!-- Keep all existing modals exactly as they were -->
     <div class="modal-overlay" id="compose-modal">
-         <div class="modal-content">
-            <div class="compose-tabs">
-                <button class="tab-button active" data-tab="mastodon-compose">Mastodon</button>
-                <button class="tab-button" data-tab="lemmy-compose">Lemmy</button>
-            </div>
-            <div class="compose-tab-content active" id="mastodon-compose-tab">
-                <div id="reply-to-info"></div>
-                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
-                <div id="cw-creator-container"></div>
-                <div id="poll-creator-container"></div>
-                 <div class="modal-actions">
-                    <div class="compose-options">
-                        <input type="file" id="media-upload-input" style="display: none;" accept="image/*,video/*">
-                        <button class="icon-button" id="media-upload-btn"></button>
-                        <button class="icon-button" id="poll-btn"></button>
-                        <button class="icon-button" id="cw-btn"></button>
-                        <span id="media-filename-preview"></span>
-                    </div>
-                    <div>
-                        <span id="character-count">500</span>
-                        <button class="button-secondary" id="cancel-compose-btn">Cancel</button>
-                        <button type="submit" id="submit-compose-btn">Post</button>
-                    </div>
-                </div>
-            </div>
-            <div class="compose-tab-content" id="lemmy-compose-tab">
-                <form id="lemmy-compose-form">
-                    <div class="lemmy-post-type-selector">
-                        <button type="button" class="lemmy-post-type-btn active" data-type="text">Text</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="url">Link</button>
-                        <button type="button" class="lemmy-post-type-btn" data-type="image">Image</button>
-                    </div>
-                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., technology)">
-                    <input type="text" id="lemmy-title-input" placeholder="Title">
-                    <input type="url" id="lemmy-url-input" placeholder="URL" style="display:none;">
-                    <textarea id="lemmy-body-textarea" placeholder="Text (optional)"></textarea>
-                    <div class="modal-actions">
-                        <button class="button-secondary" id="cancel-lemmy-compose-btn">Cancel</button>
-                        <button type="submit" id="submit-lemmy-compose-btn">Post</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal-overlay" id="image-modal">
-        <div class="image-modal-content">
-            <img id="fullscreen-image" src="">
-            <button class="icon-button" id="save-image-btn" title="Save Image"></button>
+        <div class="modal-content">
+            <h3>New Post</h3>
+            <p>Compose functionality coming soon!</p>
+            <button class="button-secondary" onclick="this.closest('.modal-overlay').classList.remove('visible')">Close</button>
         </div>
     </div>
     
     <div class="modal-overlay" id="help-modal">
         <div class="modal-content help-modal-content">
-            <button id="close-help-btn" class="close-btn">close</button>
-            <h3>Markdown Guide</h3>
-            <div class="markdown-guide">
-                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
-                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
-                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
-                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
-                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
-                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
-                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
-                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
-            </div>
+            <button id="close-help-btn" class="close-btn" onclick="this.closest('.modal-overlay').classList.remove('visible')">close</button>
+            <h3>Welcome to the new Alpine.js version!</h3>
+            <p>This is a simplified version to test the reactive architecture.</p>
+            <p>Features working:</p>
+            <ul>
+                <li>✅ Lemmy login</li>
+                <li>✅ Lemmy feed loading</li>
+                <li>✅ Reactive UI updates</li>
+                <li>✅ No more manual DOM manipulation!</li>
+            </ul>
         </div>
     </div>
 
-    <!-- Keep existing templates -->
-    <template id="screenshot-controls-template">
-        <div class="screenshot-controls">
-            <div class="control-group">
-                <label>Parent Comments:</label>
-                <button data-action="parents-up">↑</button>
-                <button data-action="parents-down">↓</button>
-            </div>
-            <div class="control-group">
-                <input type="checkbox" id="include-replies-checkbox">
-                <label for="include-replies-checkbox">Include Replies</label>
-            </div>
-            <div class="control-group" id="replies-controls" style="display: none;">
-                 <label>Replies:</label>
-                <button data-action="replies-up">↑</button>
-                <button data-action="replies-down">↓</button>
-            </div>
-            <button id="capture-btn">Capture Screenshot</button>
-        </div>
-        <div id="screenshot-preview-area"></div>
-    </template>
-
-    <template id="mastodon-login-template">
-        <div class="login-prompt">
-            <h3>Connect to Mastodon</h3>
-            <form class="login-form">
-                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
-                <input type="text" class="token-input" placeholder="Paste your Access Token">
-                <button type="submit" class="connect-btn">Login</button>
-            </form>
-        </div>
-    </template>
-
-    <template id="lemmy-login-template">
-        <div class="login-prompt">
-            <h3>Connect to Lemmy</h3>
-            <form class="login-form" id="lemmy-login-form">
-                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
-                <input type="text" class="username-input" placeholder="Username">
-                <input type="password" class="password-input" placeholder="Password">
-                <div class="piefed-login-option" style="display: flex; align-items: center; margin-top: 10px;">
-                    <input type="checkbox" id="piefed-login-checkbox" style="margin-right: 10px;">
-                    <label for="piefed-login-checkbox">Login with Piefed account</label>
-                </div>
-                <button type="submit" class="connect-btn">Connect</button>
-            </form>
-        </div>
-    </template>
-
-    <!-- Load modules AFTER Alpine.js is loaded -->
-    <script>
-        // Wait for Alpine to be available before loading our modules
-        document.addEventListener('alpine:init', () => {
-            // Load our modules after Alpine is initialized
-            import('./components/store.js').then(() => {
-                return import('./components/actions.js');
-            }).then(() => {
-                return import('./components/alpine-components.js');
-            }).then(() => {
-                return import('./app.js');
-            }).catch(error => {
-                console.error('Failed to load modules:', error);
-            });
-        });
-    </script>
-    
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
