@@ -1,109 +1,87 @@
-import { showToast } from './ui.js';
+async function Lemmy(domain) {
+  const lemmyFeedContainer = document.createElement("div");
+  lemmyFeedContainer.id = "lemmy-feed";
 
-export async function apiFetch(instanceUrl, accessToken, endpoint, options = {}, platform = 'mastodon') {
-    const defaultHeaders = {
-        'Content-Type': 'application/json',
-    };
+  const state = {
+    feedType: "Subscribed", // Default feed type
+    filter: "all", // Default filter
+    posts: [],
+  };
 
-    // Handle authentication based on the platform
-    if (platform === 'mastodon' && accessToken) {
-        defaultHeaders['Authorization'] = `Bearer ${accessToken}`;
-    } else if (platform === 'lemmy') {
-        const jwt = localStorage.getItem('lemmy_jwt');
-        if (jwt) {
-            defaultHeaders['Authorization'] = `Bearer ${jwt}`;
-        }
-    }
+  function render() {
+    const html = `
+      <div class="lemmy-header">
+        <div class="feed-filter-buttons">
+          <button class="feed-type-btn ${state.feedType === "Subscribed" ? "active" : ""}" data-feedtype="Subscribed">Subscribed</button>
+          <button class="feed-type-btn ${state.feedType === "All" ? "active" : ""}" data-feedtype="All">All</button>
+          <button class="feed-type-btn ${state.feedType === "Local" ? "active" : ""}" data-feedtype="Local">Local</button>
+        </div>
+        <div class="filter-buttons">
+            <button class="filter-btn ${state.filter === "all" ? "active" : ""}" data-filter="all">All</button>
+            <button class="filter-btn ${state.filter === "posts" ? "active" : ""}" data-filter="posts">Posts</button>
+            <button class="filter-btn ${state.filter === "comments" ? "active" : ""}" data-filter="comments">Comments</button>
+        </div>
+      </div>
+      <div id="lemmy-posts-container"></div>
+    `;
+    lemmyFeedContainer.innerHTML = html;
+    attachEventListeners();
+    loadPosts();
+  }
+
+  function attachEventListeners() {
+    lemmyFeedContainer.querySelectorAll(".feed-type-btn").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        state.feedType = e.target.dataset.feedtype;
+        render();
+      });
+    });
+
+    lemmyFeedContainer.querySelectorAll(".filter-btn").forEach((button) => {
+        button.addEventListener("click", (e) => {
+            state.filter = e.target.dataset.filter;
+            renderPosts();
+        });
+    });
+  }
+
+  async function loadPosts() {
+    const postsContainer = lemmyFeedContainer.querySelector("#lemmy-posts-container");
+    postsContainer.innerHTML = `<div class="loading"></div>`;
     
-    const config = {
-        method: options.method || 'GET',
-        headers: { ...defaultHeaders, ...options.headers },
-    };
+    // The Lemmy API uses 'Subscribed', 'All', and 'Local' for the type_ parameter.
+    const posts = await getLemmyPosts(domain, state.feedType, "Hot");
+    state.posts = posts;
+    renderPosts();
+  }
 
-    if (options.body) {
-        config.body = JSON.stringify(options.body);
+  function renderPosts() {
+    const postsContainer = lemmyFeedContainer.querySelector("#lemmy-posts-container");
+    postsContainer.innerHTML = "";
+
+    let filteredPosts = state.posts;
+
+    if (state.filter === "posts") {
+        filteredPosts = state.posts.filter(post => !post.post.url || post.post.body);
+    } else if (state.filter === "comments") {
+        // This is a simplification. A real comment filter might need a different API endpoint
+        // or more complex logic to fetch comments separately.
+        // For now, we'll just show nothing for "comments" as an example.
+        filteredPosts = []; 
     }
 
-    try {
-        const response = await fetch(`https://${instanceUrl}${endpoint}`, config);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || errorData.message || 'Unknown error'}`);
-        }
-
-        const data = await response.json();
-        return { data, headers: response.headers };
-
-    } catch (error) {
-        console.error('API Fetch Error:', error);
-        showToast(`API Request Failed: ${error.message}`);
-        throw error;
-    }
-}
-
-export async function apiUploadMedia(instanceUrl, accessToken, file) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const response = await fetch(`https://${instanceUrl}/api/v2/media`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-            },
-            body: formData,
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Media upload failed');
-        }
-
-        const data = await response.json();
-        return data; // This object should contain the media attachment ID
-    } catch (error) {
-        console.error('API Media Upload Error:', error);
-        showToast(`Media Upload Failed: ${error.message}`);
-        throw error;
-    }
-}
-
-
-export async function lemmyImageUpload(file) {
-    const lemmyInstance = localStorage.getItem('lemmy_instance');
-    const jwt = localStorage.getItem('lemmy_jwt');
-    if (!lemmyInstance || !jwt) {
-        showToast("You must be logged in to upload images.");
-        return null;
+    if (filteredPosts.length === 0) {
+        postsContainer.innerHTML = `<p class="no-posts">No posts to show for the current filter.</p>`;
+        return;
     }
 
-    const formData = new FormData();
-    formData.append('images[]', file);
+    filteredPosts.forEach(async (post) => {
+      const postElement = await LemmyPost(post, domain);
+      postsContainer.appendChild(postElement);
+    });
+  }
 
-    try {
-        const response = await fetch(`https://${lemmyInstance}/pictrs/image`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${jwt}`
-            },
-            body: formData,
-        });
+  render();
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.msg || 'Image upload failed');
-        }
-
-        const result = await response.json();
-        if (result.files && result.files.length > 0) {
-            return `https://${lemmyInstance}/pictrs/image/${result.files[0].file}`;
-        } else {
-            throw new Error('Image upload returned no files.');
-        }
-    } catch (error) {
-        console.error('Lemmy Image Upload Error:', error);
-        showToast(`Image Upload Failed: ${error.message}`);
-        return null;
-    }
+  return lemmyFeedContainer;
 }
