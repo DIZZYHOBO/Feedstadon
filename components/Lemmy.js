@@ -1,4 +1,3 @@
-
 import { ICONS } from './icons.js';
 import { formatTimestamp, timeAgo, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
 import { showToast, renderLoginPrompt, showImageModal } from './ui.js';
@@ -350,14 +349,14 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
             throw new Error("Lemmy instance not found. Please log in.");
         }
 
+        // Directly pass the feed type from the state to the API.
+        // The Lemmy API accepts "All", "Local", and "Subscribed" for the type_ parameter.
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 3
+            limit: 20, // Increased limit for a better user experience
+            type_: state.currentLemmyFeed 
         };
-        if (state.currentLemmyFeed !== 'All') {
-            params.type_ = state.currentLemmyFeed;
-        }
         
         const response = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', params);
         const posts = response.data.posts;
