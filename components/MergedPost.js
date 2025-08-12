@@ -1,7 +1,7 @@
 import { ICONS } from './icons.js';
 import { apiFetch } from './api.js';
 import { renderLemmyCard } from './Lemmy.js';
-import { renderLemmyComment } from './LemmyPost.js'; // Corrected import path
+import { renderLemmyComment } from './LemmyPost.js';
 import { renderStatus } from './Post.js';
 import { timeAgo } from './utils.js';
 import { renderLoginPrompt } from './ui.js';
@@ -14,7 +14,8 @@ import { renderLoginPrompt } from './ui.js';
  * @param {function} onLoginSuccess - Callback after a successful login.
  */
 export async function fetchMergedTimeline(state, actions, loadMore = false, onLoginSuccess) {
-    if ((!localStorage.getItem('lemmy_jwt') || !localStorage.getItem('mastodon_token')) && !loadMore) {
+    // Correctly check for both the Lemmy JWT and the Mastodon (fediverse) token
+    if ((!localStorage.getItem('lemmy_jwt') || !localStorage.getItem('fediverse-token')) && !loadMore) {
         renderLoginPrompt(state.timelineDiv, 'lemmy', onLoginSuccess);
         renderLoginPrompt(state.timelineDiv, 'mastodon', onLoginSuccess);
         return;
@@ -35,13 +36,14 @@ export async function fetchMergedTimeline(state, actions, loadMore = false, onLo
 
         // --- MERGED FEED LOGIC ---
         const lemmyInstance = localStorage.getItem('lemmy_instance');
-        const mastodonInstance = localStorage.getItem('mastodon_instance');
-        const mastodonToken = localStorage.getItem('mastodon_token');
+        // Correctly get the Mastodon instance and token names
+        const mastodonInstance = localStorage.getItem('fediverse-instance');
+        const mastodonToken = localStorage.getItem('fediverse-token');
 
         const lemmyParams = {
-            sort: 'Hot', // or state.currentSort if you have one for merged
+            sort: 'Hot',
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 20,
+            limit: 3,
             type_: 'Subscribed'
         };
 
@@ -75,7 +77,7 @@ export async function fetchMergedTimeline(state, actions, loadMore = false, onLo
 
         if (allPosts.length > 0) {
             if (loadMore) {
-                state.lemmyPage++; // You might want separate pagination logic
+                state.lemmyPage++;
             } else {
                 state.lemmyPage = 1;
             }
@@ -136,12 +138,10 @@ export async function renderMergedPostPage(state, post, actions) {
     const lemmyCommentsContainer = view.querySelector('#lemmy-comments');
     const mastodonCommentsContainer = view.querySelector('#mastodon-comments');
 
-    // This logic needs to be more robust to handle both post types
     if (post.platform === 'lemmy') {
         const lemmyCard = renderLemmyCard(post, actions);
         mainPostArea.appendChild(lemmyCard);
 
-        // Fetch and render Lemmy comments
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         try {
             const lemmyComments = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${post.post.id}&sort=New`, {}, 'lemmy');
@@ -157,13 +157,10 @@ export async function renderMergedPostPage(state, post, actions) {
     } else if (post.platform === 'mastodon') {
         const mastodonCard = renderStatus(post, actions);
         mainPostArea.appendChild(mastodonCard);
-        // Fetch and render Mastodon comments (replies)
-        // You would need to implement this part
         mastodonCommentsContainer.innerHTML = 'Loading Mastodon comments...';
         lemmyCommentsContainer.innerHTML = 'Lemmy comments not applicable for this post.';
     }
     
-    // Tab switching logic
     view.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', () => {
             const platform = button.dataset.platform;
@@ -180,4 +177,3 @@ export async function renderMergedPostPage(state, post, actions) {
         });
     });
 }
- 
