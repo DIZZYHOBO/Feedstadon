@@ -27,7 +27,6 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     });
     htmlContent = tempDiv.innerHTML;
 
-
     const isOP = postAuthorId && commentView.creator.id === postAuthorId;
     const isCreator = state.lemmyUsername && state.lemmyUsername === commentView.creator.name;
 
@@ -99,7 +98,6 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             menuItems.push({
                 label: 'Delete Comment',
                 action: () => {
-                    // This should be replaced with a custom modal in the future
                     if (window.confirm('Are you sure you want to delete this comment?')) {
                         actions.lemmyDeleteComment(commentView.comment.id);
                     }
@@ -121,51 +119,103 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     return commentWrapper;
 }
 
-
 function showEditUI(commentDiv, commentView, actions) {
     const contentDiv = commentDiv.querySelector('.status-content');
     const originalContent = commentView.comment.content;
     const originalHtml = contentDiv.innerHTML;
 
-    contentDiv.innerHTML = `
-        <div class="edit-comment-container">
-            <textarea class="edit-comment-textarea">${originalContent}</textarea>
-            <div class="edit-comment-actions">
-                <button class="button-secondary cancel-edit-btn">Cancel</button>
-                <button class="button-primary save-edit-btn">Save</button>
-            </div>
+    // Create edit container
+    const editContainer = document.createElement('div');
+    editContainer.className = 'edit-comment-container';
+    editContainer.innerHTML = `
+        <textarea class="edit-comment-textarea" style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--font-color); resize: vertical; font-family: inherit; font-size: 14px; line-height: 1.4;">${originalContent}</textarea>
+        <div class="edit-comment-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+            <button class="button-secondary cancel-edit-btn" style="padding: 8px 16px;">Cancel</button>
+            <button class="button-primary save-edit-btn" style="padding: 8px 16px; background-color: var(--accent-color); color: white; border: none;">Save</button>
         </div>
     `;
 
-    const textarea = contentDiv.querySelector('.edit-comment-textarea');
-    const saveBtn = contentDiv.querySelector('.save-edit-btn');
-    const cancelBtn = contentDiv.querySelector('.cancel-edit-btn');
+    // Replace content with edit container
+    contentDiv.innerHTML = '';
+    contentDiv.appendChild(editContainer);
 
+    const textarea = editContainer.querySelector('.edit-comment-textarea');
+    const saveBtn = editContainer.querySelector('.save-edit-btn');
+    const cancelBtn = editContainer.querySelector('.cancel-edit-btn');
+
+    // Focus the textarea and position cursor at end
     textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
-    saveBtn.addEventListener('click', async () => {
-        const newContent = textarea.value.trim();
-        if (newContent && newContent !== originalContent) {
-            try {
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Saving...';
-                await actions.lemmyEditComment(commentView.comment.id, newContent);
-                // The action in app.js handles the UI update on success.
-            } catch (error) {
-                console.error("Failed to save comment:", error);
-                contentDiv.innerHTML = originalHtml; // Restore original content on failure
-                showToast("Failed to save comment. Please try again.");
-            }
-        } else {
-            contentDiv.innerHTML = originalHtml; // Restore if no changes were made
-        }
-    });
-
+    // Cancel button functionality
     cancelBtn.addEventListener('click', () => {
         contentDiv.innerHTML = originalHtml;
     });
-}
 
+    // Save button functionality
+    saveBtn.addEventListener('click', async () => {
+        const newContent = textarea.value.trim();
+        
+        if (!newContent) {
+            alert('Comment cannot be empty');
+            return;
+        }
+
+        if (newContent === originalContent) {
+            // No changes made, just restore original
+            contentDiv.innerHTML = originalHtml;
+            return;
+        }
+
+        try {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            
+            // Call the edit action
+            await actions.lemmyEditComment(commentView.comment.id, newContent);
+            
+            // Update the comment view object with new content
+            commentView.comment.content = newContent;
+            
+            // Convert markdown to HTML and update the display
+            const converter = new showdown.Converter();
+            let newHtmlContent = converter.makeHtml(newContent);
+            
+            // Add error handling for images in the new content
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = newHtmlContent;
+            tempDiv.querySelectorAll('img').forEach(img => {
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'images/404.png';
+                    this.classList.add('broken-image-fallback');
+                };
+            });
+            newHtmlContent = tempDiv.innerHTML;
+            
+            // Update the content div with new HTML
+            contentDiv.innerHTML = newHtmlContent;
+            
+        } catch (error) {
+            console.error("Failed to save comment:", error);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            alert("Failed to save comment. Please try again.");
+        }
+    });
+
+    // Handle Enter key (optional - save on Ctrl+Enter)
+    textarea.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            saveBtn.click();
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelBtn.click();
+        }
+    });
+}
 
 async function toggleLemmyReplies(commentId, postId, container, state, actions, postAuthorId) {
     const isVisible = container.style.display === 'block';
