@@ -5,7 +5,7 @@ import { renderSettingsPage } from './components/Settings.js';
 import { renderStatusDetail, renderStatus } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
-import { renderLemmyPostPage } from './components/LemmyPost.js';
+import { renderLemmyPostPage, renderPublicLemmyPostPage } from './components/LemmyPost.js';
 import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
 import { renderMergedPostPage, fetchMergedTimeline } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
@@ -365,6 +365,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             showLoadingBar();
             switchView('lemmyPost');
             await renderLemmyPostPage(state, post, actions);
+            hideLoadingBar();
+        },
+        showPublicLemmyPost: async (postView, instance) => {
+            showLoadingBar();
+            switchView('lemmyPost');
+            await renderPublicLemmyPostPage(state, postView, actions, instance);
             hideLoadingBar();
         },
         showLemmyCommunity: async (communityName) => {
@@ -873,20 +879,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         const postId = urlParams.get('postId');
         if (instance && postId) {
             showLoadingBar();
+            // Use the public Lemmy API (no auth required)
             fetch(`https://${instance}/api/v3/post?id=${postId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.post_view) {
-                        actions.showLemmyPostDetail(data.post_view);
+                        // Use the new public post viewing action
+                        actions.showPublicLemmyPost(data.post_view, instance);
                     } else {
                         showToast('Post not found or deleted');
-                        actions.showHomeTimeline();
+                        // Don't try to show home timeline if user isn't logged in
+                        switchView('timeline');
+                        state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     }
                     hideLoadingBar();
                 })
                 .catch(() => {
                     showToast('Could not load shared post');
-                    actions.showHomeTimeline();
+                    switchView('timeline');
+                    state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     hideLoadingBar();
                 });
         }
@@ -900,7 +911,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .then(response => response.json())
                 .then(data => {
                     if (data.post_view) {
-                        actions.showLemmyPostDetail(data.post_view);
+                        // Use the new public post viewing action
+                        actions.showPublicLemmyPost(data.post_view, instance);
                         // Scroll to comment after page loads
                         setTimeout(() => {
                             const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
@@ -917,18 +929,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }, 1000);
                     } else {
                         showToast('Post not found or deleted');
-                        actions.showHomeTimeline();
+                        switchView('timeline');
+                        state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     }
                     hideLoadingBar();
                 })
                 .catch(() => {
                     showToast('Could not load shared comment');
-                    actions.showHomeTimeline();
+                    switchView('timeline');
+                    state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     hideLoadingBar();
                 });
         }
     } else if (initialView === 'timeline') {
-        actions.showHomeTimeline();
+        // Only try to show home timeline if user has credentials
+        if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
+            actions.showHomeTimeline();
+        } else {
+            // Show a welcome screen for unauthenticated users
+            switchView('timeline');
+            state.timelineDiv.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h2>Welcome to Feedstodon</h2>
+                    <p>Connect to Lemmy or Mastodon to see your feeds.</p>
+                    <p>Use the menu above to get started.</p>
+                </div>
+            `;
+        }
     } else {
         switchView(initialView, false);
     }
