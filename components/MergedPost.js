@@ -87,7 +87,7 @@ export async function fetchMergedTimeline(state, actions, loadMore = false, onLo
                 if (post.platform === 'lemmy') {
                     postCard = renderLemmyCard(post, actions);
                 } else {
-                    postCard = renderStatus(post, actions);
+                    postCard = renderStatus(post, state.currentUser, actions, state.settings);
                 }
                 state.timelineDiv.appendChild(postCard);
             });
@@ -155,7 +155,7 @@ export async function renderMergedPostPage(state, post, actions) {
         mastodonCommentsContainer.innerHTML = 'Mastodon comments not applicable for this post.';
 
     } else if (post.platform === 'mastodon') {
-        const mastodonCard = renderStatus(post, actions);
+        const mastodonCard = renderStatus(post, state.currentUser, actions, state.settings);
         mainPostArea.appendChild(mastodonCard);
         mastodonCommentsContainer.innerHTML = 'Loading Mastodon comments...';
         lemmyCommentsContainer.innerHTML = 'Lemmy comments not applicable for this post.';
