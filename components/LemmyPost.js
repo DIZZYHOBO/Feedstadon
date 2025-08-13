@@ -349,6 +349,8 @@ export async function renderLemmyPostPage(state, postView, actions) {
     const converter = new showdown.Converter();
     let bodyHtml = post.body ? converter.makeHtml(post.body) : '';
 
+    console.log('Post body HTML before processing:', bodyHtml); // Debug log
+
     // Add error handling for images in post body
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = bodyHtml;
@@ -358,8 +360,17 @@ export async function renderLemmyPostPage(state, postView, actions) {
             this.src='images/404.png';
             this.classList.add('broken-image-fallback');
         };
+        // Ensure images are visible and properly styled
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.margin = '10px 0';
+        console.log('Found image in post body:', img.src); // Debug log
     });
     bodyHtml = tempDiv.innerHTML;
+
+    console.log('Post body HTML after processing:', bodyHtml); // Debug log
+    console.log('Post URL:', post.url, 'Is image URL:', isImageUrl); // Debug log
 
     const isLoggedIn = localStorage.getItem('lemmy_jwt');
 
