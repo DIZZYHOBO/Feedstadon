@@ -1922,6 +1922,50 @@ button:disabled {
     padding: 4px;
 }
 
+/* Comments Section Header and Sort Dropdown */
+.comments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comments-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--font-color);
+}
+
+.comments-sort-dropdown {
+    background-color: var(--primary-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 6px 10px;
+    font-size: 0.9em;
+    cursor: pointer;
+    min-width: 80px;
+    transition: border-color 0.2s ease;
+}
+
+.comments-sort-dropdown:hover {
+    border-color: var(--accent-color);
+}
+
+.comments-sort-dropdown:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(90, 148, 241, 0.2);
+}
+
+.comments-sort-dropdown option {
+    background-color: var(--primary-color);
+    color: var(--font-color);
+    padding: 4px;
+}
+
 /* Fixed Comment Layout */
 .lemmy-comment {
     padding: 1rem;
@@ -1951,8 +1995,8 @@ button:disabled {
 
 .comment-user-info {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 6px;
     flex-grow: 1;
     min-width: 0; /* Allows text to truncate if needed */
 }
