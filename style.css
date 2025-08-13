@@ -505,7 +505,7 @@ button:disabled {
 .status-content a, .profile-info .note a {
     color: var(--link-color);
     text-decoration: none;
-    word-break: break-all;
+    ;
 }
 .status-content a:hover, .profile-info .note a:hover {
     text-decoration: underline;
@@ -1610,7 +1610,8 @@ button:disabled {
     padding-top: 0.5rem;
     white-space: normal !important;
     word-wrap: break-word !important;
-    word-break: break-all; /* ADDED: Forcefully breaks long strings */
+    overflow-wrap: break-word;
+    hyphens: auto;
 }
 
 .view-replies-btn {
