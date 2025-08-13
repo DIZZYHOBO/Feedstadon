@@ -14,7 +14,7 @@ import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
-import { apiFetch, lemmyImageUpload, apiUploadMedia } from './components/api.js';
+import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
 
 // Add sharing functionality
