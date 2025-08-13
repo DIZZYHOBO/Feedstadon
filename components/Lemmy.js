@@ -43,6 +43,7 @@ export function renderLemmyCard(post, actions) {
         <div class="post-options-container">
             <button class="post-options-btn">${ICONS.more}</button>
             <div class="post-options-menu">
+                <button data-action="share-post">Share Post</button>
                 <button data-action="block-community" data-community-id="${post.community.id}">Block Community</button>
             </div>
         </div>
@@ -301,7 +302,6 @@ export function renderLemmyCard(post, actions) {
     
     card.querySelector('.quick-reply-box textarea').addEventListener('click', (e) => e.stopPropagation());
 
-
     const optionsBtn = card.querySelector('.post-options-btn');
     if (optionsBtn) {
         const menu = card.querySelector('.post-options-menu');
@@ -318,6 +318,8 @@ export function renderLemmyCard(post, actions) {
                 if (confirm('Are you sure you want to block this community?')) {
                     actions.lemmyBlockCommunity(communityId, true);
                 }
+            } else if (action === 'share-post') {
+                actions.sharePost(post);
             }
             menu.style.display = 'none';
         });
@@ -341,7 +343,6 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
     state.isLoadingMore = true;
     if (loadMore) state.scrollLoader.classList.add('loading');
     else document.getElementById('refresh-btn').classList.add('loading');
-
 
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance');
