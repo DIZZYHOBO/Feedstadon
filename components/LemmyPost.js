@@ -483,7 +483,7 @@ export async function renderLemmyPostPage(state, postView, actions) {
         actions.showLemmyProfile(`${postView.creator.name}@${new URL(postView.creator.actor_id).hostname}`);
     });
 
-    // Header share button
+    // Header share button - FIXED: Only declare this once
     const headerShareBtn = card.querySelector('[data-action="share-header"]');
     if (headerShareBtn) {
         headerShareBtn.addEventListener('click', (e) => {
@@ -704,63 +704,6 @@ export async function renderLemmyPostPage(state, postView, actions) {
 
     postContainer.appendChild(card);
 
-    postCard.innerHTML = `
-        <div class="status lemmy-post" data-id="${post.id}">
-            <div class="status-header">
-                <img src="${postView.community.icon || 'images/pfp.png'}" class="avatar" alt="${postView.community.name}" onerror="this.onerror=null;this.src='images/pfp.png';">
-                <div class="user-info">
-                    <a href="#" class="community-link user-info-line1">${postView.community.name}</a>
-                    <div class="user-info-line2">
-                        <span>posted by </span>
-                        <a href="#" class="user-link">${postView.creator.name}</a>
-                        <span class="time-ago">· ${timeAgo(post.published)}</span>
-                    </div>
-                </div>
-                <div class="status-header-side">
-                    <button class="share-post-btn" title="Share Post">${ICONS.share}</button>
-                </div>
-            </div>
-            <h3>${post.name}</h3>
-            <div class="lemmy-post-body">
-                ${bodyHtml}
-                ${isImageUrl 
-                    ? `<div class="lemmy-card-image-container"><img src="${post.url}" alt="${post.name}" class="lemmy-card-image" onerror="this.onerror=null;this.src='images/404.png';"></div>` 
-                    : (post.url ? `<a href="${post.url}" target="_blank" rel="noopener noreferrer" class="post-link-preview">${post.url}</a>` : '')
-                }
-            </div>
-             <div class="status-footer">
-                <div class="lemmy-vote-cluster">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote" title="${!isLoggedIn ? 'Login to vote' : 'Upvote'}">${ICONS.lemmyUpvote}</button>
-                    <span class="lemmy-score">${postView.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote" title="${!isLoggedIn ? 'Login to vote' : 'Downvote'}">${ICONS.lemmyDownvote}</button>
-                </div>
-                <button class="status-action">
-                    ${ICONS.comments}
-                    <span>${postView.counts.comments}</span>
-                </button>
-                <button class="status-action share-post-footer-btn" title="Share Post">${ICONS.share}</button>
-                <button class="status-action lemmy-save-btn" title="${!isLoggedIn ? 'Login to save' : 'Save'}">${ICONS.bookmark}</button>
-            </div>
-        </div>
-    `;
-    postContainer.appendChild(postCard);
-
-    // Add share functionality to header and footer buttons
-    const headerShareBtn = postCard.querySelector('.share-post-btn');
-    const footerShareBtn = postCard.querySelector('.share-post-footer-btn');
-    
-    headerShareBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        actions.sharePost(postView);
-    });
-    
-    footerShareBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        actions.sharePost(postView);
-    });
-
     // Fetch and render comments
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
     try {
@@ -882,17 +825,14 @@ export async function renderPublicLemmyPostPage(state, postView, actions, instan
     `;
     postContainer.appendChild(postCard);
 
-    // Add share functionality to header and footer buttons
-    const headerShareBtn = postCard.querySelector('.share-post-btn');
-    const footerShareBtn = postCard.querySelector('.share-post-footer-btn');
-    
-    headerShareBtn.addEventListener('click', (e) => {
+    // Add share functionality to header and footer buttons - using already declared buttons
+    postCard.querySelector('.share-post-btn').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         actions.sharePost(postView);
     });
     
-    footerShareBtn.addEventListener('click', (e) => {
+    postCard.querySelector('.share-post-footer-btn').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         actions.sharePost(postView);
