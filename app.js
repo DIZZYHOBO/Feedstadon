@@ -7,13 +7,27 @@ import { initComposeModal, showComposeModal, showComposeModalWithReply } from '.
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage } from './components/LemmyPost.js';
 import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
-import { renderMergedPostPage, fetchMergedTimeline } from './components/MergedPost.js'; // Import fetchMergedTimeline
+import { renderMergedPostPage, fetchMergedTimeline } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
 import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
 import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch, lemmyImageUpload, apiUploadMedia } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
+
+// Add sharing functionality
+function generateShareableUrl(type, data) {
+    const baseUrl = window.location.origin;
+    
+    if (type === 'lemmy-post') {
+        const instance = new URL(data.post.ap_id).hostname;
+        return `${baseUrl}/?share=lemmy-post&instance=${instance}&postId=${data.post.id}`;
+    } else if (type === 'lemmy-comment') {
+        const instance = new URL(data.comment.ap_id).hostname;
+        return `${baseUrl}/?share=lemmy-comment&instance=${instance}&postId=${data.post.id}&commentId=${data.comment.id}`;
+    }
+    return baseUrl;
+}
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -83,7 +97,6 @@ function initPullToRefresh(state, actions) {
     });
 }
 
-
 document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme on startup
     const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
@@ -96,7 +109,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshBtn.innerHTML = ICONS.refresh;
     const refreshSpinner = document.getElementById('refresh-spinner');
     refreshSpinner.innerHTML = ICONS.refresh;
-
 
     const state = {
         history: [],
@@ -744,6 +756,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 hideLoadingBar();
             }
         },
+        // Add sharing functionality
+        sharePost: (postView) => {
+            const url = generateShareableUrl('lemmy-post', postView);
+            if (navigator.share) {
+                navigator.share({ title: postView.post.name, url: url });
+            } else {
+                navigator.clipboard.writeText(url);
+                showToast('Share link copied to clipboard!');
+            }
+        },
+        shareComment: (commentView) => {
+            const url = generateShareableUrl('lemmy-comment', commentView);
+            if (navigator.share) {
+                navigator.share({ title: `Comment by ${commentView.creator.name}`, url: url });
+            } else {
+                navigator.clipboard.writeText(url);
+                showToast('Share link copied to clipboard!');
+            }
+        },
         showContextMenu: showContextMenu
     };
     state.actions = actions;
@@ -835,7 +866,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateNotificationBell();
     }
     
-    if (initialView === 'timeline') {
+    // Check for share parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('share') === 'lemmy-post') {
+        const instance = urlParams.get('instance');
+        const postId = urlParams.get('postId');
+        if (instance && postId) {
+            showLoadingBar();
+            fetch(`https://${instance}/api/v3/post?id=${postId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.post_view) {
+                        actions.showLemmyPostDetail(data.post_view);
+                    } else {
+                        showToast('Post not found or deleted');
+                        actions.showHomeTimeline();
+                    }
+                    hideLoadingBar();
+                })
+                .catch(() => {
+                    showToast('Could not load shared post');
+                    actions.showHomeTimeline();
+                    hideLoadingBar();
+                });
+        }
+    } else if (urlParams.get('share') === 'lemmy-comment') {
+        const instance = urlParams.get('instance');
+        const postId = urlParams.get('postId');
+        const commentId = urlParams.get('commentId');
+        if (instance && postId) {
+            showLoadingBar();
+            fetch(`https://${instance}/api/v3/post?id=${postId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.post_view) {
+                        actions.showLemmyPostDetail(data.post_view);
+                        // Scroll to comment after page loads
+                        setTimeout(() => {
+                            const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
+                            if (commentEl) {
+                                commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                // Briefly highlight the comment
+                                commentEl.style.backgroundColor = 'var(--accent-color)';
+                                commentEl.style.opacity = '0.3';
+                                setTimeout(() => {
+                                    commentEl.style.backgroundColor = '';
+                                    commentEl.style.opacity = '';
+                                }, 2000);
+                            }
+                        }, 1000);
+                    } else {
+                        showToast('Post not found or deleted');
+                        actions.showHomeTimeline();
+                    }
+                    hideLoadingBar();
+                })
+                .catch(() => {
+                    showToast('Could not load shared comment');
+                    actions.showHomeTimeline();
+                    hideLoadingBar();
+                });
+        }
+    } else if (initialView === 'timeline') {
         actions.showHomeTimeline();
     } else {
         switchView(initialView, false);
