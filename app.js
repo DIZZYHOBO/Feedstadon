@@ -877,15 +877,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (urlParams.get('share') === 'lemmy-post') {
         const instance = urlParams.get('instance');
         const postId = urlParams.get('postId');
+        
+        console.log('Share params:', { instance, postId }); // Debug log
+        
         if (instance && postId) {
             showLoadingBar();
-            // Use the public Lemmy API (no auth required)
-            fetch(`https://${instance}/api/v3/post?id=${postId}`)
-                .then(response => response.json())
+            
+            // Ensure we have just the hostname and construct the full URL properly
+            const cleanInstance = instance.replace(/^https?:\/\//, ''); // Remove protocol if present
+            const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
+            
+            console.log('Fetching from:', apiUrl); // Debug log
+            
+            fetch(apiUrl)
+                .then(response => {
+                    console.log('Response status:', response.status); // Debug log
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('API Response:', data); // Debug log
                     if (data.post_view) {
                         // Use the new public post viewing action
-                        actions.showPublicLemmyPost(data.post_view, instance);
+                        actions.showPublicLemmyPost(data.post_view, cleanInstance);
                     } else {
                         showToast('Post not found or deleted');
                         // Don't try to show home timeline if user isn't logged in
@@ -894,8 +910,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     hideLoadingBar();
                 })
-                .catch(() => {
-                    showToast('Could not load shared post');
+                .catch((error) => {
+                    console.error('Fetch error:', error); // Debug log
+                    showToast('Could not load shared post: ' + error.message);
                     switchView('timeline');
                     state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     hideLoadingBar();
@@ -905,14 +922,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const instance = urlParams.get('instance');
         const postId = urlParams.get('postId');
         const commentId = urlParams.get('commentId');
+        
+        console.log('Comment share params:', { instance, postId, commentId }); // Debug log
+        
         if (instance && postId) {
             showLoadingBar();
-            fetch(`https://${instance}/api/v3/post?id=${postId}`)
-                .then(response => response.json())
+            
+            // Ensure we have just the hostname and construct the full URL properly
+            const cleanInstance = instance.replace(/^https?:\/\//, ''); // Remove protocol if present
+            const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
+            
+            console.log('Fetching comment post from:', apiUrl); // Debug log
+            
+            fetch(apiUrl)
+                .then(response => {
+                    console.log('Comment response status:', response.status); // Debug log
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Comment API Response:', data); // Debug log
                     if (data.post_view) {
                         // Use the new public post viewing action
-                        actions.showPublicLemmyPost(data.post_view, instance);
+                        actions.showPublicLemmyPost(data.post_view, cleanInstance);
                         // Scroll to comment after page loads
                         setTimeout(() => {
                             const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
@@ -934,8 +968,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     hideLoadingBar();
                 })
-                .catch(() => {
-                    showToast('Could not load shared comment');
+                .catch((error) => {
+                    console.error('Comment fetch error:', error); // Debug log
+                    showToast('Could not load shared comment: ' + error.message);
                     switchView('timeline');
                     state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     hideLoadingBar();
