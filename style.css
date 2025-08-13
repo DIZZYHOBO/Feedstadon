@@ -2029,3 +2029,135 @@ button:disabled {
     white-space: nowrap;
     flex-shrink: 0;
 }
+
+/* Add to style.css - PieFed platform support styles */
+
+/* Platform badges */
+.platform-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.platform-badge.lemmy {
+    background-color: #00D4AA;
+    color: white;
+}
+
+.platform-badge.piefed {
+    background-color: #FF6B35;
+    color: white;
+}
+
+/* Error containers */
+.error-container {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.error-container h3 {
+    color: var(--font-color);
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.error-container p {
+    color: var(--font-color-muted);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.error-container a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.error-container a:hover {
+    text-decoration: underline;
+}
+
+.error-container button {
+    margin-top: 20px;
+}
+
+/* PieFed notice */
+.piefed-notice {
+    color: var(--font-color-muted);
+    font-style: italic;
+    font-size: 0.9em;
+    margin: 0;
+    padding: 8px 12px;
+    background-color: var(--primary-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+/* Instance type indicators */
+.instance-type-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8em;
+    color: var(--font-color-muted);
+    margin-left: 10px;
+}
+
+.instance-type-indicator.piefed {
+    color: #FF6B35;
+}
+
+.instance-type-indicator.lemmy {
+    color: #00D4AA;
+}
+
+/* Loading states */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    color: var(--accent-color);
+}
+
+.loading-spinner .icon {
+    width: 32px;
+    height: 32px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Community page improvements */
+.lemmy-community-card .profile-info .display-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Mobile responsiveness for platform badges */
+@media (max-width: 600px) {
+    .platform-badge {
+        display: block;
+        margin: 5px 0 0 0;
+        width: fit-content;
+    }
+    
+    .error-container {
+        padding: 20px 15px;
+    }
+    
+    .error-container p {
+        font-size: 0.9em;
+    }
+}
