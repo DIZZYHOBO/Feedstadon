@@ -55,7 +55,6 @@ export async function renderLemmyCommunityPage(state, actions, communityName) {
             descriptionBlock = fullDescriptionHtml;
         }
 
-
         view.innerHTML = `
             <div class="profile-card lemmy-community-card">
                 <div class="profile-header">
@@ -80,8 +79,24 @@ export async function renderLemmyCommunityPage(state, actions, communityName) {
         
         const feedContainer = view.querySelector('.profile-feed');
         if (posts && posts.length > 0) {
-            posts.forEach(post => {
-                feedContainer.appendChild(renderLemmyCard(post, actions));
+            posts.forEach(postView => {
+                // Create the card using renderLemmyCard
+                const postCard = renderLemmyCard(postView, actions);
+                
+                // CRITICAL FIX: Override the double-click handler to pass the full postView
+                const bodyContent = postCard.querySelector('.status-body-content');
+                if (bodyContent) {
+                    // Remove the existing double-click listener
+                    const newBodyContent = bodyContent.cloneNode(true);
+                    bodyContent.parentNode.replaceChild(newBodyContent, bodyContent);
+                    
+                    // Add the corrected double-click listener
+                    newBodyContent.addEventListener('dblclick', () => {
+                        actions.showLemmyPostDetail(postView); // Pass the full postView, not just post
+                    });
+                }
+                
+                feedContainer.appendChild(postCard);
             });
         } else {
             feedContainer.innerHTML = '<p>No posts in this community yet.</p>';
