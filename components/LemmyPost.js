@@ -1,19 +1,19 @@
-import { fetchTimeline } from './components/Timeline.js';
-import { renderProfilePage, renderEditProfilePage, loadMoreLemmyProfile } from './components/Profile.js';
-import { renderSearchResults, renderHashtagSuggestions } from './components/Search.js';
-import { renderSettingsPage } from './components/Settings.js';
-import { renderStatusDetail, renderStatus } from './components/Post.js';
-import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
-import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
-import { renderLemmyPostPage, renderPublicLemmyPostPage } from './components/LemmyPost.js';
-import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
-import { renderMergedPostPage, fetchMergedTimeline } from './components/MergedPost.js';
-import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
-import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from './components/Discover.js';
-import { renderScreenshotPage } from './components/Screenshot.js';
-import { ICONS } from './components/icons.js';
-import { apiFetch, lemmyImageUpload, apiUploadMedia } from './components/api.js';
-import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
+import { fetchTimeline } from '/components/Timeline.js';
+import { renderProfilePage, renderEditProfilePage, loadMoreLemmyProfile } from '/components/Profile.js';
+import { renderSearchResults, renderHashtagSuggestions } from '/components/Search.js';
+import { renderSettingsPage } from '/components/Settings.js';
+import { renderStatusDetail, renderStatus } from '/components/Post.js';
+import { initComposeModal, showComposeModal, showComposeModalWithReply } from '/components/Compose.js';
+import { fetchLemmyFeed, renderLemmyCard } from '/components/Lemmy.js';
+import { renderLemmyPostPage, renderPublicLemmyPostPage } from '/components/LemmyPost.js';
+import { renderLemmyCommunityPage } from '/components/LemmyCommunity.js';
+import { renderMergedPostPage, fetchMergedTimeline } from '/components/MergedPost.js';
+import { renderNotificationsPage, updateNotificationBell } from '/components/Notifications.js';
+import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingPosts } from '/components/Discover.js';
+import { renderScreenshotPage } from '/components/Screenshot.js';
+import { ICONS } from '/components/icons.js';
+import { apiFetch, lemmyImageUpload, apiUploadMedia } from '/components/api.js';
+import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from '/components/ui.js';
 
 // Add sharing functionality
 function generateShareableUrl(type, data) {
