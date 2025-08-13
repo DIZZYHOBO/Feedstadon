@@ -83,7 +83,8 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     moreOptionsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const menuItems = [
-            { label: 'Share Comment', action: () => {
+            { label: 'Share Comment', action: () => actions.shareComment(commentView) },
+            { label: 'Copy Comment URL', action: () => {
                  navigator.clipboard.writeText(commentView.comment.ap_id);
                  showToast('Comment URL copied to clipboard!');
             }},
