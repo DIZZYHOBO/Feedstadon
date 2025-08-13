@@ -18,8 +18,8 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
     // Handle authentication based on the platform
     if (platform === 'mastodon' && accessToken) {
         defaultHeaders['Authorization'] = `Bearer ${accessToken}`;
-    } else if (platform === 'lemmy') {
-        const jwt = localStorage.getItem('lemmy_jwt');
+    } else if (platform === 'lemmy' || platform === 'piefed') {  // ← ADD "|| platform === 'piefed'" here
+        const jwt = localStorage.getItem('lemmy_jwt') || localStorage.getItem('piefed_jwt');  // ← ADD "|| localStorage.getItem('piefed_jwt')" here
         if (jwt) {
             defaultHeaders['Authorization'] = `Bearer ${jwt}`;
         }
@@ -34,8 +34,14 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
         config.body = JSON.stringify(options.body);
     }
 
+    // ADD this new section to handle different API endpoints for PieFed vs Lemmy
+    let finalEndpoint = endpoint;
+    if (platform === 'piefed') {
+        finalEndpoint = convertLemmyToPieFedEndpoint(endpoint);
+    }
+
     // Construct the URL and append any query parameters
-    const url = new URL(`https://${instanceUrl}${endpoint}`);
+    const url = new URL(`https://${instanceUrl}${finalEndpoint}`);  // ← Change "endpoint" to "finalEndpoint"
     if (params) {
         Object.keys(params).forEach(key => {
             if (params[key] !== undefined && params[key] !== null) {
@@ -44,6 +50,7 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
         });
     }
 
+    // Rest of your existing apiFetch function remains the same...
     try {
         const response = await fetch(url.toString(), config);
 
@@ -126,4 +133,63 @@ export async function lemmyImageUpload(file) {
         showToast(`Image Upload Failed: ${error.message}`);
         return null;
     }
+}
+// ADD these functions to your existing components/api.js file
+// Do NOT replace the entire file - just add these functions
+
+/**
+ * Detect if an instance is PieFed vs Lemmy
+ */
+export async function detectInstanceType(instanceUrl) {
+    try {
+        // Try PieFed's nodeinfo endpoint first
+        const piefedResponse = await fetch(`https://${instanceUrl}/nodeinfo/2.0.json`);
+        if (piefedResponse.ok) {
+            const nodeinfo = await piefedResponse.json();
+            if (nodeinfo.software && nodeinfo.software.name === 'piefed') {
+                return 'piefed';
+            }
+        }
+        
+        // Try Lemmy's site info endpoint
+        const lemmyResponse = await fetch(`https://${instanceUrl}/api/v3/site`);
+        if (lemmyResponse.ok) {
+            const siteInfo = await lemmyResponse.json();
+            if (siteInfo.site_view) {
+                return 'lemmy';
+            }
+        }
+        
+        // Default to lemmy if we can't determine
+        return 'lemmy';
+    } catch (error) {
+        console.warn('Could not detect instance type:', error);
+        return 'lemmy'; // Default fallback
+    }
+}
+
+/**
+ * Convert Lemmy API endpoints to PieFed equivalents
+ */
+function convertLemmyToPieFedEndpoint(lemmyEndpoint) {
+    // Map common Lemmy endpoints to PieFed equivalents
+    const endpointMap = {
+        '/api/v3/post/list': '/api/posts',
+        '/api/v3/community': '/api/community',
+        '/api/v3/user': '/api/user',
+        '/api/v3/comment/list': '/api/comments',
+        '/api/v3/site': '/api/site',
+        '/api/v3/user/login': '/api/login',
+    };
+
+    // Check if we have a direct mapping
+    for (const [lemmy, piefed] of Object.entries(endpointMap)) {
+        if (lemmyEndpoint.startsWith(lemmy)) {
+            return lemmyEndpoint.replace(lemmy, piefed);
+        }
+    }
+
+    // If no mapping found, return original (might work or might not)
+    console.warn(`No PieFed mapping found for Lemmy endpoint: ${lemmyEndpoint}`);
+    return lemmyEndpoint;
 }
