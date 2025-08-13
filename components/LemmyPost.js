@@ -341,38 +341,368 @@ export async function renderLemmyPostPage(state, postView, actions) {
     const postContainer = view.querySelector('.lemmy-post-full');
     const commentsContainer = view.querySelector('.lemmy-comments-container');
     
-    // Render the main post card
-    const postCard = document.createElement('div');
+    // Import the renderLemmyCard function logic to create the same card
     const post = postView.post;
-    const isImageUrl = post.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(post.url);
-    
     const converter = new showdown.Converter();
-    let bodyHtml = post.body ? converter.makeHtml(post.body) : '';
+    
+    // Use the exact same logic as renderLemmyCard from Lemmy.js
+    const filterList = []; // No filtering needed for single post view
+    const combinedContent = `${post.name} ${post.body || ''}`;
+    
+    const card = document.createElement('div');
+    card.className = 'status lemmy-card';
+    card.dataset.id = post.id;
 
-    console.log('Post body HTML before processing:', bodyHtml); // Debug log
+    let mediaHTML = '';
+    const url = post.url;
+    if (url) {
+        // YouTube embed logic (same as feed cards)
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const youtubeMatch = url.match(youtubeRegex);
 
-    // Add error handling for images in post body
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = bodyHtml;
-    tempDiv.querySelectorAll('img').forEach(img => {
-        img.onerror = function() {
-            this.onerror=null;
-            this.src='images/404.png';
-            this.classList.add('broken-image-fallback');
-        };
-        // Ensure images are visible and properly styled
-        img.style.maxWidth = '100%';
-        img.style.height = 'auto';
-        img.style.display = 'block';
-        img.style.margin = '10px 0';
-        console.log('Found image in post body:', img.src); // Debug log
-    });
-    bodyHtml = tempDiv.innerHTML;
-
-    console.log('Post body HTML after processing:', bodyHtml); // Debug log
-    console.log('Post URL:', post.url, 'Is image URL:', isImageUrl); // Debug log
-
+        if (youtubeMatch) {
+            mediaHTML = `
+                <div class="video-embed-container">
+                    <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
+                </div>
+            `;
+        } else if (/\.(mp4|webm)$/i.test(url)) {
+            mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
+        } else if (post.thumbnail_url) {
+            mediaHTML = `<div class="status-media"><img src="${post.thumbnail_url}" alt="${post.name}" loading="lazy"></div>`;
+        }
+    }
+    
     const isLoggedIn = localStorage.getItem('lemmy_jwt');
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="share-post">Share Post</button>
+                ${isLoggedIn ? `<button data-action="block-community" data-community-id="${postView.community.id}">Block Community</button>` : ''}
+            </div>
+        </div>
+    `;
+
+    // Process spoilers and body content (same as feed cards)
+    const processedBody = post.body ? converter.makeHtml(post.body) : '';
+    const fullBodyHtml = processedBody;
+    let bodyHTML = fullBodyHtml;
+    const wordCount = post.body ? post.body.split(/\s+/).length : 0;
+
+    if (wordCount > 30) {
+        const truncatedText = post.body.split(/\s+/).slice(0, 30).join(' ');
+        bodyHTML = converter.makeHtml(truncatedText) + '... <a href="#" class="read-more-link">Read More</a>';
+    }
+
+    // Use exact same HTML structure as feed cards
+    card.innerHTML = `
+        <div class="status-body-content">
+            <div class="status-header">
+                <a href="#" class="status-header-main" data-action="view-community">
+                    <img src="${postView.community.icon || './images/php.png'}" alt="${postView.community.name} icon" class="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <div>
+                        <span class="display-name">${postView.community.name}</span>
+                        <span class="acct">posted by <span class="creator-link" data-action="view-creator">${postView.creator.name}</span> · ${timeAgo(post.published)}</span>
+                    </div>
+                </a>
+                <div class="status-header-side">
+                    <button class="share-post-btn" title="Share Post" data-action="share-header">${ICONS.share}</button>
+                    ${optionsMenuHTML}
+                    <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
+                </div>
+            </div>
+            <div class="status-content">
+                <h3 class="lemmy-title">${post.name}</h3>
+                ${mediaHTML}
+                <div class="lemmy-post-body">${bodyHTML}</div>
+            </div>
+        </div>
+        <div class="status-footer">
+            <div class="lemmy-vote-cluster">
+                <button class="status-action lemmy-vote-btn ${postView.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1" ${!isLoggedIn ? 'title="Login to vote"' : 'title="Upvote"'}>${ICONS.lemmyUpvote}</button>
+                <span class="lemmy-score">${postView.counts.score}</span>
+                <button class="status-action lemmy-vote-btn ${postView.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1" ${!isLoggedIn ? 'title="Login to vote"' : 'title="Downvote"'}>${ICONS.lemmyDownvote}</button>
+            </div>
+            <button class="status-action" data-action="quick-reply" ${!isLoggedIn ? 'title="Login to reply"' : 'title="Reply"'}>${ICONS.reply}</button>
+            <button class="status-action" data-action="view-post">${ICONS.comments} ${postView.counts.comments}</button>
+            <button class="status-action" data-action="share">${ICONS.share}</button>
+            <button class="status-action ${postView.saved ? 'active' : ''}" data-action="save" ${!isLoggedIn ? 'title="Login to save"' : 'title="Save"'}>${ICONS.bookmark}</button>
+        </div>
+        <div class="quick-reply-container">
+            <div class="quick-reply-box">
+                <textarea placeholder="Add a comment..."></textarea>
+                <button class="button-primary">Post</button>
+            </div>
+        </div>
+    `;
+    
+    // Add all the same event listeners as feed cards
+    
+    // Handle read more functionality
+    if (wordCount > 30) {
+        const bodyContainer = card.querySelector('.lemmy-post-body');
+        const readMoreLink = bodyContainer.querySelector('.read-more-link');
+        if (readMoreLink) {
+            readMoreLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                bodyContainer.innerHTML = fullBodyHtml;
+            });
+        }
+    }
+
+    // Handle media image clicks
+    const mediaImg = card.querySelector('.status-media img');
+    if (mediaImg) {
+        mediaImg.style.cursor = 'pointer';
+        mediaImg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof showImageModal === 'function') {
+                showImageModal(post.url || mediaImg.src);
+            }
+        });
+    }
+    
+    // Double-click to view post (refresh comments in this case)
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
+        // Refresh the current post page
+        actions.showLemmyPostDetail(postView);
+    });
+
+    // Header link clicks
+    card.querySelector('[data-action="view-community"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyCommunity(`${postView.community.name}@${new URL(postView.community.actor_id).hostname}`);
+    });
+    
+    card.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyProfile(`${postView.creator.name}@${new URL(postView.creator.actor_id).hostname}`);
+    });
+
+    // Header share button
+    const headerShareBtn = card.querySelector('[data-action="share-header"]');
+    if (headerShareBtn) {
+        headerShareBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            actions.sharePost(postView);
+        });
+    }
+    
+    // Context menu (touch and right-click)
+    let pressTimer;
+    card.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            const isOwn = postView.creator.name === localStorage.getItem('lemmy_username');
+            let menuItems = [
+                { label: `Share Post`, action: () => actions.sharePost(postView) },
+            ];
+            
+            if (isLoggedIn) {
+                menuItems.push(
+                    { label: `${ICONS.delete} Block @${postView.creator.name}`, action: () => {
+                        if (confirm('Are you sure you want to block this user?')) {
+                            actions.lemmyBlockUser(postView.creator.id, true);
+                        }
+                    }},
+                    { label: `${ICONS.delete} Block ${postView.community.name}`, action: () => {
+                        if (confirm('Are you sure you want to block this community?')) {
+                            actions.lemmyBlockCommunity(postView.community.id, true);
+                        }
+                    }}
+                );
+                
+                if (isOwn) {
+                     menuItems.push(
+                        { label: `${ICONS.edit} Edit`, action: () => {
+                            const replyContainer = card.querySelector('.quick-reply-container');
+                            replyContainer.style.display = 'block';
+                            const textarea = replyContainer.querySelector('textarea');
+                            textarea.value = post.body;
+                            textarea.focus();
+                            const button = replyContainer.querySelector('button');
+                            button.textContent = 'Save';
+                            button.onclick = async (e) => {
+                                e.stopPropagation();
+                                const newContent = textarea.value.trim();
+                                if (newContent) {
+                                    await actions.lemmyEditPost(post.id, newContent);
+                                    replyContainer.style.display = 'none';
+                                    button.textContent = 'Post';
+                                }
+                            };
+                        }},
+                        { label: `${ICONS.delete} Delete`, action: () => {
+                            if (confirm('Are you sure you want to delete this post?')) {
+                                actions.lemmyDeletePost(post.id);
+                            }
+                        }}
+                    );
+                }
+            }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
+    });
+
+    card.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const isOwn = postView.creator.name === localStorage.getItem('lemmy_username');
+        let menuItems = [
+            { label: `Share Post`, action: () => actions.sharePost(postView) },
+        ];
+        
+        if (isLoggedIn) {
+            menuItems.push(
+                { label: `${ICONS.delete} Block @${postView.creator.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this user?')) {
+                        actions.lemmyBlockUser(postView.creator.id, true);
+                    }
+                }},
+                { label: `${ICONS.delete} Block ${postView.community.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this community?')) {
+                        actions.lemmyBlockCommunity(postView.community.id, true);
+                    }
+                }}
+            );
+            
+            if (isOwn) {
+                 menuItems.push(
+                    { label: `${ICONS.edit} Edit`, action: () => {
+                        const replyContainer = card.querySelector('.quick-reply-container');
+                        replyContainer.style.display = 'block';
+                        const textarea = replyContainer.querySelector('textarea');
+                        textarea.value = post.body;
+                        textarea.focus();
+                        const button = replyContainer.querySelector('button');
+                        button.textContent = 'Save';
+                        button.onclick = async (e) => {
+                            e.stopPropagation();
+                            const newContent = textarea.value.trim();
+                            if (newContent) {
+                                await actions.lemmyEditPost(post.id, newContent);
+                                replyContainer.style.display = 'none';
+                                button.textContent = 'Post';
+                            }
+                        };
+                    }},
+                    { label: `${ICONS.delete} Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            actions.lemmyDeletePost(post.id);
+                        }
+                    }}
+                );
+            }
+        }
+        actions.showContextMenu(e, menuItems);
+    });
+    
+    // Footer action buttons
+    card.querySelectorAll('.status-footer .status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+            switch(action) {
+                case 'upvote':
+                case 'downvote':
+                    if (!isLoggedIn) {
+                        showToast('Please log in to vote');
+                        return;
+                    }
+                    const score = parseInt(e.currentTarget.dataset.score, 10);
+                    actions.lemmyVote(post.id, score, card);
+                    break;
+                case 'save':
+                    if (!isLoggedIn) {
+                        showToast('Please log in to save posts');
+                        return;
+                    }
+                    actions.lemmySave(post.id, e.currentTarget);
+                    break;
+                case 'quick-reply':
+                    if (!isLoggedIn) {
+                        showToast('Please log in to reply');
+                        return;
+                    }
+                    const replyContainer = card.querySelector('.quick-reply-container');
+                    const isVisible = replyContainer.style.display === 'block';
+
+                    document.querySelectorAll('.quick-reply-container').forEach(container => {
+                        container.style.display = 'none';
+                    });
+
+                    replyContainer.style.display = isVisible ? 'none' : 'block';
+                    if (!isVisible) {
+                        replyContainer.querySelector('textarea').focus();
+                    }
+                    break;
+                case 'view-post':
+                    // Just scroll to comments since we're already on the post page
+                    document.querySelector('.lemmy-comments-section').scrollIntoView({ behavior: 'smooth' });
+                    break;
+                case 'share':
+                    actions.sharePost(postView);
+                    break;
+            }
+        });
+    });
+    
+    // Quick reply functionality
+    card.querySelector('.quick-reply-box button').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const textarea = card.querySelector('.quick-reply-box textarea');
+        const content = textarea.value.trim();
+        if(!content) return;
+        if (!isLoggedIn) {
+            showToast('Please log in to comment');
+            return;
+        }
+
+        try {
+            await actions.lemmyPostComment({ content: content, post_id: post.id });
+            textarea.value = '';
+            card.querySelector('.quick-reply-container').style.display = 'none';
+            // Refresh comments
+            actions.showLemmyPostDetail(postView);
+        } catch(err) {
+            alert('Failed to post comment.');
+        }
+    });
+    
+    card.querySelector('.quick-reply-box textarea').addEventListener('click', (e) => e.stopPropagation());
+
+    // Options menu functionality
+    const optionsBtn = card.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = card.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            if (action === 'block-community') {
+                const communityId = parseInt(e.target.dataset.communityId, 10);
+                if (confirm('Are you sure you want to block this community?')) {
+                    actions.lemmyBlockCommunity(communityId, true);
+                }
+            } else if (action === 'share-post') {
+                actions.sharePost(postView);
+            }
+            menu.style.display = 'none';
+        });
+    }
+
+    postContainer.appendChild(card);
 
     postCard.innerHTML = `
         <div class="status lemmy-post" data-id="${post.id}">
