@@ -29,6 +29,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
 
     const isOP = postAuthorId && commentView.creator.id === postAuthorId;
     const isCreator = state.lemmyUsername && state.lemmyUsername === commentView.creator.name;
+    const isLoggedIn = localStorage.getItem('lemmy_jwt');
 
     commentDiv.innerHTML = `
         <div class="status-avatar">
@@ -44,11 +45,12 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             <div class="status-content">${htmlContent}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
-                     <button class="status-action lemmy-vote-btn" data-action="upvote" title="Upvote">${ICONS.lemmyUpvote}</button>
+                     <button class="status-action lemmy-vote-btn" data-action="upvote" title="${!isLoggedIn ? 'Login to vote' : 'Upvote'}">${ICONS.lemmyUpvote}</button>
                     <span class="lemmy-score">${commentView.counts.score}</span>
-                     <button class="status-action lemmy-vote-btn" data-action="downvote" title="Downvote">${ICONS.lemmyDownvote}</button>
+                     <button class="status-action lemmy-vote-btn" data-action="downvote" title="${!isLoggedIn ? 'Login to vote' : 'Downvote'}">${ICONS.lemmyDownvote}</button>
                 </div>
-                <button class="status-action reply-btn" title="Reply">${ICONS.comments}</button>
+                <button class="status-action reply-btn" title="${!isLoggedIn ? 'Login to reply' : 'Reply'}">${ICONS.comments}</button>
+                <button class="status-action share-comment-btn" title="Share Comment">${ICONS.share}</button>
                 <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
             </div>
             <div class="lemmy-replies-container" style="display: none;"></div>
@@ -61,13 +63,35 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     if (commentView.my_vote === 1) upvoteBtn.classList.add('active');
     if (commentView.my_vote === -1) downvoteBtn.classList.add('active');
 
-    upvoteBtn.addEventListener('click', () => actions.lemmyCommentVote(commentView.comment.id, 1, commentDiv));
-    downvoteBtn.addEventListener('click', () => actions.lemmyCommentVote(commentView.comment.id, -1, commentDiv));
+    upvoteBtn.addEventListener('click', () => {
+        if (!isLoggedIn) {
+            showToast('Please log in to vote');
+            return;
+        }
+        actions.lemmyCommentVote(commentView.comment.id, 1, commentDiv);
+    });
+    downvoteBtn.addEventListener('click', () => {
+        if (!isLoggedIn) {
+            showToast('Please log in to vote');
+            return;
+        }
+        actions.lemmyCommentVote(commentView.comment.id, -1, commentDiv);
+    });
 
     const replyBtn = commentDiv.querySelector('.reply-btn');
     const replyBoxContainer = commentDiv.querySelector('.lemmy-reply-box-container');
     replyBtn.addEventListener('click', () => {
+        if (!isLoggedIn) {
+            showToast('Please log in to reply');
+            return;
+        }
         toggleReplyBox(replyBoxContainer, commentView.post.id, commentView.comment.id, actions);
+    });
+
+    // Share comment button
+    const shareCommentBtn = commentDiv.querySelector('.share-comment-btn');
+    shareCommentBtn.addEventListener('click', () => {
+        actions.shareComment(commentView);
     });
 
     const repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
@@ -83,15 +107,15 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     moreOptionsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const menuItems = [
-            { label: 'Share Comment', action: () => actions.shareComment(commentView) },
+            { label: 'Share Comment', action: () => actions.shareComment(commentView) }, // Always available
             { label: 'Copy Comment URL', action: () => {
                  navigator.clipboard.writeText(commentView.comment.ap_id);
                  showToast('Comment URL copied to clipboard!');
-            }},
-            { label: 'Take Screenshot', action: () => actions.showScreenshotPage(commentView, null) }
+            }}, // Always available
+            { label: 'Take Screenshot', action: () => actions.showScreenshotPage(commentView, null) } // Always available
         ];
 
-        if (isCreator) {
+        if (isLoggedIn && isCreator) {
             menuItems.push({
                 label: 'Edit Comment',
                 action: () => showEditUI(commentDiv, commentView, actions)
@@ -106,7 +130,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             });
         }
 
-        if (state.lemmyUsername) {
+        if (isLoggedIn) {
              menuItems.push({
                 label: `Block @${commentView.creator.name}`,
                 action: () => actions.lemmyBlockUser(commentView.creator.id, true)
@@ -337,6 +361,8 @@ export async function renderLemmyPostPage(state, postView, actions) {
     });
     bodyHtml = tempDiv.innerHTML;
 
+    const isLoggedIn = localStorage.getItem('lemmy_jwt');
+
     postCard.innerHTML = `
         <div class="status lemmy-post" data-id="${post.id}">
             <div class="status-header">
@@ -349,6 +375,9 @@ export async function renderLemmyPostPage(state, postView, actions) {
                         <span class="time-ago">· ${timeAgo(post.published)}</span>
                     </div>
                 </div>
+                <div class="status-header-side">
+                    <button class="share-post-btn" title="Share Post">${ICONS.share}</button>
+                </div>
             </div>
             <h3>${post.name}</h3>
             <div class="lemmy-post-body">
@@ -360,19 +389,36 @@ export async function renderLemmyPostPage(state, postView, actions) {
             </div>
              <div class="status-footer">
                 <div class="lemmy-vote-cluster">
-                    <button class="status-action lemmy-vote-btn" data-action="upvote">${ICONS.lemmyUpvote}</button>
+                    <button class="status-action lemmy-vote-btn" data-action="upvote" title="${!isLoggedIn ? 'Login to vote' : 'Upvote'}">${ICONS.lemmyUpvote}</button>
                     <span class="lemmy-score">${postView.counts.score}</span>
-                    <button class="status-action lemmy-vote-btn" data-action="downvote">${ICONS.lemmyDownvote}</button>
+                    <button class="status-action lemmy-vote-btn" data-action="downvote" title="${!isLoggedIn ? 'Login to vote' : 'Downvote'}">${ICONS.lemmyDownvote}</button>
                 </div>
                 <button class="status-action">
                     ${ICONS.comments}
                     <span>${postView.counts.comments}</span>
                 </button>
-                <button class="status-action lemmy-save-btn">${ICONS.bookmark}</button>
+                <button class="status-action share-post-footer-btn" title="Share Post">${ICONS.share}</button>
+                <button class="status-action lemmy-save-btn" title="${!isLoggedIn ? 'Login to save' : 'Save'}">${ICONS.bookmark}</button>
             </div>
         </div>
     `;
     postContainer.appendChild(postCard);
+
+    // Add share functionality to header and footer buttons
+    const headerShareBtn = postCard.querySelector('.share-post-btn');
+    const footerShareBtn = postCard.querySelector('.share-post-footer-btn');
+    
+    headerShareBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.sharePost(postView);
+    });
+    
+    footerShareBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.sharePost(postView);
+    });
 
     // Fetch and render comments
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -397,6 +443,10 @@ export async function renderLemmyPostPage(state, postView, actions) {
     mainReplyBtn.addEventListener('click', async () => {
         const content = mainReplyTextarea.value.trim();
         if (!content) return;
+        if (!isLoggedIn) {
+            showToast('Please log in to comment');
+            return;
+        }
         try {
             await actions.lemmyPostComment({
                 content: content,
