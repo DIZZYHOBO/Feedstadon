@@ -329,7 +329,15 @@ export async function renderLemmyPostPage(state, postView, actions) {
         <div class="lemmy-post-view-container">
             <div class="lemmy-post-full"></div>
             <div class="lemmy-comments-section">
-                <h3>Comments</h3>
+                <div class="comments-header">
+                    <h3>Comments</h3>
+                    <select id="comments-sort-select" class="comments-sort-dropdown">
+                        <option value="New">New</option>
+                        <option value="Hot">Hot</option>
+                        <option value="Top">Top</option>
+                        <option value="Old">Old</option>
+                    </select>
+                </div>
                 <div class="lemmy-post-reply-box">
                      <textarea class="lemmy-main-reply-textarea" placeholder="Write a comment..."></textarea>
                      <button class="button-primary send-main-reply-btn">Comment</button>
@@ -705,22 +713,39 @@ export async function renderLemmyPostPage(state, postView, actions) {
 
     postContainer.appendChild(card);
 
-    // Fetch and render comments
-    const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
-    try {
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${post.id}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
-        const comments = response?.data?.comments;
-        commentsContainer.innerHTML = '';
-        if (comments && comments.length > 0) {
-            comments.forEach(commentView => {
-                commentsContainer.appendChild(renderLemmyComment(commentView, state, actions, postView.creator.id));
-            });
-        } else {
-            commentsContainer.innerHTML = 'No comments yet.';
+    // Comments sort functionality
+    const commentsSortSelect = view.querySelector('#comments-sort-select');
+    let currentSort = 'New'; // Default sort
+    
+    const loadComments = async (sortType = 'New') => {
+        const commentsContainer = view.querySelector('.lemmy-comments-container');
+        commentsContainer.innerHTML = 'Loading comments...';
+        
+        try {
+            const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${post.id}&max_depth=8&sort=${sortType}`, { method: 'GET' }, 'lemmy');
+            const comments = response?.data?.comments;
+            commentsContainer.innerHTML = '';
+            if (comments && comments.length > 0) {
+                comments.forEach(commentView => {
+                    commentsContainer.appendChild(renderLemmyComment(commentView, state, actions, postView.creator.id));
+                });
+            } else {
+                commentsContainer.innerHTML = 'No comments yet.';
+            }
+        } catch (error) {
+            commentsContainer.innerHTML = 'Failed to load comments.';
         }
-    } catch (error) {
-        commentsContainer.innerHTML = 'Failed to load comments.';
-    }
+    };
+
+    // Handle sort change
+    commentsSortSelect.addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        loadComments(currentSort);
+    });
+
+    // Fetch and render comments initially
+    const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+    await loadComments(currentSort);
 
     // Main reply box logic
     const mainReplyTextarea = view.querySelector('.lemmy-main-reply-textarea');
