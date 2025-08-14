@@ -24,6 +24,18 @@ async function getMastodonProfile(state, accountId) {
 }
 
 async function getLemmyProfile(userAcct, page = 1) {
+    // NEW FIX: Handle case where only username is provided (for logged-in user)
+    if (!userAcct.includes('@')) {
+        const localInstance = localStorage.getItem('lemmy_instance');
+        if (localInstance) {
+            userAcct = `${userAcct}@${localInstance}`;
+            console.log(`No instance provided, using local: ${userAcct}`);
+        } else {
+            console.error('No instance found for username:', userAcct);
+            return null;
+        }
+    }
+    
     // Parse the user account to get username and instance
     const parts = userAcct.split('@');
     if (parts.length < 2) {
@@ -33,33 +45,61 @@ async function getLemmyProfile(userAcct, page = 1) {
     
     const [username, userInstance] = parts;
     
-    // Try the user's actual instance first
+    // IMPORTANT: Use the user's home instance, not our logged-in instance
     let targetInstance = userInstance;
     let response = null;
     
     try {
-        console.log(`Trying to fetch profile for ${username} from their instance: ${targetInstance}`);
-        response = await apiFetch(targetInstance, null, `/api/v3/user?username=${username}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
-        console.log(`Successfully fetched profile from ${targetInstance}`);
-        return response.data;
-    } catch (error) {
-        console.log(`Failed to fetch from user's instance ${targetInstance}:`, error.message);
+        // First, try to fetch from the user's actual instance
+        console.log(`Fetching profile for ${username} from their home instance: ${targetInstance}`);
         
-        // Fall back to your local instance
+        // Use the correct instance URL - add https:// if not present
+        const instanceUrl = targetInstance.startsWith('http') ? targetInstance : `https://${targetInstance}`;
+        const apiUrl = `${instanceUrl}/api/v3/user?username=${username}&sort=New&limit=50&page=${page}`;
+        
+        console.log(`API URL: ${apiUrl}`);
+        
+        // Fetch directly without using apiFetch since we're querying a different instance
+        const fetchResponse = await fetch(apiUrl);
+        
+        if (!fetchResponse.ok) {
+            throw new Error(`HTTP ${fetchResponse.status}`);
+        }
+        
+        response = await fetchResponse.json();
+        console.log(`Successfully fetched profile from ${targetInstance}`);
+        return response;
+        
+    } catch (error) {
+        console.log(`Failed to fetch from user's home instance ${targetInstance}:`, error.message);
+        
+        // Fallback: Try to fetch from our logged-in instance (might have federated data)
         const localInstance = localStorage.getItem('lemmy_instance');
         if (localInstance && localInstance !== targetInstance) {
             try {
-                console.log(`Trying fallback: fetching ${username} from local instance: ${localInstance}`);
-                response = await apiFetch(localInstance, null, `/api/v3/user?username=${username}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
-                console.log(`Successfully fetched profile from local instance ${localInstance}`);
-                return response.data;
+                console.log(`Trying fallback: fetching ${username}@${userInstance} from local instance: ${localInstance}`);
+                
+                // When fetching from local instance, use the full username@instance format
+                const fallbackUrl = `https://${localInstance}/api/v3/user?username=${username}@${userInstance}&sort=New&limit=50&page=${page}`;
+                console.log(`Fallback URL: ${fallbackUrl}`);
+                
+                const fallbackResponse = await fetch(fallbackUrl);
+                
+                if (!fallbackResponse.ok) {
+                    throw new Error(`Fallback HTTP ${fallbackResponse.status}`);
+                }
+                
+                response = await fallbackResponse.json();
+                console.log(`Successfully fetched federated profile from local instance ${localInstance}`);
+                return response;
+                
             } catch (fallbackError) {
                 console.log(`Fallback also failed:`, fallbackError.message);
             }
         }
         
         // If both attempts fail, return null
-        console.error(`Failed to fetch Lemmy profile for ${userAcct} from both instances`);
+        console.error(`Failed to fetch Lemmy profile for ${userAcct} from any instance`);
         return null;
     }
 }
