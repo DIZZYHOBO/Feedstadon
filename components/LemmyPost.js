@@ -38,11 +38,10 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         </div>
         <div class="status-body">
             <div class="status-header">
-                <div class="comment-user-info">
-                    <span class="username-instance">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
-                    ${isOP ? '<span class="op-badge">OP</span>' : ''}
-                </div>
-                <span class="time-ago">${timeAgo(commentView.comment.published)}</span>
+                <span class="display-name">${commentView.creator.display_name || commentView.creator.name}</span>
+                <span class="acct">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+                ${isOP ? '<span class="op-badge">OP</span>' : ''}
+                <span class="time-ago">· ${timeAgo(commentView.comment.published)}</span>
             </div>
             <div class="status-content">${htmlContent}</div>
             <div class="status-footer">
@@ -261,18 +260,15 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions, 
     }
 
     try {
-        // Get all comments for the post
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
-        const allComments = response?.data?.comments;
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&parent_id=${commentId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
+        const replies = response?.data?.comments;
         
-        // Find only the direct children of this specific comment
-        const directReplies = allComments.filter(reply => 
-            reply.comment.parent_id === commentId
-        );
+        // Filter out the parent comment itself, as we only want to show its children.
+        const filteredReplies = replies.filter(reply => reply.comment.id !== commentId);
 
         container.innerHTML = '';
-        if (directReplies && directReplies.length > 0) {
-            directReplies.forEach(replyView => {
+        if (filteredReplies && filteredReplies.length > 0) {
+            filteredReplies.forEach(replyView => {
                 container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId));
             });
         } else {
@@ -726,14 +722,11 @@ export async function renderLemmyPostPage(state, postView, actions) {
         commentsContainer.innerHTML = 'Loading comments...';
         
         try {
-            // Load all comments but filter to show only top-level ones
             const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${post.id}&max_depth=8&sort=${sortType}`, { method: 'GET' }, 'lemmy');
             const comments = response?.data?.comments;
             commentsContainer.innerHTML = '';
             if (comments && comments.length > 0) {
-                // Only show comments that have no parent_id (top-level comments only)
-                const topLevelComments = comments.filter(commentView => !commentView.comment.parent_id);
-                topLevelComments.forEach(commentView => {
+                comments.forEach(commentView => {
                     commentsContainer.appendChild(renderLemmyComment(commentView, state, actions, postView.creator.id));
                 });
             } else {
@@ -879,9 +872,7 @@ export async function renderPublicLemmyPostPage(state, postView, actions, instan
         
         commentsContainer.innerHTML = '';
         if (comments && comments.length > 0) {
-            // Only show top-level comments (no parent_id)
-            const topLevelComments = comments.filter(commentView => !commentView.comment.parent_id);
-            topLevelComments.forEach(commentView => {
+            comments.forEach(commentView => {
                 commentsContainer.appendChild(renderPublicLemmyComment(commentView, state, actions, postView.creator.id, instance));
             });
         } else {
@@ -925,11 +916,10 @@ function renderPublicLemmyComment(commentView, state, actions, postAuthorId = nu
         </div>
         <div class="status-body">
             <div class="status-header">
-                <div class="comment-user-info">
-                    <span class="username-instance">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
-                    ${isOP ? '<span class="op-badge">OP</span>' : ''}
-                </div>
-                <span class="time-ago">${timeAgo(commentView.comment.published)}</span>
+                <span class="display-name">${commentView.creator.display_name || commentView.creator.name}</span>
+                <span class="acct">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+                ${isOP ? '<span class="op-badge">OP</span>' : ''}
+                <span class="time-ago">· ${timeAgo(commentView.comment.published)}</span>
             </div>
             <div class="status-content">${htmlContent}</div>
             <div class="status-footer">
@@ -959,10 +949,9 @@ function renderPublicLemmyComment(commentView, state, actions, postAuthorId = nu
         
         viewRepliesBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch(`https://${instance}/api/v3/comment/list?post_id=${commentView.post.id}&max_depth=8&sort=New`);
+                const response = await fetch(`https://${instance}/api/v3/comment/list?post_id=${commentView.post.id}&parent_id=${commentView.comment.id}&max_depth=8&sort=New`);
                 const data = await response.json();
-                const allComments = data?.comments;
-                const replies = allComments?.filter(reply => reply.comment.parent_id === commentView.comment.id);
+                const replies = data?.comments?.filter(reply => reply.comment.id !== commentView.comment.id);
                 
                 let repliesContainer = commentDiv.querySelector('.lemmy-replies-container');
                 if (!repliesContainer) {

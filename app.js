@@ -37,26 +37,21 @@ function initDropdowns() {
         if (button) {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Close all other dropdowns first
                 document.querySelectorAll('.dropdown.active').forEach(d => {
                     if (d !== dropdown) d.classList.remove('active');
                 });
-                // Toggle the clicked dropdown
                 dropdown.classList.toggle('active');
             });
         }
     });
 
-    // Close all dropdowns when clicking outside
-    window.addEventListener('click', (e) => {
-        // Only close if not clicking on a dropdown button
-        if (!e.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown.active').forEach(d => {
-                d.classList.remove('active');
-            });
-        }
+    window.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown.active').forEach(d => {
+            d.classList.remove('active');
+        });
     });
 }
+
 function initPullToRefresh(state, actions) {
     const ptrIndicator = document.getElementById('pull-to-refresh-indicator');
     let startY = 0;
@@ -798,9 +793,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('fediverse-token', accessToken);
             showSuccessToast('Mastodon login successful!');
             actions.showHomeTimeline();
-            
-            // Update notification bell after login
-            updateNotificationBell();
             return true;
         } catch (error) {
             showErrorToast('Mastodon login failed.');
@@ -843,14 +835,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (state.currentLemmyFeed) {
                 actions.showLemmyFeed(state.currentLemmyFeed);
             }
-        } else if (state.currentView === 'notifications') {
-            actions.showNotifications();
         }
     });
 
     notificationsBtn.addEventListener('click', () => {
         if (state.currentUser) {
-            actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
+            actions.showProfilePage('lemmy', state.currentUser.id, state.currentUser.acct);
         } else if (localStorage.getItem('lemmy_jwt')) {
             const lemmyUsername = localStorage.getItem('lemmy_username');
             const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -1050,9 +1040,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     showWarningToast("Please log in to view your profile.");
                 }
-                break;
-            case 'notifications-link':
-                actions.showNotifications();
                 break;
             case 'settings-link':
                 actions.showSettings();

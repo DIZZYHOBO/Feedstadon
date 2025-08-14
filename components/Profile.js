@@ -24,42 +24,14 @@ async function getMastodonProfile(state, accountId) {
 }
 
 async function getLemmyProfile(userAcct, page = 1) {
-    // Parse the user account to get username and instance
-    const parts = userAcct.split('@');
-    if (parts.length < 2) {
-        console.error('Invalid user account format:', userAcct);
-        return null;
-    }
-    
-    const [username, userInstance] = parts;
-    
-    // Try the user's actual instance first
-    let targetInstance = userInstance;
-    let response = null;
-    
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    if (!lemmyInstance) return null;
     try {
-        console.log(`Trying to fetch profile for ${username} from their instance: ${targetInstance}`);
-        response = await apiFetch(targetInstance, null, `/api/v3/user?username=${username}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
-        console.log(`Successfully fetched profile from ${targetInstance}`);
+        const [name] = userAcct.split('@');
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
         return response.data;
     } catch (error) {
-        console.log(`Failed to fetch from user's instance ${targetInstance}:`, error.message);
-        
-        // Fall back to your local instance
-        const localInstance = localStorage.getItem('lemmy_instance');
-        if (localInstance && localInstance !== targetInstance) {
-            try {
-                console.log(`Trying fallback: fetching ${username} from local instance: ${localInstance}`);
-                response = await apiFetch(localInstance, null, `/api/v3/user?username=${username}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
-                console.log(`Successfully fetched profile from local instance ${localInstance}`);
-                return response.data;
-            } catch (fallbackError) {
-                console.log(`Fallback also failed:`, fallbackError.message);
-            }
-        }
-        
-        // If both attempts fail, return null
-        console.error(`Failed to fetch Lemmy profile for ${userAcct} from both instances`);
+        console.error(`Failed to fetch Lemmy profile for ${userAcct}:`, error);
         return null;
     }
 }
@@ -308,7 +280,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                     setupLemmyProfileEditing(person, actions);
                 }
             } else {
-                feedContainer.innerHTML = '<p>Could not load Lemmy profile. This user might be from an instance that doesn\'t allow external API access.</p>';
+                feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
             }
         }
     };
