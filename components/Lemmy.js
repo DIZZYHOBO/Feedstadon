@@ -16,21 +16,37 @@ export function renderLemmyCard(post, actions) {
 
     let mediaHTML = '';
     const url = post.post.url;
+    const isLinkPost = url && !post.post.body; // Link post if there's a URL but no body text
+    
     if (url) {
         // YouTube embed logic
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
         const youtubeMatch = url.match(youtubeRegex);
 
-        if (youtubeMatch) {
+        if (youtubeMatch && !isLinkPost) {
             mediaHTML = `
                 <div class="video-embed-container">
                     <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
                 </div>
             `;
-        } else if (/\.(mp4|webm)$/i.test(url)) {
+        } else if (/\.(mp4|webm)$/i.test(url) && !isLinkPost) {
             mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
         } else if (post.post.thumbnail_url) {
-            mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+            // For link posts, make the thumbnail clickable
+            if (isLinkPost) {
+                mediaHTML = `
+                    <div class="status-media link-thumbnail">
+                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-thumbnail-wrapper">
+                            <img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy">
+                            <div class="link-overlay">
+                                <svg class="link-overlay-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg>
+                            </div>
+                        </a>
+                    </div>
+                `;
+            } else {
+                mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
+            }
         }
     }
     
@@ -60,6 +76,25 @@ export function renderLemmyCard(post, actions) {
         bodyHTML = new showdown.Converter().makeHtml(processSpoilers(truncatedText)) + '... <a href="#" class="read-more-link">Read More</a>';
     }
 
+    // Create title HTML - make it clickable for link posts
+    let titleHTML;
+    if (isLinkPost) {
+        const domain = new URL(url).hostname.replace('www.', '');
+        titleHTML = `
+            <div class="lemmy-title-container">
+                <h3 class="lemmy-title">
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="lemmy-link-title">${post.post.name}</a>
+                </h3>
+                <div class="link-domain-indicator">
+                    <svg class="icon link-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg>
+                    <span class="domain-text">${domain}</span>
+                </div>
+            </div>
+        `;
+    } else {
+        titleHTML = `<h3 class="lemmy-title">${post.post.name}</h3>`;
+    }
+
     card.innerHTML = `
         ${crosspostTag}
         <div class="status-body-content">
@@ -78,7 +113,7 @@ export function renderLemmyCard(post, actions) {
                 </div>
             </div>
             <div class="status-content">
-                <h3 class="lemmy-title">${post.post.name}</h3>
+                ${titleHTML}
                 ${mediaHTML}
                 <div class="lemmy-post-body">${bodyHTML}</div>
             </div>
@@ -119,11 +154,13 @@ export function renderLemmyCard(post, actions) {
     if (wordCount > 30) {
         const bodyContainer = card.querySelector('.lemmy-post-body');
         const readMoreLink = bodyContainer.querySelector('.read-more-link');
-        readMoreLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            bodyContainer.innerHTML = fullBodyHtml;
-        });
+        if (readMoreLink) {
+            readMoreLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                bodyContainer.innerHTML = fullBodyHtml;
+            });
+        }
     }
 
     const mediaImg = card.querySelector('.status-media img');
