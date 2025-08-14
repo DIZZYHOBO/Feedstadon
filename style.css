@@ -1,4 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+.modal-overlay {
+    display: none !important;
+}
+.modal-overlay.visible {
+    display: flex !important;
+}
+
+/* Hide ALL dropdowns by default */
+.dropdown .dropdown-content {
+    display: none !important;
+}
+.dropdown.active .dropdown-content {
+    display: block !important;
+}
+
+/* Hide context menu */
+#context-menu {
+    display: none !important;
+}
+
+/* Hide post options menus */
+.post-options-menu {
+    display: none !important;
+}
+
+/* Hide sub-navs */
+.timeline-sub-nav, .notifications-sub-nav {
+    display: none !important;
+}
+
+/* Hide reply containers */
+.quick-reply-container, .conversation-container {
+    display: none !important;
+}@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 /* EMERGENCY FIX - Force all menus hidden on load */
 
