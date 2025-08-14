@@ -1878,9 +1878,9 @@ button:disabled {
 
 /* Lemmy Comment Spacing */
 .comment-wrapper {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     padding-bottom: 1px;
-    border-bottom: 10px solid var(--border-color);
+    border-bottom: 0px solid var(--border-color);
 }
 
 .comment-wrapper:last-child {
