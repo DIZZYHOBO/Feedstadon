@@ -838,23 +838,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    notificationsBtn.addEventListener('click', () => {
-        if (state.currentUser) {
-            actions.showProfilePage('lemmy', state.currentUser.id, state.currentUser.acct);
-        } else if (localStorage.getItem('lemmy_jwt')) {
-            const lemmyUsername = localStorage.getItem('lemmy_username');
-            const lemmyInstance = localStorage.getItem('lemmy_instance');
-            if (lemmyUsername && lemmyInstance) {
-                const userAcct = `${lemmyUsername}@${lemmyInstance}`;
-                actions.showLemmyProfile(userAcct);
-            } else {
-                showWarningToast("Could not determine Lemmy user profile.");
-            }
+   notificationsBtn.addEventListener('click', () => {
+    if (state.currentUser) {
+        actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
+    } else if (localStorage.getItem('lemmy_jwt')) {
+        const lemmyUsername = localStorage.getItem('lemmy_username');
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        if (lemmyUsername && lemmyInstance) {
+            // FIX: Add the instance to the username
+            const userAcct = `${lemmyUsername}@${lemmyInstance}`;
+            actions.showLemmyProfile(userAcct);
         } else {
-            showWarningToast("Please log in to view your profile.");
+            showWarningToast("Could not determine Lemmy user profile.");
         }
-    });
-    
+    } else {
+        showWarningToast("Please log in to view your profile.");
+    }
+});
     document.getElementById('discover-btn').addEventListener('click', () => {
         actions.showDiscoverPage();
     });
