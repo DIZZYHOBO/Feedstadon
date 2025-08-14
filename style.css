@@ -1904,7 +1904,7 @@ button:disabled {
 }
 
 .lemmy-replies-container .comment-wrapper {
-    margin-bottom: 15px;
+    margin-bottom: 1px;
 }
 
 .lemmy-replies-container .loading-replies,
