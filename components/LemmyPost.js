@@ -102,7 +102,9 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         viewRepliesBtn.className = 'view-replies-btn';
         viewRepliesBtn.textContent = `View ${commentView.counts.child_count} replies`;
         commentDiv.querySelector('.status-footer').insertAdjacentElement('afterend', viewRepliesBtn);
-        viewRepliesBtn.addEventListener('click', () => toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId));
+        viewRepliesBtn.addEventListener('click', () => {
+            toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId);
+        });
     }
 
     const moreOptionsBtn = commentDiv.querySelector('.more-options-btn');
@@ -265,13 +267,37 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions, 
         const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=New`, { method: 'GET' }, 'lemmy');
         const allComments = response?.data?.comments;
         
+        if (!allComments || allComments.length === 0) {
+            container.innerHTML = 'No replies found.';
+            return;
+        }
+        
+        // Convert commentId to number for comparison (Lemmy uses numeric IDs)
+        const targetCommentId = Number(commentId);
+        
         // Find only the direct children of this specific comment
-        const directReplies = allComments.filter(reply => 
-            reply.comment.parent_id === commentId
-        );
+        // Check the comment's path to determine parent-child relationships
+        const targetComment = allComments.find(c => Number(c.comment.id) === targetCommentId);
+        const targetPath = targetComment?.comment?.path || '';
+        
+        const directReplies = allComments.filter(reply => {
+            // A reply is a direct child if:
+            // 1. It has a parent_id that matches our target comment
+            const hasMatchingParentId = reply.comment.parent_id && Number(reply.comment.parent_id) === targetCommentId;
+            
+            // 2. OR its path starts with the target comment's path and is one level deeper
+            const replyPath = reply.comment.path || '';
+            const isChildByPath = targetPath && replyPath.startsWith(targetPath + '.') && 
+                                  (replyPath.split('.').length === targetPath.split('.').length + 1);
+            
+            return hasMatchingParentId || isChildByPath;
+        });
 
         container.innerHTML = '';
         if (directReplies && directReplies.length > 0) {
+            // Sort replies by creation time (oldest first)
+            directReplies.sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
+            
             directReplies.forEach(replyView => {
                 container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId));
             });
