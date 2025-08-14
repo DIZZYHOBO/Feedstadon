@@ -8,7 +8,7 @@
     --font-color: #e0e0e0;
     --font-color-muted: #8e8f90;
     --border-color: #333435;
-    --link-color: #88C0D0;
+    --link-color: #e0e0e0;
     --notification-dot-color: #ff3d3d;
     --border-radius: 0px;
 }
@@ -21,7 +21,7 @@
     --font-color: #d7dadc;
     --font-color-muted: #818384;
     --border-color: #343536;
-    --link-color: #4fbcff;
+    --link-color: #d7dadc;
 }
 
 [data-theme="git"] {
@@ -32,13 +32,13 @@
     --font-color: #c9d1d9;
     --font-color-muted: #8b949e;
     --border-color: #30363d;
-    --link-color: #58a6ff;
+    --link-color: #c9d1d9;
 }
 
 [data-theme="voyage"] {
     --bg-color: #12151d;
     --card-color: #1a1c28;
-    --primary-color: #fffdfa;
+    --primary-color: #161b22;
     --accent-color: #afb1b5;
     --font-color: #fffdfa;
     --font-color-muted: #afb1b5;
@@ -726,7 +726,175 @@ button:disabled {
     text-decoration: underline;
 }
 
-/* --- Notifications --- */
+/* --- Notifications Page Styles --- */
+/* Notifications page header */
+.view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: var(--card-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.view-header h2 {
+    margin: 0;
+    color: var(--font-color);
+}
+
+.notifications-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.notifications-actions button {
+    padding: 8px 12px;
+    font-size: 0.9em;
+}
+
+/* Notification items */
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+    position: relative;
+    background-color: var(--card-color);
+    margin-bottom: 10px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item:hover {
+    background-color: var(--primary-color);
+}
+
+.notification-item.unread {
+    border-left: 4px solid var(--accent-color);
+    background-color: rgba(90, 148, 241, 0.05);
+}
+
+.notification-platform-icon {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: var(--font-color-muted);
+    opacity: 0.5;
+}
+
+.notification-icon {
+    font-size: 1.5em;
+    color: var(--font-color-muted);
+    flex-shrink: 0;
+    width: 30px;
+    text-align: center;
+}
+
+.notification-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex-grow: 1;
+    line-height: 1.5;
+}
+
+.notification-content p {
+    margin: 0 0 8px 0;
+    color: var(--font-color);
+}
+
+.notification-context {
+    font-size: 0.9em;
+    color: var(--font-color-muted);
+    border-left: 3px solid var(--border-color);
+    padding-left: 10px;
+    margin-top: 8px;
+    max-height: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: var(--bg-color);
+    padding: 8px 10px;
+    border-radius: 4px;
+}
+
+.notification-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.notification-actions .timestamp {
+    color: var(--font-color-muted);
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.mark-read-btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.mark-read-btn:hover {
+    background-color: var(--accent-color);
+    filter: brightness(0.9);
+}
+
+/* Loading and empty states */
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+}
+
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: #dc3545;
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    border: 1px solid #dc3545;
+}
+
+/* Menu notification dot */
+.menu-notification-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--notification-dot-color);
+    border-radius: 50%;
+    margin-left: auto;
+}
+
+/* --- End Notifications Styles --- */
+
 #notifications-list {
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
@@ -917,1410 +1085,3 @@ button:disabled {
     cursor: pointer;
     padding: 5px;
     border-radius: 50%;
-}
-.post-options-btn:hover {
-    background-color: var(--primary-color);
-}
-.post-options-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 0px;
-    min-width: 120px;
-    z-index: 10;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-.post-options-menu button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 12px 16px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-.post-options-menu button:hover {
-    background-color: var(--accent-color);
-}
-
-/* --- Context Menu --- */
-#context-menu {
-    position: fixed;
-    display: none;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 0px;
-    min-width: 150px;
-    z-index: 4000;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-#context-menu button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--font-color);
-    padding: 12px 16px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-#context-menu button:hover {
-    background-color: var(--accent-color);
-}
-
-
-/* --- Modals --- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 3000;
-}
-.modal-overlay.visible {
-    display: flex;
-}
-.modal-content {
-    background: var(--card-color);
-    padding: 25px;
-    border-radius: 0px;
-    width: 90%;
-    max-width: 500px;
-}
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-.modal-actions button {
-    border-radius: 0px;
-}
-
-/* --- Image Modal --- */
-#image-modal .image-modal-content {
-    background: transparent;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    padding: 20px;
-    overflow: hidden; /* Prevent scrollbars on the container */
-}
-#fullscreen-image {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    cursor: grab; /* Add grab cursor for panning */
-    transition: transform 0.2s ease-out; /* Smooth transitions for zoom/pan */
-}
-#fullscreen-image:active {
-    cursor: grabbing;
-}
-#save-image-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 2em;
-    color: white;
-    background-color: rgba(0,0,0,0.5);
-    border-radius: 50%;
-    padding: 10px;
-}
-#save-image-btn:hover {
-    background-color: rgba(0,0,0,0.8);
-}
-
-
-.button-secondary {
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-}
-.button-danger {
-    background-color: #d9534f;
-    color: white;
-}
-.logout-options {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin: 20px 0;
-}
-.logout-options button {
-    flex-grow: 1;
-}
-
-/* --- Compose Modal --- */
-.compose-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    margin: -25px -25px 20px -25px;
-}
-.compose-tabs .tab-button {
-    border-radius: 0;
-    border-bottom: 3px solid transparent;
-}
-.compose-tabs .tab-button.active {
-    border-bottom-color: var(--accent-color);
-}
-.compose-tab-content {
-    display: none;
-}
-.compose-tab-content.active {
-    display: block;
-}
-
-.compose-options {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#media-filename-preview {
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-}
-
-#poll-creator-container {
-    border-top: 1px solid var(--border-color);
-    margin-top: 15px;
-    padding-top: 15px;
-}
-
-#poll-options-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.poll-option-input {
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    padding: 10px;
-    border-radius: 0px;
-}
-
-.poll-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-.poll-settings .form-group {
-    margin: 0;
-}
-.poll-settings label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: normal;
-}
-.poll-settings select {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: 0px;
-    padding: 5px;
-}
-
-#cw-creator-container {
-    margin-bottom: 10px;
-}
-
-/* --- Lemmy Compose Form --- */
-#lemmy-compose-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.lemmy-post-type-selector {
-    display: flex;
-    gap: 10px;
-}
-.lemmy-post-type-btn {
-    flex-grow: 1;
-}
-.lemmy-post-type-btn.active {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
-}
-#lemmy-body-textarea {
-    min-height: 120px;
-}
-
-
-/* --- Profile Page --- */
-.profile-page-header {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    margin-bottom: 20px;
-}
-.profile-tabs {
-    display: flex;
-    border-top: 1px solid var(--border-color);
-}
-.profile-tabs .tab-button {
-    flex-grow: 1;
-    padding: 12px;
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--font-color-muted);
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.profile-tabs .tab-button:hover {
-    background-color: var(--primary-color);
-}
-.profile-tabs .tab-button.active {
-    color: var(--font-color);
-    border-bottom-color: var(--accent-color);
-}
-.profile-feed-content {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.profile-card {
-    background-color: transparent;
-    border: none;
-}
-
-.profile-header { position: relative; height: 150px; }
-.profile-header .banner { width: 100%; height: 100%; object-fit: cover; background-color: var(--primary-color); }
-.profile-header .avatar { position: absolute; width: 100px; height: 100px; border-radius: 50%; bottom: -50px; left: 20px; border: 4px solid var(--card-color); background-color: var(--primary-color); }
-
-.profile-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; }
-
-.profile-info { padding: 60px 20px 20px 20px; }
-.profile-info .display-name { font-size: 1.5rem; font-weight: bold; margin: 0; }
-.profile-info .acct { color: var(--font-color-muted); margin-bottom: 15px; }
-.profile-info .note {
-    line-height: 1.5;
-    overflow-wrap: break-word;
-    margin-bottom: 15px;
-}
-.profile-info .stats {
-    display: flex;
-    gap: 20px;
-    color: var(--font-color-muted);
-}
-.profile-info .stats strong {
-    color: var(--font-color);
-}
-.lemmy-comment-on-profile {
-    border-left: 3px solid var(--accent-color) !important;
-    background-color: var(--primary-color); /* Added background color */
-    border: 1px solid var(--border-color);
-    padding: 10px;
-    margin-bottom: 10px;
-}
-.lemmy-comment-on-profile .comment-context {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-color);
-}
-.lemmy-comment-on-profile .post-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-.lemmy-comment-on-profile .comment-context a {
-    color: var(--link-color);
-    text-decoration: none;
-}
-.lemmy-comment-on-profile .comment-context a:hover {
-    text-decoration: underline;
-}
-
-
-/* --- Edit Profile Page --- */
-.edit-profile-container {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-}
-.edit-profile-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-.edit-profile-header h2 {
-    margin: 0;
-}
-.profile-image-previews {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-    align-items: center;
-}
-.profile-image-previews img {
-    width: 100px;
-    height: 100px;
-    border-radius: 0px;
-    object-fit: cover;
-    background-color: var(--primary-color);
-}
-
-
-/* --- Settings Page --- */
-.settings-section {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin-bottom: 20px;
-}
-.settings-section h3 {
-    margin-top: 0;
-}
-.form-group {
-    margin-bottom: 15px;
-}
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-#word-filter-list {
-    list-style: none;
-    padding: 0;
-    margin-top: 15px;
-}
-#word-filter-list li {
-    background-color: var(--primary-color);
-    padding: 10px;
-    border-radius: 0px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-/* --- Lemmy Integration Styles --- */
-.platform-icon-indicator,
-.lemmy-icon-indicator {
-    color: var(--font-color-muted);
-    opacity: 0.5;
-    flex-shrink: 0;
-}
-.crosspost-tag {
-    background-color: var(--accent-color);
-    color: white;
-    padding: 5px 10px;
-    font-weight: bold;
-    font-size: 0.8em;
-    text-align: center;
-}
-.lemmy-card .status-body-content {
-    padding: 25px;
-}
-.lemmy-card .status-header a {
-    text-decoration: none;
-    color: inherit;
-}
-.lemmy-card .status-header a:hover {
-    color: var(--accent-color);
-}
-.lemmy-card .status-header .avatar {
-    border-radius: 0px; /* Lemmy community icons are often square */
-}
-.lemmy-card .lemmy-title {
-    font-size: 1em; /* Changed from 1.1em */
-    font-weight: bold;
-    margin: 0 0 10px 0;
-}
-.lemmy-card .lemmy-post-body {
-    transition: max-height 0.3s ease-out;
-}
-.read-more-link {
-    color: var(--accent-color);
-    cursor: pointer;
-    font-weight: bold;
-    margin-top: 10px;
-    display: inline-block;
-}
-.lemmy-card .status-footer {
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 20px; /* Adds extra space below the action buttons */
-}
-.lemmy-vote-cluster {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.lemmy-vote-btn {
-    font-size: 1.2em;
-}
-.lemmy-vote-btn.active {
-    color: var(--accent-color);
-}
-.lemmy-score {
-    font-weight: bold;
-    color: var(--font-color);
-}
-
-/* --- Merged Post View --- */
-#merged-post-view {
-    flex-direction: column;
-    gap: 20px;
-}
-.merged-comments-container {
-    display: flex;
-    gap: 20px;
-}
-.merged-comments-column {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.merged-section-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
-
-/* --- Quick Reply & Edit Containers --- */
-.quick-reply-container, .edit-post-container {
-    padding: 15px 20px 20px;
-    border-top: 1px solid var(--border-color);
-    display: none;
-}
-.quick-reply-box, .edit-post-box {
-    display: flex;
-    gap: 10px;
-}
-.quick-reply-box textarea, .edit-post-box textarea {
-    flex-grow: 1;
-    min-height: 40px;
-    padding: 10px;
-}
-.quick-reply-box button, .edit-post-box button {
-    flex-shrink: 0;
-}
-
-.conversation-container {
-    padding: 0 20px 20px;
-    border-top: 1px solid var(--border-color);
-    display: none;
-    flex-direction: column;
-    gap: 15px;
-}
-
-/* --- Help Modal --- */
-.help-modal-content {
-    position: relative;
-}
-.close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    cursor: pointer;
-}
-.markdown-guide p {
-    margin: 10px 0;
-    line-height: 1.5;
-}
-.markdown-guide b {
-    color: var(--accent-color);
-}
-.markdown-image-example {
-    max-width: 100px;
-    height: auto;
-    vertical-align: middle;
-    margin-left: 10px;
-    border-radius: 4px;
-}
-
-
-/* --- Mobile Responsiveness --- */
-@media (max-width: 600px) {
-    body {
-        font-size: 14px; /* Base font size for mobile */
-    }
-
-    .container {
-        padding: 60px 5px 10px 5px; /* Adjust padding for mobile */
-    }
-
-    .nav-left, .nav-right {
-        gap: 5px;
-    }
-
-    .status-body-content {
-        padding: 15px;
-    }
-
-    .status-content {
-        font-size: 1rem; /* Adjust post content font size */
-        line-height: 1.5;
-    }
-
-    .status-header .display-name {
-        font-size: 0.95rem;
-    }
-
-    .status-header .acct, .status-header .timestamp {
-        font-size: 0.8rem;
-    }
-    
-    .status-footer {
-        flex-wrap: wrap;
-        justify-content: space-around;
-        gap: 10px !important;
-    }
-
-    .status-action {
-        padding: 6px 12px;
-        font-size: 0.8em;
-    }
-    
-    .comment-replies-container {
-        margin-left: 5px;
-        padding-left: 10px;
-    }
-
-    .notification-item {
-        padding: 15px 10px;
-        gap: 10px;
-    }
-    
-    .notification-platform-icon {
-        top: 15px;
-        right: 10px;
-    }
-
-    .notification-item .timestamp {
-        display: none; /* Hide timestamp on very small screens to save space */
-    }
-
-    /* Public viewing notice mobile */
-    .public-viewing-notice {
-        padding: 12px;
-        font-size: 0.9em;
-    }
-}
-.lemmy-user-comments-container {
-    background-color: var(--card-color);
-    border: 1px solid var(--accent-color);
-    border-radius: var(--border-radius);
-    margin: 15px 0;
-    padding: 10px;
-    display: none; /* Hidden by default */
-}
-
-.lemmy-user-comments-container .status {
-    border: none;
-    box-shadow: none;
-}
-
-/* Lemmy Single Post Page Styles */
-.lemmy-post-view {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Center the container */
-    padding: 1rem;
-    background-color: var(--bg-color);
-}
-
-.lemmy-post-view-container {
-    width: 100%;
-    max-width: 800px; /* Constrain width for readability */
-}
-
-/* Card styling for the main post */
-.lemmy-post-full .status.lemmy-post {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.lemmy-post-full .status-header,
-.lemmy-comment .status-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 1rem;
-}
-
-.lemmy-post-full .avatar,
-.lemmy-comment .status-avatar .avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover; /* Ensures image covers the area without distortion */
-    flex-shrink: 0; /* Prevents the avatar from shrinking */
-}
-
-.lemmy-comment .status-avatar .avatar {
-    width: 40px;
-    height: 40px;
-}
-
-.lemmy-post-full .user-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.user-link, .community-link, .post-link-preview {
-    font-weight: bold;
-    color: var(--accent-color);
-    text-decoration: none;
-}
-
-.user-link:hover, .community-link:hover, .post-link-preview:hover {
-    text-decoration: underline;
-}
-
-.time-ago, .lemmy-post-full .user-info span {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-
-.lemmy-post-full h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.lemmy-post-body {
-    line-height: 1.6;
-}
-
-.lemmy-post-body a, .status-content a {
-    color: var(--accent-color);
-    text-decoration: none;
-}
-
-.lemmy-post-body a:hover, .status-content a:hover {
-    text-decoration: underline;
-}
-
-
-.lemmy-post-body img,
-.status-content img {
-    max-width: 100%;
-    height: auto;
-    border-radius: var(--border-radius);
-    margin-top: 1rem;
-}
-
-.lemmy-card-image {
-    background-color: white;
-    padding: 1px;
-    border-radius: var(--border-radius);
-}
-
-.broken-image-fallback {
-    max-height: 400px; /* Limit height of fallback image */
-    width: 100%;
-    object-fit: cover;
-    background-color: var(--border-color);
-}
-
-/* Comments Section */
-.lemmy-comments-section h3 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-/* Comment Reply Box */
-.lemmy-post-reply-box {
-    margin-bottom: 2rem;
-}
-
-.lemmy-main-reply-textarea {
-    width: 100%;
-    min-height: 100px;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background-color: var(--background-color-secondary);
-    color: var(--text-color-primary);
-    resize: vertical;
-    margin-bottom: 0.5rem;
-}
-
-.send-main-reply-btn {
-    display: block;
-    margin-left: auto; /* Align to the right */
-}
-
-/* Individual Comment Styling */
-.comment-wrapper {
-    margin-bottom: 1.5rem;
-}
-
-.lemmy-comment {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 0;         /* Remove all padding */
-    display: flex;
-    flex-direction: column; /* <-- Add this line */
-    gap: 1rem;
-}
-
-.lemmy-comment .status-header .display-name {
-    font-weight: bold;
-}
-.lemmy-comment .status-header .acct, .lemmy-comment .status-header .time-ago {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-
-.lemmy-comment .status-content {
-    padding-top: 0.5rem;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word;
-    hyphens: auto;
-}
-
-.view-replies-btn {
-    background: none;
-    border: none;
-    color: var(--accent-color);
-    cursor: pointer;
-    padding: 8px 0;
-    margin-top: 8px;
-}
-
-/* --- Profile Page Editing --- */
-.profile-actions {
-    display: flex;
-    justify-content: flex-end;
-    padding: 15px 15px 0 15px;
-    height: 10; /* This div is only for positioning the button */
-    position: relative;
-    top: -50px; /* Adjust to position correctly below the banner */
-    margin-bottom: -35px; /* Pull the content below it up */
-}
-
-.edit-profile-btn {
-    padding: 6px 6px;
-    font-size: 0.8em;
-}
-
-.edit-icon {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-radius: 50%;
-    cursor: pointer;
-    color: white;
-    z-index: 5; /* Ensure it's above the images */
-}
-
-.edit-icon .icon {
-    width: 20px;
-    height: 20px;
-}
-
-.banner-edit-icon {
-    top: 10px;
-    right: 10px;
-    width: 40px;
-    height: 40px;
-}
-
-.avatar-edit-icon {
-    bottom: -40px;
-    left: 70px;
-    width: 40px;
-    height: 40px;
-}
-
-.edit-image-input {
-    display: none;
-}
-
-.bio-edit-container {
-    margin-top: 15px;
-}
-
-.bio-textarea {
-    width: 100%;
-    min-height: 120px;
-    resize: vertical;
-    margin-bottom: 10px;
-}
-
-.bio-edit-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.refresher {
-    transform-origin: center;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* --- Comment Card Width & Action Bar Fixes --- */
-.lemmy-comment {
-    padding: 0;
-    gap: 0;
-}
-
-.lemmy-comment .status-avatar {
-    padding: 1rem 0.5rem 1rem 1rem;
-    flex-shrink: 0;
-}
-
-.lemmy-comment .status-body {
-    flex-grow: 1;
-    padding: 1rem 1rem 0 0.5rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.lemmy-comment .status-content {
-    margin-bottom: 1rem;
-    padding-top: 0.5rem;
-}
-
-.lemmy-comment .status-footer {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    margin: 0;
-    padding: 0.5rem 0;
-    border-top: 1px solid var(--border-color);
-    font-weight: 500;
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-
-/* --- Lemmy Post Header Layout --- */
-.status-header .user-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0;
-    flex-wrap: nowrap;
-}
-
-.user-info .user-info-line1 {
-    font-weight: bold;
-    font-size: 1.05em;
-    color: var(--font-color);
-}
-
-.user-info .user-info-line2 {
-    font-size: 0.9em;
-    color: var(--font-color-muted);
-}
-
-.user-info .user-info-line2 .user-link {
-    color: var(--font-color-muted);
-    text-decoration: none;
-}
-.user-info .user-info-line2 .user-link:hover {
-    text-decoration: underline;
-}
-
-/* Comments Section Header and Sort Dropdown */
-.comments-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.comments-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--font-color);
-}
-
-.comments-sort-dropdown {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 6px 10px;
-    font-size: 0.9em;
-    cursor: pointer;
-    min-width: 80px;
-    transition: border-color 0.2s ease;
-}
-
-.comments-sort-dropdown:hover {
-    border-color: var(--accent-color);
-}
-
-.comments-sort-dropdown:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(90, 148, 241, 0.2);
-}
-
-.comments-sort-dropdown option {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    padding: 4px;
-}
-
-/* Comments Section Header and Sort Dropdown */
-.comments-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.comments-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--font-color);
-}
-
-.comments-sort-dropdown {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 6px 10px;
-    font-size: 0.9em;
-    cursor: pointer;
-    min-width: 80px;
-    transition: border-color 0.2s ease;
-}
-
-.comments-sort-dropdown:hover {
-    border-color: var(--accent-color);
-}
-
-.comments-sort-dropdown:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(90, 148, 241, 0.2);
-}
-
-.comments-sort-dropdown option {
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    padding: 4px;
-}
-
-/* Fixed Comment Layout */
-.lemmy-comment {
-    padding: 1rem;
-    gap: 0;
-}
-
-.lemmy-comment .status-body {
-    flex-grow: 1;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.lemmy-comment .status-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 1rem;
-}
-
-.lemmy-comment .status-header .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.comment-user-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-grow: 1;
-    min-width: 0; /* Allows text to truncate if needed */
-}
-
-.comment-user-info .display-name {
-    font-weight: bold;
-    color: var(--font-color);
-    font-size: 0.95em;
-}
-
-.comment-user-info .acct {
-    color: var(--font-color-muted);
-    font-size: 0.85em;
-    word-break: break-all; /* Ensures long instances break properly */
-}
-
-.op-badge {
-    background-color: var(--accent-color);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.75em;
-    font-weight: bold;
-    flex-shrink: 0;
-}
-
-.time-ago {
-    color: var(--font-color-muted);
-    font-size: 0.85em;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-/* Add to style.css - PieFed platform support styles */
-
-/* Platform badges */
-.platform-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.8em;
-    font-weight: bold;
-    margin-left: 8px;
-    vertical-align: middle;
-}
-
-.platform-badge.lemmy {
-    background-color: #00D4AA;
-    color: white;
-}
-
-.platform-badge.piefed {
-    background-color: #FF6B35;
-    color: white;
-}
-
-/* Error containers */
-.error-container {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 30px;
-    text-align: center;
-    margin: 20px 0;
-}
-
-.error-container h3 {
-    color: var(--font-color);
-    margin-top: 0;
-    margin-bottom: 15px;
-}
-
-.error-container p {
-    color: var(--font-color-muted);
-    line-height: 1.5;
-    margin-bottom: 10px;
-}
-
-.error-container a {
-    color: var(--accent-color);
-    text-decoration: none;
-}
-
-.error-container a:hover {
-    text-decoration: underline;
-}
-
-.error-container button {
-    margin-top: 20px;
-}
-
-/* PieFed notice */
-.piefed-notice {
-    color: var(--font-color-muted);
-    font-style: italic;
-    font-size: 0.9em;
-    margin: 0;
-    padding: 8px 12px;
-    background-color: var(--primary-color);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
-/* Instance type indicators */
-.instance-type-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.8em;
-    color: var(--font-color-muted);
-    margin-left: 10px;
-}
-
-.instance-type-indicator.piefed {
-    color: #FF6B35;
-}
-
-.instance-type-indicator.lemmy {
-    color: #00D4AA;
-}
-
-/* Loading states */
-.loading-spinner {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px;
-    color: var(--accent-color);
-}
-
-.loading-spinner .icon {
-    width: 32px;
-    height: 32px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Community page improvements */
-.lemmy-community-card .profile-info .display-name {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-/* Mobile responsiveness for platform badges */
-@media (max-width: 600px) {
-    .platform-badge {
-        display: block;
-        margin: 5px 0 0 0;
-        width: fit-content;
-    }
-    
-    .error-container {
-        padding: 20px 15px;
-    }
-    
-    .error-container p {
-        font-size: 0.9em;
-    }
-}
-
-/* Link Post Styles - Add these to your existing style.css */
-
-/* Container for link post titles */
-.lemmy-title-container {
-    margin-bottom: 10px;
-}
-
-/* Link post title styling */
-.lemmy-link-title {
-    color: var(--font-color);
-    text-decoration: none;
-    transition: color 0.2s ease;
-}
-
-.lemmy-link-title:hover {
-    color: var(--accent-color);
-    text-decoration: underline;
-}
-
-/* Domain indicator for link posts */
-.link-domain-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 6px 10px;
-    background-color: var(--primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    font-size: 0.85em;
-    color: var(--font-color-muted);
-    width: fit-content;
-    transition: all 0.2s ease;
-}
-
-.link-domain-indicator:hover {
-    background-color: var(--card-color);
-    border-color: var(--accent-color);
-}
-
-.link-domain-indicator .link-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    color: var(--font-color-muted);
-}
-
-.domain-text {
-    font-weight: 500;
-    color: var(--font-color-muted);
-}
-
-/* Clickable thumbnail styles for link posts */
-.link-thumbnail {
-    position: relative;
-    display: inline-block;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.link-thumbnail:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.link-thumbnail-wrapper {
-    position: relative;
-    display: block;
-    text-decoration: none;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-}
-
-.link-thumbnail-wrapper img {
-    display: block;
-    width: 100%;
-    height: auto;
-    transition: filter 0.2s ease;
-}
-
-.link-thumbnail-wrapper:hover img {
-    filter: brightness(0.9);
-}
-
-/* Link overlay icon */
-.link-overlay {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(0, 0, 0, 0.7);
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    backdrop-filter: blur(4px);
-}
-
-.link-thumbnail-wrapper:hover .link-overlay {
-    opacity: 1;
-}
-
-.link-overlay-icon {
-    width: 16px;
-    height: 16px;
-    color: white;
-}
-
-/* Ensure link posts have consistent spacing */
-.lemmy-card .lemmy-title-container + .status-media,
-.lemmy-card .lemmy-title-container + .lemmy-post-body {
-    margin-top: 15px;
-}
-
-/* Link thumbnail specific spacing */
-.lemmy-card .status-media.link-thumbnail {
-    margin-top: 15px;
-    max-width: 100%;
-}
-
-/* Mobile responsiveness for link indicators */
-@media (max-width: 600px) {
-    .link-domain-indicator {
-        font-size: 0.8em;
-        padding: 5px 8px;
-        gap: 5px;
-    }
-    
-    .link-domain-indicator .link-icon {
-        width: 12px;
-        height: 12px;
-    }
-    
-    .domain-text {
-        /* Truncate very long domain names on mobile */
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    
-    .link-overlay {
-        width: 28px;
-        height: 28px;
-        top: 8px;
-        right: 8px;
-    }
-    
-    .link-overlay-icon {
-        width: 14px;
-        height: 14px;
-    }
-    
-    /* Show overlay on mobile by default since hover doesn't work */
-    .link-thumbnail-wrapper .link-overlay {
-        opacity: 0.8;
-    }
-}
