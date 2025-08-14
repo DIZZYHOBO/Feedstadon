@@ -34,7 +34,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
 
     commentDiv.innerHTML = `
         <div class="status-avatar">
-            <img src="${commentView.creator.avatar || 'images/php.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/php.png';">
+            <alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/php.png';">
         </div>
         <div class="status-body">
             <div class="status-header">
