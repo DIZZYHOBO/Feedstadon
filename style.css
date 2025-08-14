@@ -1880,7 +1880,7 @@ button:disabled {
 .comment-wrapper {
     margin-bottom: 20px;
     padding-bottom: 1px;
-    border-bottom: 4px solid var(--border-color);
+    border-bottom: 10px solid var(--border-color);
 }
 
 .comment-wrapper:last-child {
