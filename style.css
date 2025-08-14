@@ -1879,7 +1879,7 @@ button:disabled {
 /* Lemmy Comment Spacing */
 .comment-wrapper {
     margin-bottom: 10px;
-    padding-bottom: 1px;
+    padding-bottom: 5px;
     border-bottom: 0px solid var(--border-color);
 }
 
