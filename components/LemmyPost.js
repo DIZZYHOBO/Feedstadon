@@ -39,7 +39,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         <div class="status-body">
             <div class="status-header">
                 <div class="comment-user-info">
-                    <span class="username-instance">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+                   <b> <span class="username-instance">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span> </b>
                     ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 </div>
                 <span class="time-ago">${timeAgo(commentView.comment.published)}</span>
