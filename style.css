@@ -1876,25 +1876,6 @@ button:disabled {
     max-height: 100px !important;
 }
 
-/* Force all avatars to correct size */
-.avatar, img.avatar {
-    width: 44px !important;
-    height: 44px !important;
-    max-width: 44px !important;
-    max-height: 44px !important;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-/* Profile page avatar (larger) */
-.profile-card .avatar {
-    width: 100px !important;
-    height: 100px !important;
-    max-width: 100px !important;
-    max-height: 100px !important;
-}
-
 /* Lemmy Comment Spacing */
 .comment-wrapper {
     margin-bottom: 20px;
@@ -1919,8 +1900,17 @@ button:disabled {
     margin-top: 15px;
     padding-left: 20px;
     border-left: 2px solid var(--border-color);
+    display: none; /* Hidden by default */
 }
 
 .lemmy-replies-container .comment-wrapper {
     margin-bottom: 15px;
+}
+
+.lemmy-replies-container .loading-replies,
+.lemmy-replies-container .error-replies,
+.lemmy-replies-container .no-replies {
+    padding: 10px;
+    color: var(--font-color-muted);
+    font-style: italic;
 }
