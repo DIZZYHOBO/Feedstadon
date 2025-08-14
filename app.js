@@ -13,7 +13,7 @@ import { renderDiscoverPage, loadMoreLemmyCommunities, loadMoreMastodonTrendingP
 import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from './components/api.js';
-import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt } from './components/ui.js';
+import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, showToast, showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from './components/ui.js';
 
 
 
@@ -232,15 +232,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (views[viewName]) {
             views[viewName].style.display = 'flex';
         }
-    };
-
-    const showToast = (message) => {
-        const toast = document.getElementById('toast-notification');
-        toast.textContent = message;
-        toast.classList.add('visible');
-        setTimeout(() => {
-            toast.classList.remove('visible');
-        }, 3000);
     };
     
     const renderTimelineSubNav = (platform) => {
@@ -501,9 +492,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
                 document.querySelector(`.status[data-id="${statusId}"]`)?.remove();
-                showToast("Post deleted successfully.");
+                showSuccessToast("Post deleted successfully.");
             } catch (err) {
-                showToast("Failed to delete post.");
+                showErrorToast("Failed to delete post.");
             }
         },
         editStatus: async (statusId, newContent) => {
@@ -518,9 +509,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const contentDiv = postCard.querySelector('.status-content');
                     contentDiv.innerHTML = response.data.content;
                 }
-                showToast("Post updated successfully.");
+                showSuccessToast("Post updated successfully.");
             } catch (err) {
-                showToast("Failed to update post.");
+                showErrorToast("Failed to update post.");
             }
         },
         toggleAction: async (action, status, button) => {
@@ -530,17 +521,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${status.id}/${newAction}`, { method: 'POST' });
                 button.classList.toggle('active');
             } catch (err) {
-                showToast(`Failed to ${action} post.`);
+                showErrorToast(`Failed to ${action} post.`);
             }
         },
         mastodonFollow: async (accountId, follow = true) => {
             try {
                 const endpoint = follow ? 'follow' : 'unfollow';
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/accounts/${accountId}/${endpoint}`, { method: 'POST' });
-                showToast(`User ${follow ? 'followed' : 'unfollowed'}.`);
+                showSuccessToast(`User ${follow ? 'followed' : 'unfollowed'}.`);
                 return true;
             } catch (err) {
-                showToast(`Failed to ${follow ? 'follow' : 'unfollow'} user.`);
+                showErrorToast(`Failed to ${follow ? 'follow' : 'unfollow'} user.`);
                 return false;
             }
         },
@@ -566,7 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     downvoteBtn.classList.add('active');
                 }
             } catch (err) {
-                showToast('Failed to vote on post.');
+                showErrorToast('Failed to vote on post.');
             }
         },
         lemmySave: async (postId, button) => {
@@ -577,8 +568,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: { post_id: postId, save: !button.classList.contains('active') }
                 }, 'lemmy');
                 button.classList.toggle('active', response.data.post_view.saved);
+                showInfoToast(response.data.post_view.saved ? 'Post saved' : 'Post unsaved');
             } catch (err) {
-                showToast('Failed to save post.');
+                showErrorToast('Failed to save post.');
             }
         },
         lemmyCommentVote: async (commentId, score, commentDiv) => {
@@ -603,13 +595,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     downvoteBtn.classList.add('active');
                 }
             } catch (err) {
-                showToast('Failed to vote on comment.');
+                showErrorToast('Failed to vote on comment.');
             }
         },
         lemmyPostComment: async (commentData) => {
             const lemmyInstance = localStorage.getItem('lemmy_instance');
             if (!lemmyInstance) {
-                showToast('You must be logged in to comment.');
+                showWarningToast('You must be logged in to comment.');
                 throw new Error('Not logged in');
             }
             const response = await apiFetch(lemmyInstance, null, '/api/v3/comment', {
@@ -625,10 +617,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'POST',
                     body: { community_id: communityId, follow: follow }
                 }, 'lemmy');
-                showToast(`Community ${follow ? 'followed' : 'unfollowed'}.`);
+                showSuccessToast(`Community ${follow ? 'followed' : 'unfollowed'}.`);
                 return true;
             } catch (err) {
-                showToast('Failed to follow community.');
+                showErrorToast('Failed to follow community.');
                 return false;
             }
         },
@@ -639,14 +631,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'POST',
                     body: { community_id: communityId, block: block }
                 }, 'lemmy');
-                showToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                showSuccessToast(`Community ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
                      actions.showHomeTimeline();
                 }
             } catch (err) {
-                showToast('Failed to block community.');
+                showErrorToast('Failed to block community.');
             }
         },
         lemmyBlockUser: async (personId, block) => {
@@ -656,14 +648,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'POST',
                     body: { person_id: personId, block: block }
                 }, 'lemmy');
-                showToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
+                showSuccessToast(`User ${block ? 'blocked' : 'unblocked'}. Refreshing feed...`);
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
                      actions.showHomeTimeline();
                 }
             } catch (err) {
-                showToast('Failed to block user.');
+                showErrorToast('Failed to block user.');
             }
         },
         lemmyDeletePost: async (postId) => {
@@ -673,10 +665,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'POST',
                     body: { post_id: postId, deleted: true }
                 }, 'lemmy');
-                showToast('Post deleted.');
+                showSuccessToast('Post deleted.');
                 document.querySelector(`.status[data-id="${postId}"]`)?.remove();
             } catch (err) {
-                showToast('Failed to delete post.');
+                showErrorToast('Failed to delete post.');
             }
         },
         lemmyDeleteComment: async (commentId) => {
@@ -686,10 +678,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'POST',
                     body: { comment_id: commentId, deleted: true }
                 }, 'lemmy');
-                showToast('Comment deleted.');
+                showSuccessToast('Comment deleted.');
                 document.getElementById(`comment-wrapper-${commentId}`)?.remove();
             } catch (err) {
-                showToast('Failed to delete comment.');
+                showErrorToast('Failed to delete comment.');
             }
         },
         lemmyEditPost: async (postId, content) => {
@@ -699,7 +691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'PUT',
                     body: { post_id: postId, body: content }
                 }, 'lemmy');
-                showToast('Post edited.');
+                showSuccessToast('Post edited.');
                 const postCard = document.querySelector(`.status[data-id="${postId}"]`);
                 if (postCard) {
                     const contentDiv = postCard.querySelector('.lemmy-post-body');
@@ -708,7 +700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             } catch (err) {
-                showToast('Failed to edit post.');
+                showErrorToast('Failed to edit post.');
             }
         },
         lemmyEditComment: async (commentId, content) => {
@@ -718,7 +710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'PUT',
                     body: { comment_id: commentId, content: content }
                 }, 'lemmy');
-                showToast('Comment edited.');
+                showSuccessToast('Comment edited.');
                 const commentWrapper = document.getElementById(`comment-wrapper-${commentId}`);
                 if (commentWrapper) {
                     const contentDiv = commentWrapper.querySelector('.status-content');
@@ -727,7 +719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             } catch (err) {
-                showToast('Failed to edit comment.');
+                showErrorToast('Failed to edit comment.');
                 throw err;
             }
         },
@@ -754,12 +746,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: updatePayload
                 }, 'lemmy');
 
-                showToast('Profile saved successfully!');
+                showSuccessToast('Profile saved successfully!');
                 // Refresh the profile page
                 actions.showLemmyProfile(state.currentProfileUserAcct);
 
             } catch (error) {
-                showToast('Failed to save profile.');
+                showErrorToast('Failed to save profile.');
             } finally {
                 hideLoadingBar();
             }
@@ -771,7 +763,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 navigator.share({ title: postView.post.name, url: url });
             } else {
                 navigator.clipboard.writeText(url);
-                showToast('Share link copied to clipboard!');
+                showSuccessToast('Share link copied to clipboard!');
             }
         },
         shareComment: (commentView) => {
@@ -780,7 +772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 navigator.share({ title: `Comment by ${commentView.creator.name}`, url: url });
             } else {
                 navigator.clipboard.writeText(url);
-                showToast('Share link copied to clipboard!');
+                showSuccessToast('Share link copied to clipboard!');
             }
         },
         showContextMenu: showContextMenu
@@ -791,18 +783,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { data: account } = await apiFetch(instanceUrl, accessToken, '/api/v1/accounts/verify_credentials');
             if (!account || !account.id) {
-                showToast('Mastodon login failed.'); return false;
+                showErrorToast('Mastodon login failed.'); 
+                return false;
             }
             state.instanceUrl = instanceUrl;
             state.accessToken = accessToken;
             state.currentUser = account;
             localStorage.setItem('fediverse-instance', instanceUrl);
             localStorage.setItem('fediverse-token', accessToken);
-            showToast('Mastodon login successful!');
+            showSuccessToast('Mastodon login successful!');
             actions.showHomeTimeline();
             return true;
         } catch (error) {
-            showToast('Mastodon login failed.');
+            showErrorToast('Mastodon login failed.');
             return false;
         }
     };
@@ -818,15 +811,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('lemmy_username', username);
                 localStorage.setItem('lemmy_instance', instance);
                 state.lemmyUsername = username;
-                showToast('Lemmy login successful!');
+                showSuccessToast('Lemmy login successful!');
                 updateNotificationBell();
                 actions.showLemmyFeed('Subscribed');
             } else {
-                showToast('Lemmy login failed.');
+                showErrorToast('Lemmy login failed.');
             }
         })
         .catch(err => {
-             showToast('Lemmy login error.');
+             showErrorToast('Lemmy login error.');
         });
     };
     
@@ -855,10 +848,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const userAcct = `${lemmyUsername}@${lemmyInstance}`;
                 actions.showLemmyProfile(userAcct);
             } else {
-                showToast("Could not determine Lemmy user profile.");
+                showWarningToast("Could not determine Lemmy user profile.");
             }
         } else {
-            showToast("Please log in to view your profile.");
+            showWarningToast("Please log in to view your profile.");
         }
     });
     
@@ -905,7 +898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         // Use the new public post viewing action
                         actions.showPublicLemmyPost(data.post_view, cleanInstance);
                     } else {
-                        showToast('Post not found or deleted');
+                        showErrorToast('Post not found or deleted');
                         // Don't try to show home timeline if user isn't logged in
                         switchView('timeline');
                         state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
@@ -914,7 +907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
                 .catch((error) => {
                     console.error('Fetch error:', error); // Debug log
-                    showToast('Could not load shared post: ' + error.message);
+                    showErrorToast('Could not load shared post: ' + error.message);
                     switchView('timeline');
                     state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     hideLoadingBar();
@@ -964,7 +957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             }
                         }, 1000);
                     } else {
-                        showToast('Post not found or deleted');
+                        showErrorToast('Post not found or deleted');
                         switchView('timeline');
                         state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     }
@@ -972,7 +965,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
                 .catch((error) => {
                     console.error('Comment fetch error:', error); // Debug log
-                    showToast('Could not load shared comment: ' + error.message);
+                    showErrorToast('Could not load shared comment: ' + error.message);
                     switchView('timeline');
                     state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     hideLoadingBar();
@@ -1042,10 +1035,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const userAcct = `${lemmyUsername}@${lemmyInstance}`;
                         actions.showLemmyProfile(userAcct);
                     } else {
-                        showToast("Could not determine Lemmy user profile.");
+                        showWarningToast("Could not determine Lemmy user profile.");
                     }
                 } else {
-                    showToast("Please log in to view your profile.");
+                    showWarningToast("Please log in to view your profile.");
                 }
                 break;
             case 'settings-link':
