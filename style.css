@@ -2450,3 +2450,95 @@ button:disabled {
 #toast-notification.toast-leaving {
     animation: toastSlideDown 0.3s ease-in forwards;
 }
+
+/* Updated Comment Layout CSS - Add to your style.css */
+
+/* Comment header layout - single line with avatar, username@instance, and time */
+.lemmy-comment .status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+/* Left side - user info container */
+.comment-user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+    min-width: 0; /* Allows text to truncate if needed */
+}
+
+/* Username@instance styling */
+.username-instance {
+    color: var(--font-color);
+    font-weight: 600;
+    font-size: 0.95em;
+    word-break: break-all; /* Ensures long instances break properly */
+    line-height: 1.2;
+}
+
+/* OP badge styling */
+.comment-user-info .op-badge {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* Time positioning - stays on the right */
+.lemmy-comment .status-header .time-ago {
+    color: var(--font-color-muted);
+    font-size: 0.85em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: normal;
+}
+
+/* Remove the old display-name and acct styling for comments */
+.lemmy-comment .status-header .display-name,
+.lemmy-comment .status-header .acct {
+    display: none;
+}
+
+/* Ensure the avatar stays properly sized */
+.lemmy-comment .status-header .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .username-instance {
+        font-size: 0.9em;
+        /* Allow even more aggressive breaking on mobile for very long instances */
+        overflow-wrap: anywhere;
+    }
+    
+    .lemmy-comment .status-header .time-ago {
+        font-size: 0.8em;
+    }
+    
+    .comment-user-info .op-badge {
+        font-size: 0.7em;
+        padding: 1px 4px;
+    }
+    
+    /* On very small screens, stack if needed */
+    @media (max-width: 400px) {
+        .username-instance {
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+}
