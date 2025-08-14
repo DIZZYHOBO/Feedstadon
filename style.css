@@ -1875,3 +1875,52 @@ button:disabled {
     max-width: 100px !important;
     max-height: 100px !important;
 }
+
+/* Force all avatars to correct size */
+.avatar, img.avatar {
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* Profile page avatar (larger) */
+.profile-card .avatar {
+    width: 100px !important;
+    height: 100px !important;
+    max-width: 100px !important;
+    max-height: 100px !important;
+}
+
+/* Lemmy Comment Spacing */
+.comment-wrapper {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comment-wrapper:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.lemmy-comment {
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+/* Nested replies spacing */
+.lemmy-replies-container {
+    margin-top: 15px;
+    padding-left: 20px;
+    border-left: 2px solid var(--border-color);
+}
+
+.lemmy-replies-container .comment-wrapper {
+    margin-bottom: 15px;
+}
