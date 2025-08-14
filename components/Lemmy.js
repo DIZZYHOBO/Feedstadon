@@ -16,23 +16,24 @@ export function renderLemmyCard(post, actions) {
 
     let mediaHTML = '';
     const url = post.post.url;
-    const isLinkPost = url && !post.post.body; // Link post if there's a URL but no body text
+    const isImagePost = url && /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+    const isLinkPost = url && !post.post.body && !isImagePost; // Link post if there's a URL, no body text, and it's not a direct image
     
     if (url) {
         // YouTube embed logic
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
         const youtubeMatch = url.match(youtubeRegex);
 
-        if (youtubeMatch && !isLinkPost) {
+        if (youtubeMatch) {
             mediaHTML = `
                 <div class="video-embed-container">
                     <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
                 </div>
             `;
-        } else if (/\.(mp4|webm)$/i.test(url) && !isLinkPost) {
+        } else if (/\.(mp4|webm)$/i.test(url)) {
             mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
         } else if (post.post.thumbnail_url) {
-            // For link posts, make the thumbnail clickable
+            // For link posts (non-image URLs), make the thumbnail clickable to external link
             if (isLinkPost) {
                 mediaHTML = `
                     <div class="status-media link-thumbnail">
@@ -45,6 +46,7 @@ export function renderLemmyCard(post, actions) {
                     </div>
                 `;
             } else {
+                // For image posts and regular posts, keep existing behavior (image modal)
                 mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
             }
         }
@@ -165,11 +167,14 @@ export function renderLemmyCard(post, actions) {
 
     const mediaImg = card.querySelector('.status-media img');
     if (mediaImg) {
-        mediaImg.style.cursor = 'pointer';
-        mediaImg.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showImageModal(post.post.url || mediaImg.src);
-        });
+        // Only add image modal functionality for non-link posts
+        if (!isLinkPost) {
+            mediaImg.style.cursor = 'pointer';
+            mediaImg.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showImageModal(post.post.url || mediaImg.src);
+            });
+        }
     }
     
     card.querySelector('.status-body-content').addEventListener('dblclick', () => {
