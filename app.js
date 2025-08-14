@@ -37,20 +37,25 @@ function initDropdowns() {
         if (button) {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // Close all other dropdowns first
                 document.querySelectorAll('.dropdown.active').forEach(d => {
                     if (d !== dropdown) d.classList.remove('active');
                 });
+                // Toggle the clicked dropdown
                 dropdown.classList.toggle('active');
             });
         }
     });
 
-    window.addEventListener('click', () => {
-        document.querySelectorAll('.dropdown.active').forEach(d => {
-            d.classList.remove('active');
-        });
+    // Close all dropdowns when clicking outside
+    window.addEventListener('click', (e) => {
+        // Only close if not clicking on a dropdown button
+        if (!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown.active').forEach(d => {
+                d.classList.remove('active');
+            });
+        }
     });
-}
 
 function initPullToRefresh(state, actions) {
     const ptrIndicator = document.getElementById('pull-to-refresh-indicator');
