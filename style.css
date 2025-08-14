@@ -1,5 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
+/* EMERGENCY FIX - Force all menus hidden on load */
+
+.dropdown .dropdown-content,
+.timeline-sub-nav,
+.notifications-sub-nav,
+#context-menu {
+    display: none !important;
+}
+
+/* Only show when explicitly activated */
+.dropdown.active .dropdown-content {
+    display: block !important;
+}
+
 :root, [data-theme="feedstodon"] {
     --bg-color: #101010;
     --card-color: #1a1a1a;
@@ -307,39 +321,32 @@ button:disabled {
 }
 
 
-.dropdown { position: relative; }
+/* Dropdown System - Fixed */
+.dropdown { 
+    position: relative; 
+}
 
-.dropdown-content {
-    display: none; 
-    position: absolute; 
+.dropdown .dropdown-content {
+    display: none !important;
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
     top: 100%;
-    background-color: rgba(30, 30, 30, 0.85);
+    background-color: rgba(30, 30, 30, 0.95);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color); 
+    border: 1px solid var(--border-color);
     border-radius: 0px;
-    width: fit-content;
-    z-index: 1; 
-    overflow: hidden; 
+    z-index: 9999; /* Much higher z-index */
     margin-top: 10px;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
 }
 
-.nav-left .dropdown-content { left: 0; right: auto; }
-.nav-right .dropdown-content { right: 0; left: auto; }
-
-.dropdown-content a { color: var(--font-color); padding: 12px 16px; text-decoration: none; display: flex; align-items: center; justify-content: space-between; font-size: 0.9em; font-weight: normal; white-space: nowrap; }
-.dropdown-content a:hover { background-color: var(--accent-color); }
-.dropdown.active .dropdown-content { display: block; }
-
-.main-feed-link {
-    font-weight: bold !important;
-    color: var(--accent-color) !important;
-}
-
-.dropdown-content .icon {
-    width: 20px;
-    height: 20px;
-    margin-left: 10px;
+.dropdown.active .dropdown-content {
+    display: block !important;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 
