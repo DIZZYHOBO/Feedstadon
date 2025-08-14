@@ -56,7 +56,7 @@ function initDropdowns() {
             });
         }
     });
-
+}
 function initPullToRefresh(state, actions) {
     const ptrIndicator = document.getElementById('pull-to-refresh-indicator');
     let startY = 0;
