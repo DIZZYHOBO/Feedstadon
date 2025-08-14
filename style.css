@@ -1856,3 +1856,22 @@ button:disabled {
         bottom: 20px;
     }
 }
+
+/* Force all avatars to correct size */
+.avatar, img.avatar {
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* Profile page avatar (larger) */
+.profile-card .avatar {
+    width: 100px !important;
+    height: 100px !important;
+    max-width: 100px !important;
+    max-height: 100px !important;
+}
