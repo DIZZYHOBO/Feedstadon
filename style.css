@@ -1891,7 +1891,7 @@ button:disabled {
 .lemmy-comment {
     background-color: var(--card-color);
     border-radius: var(--border-radius);
-    padding: 15px;
+    padding: 1px;
     margin-bottom: 10px;
 }
 
