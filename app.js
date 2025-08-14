@@ -793,6 +793,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('fediverse-token', accessToken);
             showSuccessToast('Mastodon login successful!');
             actions.showHomeTimeline();
+            
+            // Update notification bell after login
+            updateNotificationBell();
             return true;
         } catch (error) {
             showErrorToast('Mastodon login failed.');
@@ -835,12 +838,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (state.currentLemmyFeed) {
                 actions.showLemmyFeed(state.currentLemmyFeed);
             }
+        } else if (state.currentView === 'notifications') {
+            actions.showNotifications();
         }
     });
 
     notificationsBtn.addEventListener('click', () => {
         if (state.currentUser) {
-            actions.showProfilePage('lemmy', state.currentUser.id, state.currentUser.acct);
+            actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
         } else if (localStorage.getItem('lemmy_jwt')) {
             const lemmyUsername = localStorage.getItem('lemmy_username');
             const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -1040,6 +1045,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     showWarningToast("Please log in to view your profile.");
                 }
+                break;
+            case 'notifications-link':
+                actions.showNotifications();
                 break;
             case 'settings-link':
                 actions.showSettings();
