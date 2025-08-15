@@ -7,7 +7,7 @@
     <title>Feeds</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" onerror="this.href='data:image/x-icon;,'">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -110,3 +110,107 @@
             </div>
             <div class="compose-tab-content" id="lemmy-compose-tab">
                 <form id="lemmy-compose-form">
+                    <div class="lemmy-post-type-selector">
+                        <button type="button" class="lemmy-post-type-btn active" data-type="text">Text</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="url">Link</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="image">Image</button>
+                    </div>
+                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., technology)">
+                    <input type="text" id="lemmy-title-input" placeholder="Title">
+                    <input type="url" id="lemmy-url-input" placeholder="URL" style="display:none;">
+                    <textarea id="lemmy-body-textarea" placeholder="Text (optional)"></textarea>
+                    <div class="modal-actions">
+                        <button class="button-secondary" id="cancel-lemmy-compose-btn" type="button">Cancel</button>
+                        <button type="submit" id="submit-lemmy-compose-btn">Post</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="image-modal">
+        <div class="image-modal-content">
+            <img id="fullscreen-image" src="" alt="Full screen image">
+            <button class="icon-button" id="save-image-btn" title="Save Image"></button>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="help-modal">
+        <div class="modal-content help-modal-content">
+            <button id="close-help-btn" class="close-btn">close</button>
+            <h3>Markdown Guide</h3>
+            <div class="markdown-guide">
+                <p><b>*Italics*</b> &rarr; <i>Italics</i></p>
+                <p><b>**Bold**</b> &rarr; <strong>Bold</strong></p>
+                <p><b># Heading 1</b> &rarr; Heading 1</p>
+                <p><b>## Heading 2</b> &rarr; Heading 2</p>
+                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">Link Text</a></p>
+                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example" onerror="this.style.display='none'"></p>
+                <p><b>&gt; Blockquote</b> &rarr; <blockquote>Blockquote</blockquote></p>
+                <p><b>- List Item</b> &rarr; <ul><li>List Item</li></ul></p>
+            </div>
+        </div>
+    </div>
+
+    <template id="screenshot-controls-template">
+        <div class="screenshot-controls">
+            <div class="control-group">
+                <label>Parent Comments:</label>
+                <button data-action="parents-up">↑</button>
+                <button data-action="parents-down">↓</button>
+            </div>
+            <div class="control-group">
+                <input type="checkbox" id="include-replies-checkbox">
+                <label for="include-replies-checkbox">Include Replies</label>
+            </div>
+            <div class="control-group" id="replies-controls" style="display: none;">
+                <label>Replies:</label>
+                <button data-action="replies-up">↑</button>
+                <button data-action="replies-down">↓</button>
+            </div>
+            <button id="capture-btn">Capture Screenshot</button>
+        </div>
+        <div id="screenshot-preview-area"></div>
+    </template>
+
+    <template id="mastodon-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Mastodon</h3>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
+                <input type="text" class="token-input" placeholder="Paste your Access Token">
+                <button type="submit" class="connect-btn">Login</button>
+            </form>
+        </div>
+    </template>
+
+    <template id="lemmy-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Lemmy</h3>
+            <form class="login-form" id="lemmy-login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
+                <input type="text" class="username-input" placeholder="Username">
+                <input type="password" class="password-input" placeholder="Password">
+                <div class="piefed-login-option" style="display: flex; align-items: center; margin-top: 10px;">
+                    <input type="checkbox" id="piefed-login-checkbox" style="margin-right: 10px;">
+                    <label for="piefed-login-checkbox">Login with Piefed account</label>
+                </div>
+                <button type="submit" class="connect-btn">Connect</button>
+            </form>
+        </div>
+    </template>
+
+    <script src="app.js" type="module"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
