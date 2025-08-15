@@ -14,7 +14,7 @@ import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, showToast, showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from './components/ui.js';
-
+import { renderLoopsProfilePage } from './components/Loops.js';
 
 
 // Add sharing functionality
