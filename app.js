@@ -14,22 +14,8 @@ import { renderScreenshotPage } from './components/Screenshot.js';
 import { ICONS } from './components/icons.js';
 import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from './components/api.js';
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, showToast, showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from './components/ui.js';
-
-
-
-// Add sharing functionality
-function generateShareableUrl(type, data) {
-    const baseUrl = window.location.origin;
-    
-    if (type === 'lemmy-post') {
-        const instance = new URL(data.post.ap_id).hostname;
-        return `${baseUrl}/?share=lemmy-post&instance=${instance}&postId=${data.post.id}`;
-    } else if (type === 'lemmy-comment') {
-        const instance = new URL(data.comment.ap_id).hostname;
-        return `${baseUrl}/?share=lemmy-comment&instance=${instance}&postId=${data.post.id}&commentId=${data.comment.id}`;
-    }
-    return baseUrl;
-}
+import { Router } from './components/Router.js';
+import { UrlManager } from './components/UrlManager.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -85,7 +71,7 @@ function initPullToRefresh(state, actions) {
 
         ptrIndicator.style.transform = 'translateY(-150%)';
 
-        if (diffY > 80) { // Threshold to trigger refresh
+        if (diffY > 80) {
             if (state.currentView === 'timeline') {
                 if (state.currentTimeline) {
                     actions.showHomeTimeline();
@@ -139,7 +125,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         settings: {
             hideNsfw: false,
         },
-        actions: {}
+        actions: {},
+        router: null
     };
 
     const views = {
@@ -158,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyCommunity: document.getElementById('lemmy-community-view'),
     };
     
-    // --- Global Context Menu ---
+    // Global Context Menu
     const contextMenu = document.getElementById('context-menu');
     const showContextMenu = (e, items) => {
         e.preventDefault();
@@ -187,7 +174,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     document.addEventListener('click', hideContextMenu);
     document.addEventListener('contextmenu', (e) => {
-        // Hide if clicking outside a valid target
         if (!e.target.closest('.status')) {
             hideContextMenu();
         }
@@ -200,7 +186,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 state.currentUser = account;
             } catch (error) {
                 console.error("Token verification failed:", error);
-                // Clear invalid token
                 localStorage.removeItem('fediverse-instance');
                 localStorage.removeItem('fediverse-token');
                 state.instanceUrl = null;
@@ -212,9 +197,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const switchView = (viewName, pushToHistory = true) => {
         if (state.currentView === viewName && viewName !== 'notifications') return;
 
-        if (pushToHistory) {
-            history.pushState({view: viewName}, '', `#${viewName}`);
-        }
         state.currentView = viewName;
         window.scrollTo(0, 0);
 
@@ -224,9 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        // Hide sub-nav by default on every view change
         document.getElementById('timeline-sub-nav').style.display = 'none';
-        
         document.querySelector('.top-nav').style.display = 'flex';
         views.app.style.display = 'block';
         if (views[viewName]) {
@@ -255,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ];
             currentFeed = state.currentLemmyFeed;
         } else if (platform === 'mastodon') {
-             items = [
+            items = [
                 { label: 'Subbed', feed: 'home' },
                 { label: 'All', feed: 'public' },
                 { label: 'Local', feed: 'public?local=true' }
@@ -286,7 +266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterContainer = document.createElement('div');
             filterContainer.id = 'lemmy-filter-container';
             filterContainer.innerHTML = `
-                 <select id="lemmy-sort-select">
+                <select id="lemmy-sort-select">
                     <option value="New">New</option>
                     <option value="Active">Active</option>
                     <option value="Hot">Hot</option>
@@ -307,118 +287,212 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const actions = {
+        // Navigation with new URL system
+        navigateTo: (path) => {
+            state.router.navigate(path);
+        },
+        
+        showErrorPage: (message) => {
+            switchView('timeline');
+            state.timelineDiv.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h2>Error</h2>
+                    <p>${message}</p>
+                    <button onclick="window.location.href='/'">Go Home</button>
+                </div>
+            `;
+        },
+        
         showProfilePage: (platform, accountId = null, userAcct = null) => {
             showLoadingBar();
+            // Update URL
+            if (platform === 'mastodon' && userAcct) {
+                const parsed = UrlManager.parseFederatedId(userAcct);
+                if (parsed) {
+                    state.router.navigate(UrlManager.mastodonUser(parsed.name, parsed.instance));
+                }
+            } else if (platform === 'lemmy' && userAcct) {
+                const parsed = UrlManager.parseFederatedId(userAcct);
+                if (parsed) {
+                    state.router.navigate(UrlManager.lemmyUser(parsed.name, parsed.instance));
+                }
+            }
             switchView('profile');
             renderProfilePage(state, actions, platform, accountId, userAcct);
             hideLoadingBar();
         },
-        showLemmyProfile: (userAcct) => {
-             actions.showProfilePage('lemmy', null, userAcct);
+        
+        showLemmyProfile: (userAcct, contentType = null) => {
+            actions.showProfilePage('lemmy', null, userAcct);
         },
+        
         showEditProfile: () => {
             switchView('editProfile');
             renderEditProfilePage(state, actions);
         },
+        
         showStatusDetail: async (statusId) => {
             showLoadingBar();
+            // If statusId is an object (the full status), extract the ID
+            const id = typeof statusId === 'object' ? statusId.id : statusId;
+            const status = typeof statusId === 'object' ? statusId : null;
+            
+            if (status && status.account) {
+                const instance = UrlManager.extractInstance(status.account.url);
+                state.router.navigate(UrlManager.mastodonStatus(status.account.username, instance, id));
+            }
+            
             switchView('statusDetail');
-            await renderStatusDetail(state, statusId, actions);
+            await renderStatusDetail(state, id, actions);
             hideLoadingBar();
         },
+        
         showHashtagTimeline: async (tagName) => {
             showLoadingBar();
+            state.router.navigate(UrlManager.hashtag(tagName));
             switchView('search');
             await renderSearchResults(state, `#${tagName}`);
             hideLoadingBar();
         },
+        
+        showSearchResults: async (query) => {
+            showLoadingBar();
+            state.router.navigate(UrlManager.search(query));
+            switchView('search');
+            await renderSearchResults(state, query);
+            hideLoadingBar();
+        },
+        
         showSettings: () => {
+            state.router.navigate(UrlManager.settings());
             switchView('settings');
             renderSettingsPage(state);
         },
+        
         showNotifications: async () => {
             showLoadingBar();
+            state.router.navigate(UrlManager.notifications());
             switchView('notifications');
             await renderNotificationsPage(state, actions);
             hideLoadingBar();
         },
-         showDiscoverPage: async () => {
+        
+        showDiscoverPage: async () => {
             showLoadingBar();
+            state.router.navigate(UrlManager.discover());
             switchView('discover');
             await renderDiscoverPage(state, actions);
             hideLoadingBar();
         },
-         showScreenshotPage: async (commentView, postView) => {
+        
+        showScreenshotPage: async (commentView, postView) => {
             showLoadingBar();
             switchView('screenshot');
             await renderScreenshotPage(state, commentView, postView, actions);
             hideLoadingBar();
         },
+        
         showLemmyPostDetail: async (post) => {
             showLoadingBar();
+            const instance = UrlManager.extractInstance(post.post.ap_id);
+            state.router.navigate(UrlManager.lemmyPost(post.community.name, instance, post.post.id));
             switchView('lemmyPost');
             await renderLemmyPostPage(state, post, actions);
             hideLoadingBar();
         },
+        
         showPublicLemmyPost: async (postView, instance) => {
             showLoadingBar();
             switchView('lemmyPost');
             await renderPublicLemmyPostPage(state, postView, actions, instance);
             hideLoadingBar();
         },
+        
         showLemmyCommunity: async (communityName) => {
             showLoadingBar();
+            const parsed = UrlManager.parseFederatedId(communityName);
+            if (parsed) {
+                state.router.navigate(UrlManager.lemmyCommunity(parsed.name, parsed.instance));
+            }
             switchView('lemmyCommunity');
             await renderLemmyCommunityPage(state, actions, communityName);
             hideLoadingBar();
         },
+        
         showMergedPost: async (post) => {
             showLoadingBar();
             switchView('mergedPost');
             await renderMergedPostPage(state, post, actions);
             hideLoadingBar();
         },
-         showLemmyFeed: async (feedType, sortType = state.currentLemmySort) => {
+        
+        showLemmyFeed: async (feedType, sortType = state.currentLemmySort) => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = feedType;
             state.currentTimeline = null;
             state.currentLemmySort = sortType;
+            
+            // Update URL based on feed type
+            if (feedType === 'All') {
+                state.router.navigate('/all/');
+            } else if (feedType === 'Local') {
+                state.router.navigate('/local/');
+            } else {
+                state.router.navigate('/');
+            }
+            
             switchView('timeline');
             renderTimelineSubNav('lemmy');
             await fetchLemmyFeed(state, actions, false, onLemmyLoginSuccess);
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
+        
         showMastodonTimeline: async (timelineType) => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
             state.currentLemmyFeed = null;
             state.currentTimeline = timelineType;
+            
+            // Update URL based on timeline type
+            if (timelineType === 'public') {
+                state.router.navigate('/all/');
+            } else if (timelineType === 'public?local=true') {
+                state.router.navigate('/local/');
+            } else {
+                state.router.navigate('/');
+            }
+            
             switchView('timeline');
             renderTimelineSubNav('mastodon');
-            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, true); // Added mastodonOnly flag
+            await fetchTimeline(state, actions, false, onMastodonLoginSuccess, true);
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
+        
         showMergedTimeline: async () => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
-            state.currentLemmyFeed = null; // Clear other feed types
+            state.currentLemmyFeed = null;
             state.currentTimeline = null;
+            state.router.navigate('/merged/');
             switchView('timeline');
-            renderTimelineSubNav(null); // Hide the sub-nav for the merged feed
+            renderTimelineSubNav(null);
             await fetchMergedTimeline(state, actions, false, onMastodonLoginSuccess);
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-         showHomeTimeline: async () => {
+        
+        showHomeTimeline: async () => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
 
             const defaultStartPage = localStorage.getItem('defaultStartPage') || 'lemmy';
             const defaultFeedType = localStorage.getItem('defaultFeedType') || 'Subscribed';
             const defaultLemmySort = localStorage.getItem('lemmySortType') || 'Hot';
+
+            state.router.navigate('/');
 
             if (defaultStartPage === 'lemmy') {
                 actions.showLemmyFeed(defaultFeedType, defaultLemmySort);
@@ -432,9 +506,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
+        
+        showComposeModal: () => {
+            showComposeModal(state);
+        },
+        
         replyToStatus: (post, card) => {
             actions.showConversation(post, card);
         },
+        
         showConversation: async (post, card) => {
             const container = card.querySelector('.conversation-container');
             const isVisible = container.style.display === 'flex';
@@ -481,6 +561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
         },
+        
         handleSearchResultClick: (account) => {
             if (account.acct.includes('@')) {
                 actions.showProfilePage('mastodon', account.id);
@@ -488,6 +569,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actions.showLemmyCommunity(account.acct);
             }
         },
+        
+        handleStatusAction: (action, statusId, card, isSelf) => {
+            switch(action) {
+                case 'reply':
+                    actions.replyToStatus({ id: statusId }, card);
+                    break;
+                case 'boost':
+                case 'favourite':
+                case 'bookmark':
+                    actions.toggleAction(action, { id: statusId }, card.querySelector(`[data-action="${action}"]`));
+                    break;
+                case 'more':
+                    // Handle more menu
+                    break;
+            }
+        },
+        
         deleteStatus: async (statusId) => {
             try {
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
@@ -497,13 +595,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast("Failed to delete post.");
             }
         },
+        
         editStatus: async (statusId, newContent) => {
             try {
                 const response = await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, {
                     method: 'PUT',
                     body: { status: newContent }
                 });
-                // Update the post in the UI
                 const postCard = document.querySelector(`.status[data-id="${statusId}"]`);
                 if (postCard) {
                     const contentDiv = postCard.querySelector('.status-content');
@@ -514,6 +612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast("Failed to update post.");
             }
         },
+        
         toggleAction: async (action, status, button) => {
             const isToggled = button.classList.contains('active');
             const newAction = isToggled ? action.replace('reblog', 'unreblog').replace('favorite', 'unfavorite').replace('bookmark', 'unbookmark') : action;
@@ -524,6 +623,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast(`Failed to ${action} post.`);
             }
         },
+        
         mastodonFollow: async (accountId, follow = true) => {
             try {
                 const endpoint = follow ? 'follow' : 'unfollow';
@@ -535,6 +635,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return false;
             }
         },
+        
         lemmyVote: async (postId, score, card) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -560,6 +661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast('Failed to vote on post.');
             }
         },
+        
         lemmySave: async (postId, button) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -573,6 +675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast('Failed to save post.');
             }
         },
+        
         lemmyCommentVote: async (commentId, score, commentDiv) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
@@ -598,6 +701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast('Failed to vote on comment.');
             }
         },
+        
         lemmyPostComment: async (commentData) => {
             const lemmyInstance = localStorage.getItem('lemmy_instance');
             if (!lemmyInstance) {
@@ -610,7 +714,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 'lemmy');
             return response.data;
         },
-         lemmyFollowCommunity: async (communityId, follow = true) => {
+        
+        lemmyFollowCommunity: async (communityId, follow = true) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
                 await apiFetch(lemmyInstance, null, '/api/v3/community/follow', {
@@ -624,6 +729,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return false;
             }
         },
+        
         lemmyBlockCommunity: async (communityId, block) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -635,12 +741,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
-                     actions.showHomeTimeline();
+                    actions.showHomeTimeline();
                 }
             } catch (err) {
                 showErrorToast('Failed to block community.');
             }
         },
+        
         lemmyBlockUser: async (personId, block) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -652,12 +759,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.currentView === 'timeline' && state.currentLemmyFeed) {
                     actions.showLemmyFeed(state.currentLemmyFeed);
                 } else {
-                     actions.showHomeTimeline();
+                    actions.showHomeTimeline();
                 }
             } catch (err) {
                 showErrorToast('Failed to block user.');
             }
         },
+        
         lemmyDeletePost: async (postId) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -671,6 +779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast('Failed to delete post.');
             }
         },
+        
         lemmyDeleteComment: async (commentId) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -684,6 +793,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast('Failed to delete comment.');
             }
         },
+        
         lemmyEditPost: async (postId, content) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -703,6 +813,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showErrorToast('Failed to edit post.');
             }
         },
+        
         lemmyEditComment: async (commentId, content) => {
             try {
                 const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -723,6 +834,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw err;
             }
         },
+        
         saveLemmyProfile: async (profileData) => {
             showLoadingBar();
             const lemmyInstance = localStorage.getItem('lemmy_instance');
@@ -747,7 +859,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }, 'lemmy');
 
                 showSuccessToast('Profile saved successfully!');
-                // Refresh the profile page
                 actions.showLemmyProfile(state.currentProfileUserAcct);
 
             } catch (error) {
@@ -756,9 +867,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 hideLoadingBar();
             }
         },
-        // Add sharing functionality
+        
         sharePost: (postView) => {
-            const url = generateShareableUrl('lemmy-post', postView);
+            const url = UrlManager.generateShareUrl({ 
+                platform: 'lemmy', 
+                post: postView.post,
+                community: postView.community 
+            });
             if (navigator.share) {
                 navigator.share({ title: postView.post.name, url: url });
             } else {
@@ -766,8 +881,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showSuccessToast('Share link copied to clipboard!');
             }
         },
+        
         shareComment: (commentView) => {
-            const url = generateShareableUrl('lemmy-comment', commentView);
+            const url = UrlManager.generateShareUrl({ 
+                platform: 'lemmy', 
+                comment: commentView.comment 
+            });
             if (navigator.share) {
                 navigator.share({ title: `Comment by ${commentView.creator.name}`, url: url });
             } else {
@@ -775,9 +894,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showSuccessToast('Share link copied to clipboard!');
             }
         },
+        
         showContextMenu: showContextMenu
     };
+    
     state.actions = actions;
+
+    // Initialize Router
+    const router = new Router(state, actions);
+    state.router = router;
 
     const onMastodonLoginSuccess = async (instanceUrl, accessToken) => {
         try {
@@ -819,7 +944,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         })
         .catch(err => {
-             showErrorToast('Lemmy login error.');
+            showErrorToast('Lemmy login error.');
         });
     };
     
@@ -838,157 +963,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-   notificationsBtn.addEventListener('click', () => {
-    if (state.currentUser) {
-        actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
-    } else if (localStorage.getItem('lemmy_jwt')) {
-        const lemmyUsername = localStorage.getItem('lemmy_username');
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        if (lemmyUsername && lemmyInstance) {
-            // FIX: Add the instance to the username
-            const userAcct = `${lemmyUsername}@${lemmyInstance}`;
-            actions.showLemmyProfile(userAcct);
+    notificationsBtn.addEventListener('click', () => {
+        if (state.currentUser) {
+            actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
+        } else if (localStorage.getItem('lemmy_jwt')) {
+            const lemmyUsername = localStorage.getItem('lemmy_username');
+            const lemmyInstance = localStorage.getItem('lemmy_instance');
+            if (lemmyUsername && lemmyInstance) {
+                const userAcct = `${lemmyUsername}@${lemmyInstance}`;
+                actions.showLemmyProfile(userAcct);
+            } else {
+                showWarningToast("Could not determine Lemmy user profile.");
+            }
         } else {
-            showWarningToast("Could not determine Lemmy user profile.");
+            showWarningToast("Please log in to view your profile.");
         }
-    } else {
-        showWarningToast("Please log in to view your profile.");
-    }
-});
+    });
+    
     document.getElementById('discover-btn').addEventListener('click', () => {
         actions.showDiscoverPage();
     });
-
-    // --- Initial Load ---
-    await verifyUserCredentials();
-    const initialView = location.hash.substring(1) || 'timeline';
-    
-    if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
-        updateNotificationBell();
-    }
-    
-    // Check for share parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('share') === 'lemmy-post') {
-        const instance = urlParams.get('instance');
-        const postId = urlParams.get('postId');
-        
-        console.log('Share params:', { instance, postId }); // Debug log
-        
-        if (instance && postId) {
-            showLoadingBar();
-            
-            // Ensure we have just the hostname and construct the full URL properly
-            const cleanInstance = instance.replace(/^https?:\/\//, ''); // Remove protocol if present
-            const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
-            
-            console.log('Fetching from:', apiUrl); // Debug log
-            
-            fetch(apiUrl)
-                .then(response => {
-                    console.log('Response status:', response.status); // Debug log
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('API Response:', data); // Debug log
-                    if (data.post_view) {
-                        // Use the new public post viewing action
-                        actions.showPublicLemmyPost(data.post_view, cleanInstance);
-                    } else {
-                        showErrorToast('Post not found or deleted');
-                        // Don't try to show home timeline if user isn't logged in
-                        switchView('timeline');
-                        state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    }
-                    hideLoadingBar();
-                })
-                .catch((error) => {
-                    console.error('Fetch error:', error); // Debug log
-                    showErrorToast('Could not load shared post: ' + error.message);
-                    switchView('timeline');
-                    state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    hideLoadingBar();
-                });
-        }
-    } else if (urlParams.get('share') === 'lemmy-comment') {
-        const instance = urlParams.get('instance');
-        const postId = urlParams.get('postId');
-        const commentId = urlParams.get('commentId');
-        
-        console.log('Comment share params:', { instance, postId, commentId }); // Debug log
-        
-        if (instance && postId) {
-            showLoadingBar();
-            
-            // Ensure we have just the hostname and construct the full URL properly
-            const cleanInstance = instance.replace(/^https?:\/\//, ''); // Remove protocol if present
-            const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
-            
-            console.log('Fetching comment post from:', apiUrl); // Debug log
-            
-            fetch(apiUrl)
-                .then(response => {
-                    console.log('Comment response status:', response.status); // Debug log
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Comment API Response:', data); // Debug log
-                    if (data.post_view) {
-                        // Use the new public post viewing action
-                        actions.showPublicLemmyPost(data.post_view, cleanInstance);
-                        // Scroll to comment after page loads
-                        setTimeout(() => {
-                            const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
-                            if (commentEl) {
-                                commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                // Briefly highlight the comment
-                                commentEl.style.backgroundColor = 'var(--accent-color)';
-                                commentEl.style.opacity = '0.3';
-                                setTimeout(() => {
-                                    commentEl.style.backgroundColor = '';
-                                    commentEl.style.opacity = '';
-                                }, 2000);
-                            }
-                        }, 1000);
-                    } else {
-                        showErrorToast('Post not found or deleted');
-                        switchView('timeline');
-                        state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    }
-                    hideLoadingBar();
-                })
-                .catch((error) => {
-                    console.error('Comment fetch error:', error); // Debug log
-                    showErrorToast('Could not load shared comment: ' + error.message);
-                    switchView('timeline');
-                    state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    hideLoadingBar();
-                });
-        }
-    } else if (initialView === 'timeline') {
-        // Only try to show home timeline if user has credentials
-        if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
-            actions.showHomeTimeline();
-        } else {
-            // Show a welcome screen for unauthenticated users
-            switchView('timeline');
-            state.timelineDiv.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <h2>Welcome to Feedstodon</h2>
-                    <p>Connect to Lemmy or Mastodon to see your feeds.</p>
-                    <p>Use the menu above to get started.</p>
-                </div>
-            `;
-        }
-    } else {
-        switchView(initialView, false);
-    }
 
     const lemmyLogoContainer = document.getElementById('lemmy-logo-container');
     if (lemmyLogoContainer) {
@@ -1005,12 +999,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!target) return;
 
         if (target.id === 'lemmy-main-link') {
-            actions.showLemmyFeed('Subscribed');
+            actions.showLemmyFeed('All');
         } else if (target.id === 'mastodon-main-link') {
-            actions.showMastodonTimeline('home');
+            actions.showMastodonTimeline('public');
         } else if (target.dataset.timeline === 'home') {
             actions.showHomeTimeline();
-        } else if (target.dataset.timeline === 'merged') { // Handle the new merged link
+        } else if (target.dataset.timeline === 'merged') {
             actions.showMergedTimeline();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
@@ -1077,17 +1071,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    window.addEventListener('popstate', (event) => {
-        const imageModal = document.getElementById('image-modal');
-        if (imageModal && imageModal.classList.contains('visible')) {
-            imageModal.classList.remove('visible');
-            history.pushState({ view: state.currentView }, '', `#${state.currentView}`);
-        } else if (event.state && event.state.view) {
-            switchView(event.state.view, false);
-        } else {
-            switchView('timeline', false);
-        }
-    });
-
-    history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
+    // Initialize everything
+    await verifyUserCredentials();
+    
+    if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
+        updateNotificationBell();
+    }
+    
+    // Initialize router - it will handle all URL routing
+    await router.init();
 });
