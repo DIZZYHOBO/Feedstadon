@@ -417,7 +417,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
-         showHomeTimeline: async () => {
+         
+            showHomeTimeline: async () => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
 
