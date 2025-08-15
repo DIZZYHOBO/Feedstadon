@@ -486,6 +486,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
         },
+navigateToLoopsProfile: (username, instance) => {
+    actions.showLoopsProfile(username, instance);
+},
       handleSearchResultClick: (account) => {
     // Detect platform based on account info
     const acct = account.acct || '';
