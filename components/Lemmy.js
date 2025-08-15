@@ -64,10 +64,6 @@ export function renderLemmyCard(post, actions) {
     let optionsMenuHTML = `
         <div class="post-options-container">
             <button class="post-options-btn">${ICONS.more}</button>
-            <div class="post-options-menu">
-                <button data-action="share-post">Share Post</button>
-                ${isLoggedIn ? `<button data-action="block-community" data-community-id="${post.community.id}">Block Community</button>` : ''}
-            </div>
         </div>
     `;
 
@@ -383,24 +379,69 @@ export function renderLemmyCard(post, actions) {
 
     const optionsBtn = card.querySelector('.post-options-btn');
     if (optionsBtn) {
-        const menu = card.querySelector('.post-options-menu');
         optionsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-
-        menu.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = e.target.dataset.action;
-            if (action === 'block-community') {
-                const communityId = parseInt(e.target.dataset.communityId, 10);
-                if (confirm('Are you sure you want to block this community?')) {
-                    actions.lemmyBlockCommunity(communityId, true);
-                }
-            } else if (action === 'share-post') {
+            
+            // Remove any existing menu
+            const existingMenu = document.querySelector('.post-dropdown-menu');
+            if (existingMenu) existingMenu.remove();
+            
+            const menu = document.createElement('div');
+            menu.className = 'post-dropdown-menu';
+            menu.style.position = 'absolute';
+            menu.style.zIndex = '1000';
+            
+            // Add menu items
+            const shareBtn = document.createElement('button');
+            shareBtn.textContent = 'Share Post';
+            shareBtn.onclick = () => {
                 actions.sharePost(post);
+                menu.remove();
+            };
+            menu.appendChild(shareBtn);
+            
+            if (isLoggedIn) {
+                const blockBtn = document.createElement('button');
+                blockBtn.textContent = `Block ${post.community.name}`;
+                blockBtn.onclick = () => {
+                    if (confirm('Are you sure you want to block this community?')) {
+                        actions.lemmyBlockCommunity(post.community.id, true);
+                    }
+                    menu.remove();
+                };
+                menu.appendChild(blockBtn);
             }
-            menu.style.display = 'none';
+            
+            document.body.appendChild(menu);
+            
+            // Position the menu
+            const rect = optionsBtn.getBoundingClientRect();
+            const menuHeight = menu.offsetHeight;
+            const menuWidth = menu.offsetWidth;
+            
+            // Check if menu would go off bottom of screen
+            if (rect.bottom + menuHeight > window.innerHeight) {
+                menu.style.top = `${rect.top - menuHeight}px`;
+            } else {
+                menu.style.top = `${rect.bottom}px`;
+            }
+            
+            // Check if menu would go off right side of screen
+            if (rect.left + menuWidth > window.innerWidth) {
+                menu.style.left = `${rect.right - menuWidth}px`;
+            } else {
+                menu.style.left = `${rect.left}px`;
+            }
+            
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target)) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 0);
         });
     }
 
