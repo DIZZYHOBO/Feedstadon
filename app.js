@@ -395,18 +395,59 @@ document.addEventListener('DOMContentLoaded', async () => {
 showLemmyPostDetail: async (post) => {
     showLoadingBar();
     
+    console.log('showLemmyPostDetail called with:', post);
+    
     // Handle both post objects and post_view objects
     const postData = post.post ? post : { post: post, community: post.community || {}, creator: post.creator || {} };
     
-    // Safely extract instance from ap_id
+    // Determine the correct instance for this post
     let instance = 'lemmy.world'; // default fallback
-    if (postData.post && postData.post.ap_id) {
-        instance = UrlManager.extractInstance(postData.post.ap_id);
+    
+    // Priority 1: Use explicitly passed instance
+    if (post._instance) {
+        instance = post._instance;
+        console.log('Using passed instance:', instance);
     }
+    // Priority 2: Use source instance from feed fetch
+    else if (post._sourceInstance) {
+        instance = post._sourceInstance;
+        console.log('Using source instance:', instance);
+    }
+    // Priority 3: Extract from ap_id (ActivityPub ID)
+    else if (postData.post && postData.post.ap_id) {
+        try {
+            const url = new URL(postData.post.ap_id);
+            instance = url.hostname;
+            console.log('Extracted instance from ap_id:', instance);
+        } catch (e) {
+            console.error('Failed to parse ap_id:', postData.post.ap_id);
+        }
+    }
+    // Priority 4: Extract from community actor_id
+    else if (postData.community && postData.community.actor_id) {
+        try {
+            const url = new URL(postData.community.actor_id);
+            instance = url.hostname;
+            console.log('Extracted instance from community:', instance);
+        } catch (e) {
+            console.error('Failed to parse community actor_id:', postData.community.actor_id);
+        }
+    }
+    // Priority 5: Use user's logged-in instance
+    else {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        if (lemmyInstance) {
+            instance = lemmyInstance.replace(/^https?:\/\//, '');
+            console.log('Using user instance:', instance);
+        }
+    }
+    
+    console.log('Final instance for post:', instance, 'Post ID:', postData.post.id);
     
     // Safely get community name
     const communityName = postData.community?.name || 'unknown';
     
+    // Navigate to the correct URL
     state.router.navigate(UrlManager.lemmyPost(
         communityName, 
         instance, 
@@ -414,16 +455,29 @@ showLemmyPostDetail: async (post) => {
     ));
     
     switchView('lemmyPost');
-    await renderLemmyPostPage(state, postData, actions);
+    
+    // Check if user is logged in
+    const hasLemmyAuth = localStorage.getItem('lemmy_jwt');
+    const userInstance = localStorage.getItem('lemmy_instance')?.replace(/^https?:\/\//, '');
+    
+    // Use appropriate view based on auth status
+    if (hasLemmyAuth && userInstance === instance) {
+        // User is logged into the same instance
+        await renderLemmyPostPage(state, postData, actions);
+    } else {
+        // User is not logged in or logged into different instance
+        await renderPublicLemmyPostPage(state, postData, actions, instance);
+    }
+    
     hideLoadingBar();
 },
-        
-        showPublicLemmyPost: async (postView, instance) => {
-            showLoadingBar();
-            switchView('lemmyPost');
-            await renderPublicLemmyPostPage(state, postView, actions, instance);
-            hideLoadingBar();
-        },
+
+showPublicLemmyPost: async (postView, instance) => {
+    showLoadingBar();
+    switchView('lemmyPost');
+    await renderPublicLemmyPostPage(state, postView, actions, instance);
+    hideLoadingBar();
+},
         
         showLemmyCommunity: async (communityName) => {
             showLoadingBar();
