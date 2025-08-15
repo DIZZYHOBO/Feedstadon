@@ -109,7 +109,6 @@ async function fetchMastodonTrendingNews(state, actions, container) {
     }
 }
 
-
 function renderMastodonDiscover(state, actions, container) {
     container.innerHTML = `
         <div class="discover-sub-nav">
@@ -145,7 +144,6 @@ function renderMastodonDiscover(state, actions, container) {
         tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
 
-    // Load initial tab
     fetchMastodonTrendingPosts(state, actions, contentArea);
 }
 
@@ -272,71 +270,11 @@ async function renderSubscribedLemmy(state, actions, container) {
     }
 }
 
-
-// --- Main Discover Page ---
-
-export function renderDiscoverPage(state, actions) {
-    const view = document.getElementById('discover-view');
-    view.innerHTML = `
-        <div class="profile-tabs">
-            <button class="tab-button active" data-discover-tab="subscribed">Subbed</button>
-            <button class="tab-button" data-discover-tab="lemmy">Lemmy</button>
-            <button class="tab-button" data-discover-tab="mastodon">Mastodon</button>
-        </div>
-        <div id="subscribed-discover-content" class="discover-tab-content active"></div>
-        <div id="lemmy-discover-content" class="discover-tab-content"></div>
-        <div id="mastodon-discover-content" class="discover-tab-content"></div>
-    `;
-
-    const tabs = view.querySelectorAll('.profile-tabs .tab-button');
-    const subscribedContent = view.querySelector('#subscribed-discover-content');
-    const lemmyContent = view.querySelector('#lemmy-discover-content');
-    const mastodonContent = view.querySelector('#mastodon-discover-content');
-
-    function switchTab(platform) {
-        tabs.forEach(t => t.classList.remove('active'));
-        subscribedContent.classList.remove('active');
-        lemmyContent.classList.remove('active');
-        mastodonContent.classList.remove('active');
-
-        view.querySelector(`[data-discover-tab="${platform}"]`).classList.add('active');
-        state.currentDiscoverTab = platform;
-
-        if (platform === 'subscribed') {
-            subscribedContent.classList.add('active');
-            renderSubscribedLemmy(state, actions, subscribedContent);
-        } else if (platform === 'lemmy') {
-            lemmyContent.classList.add('active');
-            state.lemmyDiscoverPage = 1;
-            renderLemmyDiscover(state, actions, lemmyContent);
-        } else {
-            mastodonContent.classList.add('active');
-            renderMastodonDiscover(state, actions, mastodonContent);
-        }
-    }
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => switchTab(tab.dataset.discoverTab));
-    });
-
-    // Initial load
-    switchTab('subscribed');
-}
-// Add this to your components/Discover.js file to integrate Loops discovery:
-
-/**
- * Fetch trending Loops creators
- */
 async function fetchLoopsTrending(state, actions, container) {
     try {
         container.innerHTML = '<p>Loading trending Loops creators...</p>';
-        
-        // Note: These endpoints are estimates - adjust based on actual Loops API
         const response = await fetch('https://loops.video/api/v1/trending/creators');
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch trending creators');
-        }
+        if (!response.ok) throw new Error('Failed to fetch trending creators');
         
         const creators = await response.json();
         container.innerHTML = '';
@@ -356,49 +294,75 @@ async function fetchLoopsTrending(state, actions, container) {
                     </div>
                     <span class="platform-badge loops">Loops</span>
                 `;
-                
-                creatorEl.addEventListener('click', () => {
-                    actions.showLoopsProfile(creator.username, 'loops.video');
-                });
-                
+                creatorEl.addEventListener('click', () => actions.showLoopsProfile(creator.username, 'loops.video'));
                 container.appendChild(creatorEl);
             });
         } else {
-            // Fallback: Show some example Loops instances
             container.innerHTML = `
                 <div class="discover-section-info">
                     <h4>Loops - Federated Short Videos</h4>
                     <p>Loops is a new federated platform for short-form videos. Search for Loops users with @username@loops.video</p>
-                    <div class="loops-instances-list">
-                        <h5>Known Loops Instances:</h5>
-                        <ul>
-                            <li><a href="https://loops.video" target="_blank">loops.video</a> (Main instance)</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
+                </div>`;
         }
     } catch (error) {
-        console.error('Failed to fetch Loops trending:', error);
         container.innerHTML = `
             <div class="discover-section-info">
                 <h4>Loops Integration</h4>
                 <p>Loops profiles can be viewed by searching for users in the format: @username@loops.video</p>
                 <p class="error-notice">Could not fetch trending creators. The Loops API may not be publicly available yet.</p>
-            </div>
-        `;
+            </div>`;
     }
 }
 
-// Update your renderDiscoverPage function to include a Loops tab:
-// Add this to the existing tab structure in renderDiscoverPage
+// --- Main Discover Page ---
 
-// In the HTML template section, add:
-`<button class="tab-button" data-discover-tab="loops">Loops</button>`
-`<div id="loops-discover-content" class="discover-tab-content"></div>`
+export function renderDiscoverPage(state, actions) {
+    const view = document.getElementById('discover-view');
+    view.innerHTML = `
+        <div class="profile-tabs">
+            <button class="tab-button active" data-discover-tab="subscribed">Subbed</button>
+            <button class="tab-button" data-discover-tab="lemmy">Lemmy</button>
+            <button class="tab-button" data-discover-tab="mastodon">Mastodon</button>
+            <button class="tab-button" data-discover-tab="loops">Loops</button>
+        </div>
+        <div id="subscribed-discover-content" class="discover-tab-content active"></div>
+        <div id="lemmy-discover-content" class="discover-tab-content"></div>
+        <div id="mastodon-discover-content" class="discover-tab-content"></div>
+        <div id="loops-discover-content" class="discover-tab-content"></div>
+    `;
 
-// In the switchTab function, add:
-else if (platform === 'loops') {
-    loopsContent.classList.add('active');
-    fetchLoopsTrending(state, actions, loopsContent);
+    const tabs = view.querySelectorAll('.profile-tabs .tab-button');
+    const subscribedContent = view.querySelector('#subscribed-discover-content');
+    const lemmyContent = view.querySelector('#lemmy-discover-content');
+    const mastodonContent = view.querySelector('#mastodon-discover-content');
+    const loopsContent = view.querySelector('#loops-discover-content');
+
+    function switchTab(platform) {
+        tabs.forEach(t => t.classList.remove('active'));
+        view.querySelectorAll('.discover-tab-content').forEach(c => c.classList.remove('active'));
+
+        view.querySelector(`[data-discover-tab="${platform}"]`).classList.add('active');
+        state.currentDiscoverTab = platform;
+
+        if (platform === 'subscribed') {
+            subscribedContent.classList.add('active');
+            renderSubscribedLemmy(state, actions, subscribedContent);
+        } else if (platform === 'lemmy') {
+            lemmyContent.classList.add('active');
+            state.lemmyDiscoverPage = 1;
+            renderLemmyDiscover(state, actions, lemmyContent);
+        } else if (platform === 'loops') {
+            loopsContent.classList.add('active');
+            fetchLoopsTrending(state, actions, loopsContent);
+        } else {
+            mastodonContent.classList.add('active');
+            renderMastodonDiscover(state, actions, mastodonContent);
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.discoverTab));
+    });
+
+    switchTab('subscribed');
 }
