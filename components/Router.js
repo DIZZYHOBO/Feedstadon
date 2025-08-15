@@ -1,4 +1,4 @@
-// components/Router.js
+// components/Router.js - Version 1: Instance-specific JWT checking
 import { apiFetch } from './api.js';
 import { showLoadingBar, hideLoadingBar } from './ui.js';
 
@@ -213,25 +213,34 @@ export class Router {
             let url = `https://${instance}/api/v3/post?id=${postId}`;
             let response = await fetch(url);
             
-            // If it fails, try with auth
-            if (!response.ok && response.status === 400) {
+            // If it fails with 400/401, it might need auth
+            if (!response.ok && (response.status === 400 || response.status === 401)) {
                 const jwt = localStorage.getItem('lemmy_jwt');
-                if (jwt) {
+                const userInstance = localStorage.getItem('lemmy_instance');
+                
+                // Only use JWT if it's for the same instance
+                if (jwt && userInstance && userInstance.includes(instance)) {
                     // Try with auth in query params (Lemmy format)
                     url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
                     response = await fetch(url);
-                    
-                    // If still failing, might be wrong instance's JWT
-                    if (!response.ok) {
-                        // Try without auth again as fallback
-                        url = `https://${instance}/api/v3/post?id=${postId}`;
-                        response = await fetch(url);
-                    }
                 }
             }
             
+            // If still not ok, this might be a private post or deleted
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                // Try to get more info about the error
+                const errorText = await response.text();
+                console.error('Lemmy API error:', errorText);
+                
+                // Check if it's a "not found" error
+                if (response.status === 404 || errorText.includes('not_found')) {
+                    throw new Error('Post not found or deleted');
+                } else if (response.status === 400) {
+                    // This might be a federation issue or the post doesn't exist on this instance
+                    throw new Error('Post not available. It may be from an instance that doesn\'t federate with ' + instance);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
             }
             
             const data = await response.json();
@@ -243,7 +252,19 @@ export class Router {
             }
         } catch (error) {
             console.error('Failed to fetch Lemmy post:', error);
-            this.actions.showErrorPage('Post not found or instance unreachable');
+            
+            // Provide more helpful error messages
+            let errorMessage = 'Post not found or instance unreachable';
+            
+            if (error.message.includes('not available')) {
+                errorMessage = error.message;
+            } else if (error.message.includes('not found')) {
+                errorMessage = 'This post has been deleted or is not available';
+            } else if (error.message.includes('NetworkError')) {
+                errorMessage = `Cannot connect to ${instance}. The instance may be down or blocking requests.`;
+            }
+            
+            this.actions.showErrorPage(errorMessage);
         }
     }
 
@@ -255,23 +276,27 @@ export class Router {
                 let url = `https://${instance}/api/v3/post?id=${postId}`;
                 let response = await fetch(url);
                 
-                // If fails, try with auth
-                if (!response.ok && response.status === 400) {
+                // If fails, try with auth only if it's the same instance
+                if (!response.ok && (response.status === 400 || response.status === 401)) {
                     const jwt = localStorage.getItem('lemmy_jwt');
-                    if (jwt) {
+                    const userInstance = localStorage.getItem('lemmy_instance');
+                    
+                    // Only use JWT if it's for the same instance
+                    if (jwt && userInstance && userInstance.includes(instance)) {
                         url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
                         response = await fetch(url);
-                        
-                        // Fallback to no auth
-                        if (!response.ok) {
-                            url = `https://${instance}/api/v3/post?id=${postId}`;
-                            response = await fetch(url);
-                        }
                     }
                 }
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('Lemmy API error:', errorText);
+                    
+                    if (response.status === 404 || errorText.includes('not_found')) {
+                        throw new Error('Post not found or deleted');
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
                 }
                 
                 const data = await response.json();
@@ -297,18 +322,14 @@ export class Router {
                 let url = `https://${instance}/api/v3/comment?id=${commentId}`;
                 let response = await fetch(url);
                 
-                // Try with auth if needed
-                if (!response.ok && response.status === 400) {
+                // Try with auth if needed and same instance
+                if (!response.ok && (response.status === 400 || response.status === 401)) {
                     const jwt = localStorage.getItem('lemmy_jwt');
-                    if (jwt) {
+                    const userInstance = localStorage.getItem('lemmy_instance');
+                    
+                    if (jwt && userInstance && userInstance.includes(instance)) {
                         url = `https://${instance}/api/v3/comment?id=${commentId}&auth=${encodeURIComponent(jwt)}`;
                         response = await fetch(url);
-                        
-                        // Fallback
-                        if (!response.ok) {
-                            url = `https://${instance}/api/v3/comment?id=${commentId}`;
-                            response = await fetch(url);
-                        }
                     }
                 }
                 
@@ -324,7 +345,13 @@ export class Router {
             }
         } catch (error) {
             console.error('Failed to fetch comment:', error);
-            this.actions.showErrorPage('Comment not found');
+            
+            let errorMessage = 'Comment not found';
+            if (error.message.includes('not found')) {
+                errorMessage = 'This comment has been deleted or is not available';
+            }
+            
+            this.actions.showErrorPage(errorMessage);
         }
     }
 
