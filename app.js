@@ -392,14 +392,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
         },
         
-        showLemmyPostDetail: async (post) => {
-            showLoadingBar();
-            const instance = UrlManager.extractInstance(post.post.ap_id);
-            state.router.navigate(UrlManager.lemmyPost(post.community.name, instance, post.post.id));
-            switchView('lemmyPost');
-            await renderLemmyPostPage(state, post, actions);
-            hideLoadingBar();
-        },
+showLemmyPostDetail: async (post) => {
+    showLoadingBar();
+    
+    // Handle both post objects and post_view objects
+    const postData = post.post ? post : { post: post, community: post.community || {}, creator: post.creator || {} };
+    
+    // Safely extract instance from ap_id
+    let instance = 'lemmy.world'; // default fallback
+    if (postData.post && postData.post.ap_id) {
+        instance = UrlManager.extractInstance(postData.post.ap_id);
+    }
+    
+    // Safely get community name
+    const communityName = postData.community?.name || 'unknown';
+    
+    state.router.navigate(UrlManager.lemmyPost(
+        communityName, 
+        instance, 
+        postData.post.id
+    ));
+    
+    switchView('lemmyPost');
+    await renderLemmyPostPage(state, postData, actions);
+    hideLoadingBar();
+},
         
         showPublicLemmyPost: async (postView, instance) => {
             showLoadingBar();
@@ -984,14 +1001,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         actions.showDiscoverPage();
     });
 
-    const lemmyLogoContainer = document.getElementById('lemmy-logo-container');
-    if (lemmyLogoContainer) {
-        lemmyLogoContainer.innerHTML = ICONS.lemmy;
-    }
-    const mastodonLogoContainer = document.getElementById('mastodon-logo-container');
-    if (mastodonLogoContainer) {
-        mastodonLogoContainer.innerHTML = ICONS.mastodon;
-    }
+const lemmyLogoContainer = document.getElementById('lemmy-logo-container');
+if (lemmyLogoContainer) {
+    lemmyLogoContainer.innerHTML = ICONS.lemmy;
+}
+const mastodonLogoContainer = document.getElementById('mastodon-logo-container');
+if (mastodonLogoContainer) {
+    mastodonLogoContainer.innerHTML = ICONS.mastodon;
+}
 
     document.getElementById('feeds-dropdown').querySelector('.dropdown-content').addEventListener('click', (e) => {
         e.preventDefault();
