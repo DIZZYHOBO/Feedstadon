@@ -56,32 +56,6 @@ export async function loadMoreLemmyCommunities(state, actions) {
     }
 }
 
-async function fetchMastodonTrendingPosts(state, actions) {
-    showLoadingBar();
-    const postsList = document.getElementById('mastodon-trending-posts-list');
-    const loader = document.getElementById('mastodon-trending-posts-loader');
-    loader.style.display = 'block';
-
-    try {
-        const { data, nextPageUrl } = await fetchTimeline(state, `trends/statuses?page=${state.mastodonTrendingPage}`);
-        state.nextPageUrl = nextPageUrl;
-
-        if (data && data.length > 0) {
-            data.forEach(status => {
-                postsList.appendChild(renderStatus(status, state.currentUser, actions, state.settings));
-            });
-            state.mastodonTrendingPage++;
-        } else {
-            state.mastodonTrendingHasMore = false;
-        }
-    } catch (error) {
-        console.error('Failed to fetch Mastodon trending posts:', error);
-    } finally {
-        loader.style.display = 'none';
-        hideLoadingBar();
-    }
-}
-
 export async function loadMoreMastodonTrendingPosts(state, actions) {
     if (state.mastodonTrendingHasMore) {
         await fetchMastodonTrendingPosts(state, actions);
@@ -281,7 +255,6 @@ export async function fetchLemmyFeed(state, actions, append = false, onLoginSucc
     }
 }
 
-
 export async function renderMastodonTrendingPosts(state, actions) {
     const postsList = document.getElementById('mastodon-trending-posts-list');
     postsList.innerHTML = ''; // Clear previous content
@@ -291,6 +264,7 @@ export async function renderMastodonTrendingPosts(state, actions) {
     await fetchMastodonTrendingPosts(state, actions);
 }
 
+// **FIX:** Removed the duplicate function declaration that was here.
 export async function fetchMastodonTrendingPosts(state, actions, append = false) {
     if (!state.instanceUrl) return;
     
@@ -365,7 +339,6 @@ export async function fetchAndDisplayMastodonTrending(state, actions) {
 
     if (state.mastodonTrendingPage === 1) {
         container.innerHTML = ''; // Clear only on first load
-        // **FIX:** Missing closing brace `}` for the `if` statement was here.
     } else {
         await loadMoreMastodonTrendingPosts(state, actions);
     }
