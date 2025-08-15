@@ -1,422 +1,490 @@
-// components/Lemmy.js
-import { showLoadingBar, hideLoadingBar, showToast, showErrorToast, showInfoToast, showWarningToast } from './ui.js';
-import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
+import { formatTimestamp, timeAgo, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
+import { showToast, renderLoginPrompt, showImageModal } from './ui.js';
+import { apiFetch } from './api.js';
 
-// Check if showdown is available, if not create a fallback
-const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : {
-    makeHtml: (text) => {
-        // Basic fallback markdown to HTML conversion
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>');
-    }
-};
-
-export async function fetchLemmyFeed(state, actions, loadMore = false, onLoginSuccess = null) {
-    if (state.isLoadingMore && loadMore) return;
-    
-    if (!loadMore) {
-        state.lemmyPage = 1;
-        state.lemmyHasMore = true;
-        state.timelineDiv.innerHTML = '';
-    } else if (!state.lemmyHasMore) {
-        return;
+export function renderLemmyCard(post, actions) {
+    const filterList = getWordFilter();
+    const combinedContent = `${post.post.name} ${post.post.body || ''}`;
+    if (shouldFilterContent(combinedContent, filterList)) {
+        return document.createDocumentFragment(); // Return an empty element to hide the post
     }
     
-    state.isLoadingMore = true;
-    if (loadMore) state.scrollLoader.style.display = 'block';
+    const card = document.createElement('div');
+    card.className = 'status lemmy-card';
+    card.dataset.id = post.post.id;
+
+    let mediaHTML = '';
+    const url = post.post.url;
+    const isImagePost = url && /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+    const isLinkPost = url && !post.post.body && !isImagePost; // Link post if there's a URL, no body text, and it's not a direct image
     
-    const lemmyInstance = localStorage.getItem('lemmy_instance') || 'https://lemmy.world';
-    const cleanInstance = lemmyInstance.replace(/^https?:\/\//, '');
-    const feedType = state.currentLemmyFeed || 'All';
-    const sortType = state.currentLemmySort || 'Hot';
-    
-    try {
-        const jwt = localStorage.getItem('lemmy_jwt');
-        let url = `https://${cleanInstance}/api/v3/post/list?type_=${feedType}&sort=${sortType}&limit=20&page=${state.lemmyPage}`;
-        
-        // Add auth if available and needed
-        if (jwt && feedType === 'Subscribed') {
-            url += `&auth=${encodeURIComponent(jwt)}`;
-        }
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            // If subscribed feed fails, user might not be logged in
-            if (feedType === 'Subscribed' && response.status === 401) {
-                console.log('Not authenticated, switching to All feed');
-                state.currentLemmyFeed = 'All';
-                url = `https://${cleanInstance}/api/v3/post/list?type_=All&sort=${sortType}&limit=20&page=${state.lemmyPage}`;
-                const retryResponse = await fetch(url);
-                if (!retryResponse.ok) throw new Error('Failed to fetch feed');
-                const data = await retryResponse.json();
-                renderLemmyPosts(data.posts, state, actions, cleanInstance);
-            } else {
-                throw new Error('Failed to fetch feed');
-            }
-        } else {
-            const data = await response.json();
-            renderLemmyPosts(data.posts, state, actions, cleanInstance);
-        }
-        
-        state.lemmyPage++;
-        
-    } catch (error) {
-        console.error('Error fetching Lemmy feed:', error);
-        
-        if (!loadMore) {
-            // Show login prompt for first load if needed
-            if (feedType === 'Subscribed' && !localStorage.getItem('lemmy_jwt')) {
-                const loginPrompt = document.createElement('div');
-                loginPrompt.className = 'login-prompt-container';
-                loginPrompt.innerHTML = `
-                    <div class="login-prompt">
-                        <h3>Login to Lemmy to see your subscribed communities</h3>
-                        <button class="button-primary" onclick="document.getElementById('settings-view').style.display='flex';document.getElementById('timeline').style.display='none';">
-                            Go to Settings
-                        </button>
+    if (url) {
+        // YouTube embed logic
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const youtubeMatch = url.match(youtubeRegex);
+
+        if (youtubeMatch) {
+            mediaHTML = `
+                <div class="video-embed-container">
+                    <iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allowfullscreen></iframe>
+                </div>
+            `;
+        } else if (/\.(mp4|webm)$/i.test(url)) {
+            mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
+        } else if (post.post.thumbnail_url) {
+            // For link posts (non-image URLs), make the thumbnail clickable to external link
+            if (isLinkPost) {
+                mediaHTML = `
+                    <div class="status-media link-thumbnail">
+                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-thumbnail-wrapper">
+                            <img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy">
+                            <div class="link-overlay">
+                                <svg class="link-overlay-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg>
+                            </div>
+                        </a>
                     </div>
                 `;
-                state.timelineDiv.appendChild(loginPrompt);
             } else {
-                showErrorToast('Failed to load Lemmy feed');
+                // For image posts and regular posts, keep existing behavior (image modal)
+                mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
             }
         }
-    } finally {
-        state.isLoadingMore = false;
-        if (loadMore) state.scrollLoader.style.display = 'none';
     }
-}
+    
+    let crosspostTag = '';
+    if (post.cross_post) {
+        crosspostTag = `<div class="crosspost-tag">Merged</div>`;
+    }
 
-function renderLemmyPosts(posts, state, actions, sourceInstance) {
-    if (!posts || posts.length === 0) {
-        state.lemmyHasMore = false;
-        if (state.lemmyPage === 1) {
-            state.timelineDiv.innerHTML = '<div class="no-posts">No posts found</div>';
-        }
-        return;
-    }
-    
-    posts.forEach(post => {
-        // Add source instance to each post for tracking
-        post._sourceInstance = sourceInstance;
-        const card = renderLemmyCard(post, state.lemmyUsername, actions, state.settings, state);
-        state.timelineDiv.appendChild(card);
-    });
-    
-    if (posts.length < 20) {
-        state.lemmyHasMore = false;
-    }
-}
-
-export function renderLemmyCard(post, currentUser, actions, settings, state) {
-    const card = document.createElement('div');
-    card.className = 'status lemmy-post';
-    card.dataset.id = post.post.id;
-    
-    // Determine the correct instance for this post
-    let postInstance = 'lemmy.world'; // fallback
-    
-    // Priority 1: Use the source instance if available (from feed fetch)
-    if (post._sourceInstance) {
-        postInstance = post._sourceInstance;
-    }
-    // Priority 2: Extract from ap_id (ActivityPub ID)
-    else if (post.post.ap_id) {
-        try {
-            const url = new URL(post.post.ap_id);
-            postInstance = url.hostname;
-        } catch (e) {
-            console.warn('Could not parse ap_id:', post.post.ap_id);
-        }
-    }
-    // Priority 3: Extract from community actor_id
-    else if (post.community.actor_id) {
-        try {
-            const url = new URL(post.community.actor_id);
-            postInstance = url.hostname;
-        } catch (e) {
-            console.warn('Could not parse community actor_id:', post.community.actor_id);
-        }
-    }
-    
-    // Store instance on the card for debugging
-    card.dataset.instance = postInstance;
-    
-    const isNsfw = post.post.nsfw || post.community.nsfw;
-    const isOwnPost = currentUser && post.creator.name === currentUser;
-    
-    // Build the card HTML
-    let cardHTML = `
-        <div class="status-header">
-            <div class="status-avatar">
-                ${post.creator.avatar ? 
-                    `<img src="${post.creator.avatar}" alt="${post.creator.name}" onerror="this.src='/images/default-avatar.png'">` : 
-                    `<div class="avatar-placeholder">${post.creator.name[0].toUpperCase()}</div>`
-                }
-            </div>
-            <div class="status-meta">
-                <a href="#" class="status-author lemmy-user-link" data-username="${post.creator.name}" data-instance="${post.creator.actor_id ? new URL(post.creator.actor_id).hostname : postInstance}">
-                    ${post.creator.display_name || post.creator.name}
-                </a>
-                <span class="status-username">@${post.creator.name}</span>
-                <span class="status-community">
-                    in <a href="#" class="lemmy-community-link" data-community="${post.community.name}@${postInstance}">
-                        ${post.community.title || post.community.name}
-                    </a>
-                </span>
-                <div class="status-time">${formatTime(post.post.published)}</div>
+    const isLoggedIn = localStorage.getItem('lemmy_jwt');
+    let optionsMenuHTML = `
+        <div class="post-options-container">
+            <button class="post-options-btn">${ICONS.more}</button>
+            <div class="post-options-menu">
+                <button data-action="share-post">Share Post</button>
+                ${isLoggedIn ? `<button data-action="block-community" data-community-id="${post.community.id}">Block Community</button>` : ''}
             </div>
         </div>
-        
-        <div class="status-content">
-            <h3 class="lemmy-post-title">${escapeHtml(post.post.name)}</h3>
     `;
-    
-    // Handle NSFW content
-    if (isNsfw && settings?.hideNsfw) {
-        cardHTML += `
-            <div class="nsfw-warning">
-                <p>NSFW Content Hidden</p>
-                <button class="button-secondary show-nsfw-btn">Show</button>
+
+    const processedBody = processSpoilers(post.post.body || '');
+    const fullBodyHtml = new showdown.Converter().makeHtml(processedBody);
+    let bodyHTML = fullBodyHtml;
+    const wordCount = post.post.body ? post.post.body.split(/\s+/).length : 0;
+
+    if (wordCount > 30) {
+        const truncatedText = post.post.body.split(/\s+/).slice(0, 30).join(' ');
+        bodyHTML = new showdown.Converter().makeHtml(processSpoilers(truncatedText)) + '... <a href="#" class="read-more-link">Read More</a>';
+    }
+
+    // Create title HTML - make it clickable for link posts
+    let titleHTML;
+    if (isLinkPost) {
+        const domain = new URL(url).hostname.replace('www.', '');
+        titleHTML = `
+            <div class="lemmy-title-container">
+                <h3 class="lemmy-title">
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="lemmy-link-title">${post.post.name}</a>
+                </h3>
+                <div class="link-domain-indicator">
+                    <svg class="icon link-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg>
+                    <span class="domain-text">${domain}</span>
+                </div>
             </div>
         `;
     } else {
-        // Add post body if exists
-        if (post.post.body) {
-            const converter = new showdown.Converter();
-            cardHTML += `<div class="lemmy-post-body">${converter.makeHtml(post.post.body)}</div>`;
-        }
-        
-        // Add URL preview if exists
-        if (post.post.url) {
-            if (post.post.thumbnail_url) {
-                cardHTML += `
-                    <div class="lemmy-link-preview">
-                        <img src="${post.post.thumbnail_url}" alt="Preview" onerror="this.style.display='none'">
-                        <a href="${post.post.url}" target="_blank" rel="noopener">${new URL(post.post.url).hostname}</a>
-                    </div>
-                `;
-            } else {
-                cardHTML += `
-                    <div class="lemmy-link-preview">
-                        <a href="${post.post.url}" target="_blank" rel="noopener">${post.post.url}</a>
-                    </div>
-                `;
-            }
-        }
+        titleHTML = `<h3 class="lemmy-title">${post.post.name}</h3>`;
     }
-    
-    cardHTML += `
+
+    card.innerHTML = `
+        ${crosspostTag}
+        <div class="status-body-content">
+            <div class="status-header">
+                <a href="#" class="status-header-main" data-action="view-community">
+                    <img src="${post.community.icon || './images/php.png'}" alt="${post.community.name} icon" class="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <div>
+                        <span class="display-name">${post.community.name}</span>
+                        <span class="acct">posted by <span class="creator-link" data-action="view-creator">${post.creator.name}</span> · ${formatTimestamp(post.post.published)}</span>
+                    </div>
+                </a>
+                <div class="status-header-side">
+                    <button class="share-post-btn" title="Share Post" data-action="share-header">${ICONS.share}</button>
+                    ${optionsMenuHTML}
+                    <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
+                </div>
+            </div>
+            <div class="status-content">
+                ${titleHTML}
+                ${mediaHTML}
+                <div class="lemmy-post-body">${bodyHTML}</div>
+            </div>
         </div>
-        
-        <div class="status-actions">
-            <button class="icon-button${post.my_vote === 1 ? ' active' : ''}" data-action="upvote">
-                ${ICONS.upvote}
-            </button>
-            <span class="lemmy-score">${post.counts.score}</span>
-            <button class="icon-button${post.my_vote === -1 ? ' active' : ''}" data-action="downvote">
-                ${ICONS.downvote}
-            </button>
-            <button class="icon-button" data-action="reply">
-                ${ICONS.reply}
-                <span class="action-count">${post.counts.comments}</span>
-            </button>
-            <button class="icon-button${post.saved ? ' active' : ''}" data-action="save">
-                ${post.saved ? ICONS.bookmarkFilled : ICONS.bookmark}
-            </button>
-            <button class="icon-button" data-action="share">
-                ${ICONS.share}
-            </button>
-            <button class="icon-button" data-action="more">
-                ${ICONS.more}
-            </button>
+        <div class="status-footer">
+            <div class="lemmy-vote-cluster">
+                <button class="status-action lemmy-vote-btn ${post.my_vote === 1 ? 'active' : ''}" data-action="upvote" data-score="1" ${!isLoggedIn ? 'title="Login to vote"' : 'title="Upvote"'}>${ICONS.lemmyUpvote}</button>
+                <span class="lemmy-score">${post.counts.score}</span>
+                <button class="status-action lemmy-vote-btn ${post.my_vote === -1 ? 'active' : ''}" data-action="downvote" data-score="-1" ${!isLoggedIn ? 'title="Login to vote"' : 'title="Downvote"'}>${ICONS.lemmyDownvote}</button>
+            </div>
+            <button class="status-action" data-action="quick-reply" ${!isLoggedIn ? 'title="Login to reply"' : 'title="Reply"'}>${ICONS.reply}</button>
+            <button class="status-action" data-action="view-post">${ICONS.comments} ${post.counts.comments}</button>
+            <button class="status-action" data-action="share">${ICONS.share}</button>
+            <button class="status-action ${post.saved ? 'active' : ''}" data-action="save" ${!isLoggedIn ? 'title="Login to save"' : 'title="Save"'}>${ICONS.bookmark}</button>
+        </div>
+        <div class="quick-reply-container">
+            <div class="quick-reply-box">
+                <textarea placeholder="Add a comment..."></textarea>
+                <button class="button-primary">Post</button>
+            </div>
         </div>
     `;
     
-    card.innerHTML = cardHTML;
-    
-    // Add event listeners
-    
-    // Click on the card to view the post
-    card.addEventListener('click', (e) => {
-        // Don't trigger if clicking on buttons or links
-        if (e.target.closest('button') || e.target.closest('a')) return;
-        
-        // Create a complete post object with instance info
-        const completePost = {
-            ...post,
-            _instance: postInstance // Pass the instance info
-        };
-        
-        console.log('Opening post from instance:', postInstance, 'Post ID:', post.post.id);
-        actions.showLemmyPostDetail(completePost);
-    });
-    
-    // Community link
-    const communityLink = card.querySelector('.lemmy-community-link');
-    if (communityLink) {
-        communityLink.addEventListener('click', (e) => {
-            e.preventDefault();
+    card.querySelectorAll('.spoiler-toggle-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
             e.stopPropagation();
-            actions.showLemmyCommunity(communityLink.dataset.community);
-        });
-    }
-    
-    // User link
-    const userLink = card.querySelector('.lemmy-user-link');
-    if (userLink) {
-        userLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const username = userLink.dataset.username;
-            const instance = userLink.dataset.instance;
-            actions.showLemmyProfile(`${username}@${instance}`);
-        });
-    }
-    
-    // Action buttons
-    card.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = btn.dataset.action;
-            
-            switch(action) {
-                case 'upvote':
-                    if (!currentUser) {
-                        showWarningToast('Please login to vote');
-                        return;
-                    }
-                    actions.lemmyVote(post.post.id, post.my_vote === 1 ? 0 : 1, card);
-                    break;
-                    
-                case 'downvote':
-                    if (!currentUser) {
-                        showWarningToast('Please login to vote');
-                        return;
-                    }
-                    actions.lemmyVote(post.post.id, post.my_vote === -1 ? 0 : -1, card);
-                    break;
-                    
-                case 'reply':
-                    actions.showLemmyPostDetail({...post, _instance: postInstance});
-                    break;
-                    
-                case 'save':
-                    if (!currentUser) {
-                        showWarningToast('Please login to save posts');
-                        return;
-                    }
-                    actions.lemmySave(post.post.id, btn);
-                    break;
-                    
-                case 'share':
-                    actions.sharePost({...post, _instance: postInstance});
-                    break;
-                    
-                case 'more':
-                    showPostMenu(e, post, isOwnPost, actions, postInstance);
-                    break;
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('.icon');
+            content.classList.toggle('visible');
+            if (content.classList.contains('visible')) {
+                icon.innerHTML = ICONS.lemmyUpvote.match(/<path.*>/)[0];
+            } else {
+                icon.innerHTML = ICONS.lemmyDownvote.match(/<path.*>/)[0];
             }
         });
     });
+
+    if (wordCount > 30) {
+        const bodyContainer = card.querySelector('.lemmy-post-body');
+        const readMoreLink = bodyContainer.querySelector('.read-more-link');
+        if (readMoreLink) {
+            readMoreLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                bodyContainer.innerHTML = fullBodyHtml;
+            });
+        }
+    }
+
+    const mediaImg = card.querySelector('.status-media img');
+    if (mediaImg) {
+        // Only add image modal functionality for non-link posts
+        if (!isLinkPost) {
+            mediaImg.style.cursor = 'pointer';
+            mediaImg.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showImageModal(post.post.url || mediaImg.src);
+            });
+        }
+    }
     
-    // NSFW show button
-    const nsfwBtn = card.querySelector('.show-nsfw-btn');
-    if (nsfwBtn) {
-        nsfwBtn.addEventListener('click', (e) => {
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
+        if (post.cross_post) {
+            actions.showMergedPost(post);
+        } else {
+            actions.showLemmyPostDetail(post);
+        }
+    });
+
+    card.querySelector('[data-action="view-community"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyCommunity(`${post.community.name}@${new URL(post.community.actor_id).hostname}`);
+    });
+    
+    card.querySelector('[data-action="view-creator"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        actions.showLemmyProfile(`${post.creator.name}@${new URL(post.creator.actor_id).hostname}`);
+    });
+
+    // Header share button
+    const headerShareBtn = card.querySelector('[data-action="share-header"]');
+    if (headerShareBtn) {
+        headerShareBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
-            const warning = card.querySelector('.nsfw-warning');
-            warning.style.display = 'none';
+            actions.sharePost(post);
+        });
+    }
+    
+    let pressTimer;
+    card.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            const isOwn = post.creator.name === localStorage.getItem('lemmy_username');
+            let menuItems = [
+                { label: `Share Post`, action: () => actions.sharePost(post) }, // Always available
+            ];
             
-            // Re-render the content
-            const contentDiv = card.querySelector('.status-content');
-            let newContent = `<h3 class="lemmy-post-title">${escapeHtml(post.post.name)}</h3>`;
-            
-            if (post.post.body) {
-                const converter = new showdown.Converter();
-                newContent += `<div class="lemmy-post-body">${converter.makeHtml(post.post.body)}</div>`;
-            }
-            
-            if (post.post.url) {
-                if (post.post.thumbnail_url) {
-                    newContent += `
-                        <div class="lemmy-link-preview">
-                            <img src="${post.post.thumbnail_url}" alt="Preview">
-                            <a href="${post.post.url}" target="_blank" rel="noopener">${new URL(post.post.url).hostname}</a>
-                        </div>
-                    `;
-                } else {
-                    newContent += `
-                        <div class="lemmy-link-preview">
-                            <a href="${post.post.url}" target="_blank" rel="noopener">${post.post.url}</a>
-                        </div>
-                    `;
+            if (isLoggedIn) {
+                menuItems.push(
+                    { label: `${ICONS.delete} Block @${post.creator.name}`, action: () => {
+                        if (confirm('Are you sure you want to block this user?')) {
+                            actions.lemmyBlockUser(post.creator.id, true);
+                        }
+                    }},
+                    { label: `${ICONS.delete} Block ${post.community.name}`, action: () => {
+                        if (confirm('Are you sure you want to block this community?')) {
+                            actions.lemmyBlockCommunity(post.community.id, true);
+                        }
+                    }}
+                );
+                
+                if (isOwn) {
+                     menuItems.push(
+                        { label: `${ICONS.edit} Edit`, action: () => {
+                            const replyContainer = card.querySelector('.quick-reply-container');
+                            replyContainer.style.display = 'block';
+                            const textarea = replyContainer.querySelector('textarea');
+                            textarea.value = post.post.body;
+                            textarea.focus();
+                            const button = replyContainer.querySelector('button');
+                            button.textContent = 'Save';
+                            button.onclick = async (e) => {
+                                e.stopPropagation();
+                                const newContent = textarea.value.trim();
+                                if (newContent) {
+                                    await actions.lemmyEditPost(post.post.id, newContent);
+                                    replyContainer.style.display = 'none';
+                                    button.textContent = 'Post';
+                                }
+                            };
+                        }},
+                        { label: `${ICONS.delete} Delete`, action: () => {
+                            if (confirm('Are you sure you want to delete this post?')) {
+                                actions.lemmyDeletePost(post.post.id);
+                            }
+                        }}
+                    );
                 }
             }
+            actions.showContextMenu(e, menuItems);
+        }, 500);
+    });
+
+    card.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const isOwn = post.creator.name === localStorage.getItem('lemmy_username');
+        let menuItems = [
+            { label: `Share Post`, action: () => actions.sharePost(post) }, // Always available
+        ];
+        
+        if (isLoggedIn) {
+            menuItems.push(
+                { label: `${ICONS.delete} Block @${post.creator.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this user?')) {
+                        actions.lemmyBlockUser(post.creator.id, true);
+                    }
+                }},
+                { label: `${ICONS.delete} Block ${post.community.name}`, action: () => {
+                    if (confirm('Are you sure you want to block this community?')) {
+                        actions.lemmyBlockCommunity(post.community.id, true);
+                    }
+                }}
+            );
             
-            contentDiv.innerHTML = newContent;
+            if (isOwn) {
+                 menuItems.push(
+                    { label: `${ICONS.edit} Edit`, action: () => {
+                        const replyContainer = card.querySelector('.quick-reply-container');
+                        replyContainer.style.display = 'block';
+                        const textarea = replyContainer.querySelector('textarea');
+                        textarea.value = post.post.body;
+                        textarea.focus();
+                        const button = replyContainer.querySelector('button');
+                        button.textContent = 'Save';
+                        button.onclick = async (e) => {
+                            e.stopPropagation();
+                            const newContent = textarea.value.trim();
+                            if (newContent) {
+                                await actions.lemmyEditPost(post.post.id, newContent);
+                                replyContainer.style.display = 'none';
+                                button.textContent = 'Post';
+                            }
+                        };
+                    }},
+                    { label: `${ICONS.delete} Delete`, action: () => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            actions.lemmyDeletePost(post.post.id);
+                        }
+                    }}
+                );
+            }
+        }
+        actions.showContextMenu(e, menuItems);
+    });
+    
+    card.querySelectorAll('.status-footer .status-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
+            switch(action) {
+                case 'upvote':
+                case 'downvote':
+                    if (!isLoggedIn) {
+                        showToast('Please log in to vote');
+                        return;
+                    }
+                    const score = parseInt(e.currentTarget.dataset.score, 10);
+                    actions.lemmyVote(post.post.id, score, card);
+                    break;
+                case 'save':
+                    if (!isLoggedIn) {
+                        showToast('Please log in to save posts');
+                        return;
+                    }
+                    actions.lemmySave(post.post.id, e.currentTarget);
+                    break;
+                case 'quick-reply':
+                    if (!isLoggedIn) {
+                        showToast('Please log in to reply');
+                        return;
+                    }
+                    const replyContainer = card.querySelector('.quick-reply-container');
+                    const isVisible = replyContainer.style.display === 'block';
+
+                    document.querySelectorAll('.quick-reply-container').forEach(container => {
+                        container.style.display = 'none';
+                    });
+
+                    replyContainer.style.display = isVisible ? 'none' : 'block';
+                    if (!isVisible) {
+                        replyContainer.querySelector('textarea').focus();
+                    }
+                    break;
+                case 'view-post':
+                    if (post.cross_post) {
+                        actions.showMergedPost(post);
+                    } else {
+                        actions.showLemmyPostDetail(post);
+                    }
+                    break;
+                case 'share':
+                    actions.sharePost(post);
+                    break;
+            }
+        });
+    });
+    
+    card.querySelector('.quick-reply-box button').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const textarea = card.querySelector('.quick-reply-box textarea');
+        const content = textarea.value.trim();
+        if(!content) return;
+        if (!isLoggedIn) {
+            showToast('Please log in to comment');
+            return;
+        }
+
+        try {
+            await actions.lemmyPostComment({ content: content, post_id: post.post.id });
+            textarea.value = '';
+            card.querySelector('.quick-reply-container').style.display = 'none';
+        } catch(err) {
+            alert('Failed to post comment.');
+        }
+    });
+    
+    card.querySelector('.quick-reply-box textarea').addEventListener('click', (e) => e.stopPropagation());
+
+    const optionsBtn = card.querySelector('.post-options-btn');
+    if (optionsBtn) {
+        const menu = card.querySelector('.post-options-menu');
+        optionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            if (action === 'block-community') {
+                const communityId = parseInt(e.target.dataset.communityId, 10);
+                if (confirm('Are you sure you want to block this community?')) {
+                    actions.lemmyBlockCommunity(communityId, true);
+                }
+            } else if (action === 'share-post') {
+                actions.sharePost(post);
+            }
+            menu.style.display = 'none';
         });
     }
-    
+
     return card;
 }
 
-function showPostMenu(event, post, isOwnPost, actions, postInstance) {
-    const items = [];
-    
-    if (isOwnPost) {
-        items.push(
-            { label: 'Edit Post', action: () => editPost(post, actions) },
-            { label: 'Delete Post', action: () => actions.lemmyDeletePost(post.post.id) }
-        );
-    } else {
-        items.push(
-            { label: 'Block User', action: () => actions.lemmyBlockUser(post.creator.id, true) },
-            { label: 'Block Community', action: () => actions.lemmyBlockCommunity(post.community.id, true) }
-        );
+export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySuccess) {
+    if (!localStorage.getItem('lemmy_jwt') && !loadMore) {
+        renderLoginPrompt(state.timelineDiv, 'lemmy', onLemmySuccess);
+        return;
+    }
+
+    if (state.isLoadingMore) return;
+
+    if (!loadMore) {
+        window.scrollTo(0, 0);
     }
     
-    items.push(
-        { label: `Open on ${postInstance}`, action: () => window.open(`https://${postInstance}/post/${post.post.id}`, '_blank') },
-        { label: 'Copy Link', action: () => {
-            navigator.clipboard.writeText(`https://${postInstance}/post/${post.post.id}`);
-            showInfoToast('Link copied!');
-        }}
-    );
-    
-    actions.showContextMenu(event, items);
-}
+    state.isLoadingMore = true;
+    if (loadMore) state.scrollLoader.classList.add('loading');
+    else document.getElementById('refresh-btn').classList.add('loading');
 
-function editPost(post, actions) {
-    const newBody = prompt('Edit post body:', post.post.body || '');
-    if (newBody !== null) {
-        actions.lemmyEditPost(post.post.id, newBody);
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance');
+        if (!lemmyInstance) {
+            throw new Error("Lemmy instance not found. Please log in.");
+        }
+
+        // Directly pass the feed type from the state to the API.
+        // The Lemmy API accepts "All", "Local", and "Subscribed" for the type_ parameter.
+        const params = {
+            sort: state.currentLemmySort,
+            page: loadMore ? state.lemmyPage + 1 : 1,
+            limit: 3, // Increased limit for a better user experience
+            type_: state.currentLemmyFeed 
+        };
+        
+        const response = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', params);
+        const posts = response.data.posts;
+
+        if (!loadMore) {
+            state.timelineDiv.innerHTML = '';
+        }
+
+        if (posts && posts.length > 0) {
+            if (loadMore) {
+                state.lemmyPage++;
+            } else {
+                state.lemmyPage = 1;
+            }
+            posts.forEach(post_view => {
+                const postCard = renderLemmyCard(post_view, actions);
+                state.timelineDiv.appendChild(postCard);
+            });
+            state.lemmyHasMore = true;
+        } else {
+            if (!loadMore) {
+                state.timelineDiv.innerHTML = '<p>Nothing to see here.</p>';
+            }
+            state.lemmyHasMore = false;
+        }
+
+        if (!state.lemmyHasMore) {
+            state.scrollLoader.innerHTML = '<p>No more posts.</p>';
+        } else {
+             state.scrollLoader.innerHTML = '<p></p>';
+        }
+
+    } catch (error) {
+        console.error('Failed to fetch Lemmy feed:', error);
+        actions.showToast(`Could not load Lemmy feed: ${error.message}`);
+        state.timelineDiv.innerHTML = `<p>Error loading feed.</p>`;
+    } finally {
+        state.isLoadingMore = false;
+        if (loadMore) state.scrollLoader.classList.remove('loading');
+        else document.getElementById('refresh-btn').classList.remove('loading');
     }
-}
-
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now - date;
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    if (days < 7) return `${days}d`;
-    
-    return date.toLocaleDateString();
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
