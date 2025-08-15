@@ -108,6 +108,18 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
     // Use the base renderer to create the main card
     const commentCard = renderBaseLemmyComment(commentView, state, actions);
 
+    // Remove the username from the header since we're on the user's profile
+    const usernameElement = commentCard.querySelector('.username-instance');
+    if (usernameElement) {
+        usernameElement.style.display = 'none';
+    }
+    
+    // Also remove the OP badge if present
+    const opBadge = commentCard.querySelector('.op-badge');
+    if (opBadge) {
+        opBadge.style.display = 'none';
+    }
+
     // Truncate post title to 4 words
     const postTitle = commentView.post.name;
     const truncatedTitle = postTitle.split(' ').slice(0, 4).join(' ') + (postTitle.split(' ').length > 4 ? '...' : '');
