@@ -3,6 +3,17 @@ import { showLoadingBar, hideLoadingBar, showToast, showErrorToast, showInfoToas
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 
+// Check if showdown is available, if not create a fallback
+const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : {
+    makeHtml: (text) => {
+        // Basic fallback markdown to HTML conversion
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+};
+
 export async function fetchLemmyFeed(state, actions, loadMore = false, onLoginSuccess = null) {
     if (state.isLoadingMore && loadMore) return;
     
