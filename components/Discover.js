@@ -56,6 +56,12 @@ export async function loadMoreLemmyCommunities(state, actions) {
     }
 }
 
+export async function loadMoreMastodonTrendingPosts(state, actions) {
+    if (state.mastodonTrendingHasMore) {
+        await fetchMastodonTrendingPosts(state, actions);
+    }
+}
+
 function switchDiscoverTab(tabName, state) {
     state.currentDiscoverTab = tabName;
     document.querySelectorAll('.discover-tab-content').forEach(tab => {
@@ -199,7 +205,7 @@ export async function fetchMastodonTrendingPosts(state, actions, append = false)
                 listContainer.innerHTML = '<p>No trending posts found.</p>';
             }
         }
-    } catch (error) {
+    } catch (error)_ {
         console.error('Failed to fetch Mastodon trending posts:', error);
         listContainer.innerHTML = '<p>Could not load trending posts.</p>';
     } finally {
