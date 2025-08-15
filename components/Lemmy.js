@@ -69,28 +69,13 @@ export function renderLemmyCard(post, actions) {
     `;
 
     const processedBody = processSpoilers(post.post.body || '');
-    let fullBodyHtml = new showdown.Converter().makeHtml(processedBody);
-    
-    // Remove SVG elements from the body
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = fullBodyHtml;
-    tempDiv.querySelectorAll('svg').forEach(svg => svg.remove());
-    fullBodyHtml = tempDiv.innerHTML;
-    
+    const fullBodyHtml = new showdown.Converter().makeHtml(processedBody);
     let bodyHTML = fullBodyHtml;
     const wordCount = post.post.body ? post.post.body.split(/\s+/).length : 0;
 
     if (wordCount > 30) {
         const truncatedText = post.post.body.split(/\s+/).slice(0, 30).join(' ');
-        let truncatedHtml = new showdown.Converter().makeHtml(processSpoilers(truncatedText));
-        
-        // Remove SVG elements from truncated version too
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = truncatedHtml;
-        tempDiv.querySelectorAll('svg').forEach(svg => svg.remove());
-        truncatedHtml = tempDiv.innerHTML;
-        
-        bodyHTML = truncatedHtml + '... <a href="#" class="read-more-link">Read More</a>';
+        bodyHTML = new showdown.Converter().makeHtml(processSpoilers(truncatedText)) + '... <a href="#" class="read-more-link">Read More</a>';
     }
 
     // Create title HTML - make it clickable for link posts
