@@ -502,27 +502,38 @@ showLemmyPostDetail: async (post) => {
         },
         
         showHomeTimeline: async () => {
-            showLoadingBar();
-            refreshSpinner.style.display = 'block';
+    showLoadingBar();
+    refreshSpinner.style.display = 'block';
 
-            const defaultStartPage = localStorage.getItem('defaultStartPage') || 'lemmy';
-            const defaultFeedType = localStorage.getItem('defaultFeedType') || 'Subscribed';
-            const defaultLemmySort = localStorage.getItem('lemmySortType') || 'Hot';
+    // Check if user is logged in
+    const hasLemmyAuth = localStorage.getItem('lemmy_jwt');
+    const hasMastodonAuth = state.accessToken;
+    
+    state.router.navigate('/');
 
-            state.router.navigate('/');
+    if (!hasLemmyAuth && !hasMastodonAuth) {
+        // Non-logged-in user - show Lemmy All by default
+        console.log('No auth detected, showing public feed');
+        await actions.showLemmyFeed('All', 'Hot');
+    } else {
+        // Logged-in user - use their preferences
+        const defaultStartPage = localStorage.getItem('defaultStartPage') || 'lemmy';
+        const defaultFeedType = localStorage.getItem('defaultFeedType') || 'Subscribed';
+        const defaultLemmySort = localStorage.getItem('lemmySortType') || 'Hot';
 
-            if (defaultStartPage === 'lemmy') {
-                actions.showLemmyFeed(defaultFeedType, defaultLemmySort);
-            } else {
-                let timeline = 'home';
-                if (defaultFeedType === 'All') timeline = 'public';
-                if (defaultFeedType === 'Local') timeline = 'public?local=true';
-                actions.showMastodonTimeline(timeline);
-            }
+        if (defaultStartPage === 'lemmy') {
+            await actions.showLemmyFeed(defaultFeedType, defaultLemmySort);
+        } else {
+            let timeline = 'home';
+            if (defaultFeedType === 'All') timeline = 'public';
+            if (defaultFeedType === 'Local') timeline = 'public?local=true';
+            await actions.showMastodonTimeline(timeline);
+        }
+    }
 
-            hideLoadingBar();
-            refreshSpinner.style.display = 'none';
-        },
+    hideLoadingBar();
+    refreshSpinner.style.display = 'none';
+},
         
         showComposeModal: () => {
             showComposeModal(state);
