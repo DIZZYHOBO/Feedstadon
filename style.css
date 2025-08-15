@@ -1404,8 +1404,7 @@ button:disabled {
     color: var(--font-color);
 }
 .lemmy-comment-on-profile {
-    border-left: 3px solid var(--accent-color) !important;
-    background-color: var(--primary-color); /* Added background color */
+    background-color: var(--primary-color); /* Keeps background color */
     border: 1px solid var(--border-color);
     padding: 10px;
     margin-bottom: 10px;
