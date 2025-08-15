@@ -491,29 +491,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         navigateToLoopsProfile: (username, instance) => {
             actions.showLoopsProfile(username, instance);
         },
-        // **FIX:** Added a comma here to resolve the SyntaxError
         handleSearchResultClick: (account) => {
-            // Detect platform based on account info
             const acct = account.acct || '';
             
-            // Check if it's a Loops instance
             if (acct.includes('loops.video') || acct.includes('loops.') || 
                 account.url?.includes('loops.video') || account.url?.includes('loops.')) {
-                // Extract username and instance
                 const parts = acct.split('@');
                 const username = parts[0] || account.username;
                 const instance = parts[1] || 'loops.video';
                 actions.showLoopsProfile(username, instance);
             } else if (acct.includes('@')) {
-                // Existing Mastodon logic
                 actions.showProfilePage('mastodon', account.id);
             } else {
-                // Existing Lemmy logic
                 actions.showLemmyCommunity(account.acct);
             }
         },
-
-
         deleteStatus: async (statusId) => {
             try {
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
@@ -529,7 +521,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'PUT',
                     body: { status: newContent }
                 });
-                // Update the post in the UI
                 const postCard = document.querySelector(`.status[data-id="${statusId}"]`);
                 if (postCard) {
                     const contentDiv = postCard.querySelector('.status-content');
@@ -782,7 +773,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 hideLoadingBar();
             }
         },
-        // Add sharing functionality
         sharePost: (postView) => {
             const url = generateShareableUrl('lemmy-post', postView);
             if (navigator.share) {
@@ -871,7 +861,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const lemmyUsername = localStorage.getItem('lemmy_username');
         const lemmyInstance = localStorage.getItem('lemmy_instance');
         if (lemmyUsername && lemmyInstance) {
-            // FIX: Add the instance to the username
             const userAcct = `${lemmyUsername}@${lemmyInstance}`;
             actions.showLemmyProfile(userAcct);
         } else {
@@ -893,46 +882,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateNotificationBell();
     }
     
-    // Check for share parameters
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('share') === 'lemmy-post') {
         const instance = urlParams.get('instance');
         const postId = urlParams.get('postId');
         
-        console.log('Share params:', { instance, postId }); // Debug log
-        
         if (instance && postId) {
             showLoadingBar();
-            
-            // Ensure we have just the hostname and construct the full URL properly
-            const cleanInstance = instance.replace(/^https?:\/\//, ''); // Remove protocol if present
+            const cleanInstance = instance.replace(/^https?:\/\//, '');
             const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
-            
-            console.log('Fetching from:', apiUrl); // Debug log
             
             fetch(apiUrl)
                 .then(response => {
-                    console.log('Response status:', response.status); // Debug log
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('API Response:', data); // Debug log
                     if (data.post_view) {
-                        // Use the new public post viewing action
                         actions.showPublicLemmyPost(data.post_view, cleanInstance);
                     } else {
                         showErrorToast('Post not found or deleted');
-                        // Don't try to show home timeline if user isn't logged in
                         switchView('timeline');
                         state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
                     }
                     hideLoadingBar();
                 })
                 .catch((error) => {
-                    console.error('Fetch error:', error); // Debug log
                     showErrorToast('Could not load shared post: ' + error.message);
                     switchView('timeline');
                     state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
@@ -944,36 +919,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const postId = urlParams.get('postId');
         const commentId = urlParams.get('commentId');
         
-        console.log('Comment share params:', { instance, postId, commentId }); // Debug log
-        
         if (instance && postId) {
             showLoadingBar();
-            
-            // Ensure we have just the hostname and construct the full URL properly
-            const cleanInstance = instance.replace(/^https?:\/\//, ''); // Remove protocol if present
+            const cleanInstance = instance.replace(/^https?:\/\//, '');
             const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
-            
-            console.log('Fetching comment post from:', apiUrl); // Debug log
             
             fetch(apiUrl)
                 .then(response => {
-                    console.log('Comment response status:', response.status); // Debug log
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Comment API Response:', data); // Debug log
                     if (data.post_view) {
-                        // Use the new public post viewing action
                         actions.showPublicLemmyPost(data.post_view, cleanInstance);
-                        // Scroll to comment after page loads
                         setTimeout(() => {
                             const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
                             if (commentEl) {
                                 commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                // Briefly highlight the comment
                                 commentEl.style.backgroundColor = 'var(--accent-color)';
                                 commentEl.style.opacity = '0.3';
                                 setTimeout(() => {
@@ -990,7 +952,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     hideLoadingBar();
                 })
                 .catch((error) => {
-                    console.error('Comment fetch error:', error); // Debug log
                     showErrorToast('Could not load shared comment: ' + error.message);
                     switchView('timeline');
                     state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
@@ -998,11 +959,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
         }
     } else if (initialView === 'timeline') {
-        // Only try to show home timeline if user has credentials
         if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
             actions.showHomeTimeline();
         } else {
-            // Show a welcome screen for unauthenticated users
             switchView('timeline');
             state.timelineDiv.innerHTML = `
                 <div style="text-align: center; padding: 40px;">
@@ -1036,7 +995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showMastodonTimeline('home');
         } else if (target.dataset.timeline === 'home') {
             actions.showHomeTimeline();
-        } else if (target.dataset.timeline === 'merged') { // Handle the new merged link
+        } else if (target.dataset.timeline === 'merged') {
             actions.showMergedTimeline();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
