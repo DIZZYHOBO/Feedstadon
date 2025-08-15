@@ -1,4 +1,4 @@
-// components/Router.js - Complete version with federation and error handling
+// components/Router.js - Full support for non-logged-in users
 import { apiFetch } from './api.js';
 import { showLoadingBar, hideLoadingBar } from './ui.js';
 
@@ -112,19 +112,13 @@ export class Router {
                     break;
                     
                 case 'local':
-                    if (this.state.currentLemmyFeed) {
-                        await this.actions.showLemmyFeed('Local');
-                    } else {
-                        await this.actions.showMastodonTimeline('public?local=true');
-                    }
+                    // For non-logged-in users, show Lemmy Local by default
+                    await this.actions.showLemmyFeed('Local');
                     break;
                     
                 case 'all':
-                    if (this.state.currentLemmyFeed) {
-                        await this.actions.showLemmyFeed('All');
-                    } else {
-                        await this.actions.showMastodonTimeline('public');
-                    }
+                    // For non-logged-in users, show Lemmy All by default
+                    await this.actions.showLemmyFeed('All');
                     break;
                     
                 case 'merged':
@@ -234,12 +228,17 @@ export class Router {
                 throw new Error(`Cannot connect to ${instance}. The instance may be down or does not exist.`);
             }
 
-            // Try without auth first (for public posts)
+            // ALWAYS try without auth first for public posts
             let url = `https://${instance}/api/v3/post?id=${postId}`;
             let response = await fetch(url);
+            let data = null;
             
-            // If it fails with 400/401, might need auth for private communities
-            if (!response.ok && (response.status === 400 || response.status === 401)) {
+            // If successful without auth, use that data
+            if (response.ok) {
+                data = await response.json();
+            } 
+            // Only try with auth if the first attempt failed AND user is logged in to same instance
+            else if (!response.ok && (response.status === 400 || response.status === 401)) {
                 const jwt = localStorage.getItem('lemmy_jwt');
                 const userInstance = localStorage.getItem('lemmy_instance');
                 
@@ -248,14 +247,21 @@ export class Router {
                     
                     // Only use JWT if it's for the same instance
                     if (cleanUserInstance === instance || userInstance.includes(instance)) {
+                        console.log('Trying with auth for private community...');
                         url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
-                        response = await fetch(url);
+                        const authResponse = await fetch(url);
+                        
+                        if (authResponse.ok) {
+                            data = await authResponse.json();
+                        } else {
+                            response = authResponse; // Update response for error handling
+                        }
                     }
                 }
             }
             
-            // Parse error response if not ok
-            if (!response.ok) {
+            // If we still don't have data, handle the error
+            if (!data) {
                 let errorMessage = '';
                 try {
                     const errorText = await response.text();
@@ -265,7 +271,7 @@ export class Router {
                     if (errorText.includes('couldnt_find_post') || response.status === 404) {
                         errorMessage = 'Post not found. It may have been deleted or is not federated to this instance.';
                     } else if (errorText.includes('not_logged_in')) {
-                        errorMessage = 'This post requires authentication to view.';
+                        errorMessage = 'This post is in a private community that requires authentication to view.';
                     } else if (response.status === 400) {
                         errorMessage = `This post is not available on ${instance}.`;
                     } else {
@@ -278,10 +284,10 @@ export class Router {
                 throw new Error(errorMessage);
             }
             
-            const data = await response.json();
-            
+            // Successfully got data
             if (data.post_view) {
-                await this.actions.showLemmyPostDetail(data.post_view);
+                // For non-logged-in users, show the public view
+                await this.actions.showPublicLemmyPost(data.post_view, instance);
             } else {
                 throw new Error('Post data not found in response');
             }
@@ -329,12 +335,16 @@ export class Router {
 
             // Fetch the post first if we have postId
             if (postId) {
-                // Try without auth first
+                // ALWAYS try without auth first
                 let url = `https://${instance}/api/v3/post?id=${postId}`;
                 let response = await fetch(url);
+                let data = null;
                 
-                // Try with auth if needed and same instance
-                if (!response.ok && (response.status === 400 || response.status === 401)) {
+                if (response.ok) {
+                    data = await response.json();
+                }
+                // Only try with auth if needed and user is logged in to same instance
+                else if (!response.ok && (response.status === 400 || response.status === 401)) {
                     const jwt = localStorage.getItem('lemmy_jwt');
                     const userInstance = localStorage.getItem('lemmy_instance');
                     
@@ -343,12 +353,15 @@ export class Router {
                         
                         if (cleanUserInstance === instance || userInstance.includes(instance)) {
                             url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
-                            response = await fetch(url);
+                            const authResponse = await fetch(url);
+                            if (authResponse.ok) {
+                                data = await authResponse.json();
+                            }
                         }
                     }
                 }
                 
-                if (!response.ok) {
+                if (!data) {
                     const errorText = await response.text();
                     console.error('Lemmy API error:', errorText);
                     
@@ -359,10 +372,8 @@ export class Router {
                     }
                 }
                 
-                const data = await response.json();
-                
                 if (data.post_view) {
-                    await this.actions.showLemmyPostDetail(data.post_view);
+                    await this.actions.showPublicLemmyPost(data.post_view, instance);
                     // Scroll to comment after page loads
                     setTimeout(() => {
                         const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
@@ -381,9 +392,13 @@ export class Router {
                 // Direct comment link without post context
                 let url = `https://${instance}/api/v3/comment?id=${commentId}`;
                 let response = await fetch(url);
+                let data = null;
                 
+                if (response.ok) {
+                    data = await response.json();
+                }
                 // Try with auth if needed
-                if (!response.ok && (response.status === 400 || response.status === 401)) {
+                else if (!response.ok && (response.status === 400 || response.status === 401)) {
                     const jwt = localStorage.getItem('lemmy_jwt');
                     const userInstance = localStorage.getItem('lemmy_instance');
                     
@@ -392,16 +407,18 @@ export class Router {
                         
                         if (cleanUserInstance === instance || userInstance.includes(instance)) {
                             url = `https://${instance}/api/v3/comment?id=${commentId}&auth=${encodeURIComponent(jwt)}`;
-                            response = await fetch(url);
+                            const authResponse = await fetch(url);
+                            if (authResponse.ok) {
+                                data = await authResponse.json();
+                            }
                         }
                     }
                 }
                 
-                if (!response.ok) {
+                if (!data) {
                     throw new Error('Comment not found');
                 }
                 
-                const data = await response.json();
                 if (data.comment_view) {
                     // Show the parent post with comment highlighted
                     await this.fetchAndShowLemmyPost(instance, data.comment_view.post.id);
@@ -427,7 +444,7 @@ export class Router {
 
     async fetchAndShowMastodonProfile(username, instance) {
         try {
-            // First get the account ID
+            // Public endpoint - works for everyone
             const searchResponse = await fetch(`https://${instance}/api/v2/search?q=@${username}&resolve=true&limit=1`);
             
             if (!searchResponse.ok) {
@@ -451,7 +468,10 @@ export class Router {
                         @${username}@${instance}
                     </p>
                     <div style="margin-top: 30px;">
-                        <button onclick="history.back()">Go Back</button>
+                        <button onclick="history.back()" style="margin-right: 10px;">Go Back</button>
+                        <a href="https://${instance}/@${username}" target="_blank" rel="noopener">
+                            <button>Open on ${instance}</button>
+                        </a>
                     </div>
                 </div>
             `);
@@ -460,7 +480,7 @@ export class Router {
 
     async fetchAndShowMastodonStatus(instance, statusId) {
         try {
-            // Try public endpoint first
+            // Public endpoint - works for everyone
             const response = await fetch(`https://${instance}/api/v1/statuses/${statusId}`);
             
             if (!response.ok) {
@@ -484,7 +504,10 @@ export class Router {
                         Instance: ${instance}
                     </p>
                     <div style="margin-top: 30px;">
-                        <button onclick="history.back()">Go Back</button>
+                        <button onclick="history.back()" style="margin-right: 10px;">Go Back</button>
+                        <a href="https://${instance}/statuses/${statusId}" target="_blank" rel="noopener">
+                            <button>Open on ${instance}</button>
+                        </a>
                     </div>
                 </div>
             `);
