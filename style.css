@@ -1913,3 +1913,9 @@ button:disabled {
     color: var(--font-color-muted);
     font-style: italic;
 }
+.lemmy-comment-on-profile {
+    background-color: var(--primary-color); /* Keeps background color */
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    margin-bottom: 10px;
+}
