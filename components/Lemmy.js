@@ -340,7 +340,7 @@ export function renderLemmyCard(post, actions) {
         });
     }
 
-    // Card click handler for post detail
+    // Card click handler for post detail - just double-click or click
     card.addEventListener('click', () => {
         actions.showLemmyPostDetail(post);
     });
