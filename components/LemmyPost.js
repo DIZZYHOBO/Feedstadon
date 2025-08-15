@@ -2,6 +2,7 @@ import { ICONS } from './icons.js';
 import { apiFetch } from './api.js';
 import { timeAgo } from './utils.js';
 import { showToast } from './ui.js';
+import { renderLemmyCard } from './Lemmy.js';
 
 // Make sure this export is at the top level
 export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
@@ -407,4 +408,136 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
     });
 }
 
-// ... (continuing with the rest of the file - renderLemmyPostPage and other functions remain the same)
+export async function renderLemmyPostPage(state, post, actions) {
+    const view = document.getElementById('lemmy-post-view');
+    view.innerHTML = `
+        <div class="lemmy-post-detail">
+            <div class="main-post-area"></div>
+            <div class="comments-area">
+                <h3>Comments</h3>
+                <div id="lemmy-comments-list"></div>
+            </div>
+        </div>
+    `;
+
+    const mainPostArea = view.querySelector('.main-post-area');
+    const commentsContainer = view.querySelector('#lemmy-comments-list');
+
+    // Render the main post
+    const postCard = renderLemmyCard(post, actions);
+    mainPostArea.appendChild(postCard);
+
+    // Load comments
+    commentsContainer.innerHTML = 'Loading comments...';
+    
+    try {
+        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${post.post.id}&max_depth=8&sort=Top`, {}, 'lemmy');
+        
+        const comments = response.data.comments;
+        commentsContainer.innerHTML = '';
+        
+        if (comments && comments.length > 0) {
+            // Build comment tree structure
+            const commentTree = buildCommentTree(comments);
+            renderCommentTree(commentTree, commentsContainer, state, actions, post.creator.id);
+        } else {
+            commentsContainer.innerHTML = '<p>No comments yet. Be the first to comment!</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load comments:', error);
+        commentsContainer.innerHTML = '<p>Failed to load comments.</p>';
+    }
+}
+
+export async function renderPublicLemmyPostPage(state, postView, actions, instance) {
+    const view = document.getElementById('lemmy-post-view');
+    view.innerHTML = `
+        <div class="lemmy-post-detail">
+            <div class="main-post-area"></div>
+            <div class="comments-area">
+                <h3>Comments</h3>
+                <div id="lemmy-comments-list"></div>
+            </div>
+        </div>
+    `;
+
+    const mainPostArea = view.querySelector('.main-post-area');
+    const commentsContainer = view.querySelector('#lemmy-comments-list');
+
+    // Render the main post
+    const postCard = renderLemmyCard(postView, actions);
+    mainPostArea.appendChild(postCard);
+
+    // Load comments from the public instance
+    commentsContainer.innerHTML = 'Loading comments...';
+    
+    try {
+        const apiUrl = `https://${instance}/api/v3/comment/list?post_id=${postView.post.id}&max_depth=8&sort=Top`;
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const comments = data.comments;
+        
+        commentsContainer.innerHTML = '';
+        
+        if (comments && comments.length > 0) {
+            const commentTree = buildCommentTree(comments);
+            renderCommentTree(commentTree, commentsContainer, state, actions, postView.creator.id);
+        } else {
+            commentsContainer.innerHTML = '<p>No comments yet.</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load comments:', error);
+        commentsContainer.innerHTML = '<p>Failed to load comments from this instance.</p>';
+    }
+}
+
+function buildCommentTree(comments) {
+    const commentMap = {};
+    const rootComments = [];
+
+    // First pass: create a map of all comments
+    comments.forEach(commentView => {
+        commentMap[commentView.comment.id] = {
+            ...commentView,
+            children: []
+        };
+    });
+
+    // Second pass: build the tree structure
+    comments.forEach(commentView => {
+        const comment = commentMap[commentView.comment.id];
+        const parentId = commentView.comment.parent_id;
+        
+        if (parentId && commentMap[parentId]) {
+            commentMap[parentId].children.push(comment);
+        } else {
+            rootComments.push(comment);
+        }
+    });
+
+    return rootComments;
+}
+
+function renderCommentTree(comments, container, state, actions, postAuthorId, depth = 0) {
+    comments.forEach(commentView => {
+        const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
+        
+        // Add indentation based on depth
+        if (depth > 0) {
+            commentElement.style.marginLeft = `${Math.min(depth * 20, 100)}px`;
+        }
+        
+        container.appendChild(commentElement);
+        
+        // Render children recursively
+        if (commentView.children && commentView.children.length > 0) {
+            renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1);
+        }
+    });
+}
