@@ -496,7 +496,7 @@ button:disabled {
 }
 
 .status-content {
-    margin-bottom: 15px;
+    margin-bottom: 5px;
     line-height: 1.6;
     font-size: 1.05em;
     overflow-wrap: break-word;
