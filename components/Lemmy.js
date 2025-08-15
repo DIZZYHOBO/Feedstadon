@@ -32,6 +32,9 @@ export function renderLemmyCard(post, actions) {
             `;
         } else if (/\.(mp4|webm)$/i.test(url)) {
             mediaHTML = `<div class="status-media"><video src="${url}" controls></video></div>`;
+        } else if (isImagePost) {
+            // For direct image posts, show the full image
+            mediaHTML = `<div class="status-media"><img src="${url}" alt="${post.post.name}" loading="lazy"></div>`;
         } else if (post.post.thumbnail_url) {
             // For link posts (non-image URLs), make the thumbnail clickable to external link
             if (isLinkPost) {
@@ -45,8 +48,8 @@ export function renderLemmyCard(post, actions) {
                         </a>
                     </div>
                 `;
-            } else if (!isImagePost) {
-                // Only show thumbnail as media if it's NOT a direct image post
+            } else {
+                // For other posts with thumbnails, show the thumbnail
                 mediaHTML = `<div class="status-media"><img src="${post.post.thumbnail_url}" alt="${post.post.name}" loading="lazy"></div>`;
             }
         }
