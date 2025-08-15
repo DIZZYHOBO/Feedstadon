@@ -30,7 +30,8 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     htmlContent = tempDiv.innerHTML;
 
     const isOP = postAuthorId && commentView.creator.id === postAuthorId;
-    const isCreator = state.lemmyUsername && state.lemmyUsername === commentView.creator.name;
+    const currentUsername = localStorage.getItem('lemmy_username');
+    const isCreator = currentUsername && currentUsername === commentView.creator.name;
     const isLoggedIn = localStorage.getItem('lemmy_jwt');
 
     commentDiv.innerHTML = `
