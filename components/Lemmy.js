@@ -142,19 +142,7 @@ export function renderLemmyCard(post, actions) {
         </div>
     `;
     
-    card.querySelectorAll('.spoiler-toggle-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const content = button.nextElementSibling;
-            const icon = button.querySelector('.icon');
-            content.classList.toggle('visible');
-            if (content.classList.contains('visible')) {
-                icon.innerHTML = ICONS.lemmyUpvote.match(/<path.*>/)[0];
-            } else {
-                icon.innerHTML = ICONS.lemmyDownvote.match(/<path.*>/)[0];
-            }
-        });
-    });
+
 
     if (wordCount > 30) {
         const bodyContainer = card.querySelector('.lemmy-post-body');
