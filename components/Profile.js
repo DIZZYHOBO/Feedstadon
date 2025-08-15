@@ -24,33 +24,119 @@ async function getMastodonProfile(state, accountId) {
 }
 
 async function getLemmyProfile(userAcct, page = 1) {
-    const lemmyInstance = localStorage.getItem('lemmy_instance');
-    if (!lemmyInstance) return null;
+    // NEW FIX: Handle case where only username is provided (for logged-in user)
+    if (!userAcct.includes('@')) {
+        const localInstance = localStorage.getItem('lemmy_instance');
+        if (localInstance) {
+            userAcct = `${userAcct}@${localInstance}`;
+            console.log(`No instance provided, using local: ${userAcct}`);
+        } else {
+            console.error('No instance found for username:', userAcct);
+            return null;
+        }
+    }
+    
+    // Parse the user account to get username and instance
+    const parts = userAcct.split('@');
+    if (parts.length < 2) {
+        console.error('Invalid user account format:', userAcct);
+        return null;
+    }
+    
+    const [username, userInstance] = parts;
+    
+    // IMPORTANT: Use the user's home instance, not our logged-in instance
+    let targetInstance = userInstance;
+    let response = null;
+    
     try {
-        const [name] = userAcct.split('@');
-        const response = await apiFetch(lemmyInstance, null, `/api/v3/user?username=${name}&sort=New&limit=50&page=${page}`, {}, 'lemmy');
-        return response.data;
+        // First, try to fetch from the user's actual instance
+        console.log(`Fetching profile for ${username} from their home instance: ${targetInstance}`);
+        
+        // Use the correct instance URL - add https:// if not present
+        const instanceUrl = targetInstance.startsWith('http') ? targetInstance : `https://${targetInstance}`;
+        const apiUrl = `${instanceUrl}/api/v3/user?username=${username}&sort=New&limit=50&page=${page}`;
+        
+        console.log(`API URL: ${apiUrl}`);
+        
+        // Fetch directly without using apiFetch since we're querying a different instance
+        const fetchResponse = await fetch(apiUrl);
+        
+        if (!fetchResponse.ok) {
+            throw new Error(`HTTP ${fetchResponse.status}`);
+        }
+        
+        response = await fetchResponse.json();
+        console.log(`Successfully fetched profile from ${targetInstance}`);
+        return response;
+        
     } catch (error) {
-        console.error(`Failed to fetch Lemmy profile for ${userAcct}:`, error);
+        console.log(`Failed to fetch from user's home instance ${targetInstance}:`, error.message);
+        
+        // Fallback: Try to fetch from our logged-in instance (might have federated data)
+        const localInstance = localStorage.getItem('lemmy_instance');
+        if (localInstance && localInstance !== targetInstance) {
+            try {
+                console.log(`Trying fallback: fetching ${username}@${userInstance} from local instance: ${localInstance}`);
+                
+                // When fetching from local instance, use the full username@instance format
+                const fallbackUrl = `https://${localInstance}/api/v3/user?username=${username}@${userInstance}&sort=New&limit=50&page=${page}`;
+                console.log(`Fallback URL: ${fallbackUrl}`);
+                
+                const fallbackResponse = await fetch(fallbackUrl);
+                
+                if (!fallbackResponse.ok) {
+                    throw new Error(`Fallback HTTP ${fallbackResponse.status}`);
+                }
+                
+                response = await fallbackResponse.json();
+                console.log(`Successfully fetched federated profile from local instance ${localInstance}`);
+                return response;
+                
+            } catch (fallbackError) {
+                console.log(`Fallback also failed:`, fallbackError.message);
+            }
+        }
+        
+        // If both attempts fail, return null
+        console.error(`Failed to fetch Lemmy profile for ${userAcct} from any instance`);
         return null;
     }
 }
-
 function renderLemmyCommentOnProfile(commentView, state, actions) {
     // Use the base renderer to create the main card
     const commentCard = renderBaseLemmyComment(commentView, state, actions);
+
+    // Remove the username from the header since we're on the user's profile
+    const usernameElement = commentCard.querySelector('.username-instance');
+    if (usernameElement) {
+        usernameElement.style.display = 'none';
+    }
+    
+    // Also remove the OP badge if present
+    const opBadge = commentCard.querySelector('.op-badge');
+    if (opBadge) {
+        opBadge.style.display = 'none';
+    }
+    
+    // Hide the original timestamp in the header
+    const originalTimestamp = commentCard.querySelector('.time-ago');
+    if (originalTimestamp) {
+        originalTimestamp.style.display = 'none';
+    }
 
     // Truncate post title to 4 words
     const postTitle = commentView.post.name;
     const truncatedTitle = postTitle.split(' ').slice(0, 4).join(' ') + (postTitle.split(' ').length > 4 ? '...' : '');
 
-    // Create the context bar HTML
+    // Create the context bar HTML with timestamp included
     const contextHTML = `
         <div class="comment-context">
             <span>Commented on:</span>
             <a href="#" class="post-link">${truncatedTitle}</a>
             <span>in</span>
             <a href="#" class="community-link">${commentView.community.name}</a>
+            <span class="context-timestamp">· ${timeAgo(commentView.comment.published)}</span>
         </div>
     `;
     
@@ -280,7 +366,7 @@ export async function renderProfilePage(state, actions, platform, accountId, use
                     setupLemmyProfileEditing(person, actions);
                 }
             } else {
-                feedContainer.innerHTML = '<p>Could not load Lemmy feed.</p>';
+                feedContainer.innerHTML = '<p>Could not load Lemmy profile. This user might be from an instance that doesn\'t allow external API access.</p>';
             }
         }
     };

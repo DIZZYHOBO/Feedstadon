@@ -9,395 +9,204 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
-    <!-- Alpine.js with plugins -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
-<body x-data="app()" x-init="init()">
+<body>
 
     <div id="app-view">
         <div id="pull-to-refresh-indicator"></div>
-        
-        <!-- Navigation -->
-        <nav class="top-nav" x-data="navigation()">
-            <div class="nav-left">
-                <button class="icon-button"
-                        :class="{ 'loading': $store.ui.isLoading }"
-                        @click="refresh()"
-                        x-html="icons.refresh"></button>
-                        
-                <div class="dropdown" x-data="{ open: false }">
-                    <button class="nav-button" @click="open = !open">Feeds</button>
-                    <div class="dropdown-content" 
-                         x-show="open" 
-                         @click.away="open = false"
-                         x-transition>
-                        <a href="#" @click="setFeed('home'); open = false">Home</a>
-                        <a href="#" @click="setFeed('merged'); open = false">Merged</a>
-                        <hr>
-                        <a href="#" @click="setFeed('lemmy'); open = false">Lemmy</a>
-                        <a href="#" @click="setFeed('mastodon'); open = false">Mastodon</a>
-                    </div>
+        <nav class="top-nav">
+             <div class="nav-left">
+                <button id="refresh-btn" class="icon-button"></button>
+                <div class="dropdown" id="feeds-dropdown">
+                    <button class="nav-button">Feeds</button>
+                    <div class="dropdown-content">
+    <a href="#" data-timeline="home">Home</a>
+    <a href="#" data-timeline="merged">Merged</a> <!-- This is the new line -->
+    <hr>
+    <a href="#" id="lemmy-main-link">Lemmy</a>
+    <a href="#" id="mastodon-main-link">Mastodon</a>
+</div>
                 </div>
-                
-                <button class="nav-button" @click="$store.ui.currentView = 'discover'">Discover</button>
+                <button id="discover-btn" class="nav-button">Discover</button>
             </div>
 
-            <div class="nav-center"></div>
+            <div class="nav-center">
+                 </div>
 
-            <div class="nav-right">
-                <div class="dropdown" x-data="{ open: false }">
-                    <button class="nav-button" @click="open = !open">Menu</button>
-                    <div class="dropdown-content" 
-                         x-show="open" 
-                         @click.away="open = false"
-                         x-transition>
-                        <a href="#" @click="showCompose(); open = false">New Post</a>
-                        <a href="#" @click="showProfile(); open = false">Profile</a>
-                        <a href="#" @click="$store.ui.currentView = 'settings'; open = false">Settings</a>
-                        <a href="#" @click="showHelp(); open = false">Help</a>
-                    </div>
-                </div>
-                
-                <button class="icon-button"
-                        :class="{ 'unread': hasUnreadNotifications }"
-                        @click="showProfile()"
-                        x-html="icons.notifications + '<div class=\"notification-dot\"></div>'"></button>
+<div class="nav-right">
+    <div class="dropdown" id="user-dropdown">
+        <button class="nav-button">
+            Menu
+            <div class="notification-dot"></div> <!-- Notification dot on menu -->
+        </button>
+        <div class="dropdown-content">
+            <a href="#" id="new-post-link">New Post</a>
+            <a href="#" id="notifications-link">
+                Notifications
+                <div class="menu-notification-dot"></div>
+            </a>
+            <a href="#" id="settings-link">Settings</a>
+            <a href="#" id="help-link">Help</a>
+        </div>
+    </div>
+                <button id="notifications-btn" class="icon-button"></button>
             </div>
         </nav>
         
-        <div id="loading-bar" :class="{ 'loading': $store.ui.isLoading }"></div>
+        <div id="loading-bar"></div>
 
         <div class="container">
-            <!-- Timeline Sub Navigation -->
-            <div class="timeline-sub-nav"
-                 x-show="$store.ui.currentView === 'timeline' && ($store.ui.currentTimeline || $store.ui.currentLemmyFeed)"
-                 x-data="timelineSubNav()">
-                
-                <div class="timeline-sub-nav-tabs">
-                    <template x-if="$store.ui.currentLemmyFeed">
-                        <div style="display: flex; flex: 1;">
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'Subscribed' }"
-                                    @click="setLemmyFeed('Subscribed')">Subbed</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'All' }"
-                                    @click="setLemmyFeed('All')">All</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentLemmyFeed === 'Local' }"
-                                    @click="setLemmyFeed('Local')">Local</button>
-                        </div>
-                    </template>
-                    
-                    <template x-if="$store.ui.currentTimeline">
-                        <div style="display: flex; flex: 1;">
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentTimeline === 'home' }"
-                                    @click="setMastodonTimeline('home')">Home</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentTimeline === 'public' }"
-                                    @click="setMastodonTimeline('public')">Public</button>
-                            <button class="timeline-sub-nav-btn" 
-                                    :class="{ 'active': $store.ui.currentTimeline.includes('local') }"
-                                    @click="setMastodonTimeline('public?local=true')">Local</button>
-                        </div>
-                    </template>
-                </div>
-                
-                <template x-if="$store.ui.currentLemmyFeed">
-                    <div style="margin-left: auto;">
-                        <select x-model="$store.ui.currentLemmySort"
-                                @change="setLemmyFeed($store.ui.currentLemmyFeed, $event.target.value)">
-                            <option value="New">New</option>
-                            <option value="Active">Active</option>
-                            <option value="Hot">Hot</option>
-                            <option value="TopDay">Top Day</option>
-                            <option value="TopWeek">Top Week</option>
-                        </select>
-                    </div>
-                </template>
-            </div>
+            <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
+            <div id="timeline" class="view-container"></div>
+            <div id="notifications-view" class="view-container"></div>
+            <div id="discover-view" class="view-container"></div>
+            <div id="screenshot-view" class="view-container"></div>
+            <div id="merged-post-view" class="view-container"></div>
+            <div id="profile-page-view" class="view-container"></div>
+            <div id="edit-profile-view" class="view-container"></div>
+            <div id="search-results-view" class="view-container"></div>
+            <div id="settings-view" class="view-container"></div>
+            <div id="status-detail-view" class="view-container"></div>
+            <div id="lemmy-post-view" class="view-container"></div>
+            <div id="lemmy-community-view" class="view-container"></div>
+            <div id="scroll-loader"><p>Loading more posts...</p></div>
+        </div>
+        <div id="refresh-spinner"></div>
+    </div>
+    
+    <div id="context-menu"></div>
+    
+    <div id="toast-notification"></div>
 
-            <!-- Main Timeline View -->
-            <div x-show="$store.ui.currentView === 'timeline'" 
-                 x-data="timeline()" 
-                 x-init="init()">
-                 
-                <!-- Loading State -->
-                <template x-if="$store.ui.isLoading && $store.posts.length === 0">
-                    <div class="loading-state" style="text-align: center; padding: 40px;">
-                        <div x-html="icons.refresh" style="animation: spin 1s linear infinite; width: 32px; height: 32px; margin: 0 auto 16px;"></div>
-                        <div>Loading your feed...</div>
-                    </div>
-                </template>
-                
-                <!-- Login Prompt -->
-                <template x-if="!$store.ui.isLoading && $store.posts.length === 0 && needsLogin">
-                    <div class="login-prompt" x-data="loginPrompt()">
-                        <h3>Connect to get started</h3>
-                        <p>Please log in to see your feed.</p>
-                        
-                        <!-- Lemmy Login -->
-                        <template x-if="showingLemmyLogin">
-                            <div class="login-form" style="background: var(--card-color); padding: 20px; border-radius: 8px; margin: 20px 0;">
-                                <h4>Connect to Lemmy</h4>
-                                <div style="display: flex; flex-direction: column; gap: 10px;">
-                                    <input type="text" 
-                                           x-model="lemmy.instance" 
-                                           placeholder="Instance (e.g., lemmy.world)"
-                                           style="padding: 10px;">
-                                    <input type="text" 
-                                           x-model="lemmy.username" 
-                                           placeholder="Username"
-                                           style="padding: 10px;">
-                                    <input type="password" 
-                                           x-model="lemmy.password" 
-                                           placeholder="Password"
-                                           style="padding: 10px;"
-                                           @keyup.enter="loginLemmy()">
-                                    <div style="display: flex; gap: 10px;">
-                                        <button class="button-primary" 
-                                                @click="loginLemmy()"
-                                                :disabled="loggingIn">
-                                            <span x-show="!loggingIn">Connect</span>
-                                            <span x-show="loggingIn">Connecting...</span>
-                                        </button>
-                                        <button class="button-secondary" @click="showingLemmyLogin = false">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                        
-                        <!-- Mastodon Login -->
-                        <template x-if="showingMastodonLogin">
-                            <div class="login-form" style="background: var(--card-color); padding: 20px; border-radius: 8px; margin: 20px 0;">
-                                <h4>Connect to Mastodon</h4>
-                                <div style="display: flex; flex-direction: column; gap: 10px;">
-                                    <input type="text" 
-                                           x-model="mastodon.instance" 
-                                           placeholder="Instance (e.g., mastodon.social)"
-                                           style="padding: 10px;">
-                                    <input type="text" 
-                                           x-model="mastodon.token" 
-                                           placeholder="Access Token"
-                                           style="padding: 10px;"
-                                           @keyup.enter="loginMastodon()">
-                                    <div style="display: flex; gap: 10px;">
-                                        <button class="button-primary" 
-                                                @click="loginMastodon()"
-                                                :disabled="loggingIn">
-                                            <span x-show="!loggingIn">Connect</span>
-                                            <span x-show="loggingIn">Connecting...</span>
-                                        </button>
-                                        <button class="button-secondary" @click="showingMastodonLogin = false">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                        
-                        <!-- Login Options -->
-                        <template x-if="!showingLemmyLogin && !showingMastodonLogin">
-                            <div class="login-options" style="display: flex; gap: 15px; justify-content: center; margin: 20px 0;">
-                                <button class="button-primary" @click="showingLemmyLogin = true">Connect Lemmy</button>
-                                <button class="button-primary" @click="showingMastodonLogin = true">Connect Mastodon</button>
-                            </div>
-                        </template>
-                    </div>
-                </template>
-                
-                <!-- Posts Feed -->
-                <template x-if="$store.posts.length > 0">
-                    <div class="posts-container" style="display: flex; flex-direction: column; gap: 15px;">
-                        <template x-for="(post, index) in $store.posts" :key="getPostKey(post)">
-                            <div x-data="postCard(post)" x-html="renderPost()"></div>
-                        </template>
-                    </div>
-                </template>
-                
-                <!-- Load More Trigger -->
-                <div x-intersect="loadMore()" 
-                     x-show="$store.posts.length > 0"
-                     style="text-align: center; padding: 20px;">
-                    <template x-if="$store.ui.loadingMore">
-                        <div>
-                            <div x-html="icons.refresh" style="animation: spin 1s linear infinite; width: 24px; height: 24px; margin: 0 auto 8px;"></div>
-                            <p>Loading more posts...</p>
-                        </div>
-                    </template>
-                    <template x-if="!$store.ui.loadingMore && !$store.ui.hasMore">
-                        <p style="color: var(--font-color-muted);">No more posts to load</p>
-                    </template>
-                </div>
+    <div class="modal-overlay" id="compose-modal">
+         <div class="modal-content">
+            <div class="compose-tabs">
+                <button class="tab-button active" data-tab="mastodon-compose">Mastodon</button>
+                <button class="tab-button" data-tab="lemmy-compose">Lemmy</button>
             </div>
-
-            <!-- Other Views -->
-            <div x-show="$store.ui.currentView === 'discover'" x-data="discover()" x-init="init()">
-                <h2>Discover</h2>
-                <p>Discover functionality coming soon!</p>
-            </div>
-            
-            <div x-show="$store.ui.currentView === 'settings'" x-data="settings()" x-init="init()">
-                <div class="settings-container">
-                    <h2>Settings</h2>
-                    
-                    <div class="settings-section">
-                        <h3>Theme</h3>
-                        <select x-model="$store.settings.theme" @change="setTheme($event.target.value)">
-                            <option value="feedstodon">Feedstodon (Default)</option>
-                            <option value="readit">Readit</option>
-                            <option value="git">Git</option>
-                            <option value="voyage">Voyage</option>
-                        </select>
+            <div class="compose-tab-content active" id="mastodon-compose-tab">
+                <div id="reply-to-info"></div>
+                <textarea id="compose-textarea" placeholder="What's on your mind?"></textarea>
+                <div id="cw-creator-container"></div>
+                <div id="poll-creator-container"></div>
+                 <div class="modal-actions">
+                    <div class="compose-options">
+                        <input type="file" id="media-upload-input" style="display: none;" accept="image/*,video/*">
+                        <button class="icon-button" id="media-upload-btn"></button>
+                        <button class="icon-button" id="poll-btn"></button>
+                        <button class="icon-button" id="cw-btn"></button>
+                        <span id="media-filename-preview"></span>
                     </div>
-                    
-                    <div class="settings-section">
-                        <h3>Default Feed</h3>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div>
-                                <label>Default Platform:</label>
-                                <select x-model="$store.settings.defaultStartPage">
-                                    <option value="lemmy">Lemmy</option>
-                                    <option value="mastodon">Mastodon</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>Default Feed Type:</label>
-                                <select x-model="$store.settings.defaultFeedType">
-                                    <option value="Subscribed">Subscribed</option>
-                                    <option value="Local">Local</option>
-                                    <option value="All">All</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-section">
-                        <h3>Account</h3>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <template x-if="isLoggedInToLemmy()">
-                                <div style="padding: 10px; background: var(--card-color); border-radius: 8px;">
-                                    <strong>Lemmy:</strong> <span x-text="$store.auth.lemmy.username + '@' + $store.auth.lemmy.instance"></span>
-                                    <button class="button-secondary" style="margin-left: 10px;" @click="logoutLemmy()">Logout</button>
-                                </div>
-                            </template>
-                            
-                            <template x-if="isLoggedInToMastodon()">
-                                <div style="padding: 10px; background: var(--card-color); border-radius: 8px;">
-                                    <strong>Mastodon:</strong> <span x-text="$store.auth.mastodon.currentUser?.display_name || 'Connected'"></span>
-                                    <button class="button-secondary" style="margin-left: 10px;" @click="logoutMastodon()">Logout</button>
-                                </div>
-                            </template>
-                        </div>
+                    <div>
+                        <span id="character-count">500</span>
+                        <button class="button-secondary" id="cancel-compose-btn">Cancel</button>
+                        <button type="submit" id="submit-compose-btn">Post</button>
                     </div>
                 </div>
             </div>
-            
-            <div x-show="$store.ui.currentView === 'notifications'">
-                <h2>Notifications</h2>
-                <p>Notifications functionality coming soon!</p>
+            <div class="compose-tab-content" id="lemmy-compose-tab">
+                <form id="lemmy-compose-form">
+                    <div class="lemmy-post-type-selector">
+                        <button type="button" class="lemmy-post-type-btn active" data-type="text">Text</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="url">Link</button>
+                        <button type="button" class="lemmy-post-type-btn" data-type="image">Image</button>
+                    </div>
+                    <input type="text" id="lemmy-community-input" placeholder="Community (e.g., technology)">
+                    <input type="text" id="lemmy-title-input" placeholder="Title">
+                    <input type="url" id="lemmy-url-input" placeholder="URL" style="display:none;">
+                    <textarea id="lemmy-body-textarea" placeholder="Text (optional)"></textarea>
+                    <div class="modal-actions">
+                        <button class="button-secondary" id="cancel-lemmy-compose-btn">Cancel</button>
+                        <button type="submit" id="submit-lemmy-compose-btn">Post</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
     
-    <!-- Modals -->
-    <div id="toast-notification" x-data="{ message: '', visible: false }" 
-         :class="{ 'visible': visible }"
-         x-text="message"
-         @toast.window="message = $event.detail; visible = true; setTimeout(() => visible = false, 3000)"></div>
-    
-    <div class="modal-overlay" x-data="{ visible: false }" 
-         :class="{ 'visible': visible }"
-         @compose-modal.window="visible = true"
-         @click="if ($event.target === $el) visible = false">
-        <div class="modal-content" @click.stop>
-            <h3>New Post</h3>
-            <p>Compose functionality will be implemented next!</p>
-            <button class="button-secondary" @click="visible = false">Close</button>
+    <div class="modal-overlay" id="image-modal">
+        <div class="image-modal-content">
+            <img id="fullscreen-image" src="">
+            <button class="icon-button" id="save-image-btn" title="Save Image"></button>
         </div>
     </div>
     
-    <div class="modal-overlay" x-data="{ visible: false }" 
-         :class="{ 'visible': visible }"
-         @help-modal.window="visible = true"
-         @click="if ($event.target === $el) visible = false">
-        <div class="modal-content" @click.stop>
-            <h3>Welcome to Alpine.js Feedstodon!</h3>
-            <p>This is the new reactive version with:</p>
-            <ul>
-                <li>✅ Reactive state management</li>
-                <li>✅ Automatic UI updates</li>
-                <li>✅ No manual DOM manipulation</li>
-                <li>✅ Better performance</li>
-                <li>✅ Easier debugging</li>
-            </ul>
-            <button class="button-primary" @click="visible = false">Got it!</button>
+    <div class="modal-overlay" id="help-modal">
+        <div class="modal-content help-modal-content">
+            <button id="close-help-btn" class="close-btn">close</button>
+            <h3>Markdown Guide</h3>
+            <div class="markdown-guide">
+                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
+                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
+                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
+                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
+                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
+                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
+                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
+                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
+            </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="components/store.js"></script>
-    <script src="components/actions.js"></script>
-    <script src="components/components.js"></script>
-    
+    <template id="screenshot-controls-template">
+        <div class="screenshot-controls">
+            <div class="control-group">
+                <label>Parent Comments:</label>
+                <button data-action="parents-up">↑</button>
+                <button data-action="parents-down">↓</button>
+            </div>
+            <div class="control-group">
+                <input type="checkbox" id="include-replies-checkbox">
+                <label for="include-replies-checkbox">Include Replies</label>
+            </div>
+            <div class="control-group" id="replies-controls" style="display: none;">
+                 <label>Replies:</label>
+                <button data-action="replies-up">↑</button>
+                <button data-action="replies-down">↓</button>
+            </div>
+            <button id="capture-btn">Capture Screenshot</button>
+        </div>
+        <div id="screenshot-preview-area"></div>
+    </template>
+
+    <template id="mastodon-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Mastodon</h3>
+            <form class="login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., mastodon.social">
+                <input type="text" class="token-input" placeholder="Paste your Access Token">
+                <button type="submit" class="connect-btn">Login</button>
+            </form>
+        </div>
+    </template>
+
+    <template id="lemmy-login-template">
+        <div class="login-prompt">
+            <h3>Connect to Lemmy</h3>
+            <form class="login-form" id="lemmy-login-form">
+                <input type="text" class="instance-url-input" placeholder="e.g., lemmy.world">
+                <input type="text" class="username-input" placeholder="Username">
+                <input type="password" class="password-input" placeholder="Password">
+                <div class="piefed-login-option" style="display: flex; align-items: center; margin-top: 10px;">
+                    <input type="checkbox" id="piefed-login-checkbox" style="margin-right: 10px;">
+                    <label for="piefed-login-checkbox">Login with Piefed account</label>
+                </div>
+                <button type="submit" class="connect-btn">Connect</button>
+            </form>
+        </div>
+    </template>
+
+    <script src="app.js" type="module"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful');
-                }).catch(err => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
                     console.log('ServiceWorker registration failed: ', err);
                 });
             });
         }
     </script>
-    
-    <style>
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        .login-form input {
-            font-family: inherit;
-            font-size: 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-color);
-            color: var(--font-color);
-        }
-        
-        .login-form input:focus {
-            outline: none;
-            border-color: var(--accent-color);
-        }
-        
-        .settings-section {
-            background: var(--card-color);
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-        
-        .settings-section h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-        
-        .settings-section select {
-            background: var(--bg-color);
-            color: var(--font-color);
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            border-radius: 4px;
-        }
-        
-        .settings-section label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-    </style>
 </body>
 </html>
