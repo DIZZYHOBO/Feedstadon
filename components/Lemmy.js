@@ -3,17 +3,6 @@ import { showLoadingBar, hideLoadingBar, showToast, showErrorToast, showInfoToas
 import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 
-// Check if showdown is available, if not create a fallback
-const converter = typeof showdown !== 'undefined' ? converter : {
-    makeHtml: (text) => {
-        // Basic fallback markdown to HTML conversion
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>');
-    }
-};
-
 export async function fetchLemmyFeed(state, actions, loadMore = false, onLoginSuccess = null) {
     if (state.isLoadingMore && loadMore) return;
     
@@ -37,78 +26,35 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLoginSu
         const jwt = localStorage.getItem('lemmy_jwt');
         let url = `https://${cleanInstance}/api/v3/post/list?type_=${feedType}&sort=${sortType}&limit=20&page=${state.lemmyPage}`;
         
-        // Add auth if available and needed
         if (jwt && feedType === 'Subscribed') {
             url += `&auth=${encodeURIComponent(jwt)}`;
         }
         
         const response = await fetch(url);
+        const data = await response.json();
         
-        if (!response.ok) {
-            // If subscribed feed fails, user might not be logged in
-            if (feedType === 'Subscribed' && response.status === 401) {
-                console.log('Not authenticated, switching to All feed');
-                state.currentLemmyFeed = 'All';
-                url = `https://${cleanInstance}/api/v3/post/list?type_=All&sort=${sortType}&limit=20&page=${state.lemmyPage}`;
-                const retryResponse = await fetch(url);
-                if (!retryResponse.ok) throw new Error('Failed to fetch feed');
-                const data = await retryResponse.json();
-                renderLemmyPosts(data.posts, state, actions, cleanInstance);
-            } else {
-                throw new Error('Failed to fetch feed');
+        if (data.posts) {
+            data.posts.forEach(post => {
+                post._sourceInstance = cleanInstance;
+                const card = renderLemmyCard(post, state.lemmyUsername, actions, state.settings, state);
+                state.timelineDiv.appendChild(card);
+            });
+            
+            if (data.posts.length < 20) {
+                state.lemmyHasMore = false;
             }
-        } else {
-            const data = await response.json();
-            renderLemmyPosts(data.posts, state, actions, cleanInstance);
+            
+            state.lemmyPage++;
         }
-        
-        state.lemmyPage++;
         
     } catch (error) {
         console.error('Error fetching Lemmy feed:', error);
-        
         if (!loadMore) {
-            // Show login prompt for first load if needed
-            if (feedType === 'Subscribed' && !localStorage.getItem('lemmy_jwt')) {
-                const loginPrompt = document.createElement('div');
-                loginPrompt.className = 'login-prompt-container';
-                loginPrompt.innerHTML = `
-                    <div class="login-prompt">
-                        <h3>Login to Lemmy to see your subscribed communities</h3>
-                        <button class="button-primary" onclick="document.getElementById('settings-view').style.display='flex';document.getElementById('timeline').style.display='none';">
-                            Go to Settings
-                        </button>
-                    </div>
-                `;
-                state.timelineDiv.appendChild(loginPrompt);
-            } else {
-                showErrorToast('Failed to load Lemmy feed');
-            }
+            showErrorToast('Failed to load Lemmy feed');
         }
     } finally {
         state.isLoadingMore = false;
         if (loadMore) state.scrollLoader.style.display = 'none';
-    }
-}
-
-function renderLemmyPosts(posts, state, actions, sourceInstance) {
-    if (!posts || posts.length === 0) {
-        state.lemmyHasMore = false;
-        if (state.lemmyPage === 1) {
-            state.timelineDiv.innerHTML = '<div class="no-posts">No posts found</div>';
-        }
-        return;
-    }
-    
-    posts.forEach(post => {
-        // Add source instance to each post for tracking
-        post._sourceInstance = sourceInstance;
-        const card = renderLemmyCard(post, state.lemmyUsername, actions, state.settings, state);
-        state.timelineDiv.appendChild(card);
-    });
-    
-    if (posts.length < 20) {
-        state.lemmyHasMore = false;
     }
 }
 
@@ -117,285 +63,108 @@ export function renderLemmyCard(post, currentUser, actions, settings, state) {
     card.className = 'status lemmy-post';
     card.dataset.id = post.post.id;
     
-    // Determine the correct instance for this post
-    let postInstance = 'lemmy.world'; // fallback
-    
-    // Priority 1: Use the source instance if available (from feed fetch)
-    if (post._sourceInstance) {
-        postInstance = post._sourceInstance;
-    }
-    // Priority 2: Extract from ap_id (ActivityPub ID)
-    else if (post.post.ap_id) {
+    // Determine instance
+    let postInstance = post._sourceInstance || 'lemmy.world';
+    if (post.post.ap_id) {
         try {
-            const url = new URL(post.post.ap_id);
-            postInstance = url.hostname;
-        } catch (e) {
-            console.warn('Could not parse ap_id:', post.post.ap_id);
-        }
+            postInstance = new URL(post.post.ap_id).hostname;
+        } catch (e) {}
     }
-    // Priority 3: Extract from community actor_id
-    else if (post.community.actor_id) {
-        try {
-            const url = new URL(post.community.actor_id);
-            postInstance = url.hostname;
-        } catch (e) {
-            console.warn('Could not parse community actor_id:', post.community.actor_id);
-        }
-    }
-    
-    // Store instance on the card for debugging
-    card.dataset.instance = postInstance;
     
     const isNsfw = post.post.nsfw || post.community.nsfw;
     const isOwnPost = currentUser && post.creator.name === currentUser;
     
-    // Build the card HTML
-    let cardHTML = `
+    // Create basic HTML structure
+    const headerHTML = `
         <div class="status-header">
             <div class="status-avatar">
-                ${post.creator.avatar ? 
-                    `<img src="${post.creator.avatar}" alt="${post.creator.name}" onerror="this.src='/images/default-avatar.png'">` : 
-                    `<div class="avatar-placeholder">${post.creator.name[0].toUpperCase()}</div>`
-                }
+                <div class="avatar-placeholder">${post.creator.name[0].toUpperCase()}</div>
             </div>
             <div class="status-meta">
-                <a href="#" class="status-author lemmy-user-link" data-username="${post.creator.name}" data-instance="${post.creator.actor_id ? new URL(post.creator.actor_id).hostname : postInstance}">
-                    ${post.creator.display_name || post.creator.name}
-                </a>
+                <span class="status-author">${post.creator.display_name || post.creator.name}</span>
                 <span class="status-username">@${post.creator.name}</span>
-                <span class="status-community">
-                    in <a href="#" class="lemmy-community-link" data-community="${post.community.name}@${postInstance}">
-                        ${post.community.title || post.community.name}
-                    </a>
-                </span>
+                <span class="status-community">in ${post.community.title || post.community.name}</span>
                 <div class="status-time">${formatTime(post.post.published)}</div>
             </div>
         </div>
-        
+    `;
+    
+    let contentHTML = `
         <div class="status-content">
             <h3 class="lemmy-post-title">${escapeHtml(post.post.name)}</h3>
     `;
     
-    // Handle NSFW content
-    if (isNsfw && settings?.hideNsfw) {
-        cardHTML += `
-            <div class="nsfw-warning">
-                <p>NSFW Content Hidden</p>
-                <button class="button-secondary show-nsfw-btn">Show</button>
-            </div>
-        `;
-    } else {
-        // Add post body if exists
-        if (post.post.body) {
-            const converter = converter;
-            cardHTML += `<div class="lemmy-post-body">${converter.makeHtml(post.post.body)}</div>`;
-        }
-        
-        // Add URL preview if exists
-        if (post.post.url) {
-            if (post.post.thumbnail_url) {
-                cardHTML += `
-                    <div class="lemmy-link-preview">
-                        <img src="${post.post.thumbnail_url}" alt="Preview" onerror="this.style.display='none'">
-                        <a href="${post.post.url}" target="_blank" rel="noopener">${new URL(post.post.url).hostname}</a>
-                    </div>
-                `;
-            } else {
-                cardHTML += `
-                    <div class="lemmy-link-preview">
-                        <a href="${post.post.url}" target="_blank" rel="noopener">${post.post.url}</a>
-                    </div>
-                `;
-            }
-        }
+    if (post.post.body) {
+        // Simple markdown to HTML conversion
+        const bodyHtml = convertMarkdown(post.post.body);
+        contentHTML += `<div class="lemmy-post-body">${bodyHtml}</div>`;
     }
     
-    cardHTML += `
-        </div>
-        
+    if (post.post.url) {
+        contentHTML += `
+            <div class="lemmy-link-preview">
+                ${post.post.thumbnail_url ? `<img src="${post.post.thumbnail_url}" alt="Preview" onerror="this.style.display='none'">` : ''}
+                <a href="${post.post.url}" target="_blank" rel="noopener">${post.post.url}</a>
+            </div>
+        `;
+    }
+    
+    contentHTML += '</div>';
+    
+    const actionsHTML = `
         <div class="status-actions">
-            <button class="icon-button${post.my_vote === 1 ? ' active' : ''}" data-action="upvote">
-                ${ICONS.upvote}
-            </button>
+            <button class="icon-button" data-action="upvote">${ICONS.upvote || '⬆️'}</button>
             <span class="lemmy-score">${post.counts.score}</span>
-            <button class="icon-button${post.my_vote === -1 ? ' active' : ''}" data-action="downvote">
-                ${ICONS.downvote}
-            </button>
+            <button class="icon-button" data-action="downvote">${ICONS.downvote || '⬇️'}</button>
             <button class="icon-button" data-action="reply">
-                ${ICONS.reply}
+                ${ICONS.reply || '💬'}
                 <span class="action-count">${post.counts.comments}</span>
             </button>
-            <button class="icon-button${post.saved ? ' active' : ''}" data-action="save">
-                ${post.saved ? ICONS.bookmarkFilled : ICONS.bookmark}
-            </button>
-            <button class="icon-button" data-action="share">
-                ${ICONS.share}
-            </button>
-            <button class="icon-button" data-action="more">
-                ${ICONS.more}
-            </button>
+            <button class="icon-button" data-action="share">${ICONS.share || '🔗'}</button>
         </div>
     `;
     
-    card.innerHTML = cardHTML;
+    card.innerHTML = headerHTML + contentHTML + actionsHTML;
     
-    // Add event listeners
-    
-    // Click on the card to view the post
+    // Add click handler
     card.addEventListener('click', (e) => {
-        // Don't trigger if clicking on buttons or links
-        if (e.target.closest('button') || e.target.closest('a')) return;
-        
-        // Create a complete post object with instance info
-        const completePost = {
-            ...post,
-            _instance: postInstance // Pass the instance info
-        };
-        
-        console.log('Opening post from instance:', postInstance, 'Post ID:', post.post.id);
-        actions.showLemmyPostDetail(completePost);
+        if (!e.target.closest('button') && !e.target.closest('a')) {
+            const completePost = {...post, _instance: postInstance};
+            actions.showLemmyPostDetail(completePost);
+        }
     });
     
-    // Community link
-    const communityLink = card.querySelector('.lemmy-community-link');
-    if (communityLink) {
-        communityLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            actions.showLemmyCommunity(communityLink.dataset.community);
-        });
-    }
-    
-    // User link
-    const userLink = card.querySelector('.lemmy-user-link');
-    if (userLink) {
-        userLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const username = userLink.dataset.username;
-            const instance = userLink.dataset.instance;
-            actions.showLemmyProfile(`${username}@${instance}`);
-        });
-    }
-    
-    // Action buttons
+    // Add button handlers
     card.querySelectorAll('[data-action]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const action = btn.dataset.action;
             
-            switch(action) {
-                case 'upvote':
-                    if (!currentUser) {
-                        showWarningToast('Please login to vote');
-                        return;
-                    }
-                    actions.lemmyVote(post.post.id, post.my_vote === 1 ? 0 : 1, card);
-                    break;
-                    
-                case 'downvote':
-                    if (!currentUser) {
-                        showWarningToast('Please login to vote');
-                        return;
-                    }
-                    actions.lemmyVote(post.post.id, post.my_vote === -1 ? 0 : -1, card);
-                    break;
-                    
-                case 'reply':
-                    actions.showLemmyPostDetail({...post, _instance: postInstance});
-                    break;
-                    
-                case 'save':
-                    if (!currentUser) {
-                        showWarningToast('Please login to save posts');
-                        return;
-                    }
-                    actions.lemmySave(post.post.id, btn);
-                    break;
-                    
-                case 'share':
-                    actions.sharePost({...post, _instance: postInstance});
-                    break;
-                    
-                case 'more':
-                    showPostMenu(e, post, isOwnPost, actions, postInstance);
-                    break;
+            if (action === 'reply') {
+                actions.showLemmyPostDetail({...post, _instance: postInstance});
+            } else if (action === 'share') {
+                actions.sharePost({...post, _instance: postInstance});
             }
+            // Add other action handlers as needed
         });
     });
-    
-    // NSFW show button
-    const nsfwBtn = card.querySelector('.show-nsfw-btn');
-    if (nsfwBtn) {
-        nsfwBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const warning = card.querySelector('.nsfw-warning');
-            warning.style.display = 'none';
-            
-            // Re-render the content
-            const contentDiv = card.querySelector('.status-content');
-            let newContent = `<h3 class="lemmy-post-title">${escapeHtml(post.post.name)}</h3>`;
-            
-            if (post.post.body) {
-                const converter = converter;
-                newContent += `<div class="lemmy-post-body">${converter.makeHtml(post.post.body)}</div>`;
-            }
-            
-            if (post.post.url) {
-                if (post.post.thumbnail_url) {
-                    newContent += `
-                        <div class="lemmy-link-preview">
-                            <img src="${post.post.thumbnail_url}" alt="Preview">
-                            <a href="${post.post.url}" target="_blank" rel="noopener">${new URL(post.post.url).hostname}</a>
-                        </div>
-                    `;
-                } else {
-                    newContent += `
-                        <div class="lemmy-link-preview">
-                            <a href="${post.post.url}" target="_blank" rel="noopener">${post.post.url}</a>
-                        </div>
-                    `;
-                }
-            }
-            
-            contentDiv.innerHTML = newContent;
-        });
-    }
     
     return card;
 }
 
-function showPostMenu(event, post, isOwnPost, actions, postInstance) {
-    const items = [];
-    
-    if (isOwnPost) {
-        items.push(
-            { label: 'Edit Post', action: () => editPost(post, actions) },
-            { label: 'Delete Post', action: () => actions.lemmyDeletePost(post.post.id) }
-        );
-    } else {
-        items.push(
-            { label: 'Block User', action: () => actions.lemmyBlockUser(post.creator.id, true) },
-            { label: 'Block Community', action: () => actions.lemmyBlockCommunity(post.community.id, true) }
-        );
-    }
-    
-    items.push(
-        { label: `Open on ${postInstance}`, action: () => window.open(`https://${postInstance}/post/${post.post.id}`, '_blank') },
-        { label: 'Copy Link', action: () => {
-            navigator.clipboard.writeText(`https://${postInstance}/post/${post.post.id}`);
-            showInfoToast('Link copied!');
-        }}
-    );
-    
-    actions.showContextMenu(event, items);
-}
-
-function editPost(post, actions) {
-    const newBody = prompt('Edit post body:', post.post.body || '');
-    if (newBody !== null) {
-        actions.lemmyEditPost(post.post.id, newBody);
-    }
+function convertMarkdown(text) {
+    // Basic markdown to HTML conversion
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>')
+        .replace(/^/, '<p>')
+        .replace(/$/, '</p>');
 }
 
 function formatTime(timestamp) {
