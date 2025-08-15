@@ -401,6 +401,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
             refreshSpinner.style.display = 'none';
         },
+        showLoopsProfile: async (username, instance = 'loops.video') => {
+    showLoadingBar();
+    switchView('profile');
+    await renderLoopsProfilePage(state, actions, username, instance);
+    hideLoadingBar();
         showMergedTimeline: async () => {
             showLoadingBar();
             refreshSpinner.style.display = 'block';
@@ -481,13 +486,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
         },
-        handleSearchResultClick: (account) => {
-            if (account.acct.includes('@')) {
-                actions.showProfilePage('mastodon', account.id);
-            } else {
-                actions.showLemmyCommunity(account.acct);
-            }
-        },
+      handleSearchResultClick: (account) => {
+    // Detect platform based on account info
+    const acct = account.acct || '';
+    
+    // Check if it's a Loops instance
+    if (acct.includes('loops.video') || acct.includes('loops.') || 
+        account.url?.includes('loops.video') || account.url?.includes('loops.')) {
+        // Extract username and instance
+        const parts = acct.split('@');
+        const username = parts[0] || account.username;
+        const instance = parts[1] || 'loops.video';
+        actions.showLoopsProfile(username, instance);
+    } else if (acct.includes('@')) {
+        // Existing Mastodon logic
+        actions.showProfilePage('mastodon', account.id);
+    } else {
+        // Existing Lemmy logic
+        actions.showLemmyCommunity(account.acct);
+    }
+},
+
+
         deleteStatus: async (statusId) => {
             try {
                 await apiFetch(state.instanceUrl, state.accessToken, `/api/v1/statuses/${statusId}`, { method: 'DELETE' });
