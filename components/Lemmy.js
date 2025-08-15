@@ -203,18 +203,18 @@ export function renderLemmyCard(post, currentUser, actions, settings, state) {
         </div>
         
         <div class="status-actions">
-            <button class="icon-button" data-action="upvote" ${post.my_vote === 1 ? 'class="active"' : ''}>
+            <button class="icon-button${post.my_vote === 1 ? ' active' : ''}" data-action="upvote">
                 ${ICONS.upvote}
             </button>
             <span class="lemmy-score">${post.counts.score}</span>
-            <button class="icon-button" data-action="downvote" ${post.my_vote === -1 ? 'class="active"' : ''}>
+            <button class="icon-button${post.my_vote === -1 ? ' active' : ''}" data-action="downvote">
                 ${ICONS.downvote}
             </button>
             <button class="icon-button" data-action="reply">
                 ${ICONS.reply}
                 <span class="action-count">${post.counts.comments}</span>
             </button>
-            <button class="icon-button" data-action="save" ${post.saved ? 'class="active"' : ''}>
+            <button class="icon-button${post.saved ? ' active' : ''}" data-action="save">
                 ${post.saved ? ICONS.bookmarkFilled : ICONS.bookmark}
             </button>
             <button class="icon-button" data-action="share">
