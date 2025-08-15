@@ -103,7 +103,6 @@ async function getLemmyProfile(userAcct, page = 1) {
         return null;
     }
 }
-
 function renderLemmyCommentOnProfile(commentView, state, actions) {
     // Use the base renderer to create the main card
     const commentCard = renderBaseLemmyComment(commentView, state, actions);
@@ -119,18 +118,25 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
     if (opBadge) {
         opBadge.style.display = 'none';
     }
+    
+    // Hide the original timestamp in the header
+    const originalTimestamp = commentCard.querySelector('.time-ago');
+    if (originalTimestamp) {
+        originalTimestamp.style.display = 'none';
+    }
 
     // Truncate post title to 4 words
     const postTitle = commentView.post.name;
     const truncatedTitle = postTitle.split(' ').slice(0, 4).join(' ') + (postTitle.split(' ').length > 4 ? '...' : '');
 
-    // Create the context bar HTML
+    // Create the context bar HTML with timestamp included
     const contextHTML = `
         <div class="comment-context">
             <span>Commented on:</span>
             <a href="#" class="post-link">${truncatedTitle}</a>
             <span>in</span>
             <a href="#" class="community-link">${commentView.community.name}</a>
+            <span class="context-timestamp">· ${timeAgo(commentView.comment.published)}</span>
         </div>
     `;
     
