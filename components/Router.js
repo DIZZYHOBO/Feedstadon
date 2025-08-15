@@ -209,16 +209,26 @@ export class Router {
 
     async fetchAndShowLemmyPost(instance, postId) {
         try {
-            // Include auth token if available for Lemmy API
-            const jwt = localStorage.getItem('lemmy_jwt');
+            // First try without auth (for public posts)
             let url = `https://${instance}/api/v3/post?id=${postId}`;
+            let response = await fetch(url);
             
-            const headers = {};
-            if (jwt) {
-                headers['Authorization'] = `Bearer ${jwt}`;
+            // If it fails, try with auth
+            if (!response.ok && response.status === 400) {
+                const jwt = localStorage.getItem('lemmy_jwt');
+                if (jwt) {
+                    // Try with auth in query params (Lemmy format)
+                    url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
+                    response = await fetch(url);
+                    
+                    // If still failing, might be wrong instance's JWT
+                    if (!response.ok) {
+                        // Try without auth again as fallback
+                        url = `https://${instance}/api/v3/post?id=${postId}`;
+                        response = await fetch(url);
+                    }
+                }
             }
-            
-            const response = await fetch(url, { headers });
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
@@ -239,15 +249,26 @@ export class Router {
 
     async fetchAndShowLemmyComment(instance, postId, commentId) {
         try {
-            const jwt = localStorage.getItem('lemmy_jwt');
-            const headers = {};
-            if (jwt) {
-                headers['Authorization'] = `Bearer ${jwt}`;
-            }
-            
             // Fetch the post first if we have postId
             if (postId) {
-                const response = await fetch(`https://${instance}/api/v3/post?id=${postId}`, { headers });
+                // Try without auth first
+                let url = `https://${instance}/api/v3/post?id=${postId}`;
+                let response = await fetch(url);
+                
+                // If fails, try with auth
+                if (!response.ok && response.status === 400) {
+                    const jwt = localStorage.getItem('lemmy_jwt');
+                    if (jwt) {
+                        url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
+                        response = await fetch(url);
+                        
+                        // Fallback to no auth
+                        if (!response.ok) {
+                            url = `https://${instance}/api/v3/post?id=${postId}`;
+                            response = await fetch(url);
+                        }
+                    }
+                }
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
@@ -273,7 +294,23 @@ export class Router {
                 }
             } else {
                 // Direct comment link without post context
-                const response = await fetch(`https://${instance}/api/v3/comment?id=${commentId}`, { headers });
+                let url = `https://${instance}/api/v3/comment?id=${commentId}`;
+                let response = await fetch(url);
+                
+                // Try with auth if needed
+                if (!response.ok && response.status === 400) {
+                    const jwt = localStorage.getItem('lemmy_jwt');
+                    if (jwt) {
+                        url = `https://${instance}/api/v3/comment?id=${commentId}&auth=${encodeURIComponent(jwt)}`;
+                        response = await fetch(url);
+                        
+                        // Fallback
+                        if (!response.ok) {
+                            url = `https://${instance}/api/v3/comment?id=${commentId}`;
+                            response = await fetch(url);
+                        }
+                    }
+                }
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
