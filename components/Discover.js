@@ -205,7 +205,7 @@ export async function fetchMastodonTrendingPosts(state, actions, append = false)
                 listContainer.innerHTML = '<p>No trending posts found.</p>';
             }
         }
-    } catch (error)_ {
+    } catch (error) {
         console.error('Failed to fetch Mastodon trending posts:', error);
         listContainer.innerHTML = '<p>Could not load trending posts.</p>';
     } finally {
