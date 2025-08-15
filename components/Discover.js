@@ -322,3 +322,83 @@ export function renderDiscoverPage(state, actions) {
     // Initial load
     switchTab('subscribed');
 }
+// Add this to your components/Discover.js file to integrate Loops discovery:
+
+/**
+ * Fetch trending Loops creators
+ */
+async function fetchLoopsTrending(state, actions, container) {
+    try {
+        container.innerHTML = '<p>Loading trending Loops creators...</p>';
+        
+        // Note: These endpoints are estimates - adjust based on actual Loops API
+        const response = await fetch('https://loops.video/api/v1/trending/creators');
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch trending creators');
+        }
+        
+        const creators = await response.json();
+        container.innerHTML = '';
+        
+        if (creators && creators.length > 0) {
+            creators.forEach(creator => {
+                const creatorEl = document.createElement('div');
+                creatorEl.className = 'discover-list-item loops-creator-item';
+                creatorEl.innerHTML = `
+                    <img src="${creator.avatar || './images/php.png'}" class="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <div>
+                        <div class="discover-item-title">${creator.display_name || creator.username}</div>
+                        <div class="discover-item-subtitle">@${creator.username}@loops.video</div>
+                        <div class="discover-item-stats">
+                            ${creator.videos_count || 0} videos · ${creator.followers_count || 0} followers
+                        </div>
+                    </div>
+                    <span class="platform-badge loops">Loops</span>
+                `;
+                
+                creatorEl.addEventListener('click', () => {
+                    actions.showLoopsProfile(creator.username, 'loops.video');
+                });
+                
+                container.appendChild(creatorEl);
+            });
+        } else {
+            // Fallback: Show some example Loops instances
+            container.innerHTML = `
+                <div class="discover-section-info">
+                    <h4>Loops - Federated Short Videos</h4>
+                    <p>Loops is a new federated platform for short-form videos. Search for Loops users with @username@loops.video</p>
+                    <div class="loops-instances-list">
+                        <h5>Known Loops Instances:</h5>
+                        <ul>
+                            <li><a href="https://loops.video" target="_blank">loops.video</a> (Main instance)</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to fetch Loops trending:', error);
+        container.innerHTML = `
+            <div class="discover-section-info">
+                <h4>Loops Integration</h4>
+                <p>Loops profiles can be viewed by searching for users in the format: @username@loops.video</p>
+                <p class="error-notice">Could not fetch trending creators. The Loops API may not be publicly available yet.</p>
+            </div>
+        `;
+    }
+}
+
+// Update your renderDiscoverPage function to include a Loops tab:
+// Add this to the existing tab structure in renderDiscoverPage
+
+// In the HTML template section, add:
+`<button class="tab-button" data-discover-tab="loops">Loops</button>`
+`<div id="loops-discover-content" class="discover-tab-content"></div>`
+
+// In the switchTab function, add:
+else if (platform === 'loops') {
+    loopsContent.classList.add('active');
+    fetchLoopsTrending(state, actions, loopsContent);
+}
