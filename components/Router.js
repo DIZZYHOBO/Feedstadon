@@ -1,4 +1,4 @@
-// components/Router.js - Version 1: Instance-specific JWT checking
+// components/Router.js - Version 2: Fallback to user's instance for federation
 import { apiFetch } from './api.js';
 import { showLoadingBar, hideLoadingBar } from './ui.js';
 
@@ -209,62 +209,89 @@ export class Router {
 
     async fetchAndShowLemmyPost(instance, postId) {
         try {
-            // First try without auth (for public posts)
+            // First try the requested instance without auth
             let url = `https://${instance}/api/v3/post?id=${postId}`;
             let response = await fetch(url);
+            let fetchedFromUserInstance = false;
             
-            // If it fails with 400/401, it might need auth
-            if (!response.ok && (response.status === 400 || response.status === 401)) {
+            // If that fails, try from the user's home instance if they're logged in
+            if (!response.ok) {
                 const jwt = localStorage.getItem('lemmy_jwt');
                 const userInstance = localStorage.getItem('lemmy_instance');
                 
-                // Only use JWT if it's for the same instance
-                if (jwt && userInstance && userInstance.includes(instance)) {
-                    // Try with auth in query params (Lemmy format)
-                    url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
+                if (jwt && userInstance) {
+                    // Clean the instance URL (remove https:// if present)
+                    const cleanUserInstance = userInstance.replace(/^https?:\/\//, '');
+                    
+                    if (cleanUserInstance === instance || userInstance.includes(instance)) {
+                        // Same instance, use auth
+                        url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
+                        response = await fetch(url);
+                    } else {
+                        // Different instance, try to fetch from user's instance
+                        // First try to search for the post by its original URL
+                        console.log(`Post not found on ${instance}, trying user's instance: ${cleanUserInstance}`);
+                        
+                        // Try direct ID first (in case it's federated with same ID)
+                        url = `https://${cleanUserInstance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
+                        response = await fetch(url);
+                        
+                        if (response.ok) {
+                            fetchedFromUserInstance = true;
+                        } else {
+                            // If that doesn't work, try searching for the post
+                            const searchUrl = `https://${cleanUserInstance}/api/v3/search?q=https://${instance}/post/${postId}&type_=Posts&auth=${encodeURIComponent(jwt)}`;
+                            const searchResponse = await fetch(searchUrl);
+                            
+                            if (searchResponse.ok) {
+                                const searchData = await searchResponse.json();
+                                if (searchData.posts && searchData.posts.length > 0) {
+                                    // Found the post via search, now fetch it properly
+                                    const federatedPostId = searchData.posts[0].post.id;
+                                    url = `https://${cleanUserInstance}/api/v3/post?id=${federatedPostId}&auth=${encodeURIComponent(jwt)}`;
+                                    response = await fetch(url);
+                                    fetchedFromUserInstance = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // If still not found, try original instance one more time without auth
+                if (!response.ok && !fetchedFromUserInstance) {
+                    url = `https://${instance}/api/v3/post?id=${postId}`;
                     response = await fetch(url);
                 }
             }
             
-            // If still not ok, this might be a private post or deleted
             if (!response.ok) {
-                // Try to get more info about the error
-                const errorText = await response.text();
-                console.error('Lemmy API error:', errorText);
-                
-                // Check if it's a "not found" error
-                if (response.status === 404 || errorText.includes('not_found')) {
+                // Determine the error type
+                if (response.status === 404) {
                     throw new Error('Post not found or deleted');
                 } else if (response.status === 400) {
-                    // This might be a federation issue or the post doesn't exist on this instance
-                    throw new Error('Post not available. It may be from an instance that doesn\'t federate with ' + instance);
+                    throw new Error(`This post is not available on ${instance}. It may not be federated to this instance.`);
                 } else {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`Unable to load post (Error ${response.status})`);
                 }
             }
             
             const data = await response.json();
             
             if (data.post_view) {
+                // If we fetched from user's instance, note that in console
+                if (fetchedFromUserInstance) {
+                    console.log('Post loaded from user\'s instance instead of original');
+                }
                 await this.actions.showLemmyPostDetail(data.post_view);
             } else {
-                throw new Error('Post not found');
+                throw new Error('Post data not found');
             }
         } catch (error) {
             console.error('Failed to fetch Lemmy post:', error);
             
-            // Provide more helpful error messages
-            let errorMessage = 'Post not found or instance unreachable';
-            
-            if (error.message.includes('not available')) {
-                errorMessage = error.message;
-            } else if (error.message.includes('not found')) {
-                errorMessage = 'This post has been deleted or is not available';
-            } else if (error.message.includes('NetworkError')) {
-                errorMessage = `Cannot connect to ${instance}. The instance may be down or blocking requests.`;
-            }
-            
-            this.actions.showErrorPage(errorMessage);
+            this.actions.showErrorPage(
+                error.message || 'Post not found or instance unreachable'
+            );
         }
     }
 
@@ -272,64 +299,43 @@ export class Router {
         try {
             // Fetch the post first if we have postId
             if (postId) {
-                // Try without auth first
-                let url = `https://${instance}/api/v3/post?id=${postId}`;
-                let response = await fetch(url);
+                // Use the same logic as fetchAndShowLemmyPost
+                await this.fetchAndShowLemmyPost(instance, postId);
                 
-                // If fails, try with auth only if it's the same instance
-                if (!response.ok && (response.status === 400 || response.status === 401)) {
-                    const jwt = localStorage.getItem('lemmy_jwt');
-                    const userInstance = localStorage.getItem('lemmy_instance');
-                    
-                    // Only use JWT if it's for the same instance
-                    if (jwt && userInstance && userInstance.includes(instance)) {
-                        url = `https://${instance}/api/v3/post?id=${postId}&auth=${encodeURIComponent(jwt)}`;
-                        response = await fetch(url);
+                // Then scroll to the comment
+                setTimeout(() => {
+                    const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
+                    if (commentEl) {
+                        commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        commentEl.style.backgroundColor = 'var(--accent-color)';
+                        commentEl.style.opacity = '0.3';
+                        setTimeout(() => {
+                            commentEl.style.backgroundColor = '';
+                            commentEl.style.opacity = '';
+                        }, 2000);
                     }
-                }
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Lemmy API error:', errorText);
-                    
-                    if (response.status === 404 || errorText.includes('not_found')) {
-                        throw new Error('Post not found or deleted');
-                    } else {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                }
-                
-                const data = await response.json();
-                
-                if (data.post_view) {
-                    await this.actions.showLemmyPostDetail(data.post_view);
-                    // Scroll to comment after page loads
-                    setTimeout(() => {
-                        const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
-                        if (commentEl) {
-                            commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            commentEl.style.backgroundColor = 'var(--accent-color)';
-                            commentEl.style.opacity = '0.3';
-                            setTimeout(() => {
-                                commentEl.style.backgroundColor = '';
-                                commentEl.style.opacity = '';
-                            }, 2000);
-                        }
-                    }, 1000);
-                }
+                }, 1000);
             } else {
                 // Direct comment link without post context
                 let url = `https://${instance}/api/v3/comment?id=${commentId}`;
                 let response = await fetch(url);
                 
-                // Try with auth if needed and same instance
-                if (!response.ok && (response.status === 400 || response.status === 401)) {
+                // Try with auth if needed
+                if (!response.ok) {
                     const jwt = localStorage.getItem('lemmy_jwt');
                     const userInstance = localStorage.getItem('lemmy_instance');
                     
-                    if (jwt && userInstance && userInstance.includes(instance)) {
-                        url = `https://${instance}/api/v3/comment?id=${commentId}&auth=${encodeURIComponent(jwt)}`;
-                        response = await fetch(url);
+                    if (jwt && userInstance) {
+                        const cleanUserInstance = userInstance.replace(/^https?:\/\//, '');
+                        
+                        if (cleanUserInstance === instance || userInstance.includes(instance)) {
+                            url = `https://${instance}/api/v3/comment?id=${commentId}&auth=${encodeURIComponent(jwt)}`;
+                            response = await fetch(url);
+                        } else {
+                            // Try from user's instance
+                            url = `https://${cleanUserInstance}/api/v3/comment?id=${commentId}&auth=${encodeURIComponent(jwt)}`;
+                            response = await fetch(url);
+                        }
                     }
                 }
                 
