@@ -4,7 +4,7 @@ import { apiFetch } from './api.js';
 import { ICONS } from './icons.js';
 
 // Check if showdown is available, if not create a fallback
-const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : {
+const converter = typeof showdown !== 'undefined' ? converter : {
     makeHtml: (text) => {
         // Basic fallback markdown to HTML conversion
         return text
@@ -187,7 +187,7 @@ export function renderLemmyCard(post, currentUser, actions, settings, state) {
     } else {
         // Add post body if exists
         if (post.post.body) {
-            const converter = new showdown.Converter();
+            const converter = converter;
             cardHTML += `<div class="lemmy-post-body">${converter.makeHtml(post.post.body)}</div>`;
         }
         
@@ -337,7 +337,7 @@ export function renderLemmyCard(post, currentUser, actions, settings, state) {
             let newContent = `<h3 class="lemmy-post-title">${escapeHtml(post.post.name)}</h3>`;
             
             if (post.post.body) {
-                const converter = new showdown.Converter();
+                const converter = converter;
                 newContent += `<div class="lemmy-post-body">${converter.makeHtml(post.post.body)}</div>`;
             }
             
