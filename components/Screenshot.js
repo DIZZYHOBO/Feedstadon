@@ -30,7 +30,6 @@ async function captureScreenshot() {
 }
 
 function getCommentChain(commentView, allComments) {
-    const chain = [];
     const commentMap = {};
     
     // Create lookup map
@@ -51,24 +50,44 @@ function getCommentChain(commentView, allComments) {
         }
     }
     
-    // Build chain downwards (replies)
+    // Build chain downwards (replies) - improved logic
     const replies = [];
+    
     function getDirectReplies(comment) {
-        return allComments.filter(c => c.comment.parent_id === comment.comment.id)
-                         .sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
+        return allComments.filter(c => {
+            // Check if this comment is a direct reply to the given comment
+            const isDirectReply = c.comment.parent_id === comment.comment.id;
+            
+            // Also check path-based relationship for better compatibility
+            const commentPath = comment.comment.path || '';
+            const replyPath = c.comment.path || '';
+            const isPathChild = commentPath && replyPath && 
+                               replyPath.startsWith(commentPath + '.') &&
+                               replyPath.split('.').length === commentPath.split('.').length + 1;
+            
+            return isDirectReply || isPathChild;
+        }).sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
     }
     
-    function buildReplyChain(comment, depth = 0) {
+    function buildReplyChain(comment, depth = 0, maxDepth = 5) {
+        if (depth >= maxDepth) return; // Prevent infinite chains
+        
         const directReplies = getDirectReplies(comment);
+        console.log(`Found ${directReplies.length} direct replies for comment ${comment.comment.id}`);
+        
         if (directReplies.length > 0) {
-            // Take the first reply to continue the chain
+            // Take the first reply to continue the main chain
             const nextReply = directReplies[0];
             replies.push(nextReply);
-            buildReplyChain(nextReply, depth + 1);
+            
+            // Recursively build the chain from this reply
+            buildReplyChain(nextReply, depth + 1, maxDepth);
         }
     }
     
+    console.log(`Building reply chain from comment ${commentView.comment.id}`);
     buildReplyChain(commentView);
+    console.log(`Found ${replies.length} replies in chain`);
     
     return {
         parents: parents,
@@ -130,9 +149,18 @@ function renderScreenshotContent(state, actions) {
         commentsToShow.push(...chain.replies);
     }
     
+    console.log('Comments to show:', commentsToShow.length);
+    console.log('Chain details:', chain);
+    
     // Render comment chain
     commentsToShow.forEach((commentView, index) => {
         const commentElement = renderLemmyComment(commentView, state, actions);
+        
+        // Make username smaller in screenshots
+        const usernameElement = commentElement.querySelector('.username-instance');
+        if (usernameElement) {
+            usernameElement.style.fontSize = '0.9em';
+        }
         
         // Apply content filters to comments
         if (hideText) {
