@@ -42,6 +42,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     tempDiv.querySelectorAll('pre').forEach(pre => {
         pre.style.overflowX = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
+        pre.style.maxWidth = '100%';
     });
     htmlContent = tempDiv.innerHTML;
 
@@ -54,15 +55,15 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         <div class="status-avatar" style="flex-shrink: 0;">
             <img src="${commentView.creator.avatar || 'images/php.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/php.png';">
         </div>
-        <div class="status-body" style="min-width: 0; flex: 1; max-width: calc(100% - 60px);">
-            <div class="status-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
-                <div class="comment-user-info" style="flex: 1; min-width: 0; word-wrap: break-word;">
-                   <span class="username-instance" style="font-size: 1.2em; font-weight: bold; word-break: break-all;">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+        <div class="status-body" style="min-width: 0; flex: 1; max-width: calc(100% - 60px); overflow: hidden;">
+            <div class="status-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; max-width: 100%;">
+                <div class="comment-user-info" style="flex: 1; min-width: 0; word-wrap: break-word; max-width: 100%;">
+                   <span class="username-instance" style="font-size: 1.2em; font-weight: bold; word-break: break-all; max-width: 100%; display: inline-block;">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
                     ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 </div>
                 <span class="time-ago" style="flex-shrink: 0;">${timeAgo(commentView.comment.published)}</span>
             </div>
-            <div class="status-content" style="max-width: 100%; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">${htmlContent}</div>
+            <div class="status-content" style="max-width: 100%; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; overflow: hidden;">${htmlContent}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                      <button class="status-action lemmy-vote-btn" data-action="upvote" title="${!isLoggedIn ? 'Login to vote' : 'Upvote'}">${ICONS.lemmyUpvote}</button>
@@ -73,8 +74,8 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
                 <button class="status-action share-comment-btn" title="Share Comment">${ICONS.share}</button>
                 <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
             </div>
-            <div class="lemmy-replies-container" style="display: none; max-width: 100%;"></div>
-            <div class="lemmy-reply-box-container" style="display: none; max-width: 100%;"></div>
+            <div class="lemmy-replies-container" style="display: none; max-width: 100%; overflow: hidden;"></div>
+            <div class="lemmy-reply-box-container" style="display: none; max-width: 100%; overflow: hidden;"></div>
         </div>
     `;
 
@@ -232,9 +233,10 @@ function showEditUI(commentDiv, commentView, actions) {
     // Create edit container
     const editContainer = document.createElement('div');
     editContainer.className = 'edit-comment-container';
+    editContainer.style.maxWidth = '100%';
     editContainer.innerHTML = `
-        <textarea class="edit-comment-textarea" style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--font-color); resize: vertical; font-family: inherit; font-size: 14px; line-height: 1.4;">${originalContent}</textarea>
-        <div class="edit-comment-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+        <textarea class="edit-comment-textarea" style="width: 100%; max-width: 100%; min-height: 100px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--font-color); resize: vertical; font-family: inherit; font-size: 14px; line-height: 1.4; box-sizing: border-box;">${originalContent}</textarea>
+        <div class="edit-comment-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; max-width: 100%;">
             <button class="button-secondary cancel-edit-btn" style="padding: 8px 16px;">Cancel</button>
             <button class="button-primary save-edit-btn" style="padding: 8px 16px; background-color: var(--accent-color); color: white; border: none;">Save</button>
         </div>
@@ -307,6 +309,7 @@ function showEditUI(commentDiv, commentView, actions) {
             tempDiv.querySelectorAll('pre').forEach(pre => {
                 pre.style.overflowX = 'auto';
                 pre.style.whiteSpace = 'pre-wrap';
+                pre.style.maxWidth = '100%';
             });
             newHtmlContent = tempDiv.innerHTML;
             
@@ -387,7 +390,11 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions, 
             directReplies.sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
             
             directReplies.forEach(replyView => {
-                container.appendChild(renderLemmyComment(replyView, state, actions, postAuthorId));
+                const replyElement = renderLemmyComment(replyView, state, actions, postAuthorId);
+                // Ensure replies container also respects screen width
+                replyElement.style.maxWidth = '100%';
+                replyElement.style.overflow = 'hidden';
+                container.appendChild(replyElement);
             });
         } else {
             container.innerHTML = 'No replies found.';
@@ -407,8 +414,8 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
 
     container.style.display = 'block';
     container.innerHTML = `
-        <textarea class="lemmy-reply-textarea" placeholder="Write a reply..." style="width: 100%; min-height: 80px; max-width: 100%; word-wrap: break-word;"></textarea>
-        <div class="reply-box-actions">
+        <textarea class="lemmy-reply-textarea" placeholder="Write a reply..." style="width: 100%; max-width: 100%; min-height: 80px; word-wrap: break-word; box-sizing: border-box; resize: vertical; font-family: inherit;"></textarea>
+        <div class="reply-box-actions" style="max-width: 100%;">
             <button class="button-secondary cancel-reply-btn">Cancel</button>
             <button class="button-primary send-reply-btn">Reply</button>
         </div>
@@ -570,6 +577,11 @@ function renderCommentTree(comments, container, state, actions, postAuthorId, de
             commentElement.style.maxWidth = `calc(100% - ${actualIndent}px)`;
             commentElement.style.overflow = 'hidden';
         }
+        
+        // Ensure the comment element itself never exceeds screen width
+        commentElement.style.maxWidth = '100%';
+        commentElement.style.overflowX = 'hidden';
+        commentElement.style.wordWrap = 'break-word';
         
         container.appendChild(commentElement);
         
