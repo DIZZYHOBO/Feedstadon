@@ -17,6 +17,7 @@ import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from '
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, showToast, showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from './components/ui.js';
 import { renderLoopsProfilePage } from './components/Loops.js';
 
+
 // Add sharing functionality
 function generateShareableUrl(type, data) {
     const baseUrl = window.location.origin;
@@ -139,7 +140,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         settings: {
             hideNsfw: false,
         },
-        actions: {}
+        actions: {},
+        currentPostView: null
     };
 
     const views = {
@@ -155,6 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         settings: document.getElementById('settings-view'),
         statusDetail: document.getElementById('status-detail-view'),
         lemmyPost: document.getElementById('lemmy-post-view'),
+        lemmyComments: document.getElementById('lemmy-comments-view'),
         lemmyCommunity: document.getElementById('lemmy-community-view'),
     };
     
@@ -358,6 +361,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             showLoadingBar();
             switchView('lemmyPost');
             await renderLemmyPostPage(state, post, actions);
+            hideLoadingBar();
+        },
+        showLemmyCommentThread: async (postView, rootCommentId) => {
+            console.log('showLemmyCommentThread action called with:', postView, rootCommentId);
+            showLoadingBar();
+            switchView('lemmyComments');
+            await renderLemmyCommentThreadPage(state, actions, postView, rootCommentId);
             hideLoadingBar();
         },
         showPublicLemmyPost: async (postView, instance) => {
