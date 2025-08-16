@@ -1491,57 +1491,6 @@ select:focus {
     display: flex !important;
 }
 
-/* Comment Thread Page Styles */
-.comment-thread-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 15px;
-    background-color: var(--card-color);
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 10px;
-}
-
-.comment-thread-header h3 {
-    margin: 0;
-    color: var(--font-color);
-}
-
-.comment-thread-container {
-    padding: 0 15px;
-}
-
-.original-post-preview {
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    margin-bottom: 20px;
-}
-
-.post-preview-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.post-preview-header .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--border-radius);
-}
-
-.post-title {
-    font-weight: 600;
-    color: var(--font-color);
-    font-size: 16px;
-    margin-bottom: 5px;
-}
-
-.post-meta {
-    color: var(--font-color-muted);
-    font-size: 14px;
-}
 /* Add these styles to the end of your existing style.css file */
 
 /* Comment Thread Page Styles */
@@ -1655,5 +1604,4 @@ select:focus {
 .read-more-comments .icon {
     width: 16px;
     height: 16px;
-}
 }
