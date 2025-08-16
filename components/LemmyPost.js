@@ -152,13 +152,18 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         menu.style.zIndex = '1000';
         
         const menuItems = [];
+        
+        // Always available options
         menuItems.push(
             { label: 'Share Comment', action: () => actions.shareComment(commentView) },
             { label: 'Copy Comment URL', action: () => {
                 navigator.clipboard.writeText(commentView.comment.ap_id);
                 showToast('Comment URL copied to clipboard!');
             }},
-            { label: 'Take Screenshot', action: () => actions.showScreenshotPage(commentView, null) }
+            { label: 'Take Screenshot', action: () => {
+                // This is the key addition - the screenshot action
+                actions.showScreenshotPage(commentView, state.currentPostView);
+            }}
         );
 
         if (isLoggedIn && isCreator) {
