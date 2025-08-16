@@ -9,10 +9,12 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     const commentWrapper = document.createElement('div');
     commentWrapper.className = 'comment-wrapper';
     commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
+    commentWrapper.style.cssText = 'max-width: 100%; overflow-x: hidden;';
 
     const commentDiv = document.createElement('div');
     commentDiv.className = 'status lemmy-comment';
     commentDiv.dataset.commentId = commentView.comment.id;
+    commentDiv.style.cssText = 'max-width: 100%; word-wrap: break-word; overflow-wrap: break-word;';
 
     const converter = new showdown.Converter();
     let htmlContent = converter.makeHtml(commentView.comment.content);
@@ -26,6 +28,20 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             this.src='images/404.png';
             this.classList.add('broken-image-fallback');
         };
+        // Ensure images don't break layout
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+    });
+    // Ensure all content wraps properly
+    tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
+        el.style.wordWrap = 'break-word';
+        el.style.overflowWrap = 'break-word';
+        el.style.maxWidth = '100%';
+    });
+    // Special handling for code blocks
+    tempDiv.querySelectorAll('pre').forEach(pre => {
+        pre.style.overflowX = 'auto';
+        pre.style.whiteSpace = 'pre-wrap';
     });
     htmlContent = tempDiv.innerHTML;
 
@@ -35,18 +51,18 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     const isLoggedIn = localStorage.getItem('lemmy_jwt');
 
     commentDiv.innerHTML = `
-        <div class="status-avatar">
+        <div class="status-avatar" style="flex-shrink: 0;">
             <img src="${commentView.creator.avatar || 'images/php.png'}" alt="${commentView.creator.name}'s avatar" class="avatar" onerror="this.onerror=null;this.src='images/php.png';">
         </div>
-        <div class="status-body">
-            <div class="status-header">
-                <div class="comment-user-info">
-                   <span class="username-instance" style="font-size: 1.2em; font-weight: bold;">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
+        <div class="status-body" style="min-width: 0; flex: 1; max-width: calc(100% - 60px);">
+            <div class="status-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                <div class="comment-user-info" style="flex: 1; min-width: 0; word-wrap: break-word;">
+                   <span class="username-instance" style="font-size: 1.2em; font-weight: bold; word-break: break-all;">@${commentView.creator.name}@${new URL(commentView.creator.actor_id).hostname}</span>
                     ${isOP ? '<span class="op-badge">OP</span>' : ''}
                 </div>
-                <span class="time-ago">${timeAgo(commentView.comment.published)}</span>
+                <span class="time-ago" style="flex-shrink: 0;">${timeAgo(commentView.comment.published)}</span>
             </div>
-            <div class="status-content">${htmlContent}</div>
+            <div class="status-content" style="max-width: 100%; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">${htmlContent}</div>
             <div class="status-footer">
                 <div class="lemmy-vote-cluster">
                      <button class="status-action lemmy-vote-btn" data-action="upvote" title="${!isLoggedIn ? 'Login to vote' : 'Upvote'}">${ICONS.lemmyUpvote}</button>
@@ -57,8 +73,8 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
                 <button class="status-action share-comment-btn" title="Share Comment">${ICONS.share}</button>
                 <button class="status-action more-options-btn" title="More">${ICONS.more}</button>
             </div>
-            <div class="lemmy-replies-container" style="display: none;"></div>
-            <div class="lemmy-reply-box-container" style="display: none;"></div>
+            <div class="lemmy-replies-container" style="display: none; max-width: 100%;"></div>
+            <div class="lemmy-reply-box-container" style="display: none; max-width: 100%;"></div>
         </div>
     `;
 
@@ -147,10 +163,14 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             });
         }
 
-        if (isLoggedIn) {
+        if (isLoggedIn && !isCreator) {
             menuItems.push({
                 label: `Block @${commentView.creator.name}`,
-                action: () => actions.lemmyBlockUser(commentView.creator.id, true)
+                action: () => {
+                    if (window.confirm(`Are you sure you want to block ${commentView.creator.name}?`)) {
+                        actions.lemmyBlockUser(commentView.creator.id, true);
+                    }
+                }
             });
         }
 
@@ -275,6 +295,18 @@ function showEditUI(commentDiv, commentView, actions) {
                     this.src = 'images/404.png';
                     this.classList.add('broken-image-fallback');
                 };
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+            });
+            // Ensure all content wraps properly
+            tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
+                el.style.wordWrap = 'break-word';
+                el.style.overflowWrap = 'break-word';
+                el.style.maxWidth = '100%';
+            });
+            tempDiv.querySelectorAll('pre').forEach(pre => {
+                pre.style.overflowX = 'auto';
+                pre.style.whiteSpace = 'pre-wrap';
             });
             newHtmlContent = tempDiv.innerHTML;
             
@@ -375,7 +407,7 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
 
     container.style.display = 'block';
     container.innerHTML = `
-        <textarea class="lemmy-reply-textarea" placeholder="Write a reply..."></textarea>
+        <textarea class="lemmy-reply-textarea" placeholder="Write a reply..." style="width: 100%; min-height: 80px; max-width: 100%; word-wrap: break-word;"></textarea>
         <div class="reply-box-actions">
             <button class="button-secondary cancel-reply-btn">Cancel</button>
             <button class="button-primary send-reply-btn">Reply</button>
@@ -529,9 +561,14 @@ function renderCommentTree(comments, container, state, actions, postAuthorId, de
     comments.forEach(commentView => {
         const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
         
-        // Add indentation based on depth
+        // Add indentation based on depth but limit max indentation to prevent overflow
         if (depth > 0) {
-            commentElement.style.marginLeft = `${Math.min(depth * 20, 100)}px`;
+            const maxIndent = 60; // Maximum indentation in pixels
+            const indentStep = 20; // Pixels per level
+            const actualIndent = Math.min(depth * indentStep, maxIndent);
+            commentElement.style.marginLeft = `${actualIndent}px`;
+            commentElement.style.maxWidth = `calc(100% - ${actualIndent}px)`;
+            commentElement.style.overflow = 'hidden';
         }
         
         container.appendChild(commentElement);
