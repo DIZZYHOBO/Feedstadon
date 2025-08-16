@@ -363,11 +363,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderLemmyPostPage(state, post, actions);
             hideLoadingBar();
         },
-        showLemmyCommentThread: async (postView, rootCommentId) => {
-            console.log('showLemmyCommentThread action called with:', postView, rootCommentId);
+        showLemmyCommentThread: async (postView, rootCommentId, viewType = 'replies') => {
+            console.log('showLemmyCommentThread action called with:', postView, rootCommentId, viewType);
             showLoadingBar();
             switchView('lemmyComments');
-            await renderLemmyCommentThreadPage(state, actions, postView, rootCommentId);
+            await renderLemmyCommentThreadPage(state, actions, postView, rootCommentId, viewType);
             hideLoadingBar();
         },
         showPublicLemmyPost: async (postView, instance) => {
