@@ -79,7 +79,6 @@ export function renderLemmyCard(post, actions) {
                     <a href="${url}" target="_blank" rel="noopener noreferrer" class="lemmy-link-title">${post.post.name}</a>
                 </h3>
                 <div class="link-domain-indicator">
-                    <svg class="icon link-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" /></svg>
                     <span class="domain-text">${domain}</span>
                 </div>
             </div>
