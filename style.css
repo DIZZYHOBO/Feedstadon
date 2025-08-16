@@ -1575,6 +1575,11 @@ select:focus {
     display: none !important;
 }
 
+/* Make usernames smaller in screenshots */
+.screenshot-content .username-instance {
+    font-size: 0.9em !important;
+}
+
 /* Separator styling */
 .screenshot-content > div:not(.status):not(.comment-wrapper) {
     background-color: var(--card-color);
