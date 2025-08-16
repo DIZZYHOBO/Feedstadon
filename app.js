@@ -17,7 +17,6 @@ import { apiFetch, lemmyImageUpload, apiUploadMedia, detectInstanceType } from '
 import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, showToast, showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from './components/ui.js';
 import { renderLoopsProfilePage } from './components/Loops.js';
 
-
 // Add sharing functionality
 function generateShareableUrl(type, data) {
     const baseUrl = window.location.origin;
