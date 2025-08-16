@@ -6,6 +6,7 @@ import { renderStatusDetail, renderStatus } from './components/Post.js';
 import { initComposeModal, showComposeModal, showComposeModalWithReply } from './components/Compose.js';
 import { fetchLemmyFeed, renderLemmyCard } from './components/Lemmy.js';
 import { renderLemmyPostPage, renderPublicLemmyPostPage } from './components/LemmyPost.js';
+import { renderLemmyCommentThreadPage } from './components/LemmyComments.js';
 import { renderLemmyCommunityPage } from './components/LemmyCommunity.js';
 import { renderMergedPostPage, fetchMergedTimeline } from './components/MergedPost.js';
 import { renderNotificationsPage, updateNotificationBell } from './components/Notifications.js';
