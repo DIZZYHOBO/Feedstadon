@@ -618,7 +618,14 @@ function renderCommentTree(comments, container, state, actions, postAuthorId, de
                 
                 readMoreBtn.addEventListener('click', () => {
                     // Navigate to the comment thread page
-                    actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
+                    if (actions.showLemmyCommentThread) {
+                        actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
+                    } else {
+                        console.error('showLemmyCommentThread action not available');
+                        // Fallback: expand comments in place
+                        readMoreBtn.remove();
+                        renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1, 999);
+                    }
                 });
                 
                 container.appendChild(readMoreBtn);
