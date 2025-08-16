@@ -20,12 +20,12 @@
                 <div class="dropdown" id="feeds-dropdown">
                     <button class="nav-button">Feeds</button>
                     <div class="dropdown-content">
-    <a href="#" data-timeline="home">Home</a>
-    <a href="#" data-timeline="merged">Merged</a> <!-- This is the new line -->
-    <hr>
-    <a href="#" id="lemmy-main-link">Lemmy</a>
-    <a href="#" id="mastodon-main-link">Mastodon</a>
-</div>
+                        <a href="#" data-timeline="home">Home</a>
+                        <a href="#" data-timeline="merged">Merged</a>
+                        <hr>
+                        <a href="#" id="lemmy-main-link">Lemmy</a>
+                        <a href="#" id="mastodon-main-link">Mastodon</a>
+                    </div>
                 </div>
                 <button id="discover-btn" class="nav-button">Discover</button>
             </div>
@@ -33,22 +33,22 @@
             <div class="nav-center">
                  </div>
 
-<div class="nav-right">
-    <div class="dropdown" id="user-dropdown">
-        <button class="nav-button">
-            Menu
-            <div class="notification-dot"></div> <!-- Notification dot on menu -->
-        </button>
-        <div class="dropdown-content">
-            <a href="#" id="new-post-link">New Post</a>
-            <a href="#" id="notifications-link">
-                Notifications
-                <div class="menu-notification-dot"></div>
-            </a>
-            <a href="#" id="settings-link">Settings</a>
-            <a href="#" id="help-link">Help</a>
-        </div>
-    </div>
+            <div class="nav-right">
+                <div class="dropdown" id="user-dropdown">
+                    <button class="nav-button">
+                        Menu
+                        <div class="notification-dot"></div> <!-- Notification dot on menu -->
+                    </button>
+                    <div class="dropdown-content">
+                        <a href="#" id="new-post-link">New Post</a>
+                        <a href="#" id="notifications-link">
+                            Notifications
+                            <div class="menu-notification-dot"></div>
+                        </a>
+                        <a href="#" id="settings-link">Settings</a>
+                        <a href="#" id="help-link">Help</a>
+                    </div>
+                </div>
                 <button id="notifications-btn" class="icon-button"></button>
             </div>
         </nav>
@@ -58,7 +58,10 @@
         <div class="container">
             <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
             <div id="timeline" class="view-container"></div>
-            <div id="notifications-view" class="view-container"></div>
+            <div id="notifications-view" class="view-container">
+                <div class="notifications-sub-nav"></div>
+                <div id="notifications-list"></div>
+            </div>
             <div id="discover-view" class="view-container"></div>
             <div id="screenshot-view" class="view-container"></div>
             <div id="merged-post-view" class="view-container"></div>
@@ -135,40 +138,36 @@
     <div class="modal-overlay" id="help-modal">
         <div class="modal-content help-modal-content">
             <button id="close-help-btn" class="close-btn">close</button>
-            <h3>Markdown Guide</h3>
-            <div class="markdown-guide">
-                <p><b>*Italics*</b> &rarr; <i>*Italics*</i></p>
-                <p><b>**Bold**</b> &rarr; <strong>**Bold**</strong></p>
-                <p><b># Heading 1</b> &rarr; <h1># Heading 1</h1></p>
-                <p><b>## Heading 2</b> &rarr; <h2>## Heading 2</h2></p>
-                <p><b>[Link Text](https://example.com)</b> &rarr; <a href="#">[Link Text](https://example.com)</a></p>
-                <p><b>![Image Alt Text](./images/php.png)</b> &rarr; <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
-                <p><b>> Blockquote</b> &rarr; <blockquote>> Blockquote</blockquote></p>
-                <p><b>- List Item</b> &rarr; <ul><li>- List Item</li></ul></p>
+            <h3>Feedstadon Help</h3>
+            <div class="help-sections">
+                <div class="help-section">
+                    <h4>Screenshot Feature</h4>
+                    <p>Take screenshots of posts and comment chains:</p>
+                    <ul>
+                        <li>Click the "More" button on any comment and select "Take Screenshot"</li>
+                        <li>Include parent comments to show conversation context</li>
+                        <li>Include reply comments to show responses</li>
+                        <li>Use content filters to hide text or images as needed</li>
+                        <li>Preview your screenshot before capturing</li>
+                    </ul>
+                </div>
+                
+                <div class="help-section">
+                    <h4>Markdown Guide</h4>
+                    <div class="markdown-guide">
+                        <p><b>*Italics*</b> → <i>*Italics*</i></p>
+                        <p><b>**Bold**</b> → <strong>**Bold**</strong></p>
+                        <p><b># Heading 1</b> → <h1># Heading 1</h1></p>
+                        <p><b>## Heading 2</b> → <h2>## Heading 2</h2></p>
+                        <p><b>[Link Text](https://example.com)</b> → <a href="#">[Link Text](https://example.com)</a></p>
+                        <p><b>![Image Alt Text](./images/php.png)</b> → <img src="./images/php.png" alt="PHP Logo" class="markdown-image-example"></p>
+                        <p><b>> Blockquote</b> → <blockquote>> Blockquote</blockquote></p>
+                        <p><b>- List Item</b> → <ul><li>- List Item</li></ul></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-    <template id="screenshot-controls-template">
-        <div class="screenshot-controls">
-            <div class="control-group">
-                <label>Parent Comments:</label>
-                <button data-action="parents-up">↑</button>
-                <button data-action="parents-down">↓</button>
-            </div>
-            <div class="control-group">
-                <input type="checkbox" id="include-replies-checkbox">
-                <label for="include-replies-checkbox">Include Replies</label>
-            </div>
-            <div class="control-group" id="replies-controls" style="display: none;">
-                 <label>Replies:</label>
-                <button data-action="replies-up">↑</button>
-                <button data-action="replies-down">↓</button>
-            </div>
-            <button id="capture-btn">Capture Screenshot</button>
-        </div>
-        <div id="screenshot-preview-area"></div>
-    </template>
 
     <template id="mastodon-login-template">
         <div class="login-prompt">
