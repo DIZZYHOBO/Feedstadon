@@ -2,15 +2,17 @@ import { apiFetch } from './api.js';
 import { renderLemmyComment } from './LemmyPost.js';
 import { ICONS } from './icons.js';
 
-export async function renderLemmyCommentThreadPage(state, actions, postView, rootCommentId) {
+export async function renderLemmyCommentThreadPage(state, actions, postView, rootCommentId, viewType = 'replies') {
     const view = document.getElementById('lemmy-comments-view');
+    
+    const headerTitle = viewType === 'chain' ? 'Comment Chain' : 'Comment Thread';
     
     view.innerHTML = `
         <div class="comment-thread-header">
             <button id="back-to-post-btn" class="nav-button">
                 ${ICONS.reply} Back to Post
             </button>
-            <h3>Comment Thread</h3>
+            <h3>${headerTitle}</h3>
         </div>
         <div class="comment-thread-container">
             <div class="original-post-preview">
@@ -23,7 +25,7 @@ export async function renderLemmyCommentThreadPage(state, actions, postView, roo
                 </div>
             </div>
             <div class="comment-thread-list">
-                <div class="loading-comments">Loading comment thread...</div>
+                <div class="loading-comments">Loading ${viewType === 'chain' ? 'comment chain' : 'comment thread'}...</div>
             </div>
         </div>
     `;
@@ -36,11 +38,129 @@ export async function renderLemmyCommentThreadPage(state, actions, postView, roo
     const threadListContainer = view.querySelector('.comment-thread-list');
     
     try {
-        await loadCommentThread(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id, postView);
+        if (viewType === 'chain') {
+            await loadCommentChain(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id, postView);
+        } else {
+            await loadCommentThread(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id, postView);
+        }
     } catch (error) {
         console.error('Failed to load comment thread:', error);
         threadListContainer.innerHTML = '<p class="error-message">Failed to load comment thread.</p>';
     }
+}
+
+async function loadCommentChain(state, actions, postId, rootCommentId, container, postAuthorId, postView) {
+    const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
+    
+    try {
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=Old`, {}, 'lemmy');
+        const allComments = response?.data?.comments || [];
+        
+        if (allComments.length === 0) {
+            container.innerHTML = '<p class="no-comments">No comments found.</p>';
+            return;
+        }
+
+        // Build the comment chain - following the longest linear path
+        const commentChain = buildCommentChain(allComments, parseInt(rootCommentId));
+        
+        container.innerHTML = '';
+        
+        if (commentChain.length > 0) {
+            const separator = document.createElement('div');
+            separator.className = 'chain-separator';
+            separator.innerHTML = `<h4>Comment Chain (${commentChain.length} comments)</h4>`;
+            container.appendChild(separator);
+
+            commentChain.forEach((commentView, index) => {
+                const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
+                commentElement.classList.add('chain-comment');
+                
+                // Only show view options on comments that have branches (other replies not in this chain)
+                const hasOtherReplies = hasRepliesNotInChain(commentView, allComments, commentChain);
+                if (!hasOtherReplies) {
+                    // Remove view replies button since this comment doesn't branch
+                    removeViewButtons(commentElement);
+                } else {
+                    // Override buttons for comments that do have branches
+                    overrideViewRepliesButtons(commentElement, commentView, actions, postView);
+                }
+                
+                // Add chain position indicator
+                if (index === 0) {
+                    commentElement.classList.add('chain-start');
+                }
+                if (index === commentChain.length - 1) {
+                    commentElement.classList.add('chain-end');
+                }
+                
+                container.appendChild(commentElement);
+            });
+        } else {
+            container.innerHTML = '<p class="no-comments">No comment chain found.</p>';
+        }
+        
+    } catch (error) {
+        console.error('Error loading comment chain:', error);
+        throw error;
+    }
+}
+
+function buildCommentChain(allComments, startCommentId) {
+    const chain = [];
+    const commentMap = {};
+    
+    // Create a map for quick lookup
+    allComments.forEach(comment => {
+        commentMap[comment.comment.id] = comment;
+    });
+    
+    // Start with the clicked comment
+    let currentComment = commentMap[startCommentId];
+    if (!currentComment) return [];
+    
+    chain.push(currentComment);
+    
+    // Follow the chain down - pick the first reply if there are multiple
+    // This creates a linear conversation thread
+    while (currentComment) {
+        const directReplies = allComments.filter(c => 
+            c.comment.parent_id === currentComment.comment.id
+        ).sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
+        
+        if (directReplies.length > 0) {
+            // Take the first (earliest) reply to continue the chain
+            currentComment = directReplies[0];
+            chain.push(currentComment);
+        } else {
+            // End of chain
+            break;
+        }
+    }
+    
+    return chain;
+}
+
+function hasRepliesNotInChain(comment, allComments, chain) {
+    const chainIds = new Set(chain.map(c => c.comment.id));
+    const directReplies = allComments.filter(c => 
+        c.comment.parent_id === comment.comment.id
+    );
+    
+    // Check if there are replies that aren't part of the current chain
+    return directReplies.some(reply => !chainIds.has(reply.comment.id));
+}
+
+function removeViewButtons(commentElement) {
+    // Remove view replies button
+    const viewRepliesBtn = commentElement.querySelector('.view-replies-btn');
+    if (viewRepliesBtn) {
+        viewRepliesBtn.remove();
+    }
+    
+    // Remove read more comments buttons
+    const readMoreBtns = commentElement.querySelectorAll('.read-more-comments');
+    readMoreBtns.forEach(btn => btn.remove());
 }
 
 async function loadCommentThread(state, actions, postId, rootCommentId, container, postAuthorId, postView) {
@@ -101,12 +221,6 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
         console.log('Found direct replies by parent_id:', repliesByParentId.length);
         console.log('Found direct replies by path:', repliesByPath.length);
         console.log('Total unique direct replies:', directReplies.length);
-        console.log('Direct replies:', directReplies.map(r => ({
-            id: r.comment.id, 
-            parent_id: r.comment.parent_id,
-            path: r.comment.path,
-            content: r.comment.content.substring(0, 50)
-        })));
 
         // Sort replies by creation time
         directReplies.sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
@@ -118,7 +232,7 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
         rootCommentElement.classList.add('thread-root-comment');
         
         // Override the "View replies" button functionality for this context
-        overrideViewRepliesButtons(rootCommentElement, rootComment, actions, postView);
+        overrideViewRepliesButtons(rootCommentElement, rootComment, actions, postView, allComments);
         
         container.appendChild(rootCommentElement);
 
@@ -135,7 +249,7 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
                 replyElement.classList.add('direct-reply-comment');
                 
                 // Override the "View replies" button for replies too
-                overrideViewRepliesButtons(replyElement, replyComment, actions, postView);
+                overrideViewRepliesButtons(replyElement, replyComment, actions, postView, allComments);
                 
                 container.appendChild(replyElement);
             });
@@ -152,7 +266,7 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
     }
 }
 
-function overrideViewRepliesButtons(commentElement, commentView, actions, postView) {
+function overrideViewRepliesButtons(commentElement, commentView, actions, postView, allComments = null) {
     // Find and override any "View X replies" buttons in this comment
     const viewRepliesBtn = commentElement.querySelector('.view-replies-btn');
     if (viewRepliesBtn) {
@@ -160,11 +274,40 @@ function overrideViewRepliesButtons(commentElement, commentView, actions, postVi
         const newBtn = viewRepliesBtn.cloneNode(true);
         viewRepliesBtn.parentNode.replaceChild(newBtn, viewRepliesBtn);
         
-        // Add new event listener that opens a new thread page
-        newBtn.addEventListener('click', () => {
-            console.log('Opening new thread for comment:', commentView.comment.id);
-            actions.showLemmyCommentThread(postView, commentView.comment.id);
-        });
+        // Check if this comment has multiple replies (making it worth showing chain option)
+        const hasMultipleReplies = allComments ? 
+            allComments.filter(c => c.comment.parent_id === commentView.comment.id).length > 1 : 
+            commentView.counts.child_count > 1;
+        
+        if (hasMultipleReplies) {
+            // Replace single button with two buttons
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'view-options-container';
+            buttonContainer.innerHTML = `
+                <button class="view-replies-btn">View ${commentView.counts.child_count} Replies</button>
+                <button class="view-chain-btn">View Chain</button>
+            `;
+            
+            newBtn.parentNode.replaceChild(buttonContainer, newBtn);
+            
+            // Add event listeners
+            buttonContainer.querySelector('.view-replies-btn').addEventListener('click', () => {
+                console.log('Opening replies thread for comment:', commentView.comment.id);
+                actions.showLemmyCommentThread(postView, commentView.comment.id, 'replies');
+            });
+            
+            buttonContainer.querySelector('.view-chain-btn').addEventListener('click', () => {
+                console.log('Opening comment chain for comment:', commentView.comment.id);
+                actions.showLemmyCommentThread(postView, commentView.comment.id, 'chain');
+            });
+        } else {
+            // Single reply - just show chain option
+            newBtn.textContent = 'View Chain';
+            newBtn.addEventListener('click', () => {
+                console.log('Opening comment chain for comment:', commentView.comment.id);
+                actions.showLemmyCommentThread(postView, commentView.comment.id, 'chain');
+            });
+        }
     }
     
     // Also override any "Read more comments" buttons that might exist
@@ -174,8 +317,8 @@ function overrideViewRepliesButtons(commentElement, commentView, actions, postVi
         btn.parentNode.replaceChild(newBtn, btn);
         
         newBtn.addEventListener('click', () => {
-            console.log('Opening new thread for comment:', commentView.comment.id);
-            actions.showLemmyCommentThread(postView, commentView.comment.id);
+            console.log('Opening replies thread for comment:', commentView.comment.id);
+            actions.showLemmyCommentThread(postView, commentView.comment.id, 'replies');
         });
     });
 }
