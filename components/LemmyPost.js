@@ -449,6 +449,9 @@ function toggleReplyBox(container, postId, parentCommentId, actions) {
 }
 
 export async function renderLemmyPostPage(state, post, actions) {
+    // Store the current post view for use in comment threads
+    state.currentPostView = post;
+    
     const view = document.getElementById('lemmy-post-view');
     view.innerHTML = `
         <div class="lemmy-post-detail">
@@ -549,22 +552,25 @@ function buildCommentTree(comments) {
         };
     });
 
-    // Second pass: build the tree structure
+    // Second pass: build the tree structure and identify root comments
     comments.forEach(commentView => {
-        const comment = commentMap[commentView.comment.id];
         const parentId = commentView.comment.parent_id;
         
         if (parentId && commentMap[parentId]) {
-            commentMap[parentId].children.push(comment);
+            // This comment has a parent in our set, add it as a child
+            commentMap[parentId].children.push(commentMap[commentView.comment.id]);
         } else {
-            rootComments.push(comment);
+            // This is a root-level comment (no parent_id means it's a direct reply to the post)
+            if (!parentId) {
+                rootComments.push(commentMap[commentView.comment.id]);
+            }
         }
     });
 
     return rootComments;
 }
 
-function renderCommentTree(comments, container, state, actions, postAuthorId, depth = 0) {
+function renderCommentTree(comments, container, state, actions, postAuthorId, depth = 0, maxDepth = 2) {
     comments.forEach(commentView => {
         const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
         
@@ -585,9 +591,38 @@ function renderCommentTree(comments, container, state, actions, postAuthorId, de
         
         container.appendChild(commentElement);
         
-        // Render children recursively
+        // Render children recursively, but only up to maxDepth
         if (commentView.children && commentView.children.length > 0) {
-            renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1);
+            if (depth < maxDepth) {
+                // Render children normally
+                renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1, maxDepth);
+            } else {
+                // Add "Read more comments" button for deeper threads
+                const readMoreBtn = document.createElement('div');
+                readMoreBtn.className = 'read-more-comments';
+                readMoreBtn.style.cssText = `
+                    margin-left: ${Math.min((depth + 1) * 20, 60)}px;
+                    padding: 10px;
+                    background-color: var(--bg-color);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    cursor: pointer;
+                    color: var(--accent-color);
+                    font-weight: 500;
+                    margin-top: 10px;
+                    margin-bottom: 10px;
+                `;
+                readMoreBtn.innerHTML = `
+                    ${ICONS.comments} Read ${commentView.children.length} more comment${commentView.children.length > 1 ? 's' : ''}
+                `;
+                
+                readMoreBtn.addEventListener('click', () => {
+                    // Navigate to the comment thread page
+                    actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
+                });
+                
+                container.appendChild(readMoreBtn);
+            }
         }
     });
 }
