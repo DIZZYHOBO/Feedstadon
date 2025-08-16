@@ -36,14 +36,14 @@ export async function renderLemmyCommentThreadPage(state, actions, postView, roo
     const threadListContainer = view.querySelector('.comment-thread-list');
     
     try {
-        await loadCommentThread(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id);
+        await loadCommentThread(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id, postView);
     } catch (error) {
         console.error('Failed to load comment thread:', error);
         threadListContainer.innerHTML = '<p class="error-message">Failed to load comment thread.</p>';
     }
 }
 
-async function loadCommentThread(state, actions, postId, rootCommentId, container, postAuthorId) {
+async function loadCommentThread(state, actions, postId, rootCommentId, container, postAuthorId, postView) {
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
     
     try {
@@ -56,7 +56,7 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
             return;
         }
 
-        // Find the root comment and build the thread
+        // Find the root comment (the one that was clicked)
         const rootComment = allComments.find(c => c.comment.id === parseInt(rootCommentId));
         
         if (!rootComment) {
@@ -64,35 +64,44 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
             return;
         }
 
-        // Build the comment thread in chronological order
-        const threadComments = buildCommentThread(allComments, rootCommentId);
-        
+        // Find only the DIRECT replies to the root comment
+        const directReplies = allComments.filter(comment => 
+            comment.comment.parent_id === parseInt(rootCommentId)
+        ).sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
+
         container.innerHTML = '';
         
-        if (threadComments.length > 0) {
-            threadComments.forEach((commentView, index) => {
-                const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
+        // First, render the root comment (the one that was clicked)
+        const rootCommentElement = renderLemmyComment(rootComment, state, actions, postAuthorId);
+        rootCommentElement.classList.add('thread-root-comment');
+        
+        // Override the "View replies" button functionality for this context
+        overrideViewRepliesButtons(rootCommentElement, rootComment, actions, postView);
+        
+        container.appendChild(rootCommentElement);
+
+        // Add a separator if there are replies
+        if (directReplies.length > 0) {
+            const separator = document.createElement('div');
+            separator.className = 'replies-separator';
+            separator.innerHTML = `<h4>Direct Replies (${directReplies.length})</h4>`;
+            container.appendChild(separator);
+
+            // Then render all direct replies (no indentation, full width)
+            directReplies.forEach(replyComment => {
+                const replyElement = renderLemmyComment(replyComment, state, actions, postAuthorId);
+                replyElement.classList.add('direct-reply-comment');
                 
-                // Add thread styling
-                commentElement.classList.add('thread-comment');
+                // Override the "View replies" button for replies too
+                overrideViewRepliesButtons(replyElement, replyComment, actions, postView);
                 
-                // Add depth indicator
-                const depth = getCommentDepth(commentView, rootCommentId, allComments);
-                if (depth > 0) {
-                    commentElement.style.borderLeft = `3px solid var(--accent-color)`;
-                    commentElement.style.marginLeft = `${Math.min(depth * 15, 45)}px`;
-                    commentElement.style.paddingLeft = '15px';
-                }
-                
-                // Add thread position indicator
-                if (index === 0) {
-                    commentElement.classList.add('thread-root');
-                }
-                
-                container.appendChild(commentElement);
+                container.appendChild(replyElement);
             });
         } else {
-            container.innerHTML = '<p class="no-comments">No comments in this thread.</p>';
+            const noReplies = document.createElement('div');
+            noReplies.className = 'no-replies';
+            noReplies.innerHTML = '<p class="no-comments">No direct replies to this comment.</p>';
+            container.appendChild(noReplies);
         }
         
     } catch (error) {
@@ -101,50 +110,30 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
     }
 }
 
-function buildCommentThread(allComments, rootCommentId) {
-    const rootId = parseInt(rootCommentId);
-    const threadComments = [];
-    
-    // Find the root comment
-    const rootComment = allComments.find(c => c.comment.id === rootId);
-    if (!rootComment) return [];
-    
-    // Add the root comment first
-    threadComments.push(rootComment);
-    
-    // Function to recursively find children
-    function findChildren(parentId, depth = 0) {
-        const children = allComments
-            .filter(c => c.comment.parent_id === parentId)
-            .sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
+function overrideViewRepliesButtons(commentElement, commentView, actions, postView) {
+    // Find and override any "View X replies" buttons in this comment
+    const viewRepliesBtn = commentElement.querySelector('.view-replies-btn');
+    if (viewRepliesBtn) {
+        // Remove the old event listener by cloning the node
+        const newBtn = viewRepliesBtn.cloneNode(true);
+        viewRepliesBtn.parentNode.replaceChild(newBtn, viewRepliesBtn);
         
-        children.forEach(child => {
-            threadComments.push(child);
-            // Recursively find children of this child
-            findChildren(child.comment.id, depth + 1);
+        // Add new event listener that opens a new thread page
+        newBtn.addEventListener('click', () => {
+            console.log('Opening new thread for comment:', commentView.comment.id);
+            actions.showLemmyCommentThread(postView, commentView.comment.id);
         });
     }
     
-    // Find all descendants of the root comment
-    findChildren(rootId);
-    
-    return threadComments;
-}
-
-function getCommentDepth(commentView, rootCommentId, allComments) {
-    let depth = 0;
-    let currentComment = commentView;
-    const rootId = parseInt(rootCommentId);
-    
-    // Trace back to the root comment, counting levels
-    while (currentComment && currentComment.comment.parent_id && currentComment.comment.id !== rootId) {
-        const parentId = currentComment.comment.parent_id;
-        currentComment = allComments.find(c => c.comment.id === parentId);
-        depth++;
+    // Also override any "Read more comments" buttons that might exist
+    const readMoreBtns = commentElement.querySelectorAll('.read-more-comments');
+    readMoreBtns.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
         
-        // Safety check to prevent infinite loops
-        if (depth > 20) break;
-    }
-    
-    return depth;
+        newBtn.addEventListener('click', () => {
+            console.log('Opening new thread for comment:', commentView.comment.id);
+            actions.showLemmyCommentThread(postView, commentView.comment.id);
+        });
+    });
 }
