@@ -122,7 +122,19 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         viewRepliesBtn.textContent = `View ${commentView.counts.child_count} replies`;
         commentDiv.querySelector('.status-footer').insertAdjacentElement('afterend', viewRepliesBtn);
         viewRepliesBtn.addEventListener('click', () => {
-            toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId);
+            console.log('View replies button clicked');
+            console.log('Available actions:', Object.keys(actions));
+            console.log('Current post view:', state.currentPostView);
+            console.log('Comment ID for thread:', commentView.comment.id);
+            
+            // Navigate to the comment thread page instead of expanding inline
+            if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
+                actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
+            } else {
+                console.error('showLemmyCommentThread action not available, falling back to inline expansion');
+                // Fallback: use the old inline expansion method
+                toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId);
+            }
         });
     }
 
@@ -617,11 +629,16 @@ function renderCommentTree(comments, container, state, actions, postAuthorId, de
                 `;
                 
                 readMoreBtn.addEventListener('click', () => {
+                    console.log('Read more button clicked');
+                    console.log('Available actions:', Object.keys(actions));
+                    console.log('Current post view:', state.currentPostView);
+                    console.log('Comment ID:', commentView.comment.id);
+                    
                     // Navigate to the comment thread page
-                    if (actions.showLemmyCommentThread) {
+                    if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
                         actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
                     } else {
-                        console.error('showLemmyCommentThread action not available');
+                        console.error('showLemmyCommentThread action not available or not a function');
                         // Fallback: expand comments in place
                         readMoreBtn.remove();
                         renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1, 999);
