@@ -1538,25 +1538,44 @@ select:focus {
     background-color: var(--bg-color);
     border: 2px dashed var(--border-color);
     border-radius: var(--border-radius);
-    padding: 20px;
+    padding: 0;
     min-height: 400px;
 }
 
 /* Override some styles within screenshot content for better presentation */
 .screenshot-content .status {
-    margin-bottom: 15px;
+    margin-bottom: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+.screenshot-content .status:first-child {
+    border-top: none;
 }
 
 .screenshot-content .status:last-child {
     margin-bottom: 0;
+    border-bottom: none;
 }
 
 .screenshot-content .comment-wrapper {
-    margin-bottom: 10px;
+    margin-bottom: 0;
 }
 
 .screenshot-content .comment-wrapper:last-child {
     margin-bottom: 0;
+}
+
+.screenshot-content .comment-wrapper .status {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+}
+
+.screenshot-content .comment-wrapper:last-child .status {
+    border-bottom: none;
 }
 
 /* Hide interactive elements in screenshot preview */
@@ -1583,9 +1602,11 @@ select:focus {
 /* Separator styling */
 .screenshot-content > div:not(.status):not(.comment-wrapper) {
     background-color: var(--card-color);
-    border-radius: var(--border-radius);
-    margin: 15px 0;
-    padding: 8px 0;
+    border-radius: 0;
+    margin: 0;
+    padding: 12px 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
 /* Comment Thread Page Styles */
