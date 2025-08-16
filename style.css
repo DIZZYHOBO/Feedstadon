@@ -1490,3 +1490,116 @@ select:focus {
 .flex {
     display: flex !important;
 }
+
+/* Comment Thread Page Styles */
+.comment-thread-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--card-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 10px;
+}
+
+.comment-thread-header h3 {
+    margin: 0;
+    color: var(--font-color);
+}
+
+.comment-thread-container {
+    padding: 0 15px;
+}
+
+.original-post-preview {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.post-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.post-preview-header .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius);
+}
+
+.post-title {
+    font-weight: 600;
+    color: var(--font-color);
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.post-meta {
+    color: var(--font-color-muted);
+    font-size: 14px;
+}
+
+.comment-thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.thread-comment {
+    margin-bottom: 1px !important;
+    border-radius: 0 !important;
+}
+
+.thread-comment:first-child {
+    border-top-left-radius: var(--border-radius) !important;
+    border-top-right-radius: var(--border-radius) !important;
+}
+
+.thread-comment:last-child {
+    border-bottom-left-radius: var(--border-radius) !important;
+    border-bottom-right-radius: var(--border-radius) !important;
+}
+
+.thread-root {
+    background-color: var(--primary-color) !important;
+}
+
+.loading-comments {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+}
+
+.no-comments {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+    font-style: italic;
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--error-color);
+}
+
+/* Read More Comments Button */
+.read-more-comments {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.read-more-comments:hover {
+    background-color: var(--hover-color) !important;
+}
+
+.read-more-comments .icon {
+    width: 16px;
+    height: 16px;
+}
