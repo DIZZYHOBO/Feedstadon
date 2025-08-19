@@ -214,8 +214,11 @@ async function loadEnhancedCommentChain(state, actions, postId, rootCommentId, c
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
     
     try {
+        console.log('Loading enhanced comment chain for comment:', rootCommentId);
         const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=Old`, {}, 'lemmy');
         const allComments = response?.data?.comments || [];
+        
+        console.log('Total comments loaded:', allComments.length);
         
         if (allComments.length === 0) {
             container.innerHTML = '<p class="no-comments">No comments found.</p>';
@@ -224,7 +227,10 @@ async function loadEnhancedCommentChain(state, actions, postId, rootCommentId, c
 
         // Build enhanced comment chain
         const commentChain = buildEnhancedCommentChain(allComments, parseInt(rootCommentId));
+        console.log('Built comment chain:', commentChain.map(c => c.comment.id));
+        
         const currentIndex = commentChain.findIndex(c => c.comment.id === parseInt(rootCommentId));
+        console.log('Current comment index in chain:', currentIndex);
         
         container.innerHTML = '';
         
@@ -246,6 +252,12 @@ async function loadEnhancedCommentChain(state, actions, postId, rootCommentId, c
                 const navControls = createChainNavigationControls(commentChain, currentIndex, actions, postView);
                 navigationContainer.appendChild(navControls);
             }
+            
+            // Add separator showing chain info
+            const separator = document.createElement('div');
+            separator.className = 'chain-separator';
+            separator.innerHTML = `<h4>Comment Chain (${commentChain.length} comments)</h4>`;
+            container.appendChild(separator);
             
             // Render comments with enhanced hierarchy
             commentChain.forEach((commentView, index) => {
