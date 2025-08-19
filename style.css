@@ -1856,3 +1856,36 @@ select:focus {
     transform: scale(1.02);
     cursor: pointer;
 }
+/* Force all images in comment content to be block-level */
+.status-content img,
+.lemmy-post-body img {
+    display: block !important;
+    max-width: 100% !important;
+    max-height: 400px !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 15px auto !important;
+    object-fit: contain !important;
+    border-radius: var(--border-radius) !important;
+    cursor: pointer !important;
+}
+
+/* Ensure paragraph tags don't interfere */
+.status-content p img,
+.lemmy-post-body p img {
+    display: block !important;
+    margin: 15px auto !important;
+}
+
+/* Remove any inline styling that might interfere */
+.status-content p:has(img) {
+    text-align: center;
+}
+
+.comment-image-wrapper {
+    display: block !important;
+    margin: 15px 0 !important;
+    max-width: 100% !important;
+    text-align: center !important;
+    overflow: hidden !important;
+}
