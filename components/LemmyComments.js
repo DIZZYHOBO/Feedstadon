@@ -59,28 +59,30 @@ function buildEnhancedCommentChain(allComments, startCommentId) {
         commentMap[comment.comment.id] = comment;
     });
     
-    // Build upward chain (parents)
+    // Start with the target comment
     let current = commentMap[startCommentId];
-    const parents = [];
+    if (!current) {
+        console.log('Start comment not found:', startCommentId);
+        return [];
+    }
     
-    while (current && current.comment.parent_id) {
-        const parent = commentMap[current.comment.parent_id];
+    // Build upward chain (parents) first
+    const parents = [];
+    let parentCurrent = current;
+    
+    while (parentCurrent && parentCurrent.comment.parent_id) {
+        const parent = commentMap[parentCurrent.comment.parent_id];
         if (parent) {
-            parents.unshift(parent);
-            current = parent;
+            parents.unshift(parent); // Add to beginning to maintain order
+            parentCurrent = parent;
         } else {
             break;
         }
     }
     
-    // Add root comment
+    // Build the complete chain: parents + target + children
     chain.push(...parents);
-    
-    // Add the target comment
-    current = commentMap[startCommentId];
-    if (current) {
-        chain.push(current);
-    }
+    chain.push(current); // Add the target comment
     
     // Build downward chain (follow the most engaging path)
     function getNextInChain(comment) {
@@ -102,6 +104,7 @@ function buildEnhancedCommentChain(allComments, startCommentId) {
         nextComment = getNextInChain(nextComment);
     }
     
+    console.log('Built chain with', chain.length, 'comments');
     return chain;
 }
 
