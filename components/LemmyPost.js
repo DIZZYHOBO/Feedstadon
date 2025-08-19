@@ -705,9 +705,14 @@ export async function renderLemmyPostPage(state, post, actions) {
         const comments = response.data.comments;
         commentsContainer.innerHTML = '';
         
+        console.log('All comments loaded:', comments.length);
+        console.log('Comments with parent_id:', comments.filter(c => c.comment.parent_id).length);
+        console.log('Comments without parent_id (should be top-level):', comments.filter(c => !c.comment.parent_id).length);
+        
         if (comments && comments.length > 0) {
             // Build comment tree structure
             const commentTree = buildCommentTree(comments);
+            console.log('Root comments after tree building:', commentTree.length);
             renderCommentTree(commentTree, commentsContainer, state, actions, post.creator.id);
         } else {
             commentsContainer.innerHTML = '<p>No comments yet. Be the first to comment!</p>';
@@ -769,6 +774,8 @@ function buildCommentTree(comments) {
     const commentMap = {};
     const rootComments = [];
 
+    console.log('Building comment tree from', comments.length, 'comments');
+
     // First pass: create a map of all comments
     comments.forEach(commentView => {
         commentMap[commentView.comment.id] = {
@@ -784,6 +791,7 @@ function buildCommentTree(comments) {
         if (parentId && commentMap[parentId]) {
             // This comment has a parent in our set, add it as a child
             commentMap[parentId].children.push(commentMap[commentView.comment.id]);
+            console.log(`Added comment ${commentView.comment.id} as child of ${parentId}`);
         }
     });
 
@@ -791,8 +799,12 @@ function buildCommentTree(comments) {
     comments.forEach(commentView => {
         if (!commentView.comment.parent_id) {
             rootComments.push(commentMap[commentView.comment.id]);
+            console.log(`Added comment ${commentView.comment.id} as root comment`);
         }
     });
+
+    console.log('Final root comments:', rootComments.length);
+    console.log('Root comment IDs:', rootComments.map(c => c.comment.id));
 
     return rootComments;
 }
