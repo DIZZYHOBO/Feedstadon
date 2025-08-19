@@ -354,25 +354,39 @@ a:hover {
     word-wrap: break-word;
 }
 
-.spoiler {
-    display: none;
-}
-
-.spoiler-text {
-    background-color: var(--bg-color);
-    padding: 8px;
+.spoiler-container {
+    margin: 10px 0;
+    border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    margin-bottom: 10px;
+    overflow: hidden;
 }
 
-.spoiler-toggle {
-    background: none;
+.spoiler-toggle-btn {
+    width: 100%;
+    background-color: var(--card-color);
     border: none;
-    color: var(--accent-color);
+    padding: 10px 15px;
+    color: var(--font-color);
     cursor: pointer;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s;
 }
 
+.spoiler-toggle-btn:hover {
+    background-color: var(--hover-color);
+}
+
+.spoiler-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.spoiler-inner {
+    padding: 15px;
+    background-color: var(--bg-color);
+}
 /* Lemmy Specific Styles */
 .lemmy-title {
     font-size: 18px;
