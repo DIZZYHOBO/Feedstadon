@@ -1842,3 +1842,17 @@ select:focus {
     padding: 5px;
     margin: 5px 0;
 }
+
+.comment-image {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.comment-image:hover {
+    transform: scale(1.02);
+    cursor: pointer;
+}
