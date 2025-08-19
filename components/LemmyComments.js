@@ -2,53 +2,272 @@ import { apiFetch } from './api.js';
 import { renderLemmyComment } from './LemmyPost.js';
 import { ICONS } from './icons.js';
 
-export async function renderLemmyCommentThreadPage(state, actions, postView, rootCommentId, viewType = 'replies') {
-    const view = document.getElementById('lemmy-comments-view');
-    
-    const headerTitle = viewType === 'chain' ? 'Comment Chain' : 'Comment Thread';
-    
-    view.innerHTML = `
-        <div class="comment-thread-header">
-            <button id="back-to-post-btn" class="nav-button">
-                ${ICONS.reply} Back to Post
-            </button>
-            <h3>${headerTitle}</h3>
-        </div>
-        <div class="comment-thread-container">
-            <div class="original-post-preview">
-                <div class="post-preview-header">
-                    <img src="${postView.community.icon || './images/php.png'}" alt="Community icon" class="avatar">
-                    <div>
-                        <div class="post-title">${postView.post.name}</div>
-                        <div class="post-meta">by ${postView.creator.name} in ${postView.community.name}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="comment-thread-list">
-                <div class="loading-comments">Loading ${viewType === 'chain' ? 'comment chain' : 'comment thread'}...</div>
-            </div>
-        </div>
+// Enhanced breadcrumb navigation to show the conversation path
+function createCommentBreadcrumb(commentChain, currentCommentId, actions, postView) {
+    const breadcrumb = document.createElement('div');
+    breadcrumb.className = 'comment-breadcrumb';
+    breadcrumb.innerHTML = `
+        <div class="breadcrumb-title">Comment Thread:</div>
+        <div class="breadcrumb-path"></div>
     `;
-
-    // Back button functionality
-    document.getElementById('back-to-post-btn').addEventListener('click', () => {
-        actions.showLemmyPostDetail(postView);
+    
+    const pathContainer = breadcrumb.querySelector('.breadcrumb-path');
+    
+    commentChain.forEach((comment, index) => {
+        const isActive = comment.comment.id === parseInt(currentCommentId);
+        const isCurrent = index === commentChain.length - 1;
+        
+        const breadcrumbItem = document.createElement('div');
+        breadcrumbItem.className = `breadcrumb-item ${isActive ? 'active' : ''} ${isCurrent ? 'current' : ''}`;
+        
+        const author = comment.creator.name;
+        const truncatedContent = comment.comment.content.length > 30 
+            ? comment.comment.content.substring(0, 30) + '...' 
+            : comment.comment.content;
+            
+        breadcrumbItem.innerHTML = `
+            <span class="breadcrumb-author">@${author}</span>
+            <span class="breadcrumb-preview">${truncatedContent}</span>
+        `;
+        
+        if (!isCurrent) {
+            breadcrumbItem.addEventListener('click', () => {
+                actions.showLemmyCommentThread(postView, comment.comment.id, 'chain');
+            });
+        }
+        
+        pathContainer.appendChild(breadcrumbItem);
+        
+        if (index < commentChain.length - 1) {
+            const arrow = document.createElement('div');
+            arrow.className = 'breadcrumb-arrow';
+            arrow.innerHTML = '→';
+            pathContainer.appendChild(arrow);
+        }
     });
+    
+    return breadcrumb;
+}
 
-    const threadListContainer = view.querySelector('.comment-thread-list');
+// Enhanced comment chain builder with better relationship detection
+function buildEnhancedCommentChain(allComments, startCommentId) {
+    const chain = [];
+    const commentMap = {};
+    
+    // Create lookup map
+    allComments.forEach(comment => {
+        commentMap[comment.comment.id] = comment;
+    });
+    
+    // Build upward chain (parents)
+    let current = commentMap[startCommentId];
+    const parents = [];
+    
+    while (current && current.comment.parent_id) {
+        const parent = commentMap[current.comment.parent_id];
+        if (parent) {
+            parents.unshift(parent);
+            current = parent;
+        } else {
+            break;
+        }
+    }
+    
+    // Add root comment
+    chain.push(...parents);
+    
+    // Add the target comment
+    current = commentMap[startCommentId];
+    if (current) {
+        chain.push(current);
+    }
+    
+    // Build downward chain (follow the most engaging path)
+    function getNextInChain(comment) {
+        const directReplies = allComments.filter(c => 
+            c.comment.parent_id === comment.comment.id
+        ).sort((a, b) => {
+            // Sort by engagement score (upvotes + replies)
+            const scoreA = a.counts.score + a.counts.child_count;
+            const scoreB = b.counts.score + b.counts.child_count;
+            return scoreB - scoreA;
+        });
+        
+        return directReplies[0]; // Take the most engaging reply
+    }
+    
+    let nextComment = getNextInChain(current);
+    while (nextComment && chain.length < 20) { // Limit chain length
+        chain.push(nextComment);
+        nextComment = getNextInChain(nextComment);
+    }
+    
+    return chain;
+}
+
+// Enhanced comment renderer with better visual hierarchy
+function renderCommentWithHierarchy(commentView, state, actions, postAuthorId, depth = 0, isInChain = false) {
+    const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
+    
+    // Add chain-specific styling
+    if (isInChain) {
+        commentElement.classList.add('chain-comment');
+        commentElement.style.setProperty('--chain-depth', depth);
+    }
+    
+    // Add depth indicator
+    if (depth > 0) {
+        const depthIndicator = document.createElement('div');
+        depthIndicator.className = 'depth-indicator';
+        depthIndicator.style.width = `${Math.min(depth * 2, 10)}px`;
+        commentElement.prepend(depthIndicator);
+    }
+    
+    // Add engagement score
+    const engagementScore = commentView.counts.score + commentView.counts.child_count;
+    const scoreIndicator = document.createElement('div');
+    scoreIndicator.className = 'engagement-score';
+    scoreIndicator.innerHTML = `<span title="Engagement Score">${engagementScore}</span>`;
+    commentElement.querySelector('.status-header').appendChild(scoreIndicator);
+    
+    return commentElement;
+}
+
+// Enhanced navigation controls
+function createChainNavigationControls(commentChain, currentIndex, actions, postView) {
+    const controls = document.createElement('div');
+    controls.className = 'chain-navigation-controls';
+    
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'chain-nav-btn prev-btn';
+    prevBtn.innerHTML = '← Previous';
+    prevBtn.disabled = currentIndex === 0;
+    
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'chain-nav-btn next-btn';
+    nextBtn.innerHTML = 'Next →';
+    nextBtn.disabled = currentIndex === commentChain.length - 1;
+    
+    const positionIndicator = document.createElement('div');
+    positionIndicator.className = 'chain-position';
+    positionIndicator.innerHTML = `${currentIndex + 1} of ${commentChain.length}`;
+    
+    if (currentIndex > 0) {
+        prevBtn.addEventListener('click', () => {
+            const prevComment = commentChain[currentIndex - 1];
+            actions.showLemmyCommentThread(postView, prevComment.comment.id, 'chain');
+        });
+    }
+    
+    if (currentIndex < commentChain.length - 1) {
+        nextBtn.addEventListener('click', () => {
+            const nextComment = commentChain[currentIndex + 1];
+            actions.showLemmyCommentThread(postView, nextComment.comment.id, 'chain');
+        });
+    }
+    
+    controls.appendChild(prevBtn);
+    controls.appendChild(positionIndicator);
+    controls.appendChild(nextBtn);
+    
+    return controls;
+}
+
+// Mini-map for long chains
+function createChainMinimap(commentChain, currentCommentId, actions, postView) {
+    const minimap = document.createElement('div');
+    minimap.className = 'chain-minimap';
+    minimap.innerHTML = '<div class="minimap-title">Thread Overview</div>';
+    
+    const minimapTrack = document.createElement('div');
+    minimapTrack.className = 'minimap-track';
+    
+    commentChain.forEach((comment, index) => {
+        const isActive = comment.comment.id === parseInt(currentCommentId);
+        
+        const minimapItem = document.createElement('div');
+        minimapItem.className = `minimap-item ${isActive ? 'active' : ''}`;
+        minimapItem.title = `${comment.creator.name}: ${comment.comment.content.substring(0, 50)}...`;
+        
+        // Visual indicator of comment engagement
+        const engagement = comment.counts.score + comment.counts.child_count;
+        minimapItem.style.height = `${Math.max(8, Math.min(20, engagement))}px`;
+        
+        minimapItem.addEventListener('click', () => {
+            actions.showLemmyCommentThread(postView, comment.comment.id, 'chain');
+        });
+        
+        minimapTrack.appendChild(minimapItem);
+    });
+    
+    minimap.appendChild(minimapTrack);
+    return minimap;
+}
+
+// Load enhanced comment chain with all features
+async function loadEnhancedCommentChain(state, actions, postId, rootCommentId, container, 
+    minimapContainer, breadcrumbContainer, navigationContainer, postAuthorId, postView) {
+    
+    const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
     
     try {
-        if (viewType === 'chain') {
-            await loadCommentChain(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id, postView);
-        } else {
-            await loadCommentThread(state, actions, postView.post.id, rootCommentId, threadListContainer, postView.creator.id, postView);
+        const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=Old`, {}, 'lemmy');
+        const allComments = response?.data?.comments || [];
+        
+        if (allComments.length === 0) {
+            container.innerHTML = '<p class="no-comments">No comments found.</p>';
+            return;
         }
+
+        // Build enhanced comment chain
+        const commentChain = buildEnhancedCommentChain(allComments, parseInt(rootCommentId));
+        const currentIndex = commentChain.findIndex(c => c.comment.id === parseInt(rootCommentId));
+        
+        container.innerHTML = '';
+        
+        if (commentChain.length > 0) {
+            // Add breadcrumb navigation
+            if (commentChain.length > 1) {
+                const breadcrumb = createCommentBreadcrumb(commentChain, rootCommentId, actions, postView);
+                breadcrumbContainer.appendChild(breadcrumb);
+            }
+            
+            // Add minimap for longer chains
+            if (commentChain.length > 3) {
+                const minimap = createChainMinimap(commentChain, rootCommentId, actions, postView);
+                minimapContainer.appendChild(minimap);
+            }
+            
+            // Add navigation controls
+            if (commentChain.length > 1) {
+                const navControls = createChainNavigationControls(commentChain, currentIndex, actions, postView);
+                navigationContainer.appendChild(navControls);
+            }
+            
+            // Render comments with enhanced hierarchy
+            commentChain.forEach((commentView, index) => {
+                const commentElement = renderCommentWithHierarchy(
+                    commentView, state, actions, postAuthorId, index, true
+                );
+                
+                // Highlight current comment
+                if (commentView.comment.id === parseInt(rootCommentId)) {
+                    commentElement.classList.add('current-comment');
+                }
+                
+                container.appendChild(commentElement);
+            });
+        } else {
+            container.innerHTML = '<p class="no-comments">No comment chain found.</p>';
+        }
+        
     } catch (error) {
-        console.error('Failed to load comment thread:', error);
-        threadListContainer.innerHTML = '<p class="error-message">Failed to load comment thread.</p>';
+        console.error('Error loading enhanced comment chain:', error);
+        throw error;
     }
 }
 
+// Original comment chain function (kept for compatibility)
 async function loadCommentChain(state, actions, postId, rootCommentId, container, postAuthorId, postView) {
     const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
     
@@ -321,4 +540,111 @@ function overrideViewRepliesButtons(commentElement, commentView, actions, postVi
             actions.showLemmyCommentThread(postView, commentView.comment.id, 'replies');
         });
     });
+}
+
+// Main export function - Enhanced comment thread page with all improvements
+export async function renderLemmyCommentThreadPage(state, actions, postView, rootCommentId, viewType = 'replies') {
+    console.log('renderLemmyCommentThreadPage called with:', postView, rootCommentId, viewType);
+    
+    const view = document.getElementById('lemmy-comments-view');
+    
+    // Use enhanced layout for chain view, simpler layout for replies view
+    if (viewType === 'chain') {
+        view.innerHTML = `
+            <div class="enhanced-comment-thread-header">
+                <button id="back-to-post-btn" class="nav-button">
+                    ${ICONS.reply} Back to Post
+                </button>
+                <div class="thread-header-info">
+                    <h3>Comment Chain</h3>
+                    <div class="thread-controls">
+                        <button id="toggle-view-btn" class="button-secondary">
+                            Switch to Thread View
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="enhanced-comment-container">
+                <div class="comment-sidebar">
+                    <div id="comment-minimap"></div>
+                    <div id="comment-breadcrumb"></div>
+                </div>
+                
+                <div class="comment-main-content">
+                    <div class="original-post-preview">
+                        <div class="post-preview-header">
+                            <img src="${postView.community.icon || './images/php.png'}" alt="Community icon" class="avatar">
+                            <div>
+                                <div class="post-title">${postView.post.name}</div>
+                                <div class="post-meta">by ${postView.creator.name} in ${postView.community.name}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="chain-navigation-controls"></div>
+                    <div class="comment-thread-list">
+                        <div class="loading-comments">Loading enhanced comment chain...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        view.innerHTML = `
+            <div class="comment-thread-header">
+                <button id="back-to-post-btn" class="nav-button">
+                    ${ICONS.reply} Back to Post
+                </button>
+                <h3>Comment Thread</h3>
+                <button id="toggle-view-btn" class="button-secondary">
+                    Switch to Chain View
+                </button>
+            </div>
+            <div class="comment-thread-container">
+                <div class="original-post-preview">
+                    <div class="post-preview-header">
+                        <img src="${postView.community.icon || './images/php.png'}" alt="Community icon" class="avatar">
+                        <div>
+                            <div class="post-title">${postView.post.name}</div>
+                            <div class="post-meta">by ${postView.creator.name} in ${postView.community.name}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="comment-thread-list">
+                    <div class="loading-comments">Loading comment thread...</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Back button functionality
+    document.getElementById('back-to-post-btn').addEventListener('click', () => {
+        actions.showLemmyPostDetail(postView);
+    });
+    
+    // Toggle view button
+    document.getElementById('toggle-view-btn').addEventListener('click', () => {
+        const newViewType = viewType === 'chain' ? 'replies' : 'chain';
+        actions.showLemmyCommentThread(postView, rootCommentId, newViewType);
+    });
+
+    const threadListContainer = view.querySelector('.comment-thread-list');
+    
+    try {
+        if (viewType === 'chain') {
+            const minimapContainer = view.querySelector('#comment-minimap');
+            const breadcrumbContainer = view.querySelector('#comment-breadcrumb');
+            const navigationContainer = view.querySelector('#chain-navigation-controls');
+            
+            await loadEnhancedCommentChain(state, actions, postView.post.id, rootCommentId, 
+                threadListContainer, minimapContainer, breadcrumbContainer, navigationContainer, 
+                postView.creator.id, postView);
+        } else {
+            await loadCommentThread(state, actions, postView.post.id, rootCommentId, 
+                threadListContainer, postView.creator.id, postView);
+        }
+    } catch (error) {
+        console.error('Failed to load comment thread:', error);
+        threadListContainer.innerHTML = '<p class="error-message">Failed to load comment thread.</p>';
+    }
 }
