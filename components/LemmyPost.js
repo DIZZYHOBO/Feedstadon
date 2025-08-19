@@ -186,32 +186,9 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             console.log('Current post view:', state.currentPostView);
             console.log('Comment ID for thread:', commentView.comment.id);
             
-            // Navigate to the comment thread page instead of expanding inline
+            // Navigate to the comment thread page
             if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
-                // Enhanced: Show both options for comments with multiple replies
-                if (commentView.counts.child_count > 1) {
-                    // Replace single button with enhanced options
-                    const buttonContainer = document.createElement('div');
-                    buttonContainer.className = 'view-options-container';
-                    buttonContainer.innerHTML = `
-                        <button class="view-replies-btn">View ${commentView.counts.child_count} Replies</button>
-                        <button class="view-chain-btn">View Chain</button>
-                    `;
-                    
-                    viewRepliesBtn.parentNode.replaceChild(buttonContainer, viewRepliesBtn);
-                    
-                    // Add event listeners for enhanced options
-                    buttonContainer.querySelector('.view-replies-btn').addEventListener('click', () => {
-                        actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'replies');
-                    });
-                    
-                    buttonContainer.querySelector('.view-chain-btn').addEventListener('click', () => {
-                        actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'chain');
-                    });
-                } else {
-                    // Single reply - just show chain option
-                    actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'chain');
-                }
+                actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
             } else {
                 console.error('showLemmyCommentThread action not available, falling back to inline expansion');
                 // Fallback: use the old inline expansion method
@@ -710,10 +687,18 @@ export async function renderLemmyPostPage(state, post, actions) {
         console.log('Comments without parent_id (should be top-level):', comments.filter(c => !c.comment.parent_id).length);
         
         if (comments && comments.length > 0) {
-            // Build comment tree structure
-            const commentTree = buildCommentTree(comments);
-            console.log('Root comments after tree building:', commentTree.length);
-            renderCommentTree(commentTree, commentsContainer, state, actions, post.creator.id);
+            // Only show top-level comments (no parent_id)
+            const topLevelComments = comments.filter(c => !c.comment.parent_id);
+            console.log('Top-level comments filtered:', topLevelComments.length);
+            
+            if (topLevelComments.length > 0) {
+                topLevelComments.forEach(commentView => {
+                    const commentElement = renderLemmyComment(commentView, state, actions, post.creator.id);
+                    commentsContainer.appendChild(commentElement);
+                });
+            } else {
+                commentsContainer.innerHTML = '<p>No top-level comments yet. Be the first to comment!</p>';
+            }
         } else {
             commentsContainer.innerHTML = '<p>No comments yet. Be the first to comment!</p>';
         }
@@ -759,8 +744,17 @@ export async function renderPublicLemmyPostPage(state, postView, actions, instan
         commentsContainer.innerHTML = '';
         
         if (comments && comments.length > 0) {
-            const commentTree = buildCommentTree(comments);
-            renderCommentTree(commentTree, commentsContainer, state, actions, postView.creator.id);
+            // Only show top-level comments (no parent_id)
+            const topLevelComments = comments.filter(c => !c.comment.parent_id);
+            
+            if (topLevelComments.length > 0) {
+                topLevelComments.forEach(commentView => {
+                    const commentElement = renderLemmyComment(commentView, state, actions, postView.creator.id);
+                    commentsContainer.appendChild(commentElement);
+                });
+            } else {
+                commentsContainer.innerHTML = '<p>No top-level comments.</p>';
+            }
         } else {
             commentsContainer.innerHTML = '<p>No comments yet.</p>';
         }
@@ -768,119 +762,4 @@ export async function renderPublicLemmyPostPage(state, postView, actions, instan
         console.error('Failed to load comments:', error);
         commentsContainer.innerHTML = '<p>Failed to load comments from this instance.</p>';
     }
-}
-
-function buildCommentTree(comments) {
-    const commentMap = {};
-    const rootComments = [];
-
-    console.log('Building comment tree from', comments.length, 'comments');
-
-    // First pass: create a map of all comments
-    comments.forEach(commentView => {
-        commentMap[commentView.comment.id] = {
-            ...commentView,
-            children: []
-        };
-    });
-
-    // Second pass: build the tree structure
-    comments.forEach(commentView => {
-        const parentId = commentView.comment.parent_id;
-        
-        if (parentId && commentMap[parentId]) {
-            // This comment has a parent in our set, add it as a child
-            commentMap[parentId].children.push(commentMap[commentView.comment.id]);
-            console.log(`Added comment ${commentView.comment.id} as child of ${parentId}`);
-        }
-    });
-
-    // Third pass: identify ONLY root comments (those with no parent_id)
-    comments.forEach(commentView => {
-        if (!commentView.comment.parent_id) {
-            rootComments.push(commentMap[commentView.comment.id]);
-            console.log(`Added comment ${commentView.comment.id} as root comment`);
-        }
-    });
-
-    console.log('Final root comments:', rootComments.length);
-    console.log('Root comment IDs:', rootComments.map(c => c.comment.id));
-
-    return rootComments;
-}
-
-function renderCommentTree(comments, container, state, actions, postAuthorId, depth = 0, maxDepth = 2) {
-    comments.forEach(commentView => {
-        const commentElement = renderLemmyComment(commentView, state, actions, postAuthorId);
-        
-        // Add indentation based on depth but limit max indentation to prevent overflow
-        if (depth > 0) {
-            const maxIndent = 60; // Maximum indentation in pixels
-            const indentStep = 20; // Pixels per level
-            const actualIndent = Math.min(depth * indentStep, maxIndent);
-            commentElement.style.marginLeft = `${actualIndent}px`;
-            commentElement.style.maxWidth = `calc(100% - ${actualIndent}px)`;
-            commentElement.style.overflow = 'hidden';
-        }
-        
-        // Ensure the comment element itself never exceeds screen width
-        commentElement.style.maxWidth = '100%';
-        commentElement.style.overflowX = 'hidden';
-        commentElement.style.wordWrap = 'break-word';
-        
-        container.appendChild(commentElement);
-        
-        // Render children recursively, but only up to maxDepth
-        if (commentView.children && commentView.children.length > 0) {
-            if (depth < maxDepth) {
-                // Render children normally
-                renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1, maxDepth);
-            } else {
-                // Add "Read more comments" button for deeper threads
-                const readMoreBtn = document.createElement('div');
-                readMoreBtn.className = 'read-more-comments';
-                readMoreBtn.style.cssText = `
-                    margin-left: ${Math.min((depth + 1) * 20, 60)}px;
-                    padding: 10px;
-                    background-color: var(--bg-color);
-                    border: 1px solid var(--border-color);
-                    border-radius: var(--border-radius);
-                    cursor: pointer;
-                    color: var(--accent-color);
-                    font-weight: 500;
-                    margin-top: 10px;
-                    margin-bottom: 10px;
-                `;
-                readMoreBtn.innerHTML = `
-                    ${ICONS.comments} Read ${commentView.children.length} more comment${commentView.children.length > 1 ? 's' : ''}
-                `;
-                
-                readMoreBtn.addEventListener('click', () => {
-                    console.log('Read more button clicked');
-                    console.log('Available actions:', Object.keys(actions));
-                    console.log('Current post view:', state.currentPostView);
-                    console.log('Comment ID:', commentView.comment.id);
-                    
-                    // Navigate to the comment thread page with enhanced options
-                    if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
-                        // Enhanced: Show both options for comments with multiple replies
-                        if (commentView.children.length > 1) {
-                            // Show a quick selection modal or use the enhanced thread view
-                            actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'replies');
-                        } else {
-                            // Single reply - show chain view
-                            actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'chain');
-                        }
-                    } else {
-                        console.error('showLemmyCommentThread action not available or not a function');
-                        // Fallback: expand comments in place
-                        readMoreBtn.remove();
-                        renderCommentTree(commentView.children, container, state, actions, postAuthorId, depth + 1, 999);
-                    }
-                });
-                
-                container.appendChild(readMoreBtn);
-            }
-        }
-    });
 }
