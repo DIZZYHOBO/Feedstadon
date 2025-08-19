@@ -595,9 +595,16 @@ async function toggleLemmyReplies(commentId, postId, container, state, actions, 
             const hasMatchingParentId = reply.comment.parent_id && Number(reply.comment.parent_id) === targetCommentId;
             
             // 2. OR its path starts with the target comment's path and is one level deeper
-            const replyPath = reply.comment.path || '';
-            const isChildByPath = targetPath && replyPath.startsWith(targetPath + '.') && 
-                                  (replyPath.split('.').length === targetPath.split('.').length + 1);
+            let isChildByPath = false;
+            if (targetPath && reply.comment.path) {
+                const replyPath = reply.comment.path;
+                const pathParts = replyPath.split('.');
+                const targetPathParts = targetPath.split('.');
+                
+                // Direct child should have one more level than parent
+                isChildByPath = pathParts.length === targetPathParts.length + 1 && 
+                               replyPath.startsWith(targetPath + '.');
+            }
             
             return hasMatchingParentId || isChildByPath;
         });
@@ -770,18 +777,20 @@ function buildCommentTree(comments) {
         };
     });
 
-    // Second pass: build the tree structure and identify root comments
+    // Second pass: build the tree structure
     comments.forEach(commentView => {
         const parentId = commentView.comment.parent_id;
         
         if (parentId && commentMap[parentId]) {
             // This comment has a parent in our set, add it as a child
             commentMap[parentId].children.push(commentMap[commentView.comment.id]);
-        } else {
-            // This is a root-level comment (no parent_id means it's a direct reply to the post)
-            if (!parentId) {
-                rootComments.push(commentMap[commentView.comment.id]);
-            }
+        }
+    });
+
+    // Third pass: identify ONLY root comments (those with no parent_id)
+    comments.forEach(commentView => {
+        if (!commentView.comment.parent_id) {
+            rootComments.push(commentMap[commentView.comment.id]);
         }
     });
 
