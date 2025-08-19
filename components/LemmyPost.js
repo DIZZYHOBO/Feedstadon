@@ -188,7 +188,30 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             
             // Navigate to the comment thread page instead of expanding inline
             if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
-                actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
+                // Enhanced: Show both options for comments with multiple replies
+                if (commentView.counts.child_count > 1) {
+                    // Replace single button with enhanced options
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.className = 'view-options-container';
+                    buttonContainer.innerHTML = `
+                        <button class="view-replies-btn">View ${commentView.counts.child_count} Replies</button>
+                        <button class="view-chain-btn">View Chain</button>
+                    `;
+                    
+                    viewRepliesBtn.parentNode.replaceChild(buttonContainer, viewRepliesBtn);
+                    
+                    // Add event listeners for enhanced options
+                    buttonContainer.querySelector('.view-replies-btn').addEventListener('click', () => {
+                        actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'replies');
+                    });
+                    
+                    buttonContainer.querySelector('.view-chain-btn').addEventListener('click', () => {
+                        actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'chain');
+                    });
+                } else {
+                    // Single reply - just show chain option
+                    actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'chain');
+                }
             } else {
                 console.error('showLemmyCommentThread action not available, falling back to inline expansion');
                 // Fallback: use the old inline expansion method
@@ -817,9 +840,16 @@ function renderCommentTree(comments, container, state, actions, postAuthorId, de
                     console.log('Current post view:', state.currentPostView);
                     console.log('Comment ID:', commentView.comment.id);
                     
-                    // Navigate to the comment thread page
+                    // Navigate to the comment thread page with enhanced options
                     if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
-                        actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
+                        // Enhanced: Show both options for comments with multiple replies
+                        if (commentView.children.length > 1) {
+                            // Show a quick selection modal or use the enhanced thread view
+                            actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'replies');
+                        } else {
+                            // Single reply - show chain view
+                            actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id, 'chain');
+                        }
                     } else {
                         console.error('showLemmyCommentThread action not available or not a function');
                         // Fallback: expand comments in place
