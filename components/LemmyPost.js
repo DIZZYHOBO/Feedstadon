@@ -17,9 +17,13 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     commentDiv.style.cssText = 'max-width: 100%; word-wrap: break-word; overflow-wrap: break-word;';
 
     const converter = new showdown.Converter();
-    let htmlContent = converter.makeHtml(commentView.comment.content);
+    let rawContent = commentView.comment.content;
     
-    // Add error handling for images in post body
+    // Process spoiler tags first
+    const processedContent = processSpoilerTags(rawContent);
+    let htmlContent = converter.makeHtml(processedContent);
+    
+    // Add error handling for images in post body and constrain them
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     tempDiv.querySelectorAll('img').forEach(img => {
@@ -28,9 +32,11 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             this.src='images/404.png';
             this.classList.add('broken-image-fallback');
         };
-        // Ensure images don't break layout
+        // Constrain images to card width
         img.style.maxWidth = '100%';
         img.style.height = 'auto';
+        img.style.objectFit = 'contain';
+        img.style.borderRadius = 'var(--border-radius)';
     });
     // Ensure all content wraps properly
     tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
@@ -78,6 +84,9 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             <div class="lemmy-reply-box-container" style="display: none; max-width: 100%; overflow: hidden;"></div>
         </div>
     `;
+
+    // Add spoiler functionality after the content is added to the DOM
+    addSpoilerFunctionality(commentDiv);
 
     const upvoteBtn = commentDiv.querySelector('.lemmy-vote-btn[data-action="upvote"]');
     const downvoteBtn = commentDiv.querySelector('.lemmy-vote-btn[data-action="downvote"]');
@@ -242,6 +251,66 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     return commentWrapper;
 }
 
+// Function to process spoiler tags in markdown content
+function processSpoilerTags(content) {
+    if (!content) return '';
+    
+    // Match spoiler tags like ::: spoiler Title ... :::
+    const spoilerRegex = /:::\s*spoiler\s*(.*?)\n([\s\S]*?):::/gi;
+    
+    return content.replace(spoilerRegex, (match, title, spoilerContent) => {
+        const spoilerId = `spoiler-${Math.random().toString(36).substr(2, 9)}`;
+        const cleanTitle = title.trim() || 'Spoiler';
+        const cleanContent = spoilerContent.trim();
+        
+        return `<div class="spoiler-container" data-spoiler-id="${spoilerId}">
+            <button class="spoiler-toggle-btn" data-target="${spoilerId}">
+                <span class="spoiler-title">${cleanTitle}</span>
+                <svg class="spoiler-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-left: 8px; transition: transform 0.3s ease;">
+                    <path fill="currentColor" d="M7,10L12,15L17,10H7Z"/>
+                </svg>
+            </button>
+            <div class="spoiler-content" id="${spoilerId}" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease;">
+                <div class="spoiler-inner">
+                    ${cleanContent}
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+// Function to add spoiler functionality after DOM is ready
+function addSpoilerFunctionality(container) {
+    const spoilerContainers = container.querySelectorAll('.spoiler-container');
+    
+    spoilerContainers.forEach(spoilerContainer => {
+        const toggleBtn = spoilerContainer.querySelector('.spoiler-toggle-btn');
+        const spoilerContent = spoilerContainer.querySelector('.spoiler-content');
+        const spoilerIcon = spoilerContainer.querySelector('.spoiler-icon');
+        
+        if (toggleBtn && spoilerContent && spoilerIcon) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const isExpanded = spoilerContent.style.maxHeight !== '0px' && spoilerContent.style.maxHeight !== '';
+                
+                if (isExpanded) {
+                    // Collapse
+                    spoilerContent.style.maxHeight = '0px';
+                    spoilerIcon.style.transform = 'rotate(0deg)';
+                    spoilerContainer.classList.remove('expanded');
+                } else {
+                    // Expand
+                    spoilerContent.style.maxHeight = spoilerContent.scrollHeight + 'px';
+                    spoilerIcon.style.transform = 'rotate(180deg)';
+                    spoilerContainer.classList.add('expanded');
+                }
+            });
+        }
+    });
+}
+
 function showEditUI(commentDiv, commentView, actions) {
     const contentDiv = commentDiv.querySelector('.status-content');
     const originalContent = commentView.comment.content;
@@ -274,6 +343,8 @@ function showEditUI(commentDiv, commentView, actions) {
     // Cancel button functionality
     cancelBtn.addEventListener('click', () => {
         contentDiv.innerHTML = originalHtml;
+        // Re-add spoiler functionality
+        addSpoilerFunctionality(contentDiv);
     });
 
     // Save button functionality
@@ -288,6 +359,7 @@ function showEditUI(commentDiv, commentView, actions) {
         if (newContent === originalContent) {
             // No changes made, just restore original
             contentDiv.innerHTML = originalHtml;
+            addSpoilerFunctionality(contentDiv);
             return;
         }
 
@@ -303,7 +375,8 @@ function showEditUI(commentDiv, commentView, actions) {
             
             // Convert markdown to HTML and update the display
             const converter = new showdown.Converter();
-            let newHtmlContent = converter.makeHtml(newContent);
+            const processedContent = processSpoilerTags(newContent);
+            let newHtmlContent = converter.makeHtml(processedContent);
             
             // Add error handling for images in the new content
             const tempDiv = document.createElement('div');
@@ -314,8 +387,11 @@ function showEditUI(commentDiv, commentView, actions) {
                     this.src = 'images/404.png';
                     this.classList.add('broken-image-fallback');
                 };
+                // Constrain images
                 img.style.maxWidth = '100%';
                 img.style.height = 'auto';
+                img.style.objectFit = 'contain';
+                img.style.borderRadius = 'var(--border-radius)';
             });
             // Ensure all content wraps properly
             tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
@@ -332,6 +408,9 @@ function showEditUI(commentDiv, commentView, actions) {
             
             // Update the content div with new HTML
             contentDiv.innerHTML = newHtmlContent;
+            
+            // Re-add spoiler functionality
+            addSpoilerFunctionality(contentDiv);
             
         } catch (error) {
             console.error("Failed to save comment:", error);
