@@ -32,11 +32,16 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             this.src='images/404.png';
             this.classList.add('broken-image-fallback');
         };
-        // Constrain images to card width
+        // Constrain images to card width - never exceed container
         img.style.maxWidth = '100%';
+        img.style.width = 'auto';
         img.style.height = 'auto';
         img.style.objectFit = 'contain';
         img.style.borderRadius = 'var(--border-radius)';
+        img.style.display = 'block';
+        img.style.margin = '10px 0';
+        // Add class for consistent styling
+        img.classList.add('comment-image');
     });
     // Ensure all content wraps properly
     tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
@@ -387,11 +392,15 @@ function showEditUI(commentDiv, commentView, actions) {
                     this.src = 'images/404.png';
                     this.classList.add('broken-image-fallback');
                 };
-                // Constrain images
+                // Constrain images - never exceed container
                 img.style.maxWidth = '100%';
+                img.style.width = 'auto';
                 img.style.height = 'auto';
                 img.style.objectFit = 'contain';
                 img.style.borderRadius = 'var(--border-radius)';
+                img.style.display = 'block';
+                img.style.margin = '10px 0';
+                img.classList.add('comment-image');
             });
             // Ensure all content wraps properly
             tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
