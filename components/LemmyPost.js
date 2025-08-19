@@ -26,23 +26,68 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
     // Add error handling for images in post body and constrain them
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
+    
+    // Handle images - wrap them in proper containers and style them
     tempDiv.querySelectorAll('img').forEach(img => {
         img.onerror = function() {
             this.onerror=null;
             this.src='images/404.png';
             this.classList.add('broken-image-fallback');
         };
-        // Constrain images to card width - never exceed container
-        img.style.maxWidth = '100%';
-        img.style.width = 'auto';
-        img.style.height = 'auto';
-        img.style.objectFit = 'contain';
-        img.style.borderRadius = 'var(--border-radius)';
-        img.style.display = 'block';
-        img.style.margin = '10px 0';
+        
+        // Create a wrapper div for the image
+        const imageWrapper = document.createElement('div');
+        imageWrapper.className = 'comment-image-wrapper';
+        imageWrapper.style.cssText = `
+            display: block;
+            margin: 15px 0;
+            max-width: 100%;
+            text-align: center;
+            overflow: hidden;
+            border-radius: var(--border-radius);
+            background-color: var(--bg-color);
+        `;
+        
+        // Style the image
+        img.style.cssText = `
+            max-width: 100%;
+            max-height: 400px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: var(--border-radius);
+            display: block;
+            margin: 0 auto;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        `;
+        
+        // Add hover effect
+        img.addEventListener('mouseenter', () => {
+            img.style.opacity = '0.9';
+        });
+        img.addEventListener('mouseleave', () => {
+            img.style.opacity = '1';
+        });
+        
+        // Add click handler to open in modal
+        img.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.showImageModal) {
+                window.showImageModal(img.src);
+            }
+        });
+        
         // Add class for consistent styling
         img.classList.add('comment-image');
+        
+        // Wrap the image
+        img.parentNode.insertBefore(imageWrapper, img);
+        imageWrapper.appendChild(img);
     });
+    
+    // Get the processed HTML back
+    htmlContent = tempDiv.innerHTML;
     // Ensure all content wraps properly
     tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
         el.style.wordWrap = 'break-word';
@@ -386,22 +431,67 @@ function showEditUI(commentDiv, commentView, actions) {
             // Add error handling for images in the new content
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = newHtmlContent;
+            
+            // Handle images - wrap them in proper containers and style them
             tempDiv.querySelectorAll('img').forEach(img => {
                 img.onerror = function() {
                     this.onerror = null;
                     this.src = 'images/404.png';
                     this.classList.add('broken-image-fallback');
                 };
-                // Constrain images - never exceed container
-                img.style.maxWidth = '100%';
-                img.style.width = 'auto';
-                img.style.height = 'auto';
-                img.style.objectFit = 'contain';
-                img.style.borderRadius = 'var(--border-radius)';
-                img.style.display = 'block';
-                img.style.margin = '10px 0';
+                
+                // Create a wrapper div for the image
+                const imageWrapper = document.createElement('div');
+                imageWrapper.className = 'comment-image-wrapper';
+                imageWrapper.style.cssText = `
+                    display: block;
+                    margin: 15px 0;
+                    max-width: 100%;
+                    text-align: center;
+                    overflow: hidden;
+                    border-radius: var(--border-radius);
+                    background-color: var(--bg-color);
+                `;
+                
+                // Style the image
+                img.style.cssText = `
+                    max-width: 100%;
+                    max-height: 400px;
+                    width: auto;
+                    height: auto;
+                    object-fit: contain;
+                    border-radius: var(--border-radius);
+                    display: block;
+                    margin: 0 auto;
+                    cursor: pointer;
+                    transition: opacity 0.2s ease;
+                `;
+                
+                // Add hover effect
+                img.addEventListener('mouseenter', () => {
+                    img.style.opacity = '0.9';
+                });
+                img.addEventListener('mouseleave', () => {
+                    img.style.opacity = '1';
+                });
+                
+                // Add click handler to open in modal
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.showImageModal) {
+                        window.showImageModal(img.src);
+                    }
+                });
+                
                 img.classList.add('comment-image');
+                
+                // Wrap the image
+                img.parentNode.insertBefore(imageWrapper, img);
+                imageWrapper.appendChild(img);
             });
+            
+            // Get the processed HTML back
+            newHtmlContent = tempDiv.innerHTML;
             // Ensure all content wraps properly
             tempDiv.querySelectorAll('p, div, span, pre, code').forEach(el => {
                 el.style.wordWrap = 'break-word';
