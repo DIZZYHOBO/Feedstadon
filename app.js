@@ -861,25 +861,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (state.currentLemmyFeed) {
                 actions.showLemmyFeed(state.currentLemmyFeed);
             }
+        } else if (state.currentView === 'notifications') {
+            actions.showNotifications();
         }
     });
 
-   notificationsBtn.addEventListener('click', () => {
-    if (state.currentUser) {
-        actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
-    } else if (localStorage.getItem('lemmy_jwt')) {
-        const lemmyUsername = localStorage.getItem('lemmy_username');
-        const lemmyInstance = localStorage.getItem('lemmy_instance');
-        if (lemmyUsername && lemmyInstance) {
-            const userAcct = `${lemmyUsername}@${lemmyInstance}`;
-            actions.showLemmyProfile(userAcct);
-        } else {
-            showWarningToast("Could not determine Lemmy user profile.");
-        }
-    } else {
-        showWarningToast("Please log in to view your profile.");
-    }
-});
+    notificationsBtn.addEventListener('click', () => {
+        actions.showNotifications();
+    });
+    
     document.getElementById('discover-btn').addEventListener('click', () => {
         actions.showDiscoverPage();
     });
@@ -1020,6 +1010,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'new-post-link':
                 showComposeModal(state);
                 break;
+            case 'notifications-link':
+                actions.showNotifications();
+                break;
             case 'profile-link':
                 if (state.currentUser) {
                     actions.showProfilePage('mastodon', state.currentUser.id, state.currentUser.acct);
@@ -1085,4 +1078,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     history.replaceState({view: state.currentView}, '', `#${state.currentView}`);
+    
+    // Check for notifications every 5 minutes
+    setInterval(() => {
+        if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
+            updateNotificationBell();
+        }
+    }, 5 * 60 * 1000);
 });
