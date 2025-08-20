@@ -17,14 +17,20 @@
 }
 
 [data-theme="feedstodon"] {
-    --bg-color: #191b22;
-    --card-color: #282c37;
-    --primary-color: #282c37;
-    --accent-color: #595aff;
-    --font-color: #9baec8;
-    --font-color-muted: #606984;
-    --border-color: #393f4f;
-    --link-color: #595aff;
+    --bg-color: #1a1a1b;
+    --card-color: #272729;
+    --primary-color: #272729;
+    --accent-color: #ff4500;
+    --font-color: #d7dadc;
+    --font-color-muted: #818384;
+    --border-color: #343536;
+    --link-color: #4fbcff;
+    --border-radius: 8px;
+    --hover-color: rgba(255, 255, 255, 0.1);
+    --success-color: #46d160;
+    --error-color: #ea0027;
+    --warning-color: #ffd23f;
+    --info-color: #0084ff;
 }
 
 [data-theme="readit"] {
