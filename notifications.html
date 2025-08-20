@@ -123,7 +123,13 @@
             }
         }
 
-        // Time formatting functions
+        // Helper function to truncate text to specified word count
+        function truncateWords(text, wordCount) {
+            if (!text) return '';
+            const words = text.split(/\s+/);
+            if (words.length <= wordCount) return text;
+            return words.slice(0, wordCount).join(' ') + '...';
+        }
         function timeAgo(dateString) {
             const date = new Date(dateString);
             const now = new Date();
@@ -154,8 +160,11 @@
                 // Both types should have creator, comment at top level
                 avatar = (notification.creator && notification.creator.avatar) || '';
                 timestamp = (notification.comment && notification.comment.published) || '';
-                context = (notification.comment && notification.comment.content) ? 
-                    `<div class="notification-context">${notification.comment.content}</div>` : '';
+                
+                // Truncate comment content to 10 words
+                const fullContent = (notification.comment && notification.comment.content) || '';
+                const truncatedContent = truncateWords(fullContent, 10);
+                context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
 
                 if (type === 'mention') {
                     content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> mentioned you in a comment`;
