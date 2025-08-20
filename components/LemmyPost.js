@@ -5,7 +5,7 @@ import { showToast } from './ui.js';
 import { renderLemmyCard } from './Lemmy.js';
 
 // Make sure this export is at the top level
-export function renderLemmyComment(commentView, state, actions, postAuthorId = null) {
+export function renderLemmyComment(commentView, state, actions, postAuthorId = null, postView = null) {
     const commentWrapper = document.createElement('div');
     commentWrapper.className = 'comment-wrapper';
     commentWrapper.id = `comment-wrapper-${commentView.comment.id}`;
@@ -181,19 +181,8 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
         viewRepliesBtn.textContent = `View ${commentView.counts.child_count} replies`;
         commentDiv.querySelector('.status-footer').insertAdjacentElement('afterend', viewRepliesBtn);
         viewRepliesBtn.addEventListener('click', () => {
-            console.log('View replies button clicked');
-            console.log('Available actions:', Object.keys(actions));
-            console.log('Current post view:', state.currentPostView);
-            console.log('Comment ID for thread:', commentView.comment.id);
-            
-            // Navigate to the comment thread page
-            if (actions.showLemmyCommentThread && typeof actions.showLemmyCommentThread === 'function') {
-                actions.showLemmyCommentThread(state.currentPostView, commentView.comment.id);
-            } else {
-                console.error('showLemmyCommentThread action not available, falling back to inline expansion');
-                // Fallback: use the old inline expansion method
-                toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId);
-            }
+            // Use the inline expansion method directly
+            toggleLemmyReplies(commentView.comment.id, commentView.post.id, repliesContainer, state, actions, postAuthorId);
         });
     }
 
@@ -221,7 +210,7 @@ export function renderLemmyComment(commentView, state, actions, postAuthorId = n
             }},
             { label: 'Take Screenshot', action: () => {
                 // This is the key addition - the screenshot action
-                actions.showScreenshotPage(commentView, state.currentPostView);
+                actions.showScreenshotPage(commentView, state.currentPostView || postView);
             }}
         );
 
@@ -693,7 +682,8 @@ export async function renderLemmyPostPage(state, post, actions) {
             
             if (topLevelComments.length > 0) {
                 topLevelComments.forEach(commentView => {
-                    const commentElement = renderLemmyComment(commentView, state, actions, post.creator.id);
+                    // Pass the post view to the comment renderer
+                    const commentElement = renderLemmyComment(commentView, state, actions, post.creator.id, post);
                     commentsContainer.appendChild(commentElement);
                 });
             } else {
@@ -749,7 +739,7 @@ export async function renderPublicLemmyPostPage(state, postView, actions, instan
             
             if (topLevelComments.length > 0) {
                 topLevelComments.forEach(commentView => {
-                    const commentElement = renderLemmyComment(commentView, state, actions, postView.creator.id);
+                    const commentElement = renderLemmyComment(commentView, state, actions, postView.creator.id, postView);
                     commentsContainer.appendChild(commentElement);
                 });
             } else {
