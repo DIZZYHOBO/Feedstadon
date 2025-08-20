@@ -25,16 +25,39 @@
         <div class="container">
             <!-- Login Section -->
             <div id="login-section" class="view-container" style="display: flex;">
-                <div class="login-prompt" style="margin: 40px auto; max-width: 400px;">
-                    <h3>Connect to Lemmy</h3>
+                <div class="login-prompt" style="margin: 40px auto; max-width: 500px;">
+                    <h3>Connect to Fediverse Services</h3>
                     <p>Please log in to see your notifications.</p>
-                    <div class="login-fields">
-                        <input type="text" id="lemmy-instance-input" placeholder="lemmy.world" style="margin-bottom: 10px;">
-                        <input type="text" id="lemmy-username-input" placeholder="Username" style="margin-bottom: 10px;">
-                        <input type="password" id="lemmy-password-input" placeholder="Password" style="margin-bottom: 15px;">
+                    
+                    <!-- Login Tabs -->
+                    <div class="login-tabs" style="display: flex; gap: 5px; margin-bottom: 20px;">
+                        <button class="login-tab-btn active" data-login-tab="lemmy">Lemmy</button>
+                        <button class="login-tab-btn" data-login-tab="mastodon">Mastodon</button>
                     </div>
-                    <button class="button-primary" id="connect-lemmy-btn" style="width: 100%;">Connect</button>
-                    <div id="login-error" style="color: var(--error-color); margin-top: 10px; display: none;"></div>
+                    
+                    <!-- Lemmy Login -->
+                    <div id="lemmy-login-tab" class="login-tab-content active">
+                        <div class="login-fields">
+                            <input type="text" id="lemmy-instance-input" placeholder="lemmy.world" style="margin-bottom: 10px;">
+                            <input type="text" id="lemmy-username-input" placeholder="Username" style="margin-bottom: 10px;">
+                            <input type="password" id="lemmy-password-input" placeholder="Password" style="margin-bottom: 15px;">
+                        </div>
+                        <button class="button-primary" id="connect-lemmy-btn" style="width: 100%;">Connect to Lemmy</button>
+                        <div id="lemmy-login-error" style="color: var(--error-color); margin-top: 10px; display: none;"></div>
+                    </div>
+                    
+                    <!-- Mastodon Login -->
+                    <div id="mastodon-login-tab" class="login-tab-content">
+                        <div class="login-fields">
+                            <input type="text" id="mastodon-instance-input" placeholder="mastodon.social" style="margin-bottom: 10px;">
+                            <input type="text" id="mastodon-token-input" placeholder="Paste your Access Token" style="margin-bottom: 15px;">
+                        </div>
+                        <button class="button-primary" id="connect-mastodon-btn" style="width: 100%;">Connect to Mastodon</button>
+                        <div id="mastodon-login-error" style="color: var(--error-color); margin-top: 10px; display: none;"></div>
+                        <p style="font-size: 0.8em; text-align: center; margin-top: 15px;">
+                            First, you need an Access Token from your instance. <a href="#" id="get-token-link">Click here to get one.</a>
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -50,9 +73,29 @@
                     </div>
                 </div>
 
-                <div id="notifications-list" class="notifications-container">
+                <!-- Notification Tabs -->
+                <div class="notification-tabs" style="display: flex; gap: 5px; margin-bottom: 20px;">
+                    <button class="notification-tab-btn active" data-notif-tab="all">All</button>
+                    <button class="notification-tab-btn" data-notif-tab="lemmy">Lemmy</button>
+                    <button class="notification-tab-btn" data-notif-tab="mastodon">Mastodon</button>
+                </div>
+
+                <!-- Notification Content Areas -->
+                <div id="all-notifications" class="notification-tab-content active">
+                    <div class="coming-soon" style="text-align: center; padding: 40px; color: var(--font-color-muted); background-color: var(--card-color); border-radius: var(--border-radius);">
+                        <p>Combined notifications coming soon...</p>
+                    </div>
+                </div>
+                
+                <div id="lemmy-notifications" class="notification-tab-content">
                     <div class="loading-spinner">
-                        <p>Loading notifications...</p>
+                        <p>Loading Lemmy notifications...</p>
+                    </div>
+                </div>
+                
+                <div id="mastodon-notifications" class="notification-tab-content">
+                    <div class="loading-spinner">
+                        <p>Loading Mastodon notifications...</p>
                     </div>
                 </div>
             </div>
@@ -77,15 +120,22 @@
             }, duration);
         }
 
-        // API fetch function for Lemmy
-        async function apiFetch(instanceUrl, endpoint, options = {}, params = {}) {
-            const jwt = localStorage.getItem('lemmy_jwt');
+        // API fetch function for both Lemmy and Mastodon
+        async function apiFetch(instanceUrl, endpoint, options = {}, params = {}, platform = 'lemmy') {
             const defaultHeaders = {
                 'Content-Type': 'application/json',
             };
 
-            if (jwt) {
-                defaultHeaders['Authorization'] = `Bearer ${jwt}`;
+            if (platform === 'lemmy') {
+                const jwt = localStorage.getItem('lemmy_jwt');
+                if (jwt) {
+                    defaultHeaders['Authorization'] = `Bearer ${jwt}`;
+                }
+            } else if (platform === 'mastodon') {
+                const token = localStorage.getItem('mastodon_token');
+                if (token) {
+                    defaultHeaders['Authorization'] = `Bearer ${token}`;
+                }
             }
             
             const config = {
@@ -145,35 +195,61 @@
         }
 
         // Notification rendering
-        function renderNotification(notification, type) {
+        function renderNotification(notification, type, platform = 'lemmy') {
             const notifDiv = document.createElement('div');
-            notifDiv.className = `notification-item ${!notification.read ? 'unread' : 'read'}`;
+            notifDiv.className = `notification-item ${!notification.read ? 'unread' : 'read'} ${platform}-notification`;
             
             let content = '';
             let avatar = '';
             let timestamp = '';
             let context = '';
 
-            console.log('Rendering notification:', type, notification);
+            console.log('Rendering notification:', type, platform, notification);
 
             try {
-                // Both types should have creator, comment at top level
-                avatar = (notification.creator && notification.creator.avatar) || '';
-                timestamp = (notification.comment && notification.comment.published) || '';
-                
-                // Truncate comment content to 10 words
-                const fullContent = (notification.comment && notification.comment.content) || '';
-                const truncatedContent = truncateWords(fullContent, 10);
-                context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
+                if (platform === 'lemmy') {
+                    // Lemmy notification structure
+                    avatar = (notification.creator && notification.creator.avatar) || '';
+                    timestamp = (notification.comment && notification.comment.published) || '';
+                    
+                    // Truncate comment content to 10 words
+                    const fullContent = (notification.comment && notification.comment.content) || '';
+                    const truncatedContent = truncateWords(fullContent, 10);
+                    context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
 
-                if (type === 'mention') {
-                    content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> mentioned you in a comment`;
-                } else if (type === 'reply') {
-                    content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> replied to your comment`;
+                    if (type === 'mention') {
+                        content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> mentioned you in a comment`;
+                    } else if (type === 'reply') {
+                        content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> replied to your comment`;
+                    }
+                } else if (platform === 'mastodon') {
+                    // Mastodon notification structure
+                    avatar = (notification.account && notification.account.avatar_static) || '';
+                    timestamp = notification.created_at || '';
+                    
+                    // Mastodon notifications have different content based on type
+                    const fullContent = notification.status ? (notification.status.content || '').replace(/<[^>]*>/g, "") : '';
+                    const truncatedContent = truncateWords(fullContent, 10);
+                    context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
+
+                    const accountName = notification.account ? notification.account.display_name || notification.account.username : 'Unknown';
+                    
+                    if (notification.type === 'mention') {
+                        content = `<strong>${accountName}</strong> mentioned you`;
+                    } else if (notification.type === 'favourite') {
+                        content = `<strong>${accountName}</strong> favorited your post`;
+                    } else if (notification.type === 'reblog') {
+                        content = `<strong>${accountName}</strong> boosted your post`;
+                    } else if (notification.type === 'follow') {
+                        content = `<strong>${accountName}</strong> followed you`;
+                    } else {
+                        content = `<strong>${accountName}</strong> ${notification.type}`;
+                    }
                 }
 
                 console.log('Notification rendered successfully:', {
                     type,
+                    platform,
                     avatar,
                     timestamp,
                     hasContext: !!context,
@@ -197,126 +273,136 @@
                     ${context}
                     ${!notification.read ? '<div class="unread-indicator"></div>' : ''}
                 </div>
+                <div class="platform-indicator">
+                    <span class="platform-badge ${platform}">${platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+                </div>
             `;
 
             return notifDiv;
         }
 
-        // Load notifications
-        async function loadNotifications() {
+        // Load Lemmy notifications
+        async function loadLemmyNotifications() {
             const instance = localStorage.getItem('lemmy_instance');
             const jwt = localStorage.getItem('lemmy_jwt');
             
             if (!instance || !jwt) {
-                showToast('Please log in first', 'error');
-                return;
+                return [];
             }
 
-            const container = document.getElementById('notifications-list');
-            const countSpan = document.getElementById('notification-count');
+            const container = document.getElementById('lemmy-notifications');
             
             try {
                 // Fetch mentions and replies
                 const [mentionsResponse, repliesResponse] = await Promise.all([
-                    apiFetch(instance, '/api/v3/user/mention', {}, { sort: 'New', unread_only: false, limit: 50 }),
-                    apiFetch(instance, '/api/v3/user/replies', {}, { sort: 'New', unread_only: false, limit: 50 })
+                    apiFetch(instance, '/api/v3/user/mention', {}, { sort: 'New', unread_only: false, limit: 50 }, 'lemmy'),
+                    apiFetch(instance, '/api/v3/user/replies', {}, { sort: 'New', unread_only: false, limit: 50 }, 'lemmy')
                 ]);
 
                 const mentions = mentionsResponse.data.mentions || [];
                 const replies = repliesResponse.data.replies || [];
 
                 // Combine and sort by date
-                console.log('Mentions received:', mentions);
-                console.log('Replies received:', replies);
-                
                 const allNotifications = [];
                 
-                // Process mentions - the API returns flat structure
-                mentions.forEach((m, index) => {
-                    console.log(`Processing mention ${index}:`, m);
-                    console.log('Has person_mention:', !!m.person_mention);
-                    console.log('Has comment:', !!m.comment);
-                    console.log('Has creator:', !!m.creator);
-                    
+                // Process mentions
+                mentions.forEach((m) => {
                     if (m.person_mention && m.comment && m.comment.published && m.creator) {
                         allNotifications.push({
                             ...m, 
                             type: 'mention', 
                             date: m.comment.published, 
-                            read: m.person_mention.read
-                        });
-                        console.log('Added mention notification');
-                    } else {
-                        console.warn('Invalid mention structure - missing required fields:', {
-                            hasMention: !!m.person_mention,
-                            hasComment: !!m.comment,
-                            hasPublished: !!(m.comment && m.comment.published),
-                            hasCreator: !!m.creator
+                            read: m.person_mention.read,
+                            platform: 'lemmy'
                         });
                     }
                 });
 
-                // Process replies - the API returns flat structure  
-                replies.forEach((r, index) => {
-                    console.log(`Processing reply ${index}:`, r);
-                    console.log('Has comment_reply:', !!r.comment_reply);
-                    console.log('Has comment:', !!r.comment);
-                    console.log('Has creator:', !!r.creator);
-                    
+                // Process replies
+                replies.forEach((r) => {
                     if (r.comment_reply && r.comment && r.comment.published && r.creator) {
                         allNotifications.push({
                             ...r, 
                             type: 'reply', 
                             date: r.comment.published, 
-                            read: r.comment_reply.read
-                        });
-                        console.log('Added reply notification');
-                    } else {
-                        console.warn('Invalid reply structure - missing required fields:', {
-                            hasReply: !!r.comment_reply,
-                            hasComment: !!r.comment,
-                            hasPublished: !!(r.comment && r.comment.published),
-                            hasCreator: !!r.creator
+                            read: r.comment_reply.read,
+                            platform: 'lemmy'
                         });
                     }
                 });
 
-                console.log('Total notifications processed:', allNotifications.length);
                 allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                // Clear container
+                // Clear container and render
                 container.innerHTML = '';
 
                 if (allNotifications.length === 0) {
-                    container.innerHTML = '<div class="no-notifications"><p>No notifications found.</p></div>';
-                    countSpan.textContent = '0 notifications';
-                    return;
+                    container.innerHTML = '<div class="no-notifications"><p>No Lemmy notifications found.</p></div>';
+                    return [];
                 }
 
                 // Render notifications
                 allNotifications.forEach(notification => {
-                    const notifElement = renderNotification(notification, notification.type);
+                    const notifElement = renderNotification(notification, notification.type, 'lemmy');
                     if (notifElement) {
                         container.appendChild(notifElement);
                     }
                 });
 
-                const unreadCount = allNotifications.filter(n => !n.read).length;
-                countSpan.textContent = `${allNotifications.length} total (${unreadCount} unread)`;
-
-                // Show mark all read button if there are unread notifications
-                const markAllReadBtn = document.getElementById('mark-all-read-btn');
-                if (unreadCount > 0) {
-                    markAllReadBtn.style.display = 'block';
-                } else {
-                    markAllReadBtn.style.display = 'none';
-                }
+                return allNotifications;
 
             } catch (error) {
-                console.error('Failed to load notifications:', error);
-                console.error('Error details:', error.message);
-                container.innerHTML = '<div class="error-message"><p>Failed to load notifications. Please try again.</p><p class="error-details">Error: ' + error.message + '</p></div>';
-                showToast('Failed to load notifications', 'error');
+                console.error('Failed to load Lemmy notifications:', error);
+                container.innerHTML = '<div class="error-message"><p>Failed to load Lemmy notifications.</p></div>';
+                return [];
+            }
+        }
+
+        // Load Mastodon notifications
+        async function loadMastodonNotifications() {
+            const instance = localStorage.getItem('mastodon_instance');
+            const token = localStorage.getItem('mastodon_token');
+            
+            if (!instance || !token) {
+                return [];
+            }
+
+            const container = document.getElementById('mastodon-notifications');
+            
+            try {
+                const response = await apiFetch(instance, '/api/v1/notifications', {}, { limit: 50 }, 'mastodon');
+                const notifications = response.data || [];
+
+                // Clear container and render
+                container.innerHTML = '';
+
+                if (notifications.length === 0) {
+                    container.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
+                    return [];
+                }
+
+                // Process notifications
+                const processedNotifications = notifications.map(n => ({
+                    ...n,
+                    date: n.created_at,
+                    read: true, // Mastodon doesn't have read/unread status in the same way
+                    platform: 'mastodon'
+                }));
+
+                // Render notifications
+                processedNotifications.forEach(notification => {
+                    const notifElement = renderNotification(notification, notification.type, 'mastodon');
+                    if (notifElement) {
+                        container.appendChild(notifElement);
+                    }
+                });
+
+                return processedNotifications;
+
+            } catch (error) {
+                console.error('Failed to load Mastodon notifications:', error);
+                container.innerHTML = '<div class="error-message"><p>Failed to load Mastodon notifications.</p></div>';
+                return [];
             }
         }
 
@@ -373,12 +459,12 @@
             }
         }
 
-        // Login function
-        async function login() {
+        // Login functions
+        async function loginLemmy() {
             const instance = document.getElementById('lemmy-instance-input').value.trim();
             const username = document.getElementById('lemmy-username-input').value.trim();
             const password = document.getElementById('lemmy-password-input').value.trim();
-            const errorDiv = document.getElementById('login-error');
+            const errorDiv = document.getElementById('lemmy-login-error');
 
             if (!instance || !username || !password) {
                 errorDiv.textContent = 'Please fill in all fields';
@@ -395,32 +481,68 @@
                 const response = await apiFetch(instance, '/api/v3/user/login', {
                     method: 'POST',
                     body: { username_or_email: username, password: password }
-                });
+                }, {}, 'lemmy');
 
                 if (response.data.jwt) {
                     localStorage.setItem('lemmy_jwt', response.data.jwt);
                     localStorage.setItem('lemmy_username', username);
                     localStorage.setItem('lemmy_instance', instance);
                     
-                    showToast('Login successful!', 'success');
-                    
-                    // Hide login section, show notifications
-                    document.getElementById('login-section').style.display = 'none';
-                    document.getElementById('notifications-section').style.display = 'flex';
-                    document.getElementById('logout-btn').style.display = 'block';
-                    
-                    loadNotifications();
+                    showToast('Lemmy login successful!', 'success');
+                    checkLoginStatus();
                 } else {
                     throw new Error('No JWT token received');
                 }
             } catch (error) {
-                console.error('Login failed:', error);
+                console.error('Lemmy login failed:', error);
                 errorDiv.textContent = 'Login failed. Please check your credentials.';
                 errorDiv.style.display = 'block';
-                showToast('Login failed', 'error');
+                showToast('Lemmy login failed', 'error');
             } finally {
                 const connectBtn = document.getElementById('connect-lemmy-btn');
-                connectBtn.textContent = 'Connect';
+                connectBtn.textContent = 'Connect to Lemmy';
+                connectBtn.disabled = false;
+            }
+        }
+
+        async function loginMastodon() {
+            const instance = document.getElementById('mastodon-instance-input').value.trim();
+            const token = document.getElementById('mastodon-token-input').value.trim();
+            const errorDiv = document.getElementById('mastodon-login-error');
+
+            if (!instance || !token) {
+                errorDiv.textContent = 'Please fill in both fields';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const connectBtn = document.getElementById('connect-mastodon-btn');
+                connectBtn.textContent = 'Connecting...';
+                connectBtn.disabled = true;
+                errorDiv.style.display = 'none';
+
+                // Verify the token by fetching user info
+                const response = await apiFetch(instance, '/api/v1/accounts/verify_credentials', {}, {}, 'mastodon');
+
+                if (response.data.id) {
+                    localStorage.setItem('mastodon_token', token);
+                    localStorage.setItem('mastodon_instance', instance);
+                    localStorage.setItem('mastodon_username', response.data.username);
+                    
+                    showToast('Mastodon login successful!', 'success');
+                    checkLoginStatus();
+                } else {
+                    throw new Error('Invalid token');
+                }
+            } catch (error) {
+                console.error('Mastodon login failed:', error);
+                errorDiv.textContent = 'Login failed. Please check your instance and token.';
+                errorDiv.style.display = 'block';
+                showToast('Mastodon login failed', 'error');
+            } finally {
+                const connectBtn = document.getElementById('connect-mastodon-btn');
+                connectBtn.textContent = 'Connect to Mastodon';
                 connectBtn.disabled = false;
             }
         }
