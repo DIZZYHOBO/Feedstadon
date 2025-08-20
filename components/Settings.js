@@ -1,5 +1,30 @@
 import { getWordFilter, saveWordFilter } from './utils.js';
 
+async function loadThemesList() {
+    try {
+        const response = await fetch('./themes.list');
+        if (!response.ok) {
+            throw new Error('Could not load themes list');
+        }
+        const text = await response.text();
+        // Split by newlines and filter out empty lines
+        const themes = text.split('\n').filter(line => line.trim().length > 0);
+        return themes.map(theme => ({
+            value: theme.trim().toLowerCase(),
+            label: theme.trim().charAt(0).toUpperCase() + theme.trim().slice(1)
+        }));
+    } catch (error) {
+        console.error('Failed to load themes list:', error);
+        // Fallback to default themes if file can't be loaded
+        return [
+            { value: 'feedstodon', label: 'Feedstodon' },
+            { value: 'readit', label: 'Readit' },
+            { value: 'git', label: 'Git' },
+            { value: 'voyage', label: 'Voyage' }
+        ];
+    }
+}
+
 function renderWordFilterList(container) {
     const words = getWordFilter();
     container.innerHTML = '';
@@ -23,9 +48,14 @@ function renderWordFilterList(container) {
     }
 }
 
-
-export function renderSettingsPage(state) {
+export async function renderSettingsPage(state) {
     const settingsView = document.getElementById('settings-view');
+    
+    // Load themes list
+    const themes = await loadThemesList();
+    const themeOptions = themes.map(theme => 
+        `<option value="${theme.value}">${theme.label}${theme.value === 'feedstodon' ? ' (Default)' : ''}</option>`
+    ).join('');
 
     settingsView.innerHTML = `
         <div class="settings-container">
@@ -34,10 +64,7 @@ export function renderSettingsPage(state) {
                 <div class="form-group">
                     <label for="theme-select">Select Theme</label>
                     <select id="theme-select">
-                        <option value="feedstodon">Feedstodon (Default)</option>
-                        <option value="readit">Readit</option>
-                        <option value="git">Git</option>
-                        <option value="voyage">Voyage</option>
+                        ${themeOptions}
                     </select>
                 </div>
             </div>
