@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lemmy Notifications</title>
+    <title>Fediverse Notifications</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
@@ -12,22 +12,28 @@
     <div id="app-view">
         <nav class="top-nav">
             <div class="nav-left">
-                <h2 style="margin: 0; color: var(--font-color);">Lemmy Notifications</h2>
+                <h2 style="margin: 0; color: var(--font-color);">Fediverse Notifications</h2>
             </div>
             <div class="nav-right">
                 <button id="refresh-btn" class="icon-button" title="Refresh">
                     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
                 </button>
-                <button id="logout-btn" class="nav-button" style="display: none;">Logout</button>
+                <button id="logout-all-btn" class="button-danger" style="display: none;">Logout All</button>
             </div>
         </nav>
 
         <div class="container">
             <!-- Login Section -->
             <div id="login-section" class="view-container" style="display: flex;">
-                <div class="login-prompt" style="margin: 40px auto; max-width: 500px;">
+                <div class="login-prompt" style="margin: 40px auto; max-width: 500px; width: 100%;">
                     <h3>Connect to Fediverse Services</h3>
                     <p>Please log in to see your notifications.</p>
+                    
+                    <!-- Login Status Display -->
+                    <div id="login-status" style="margin-bottom: 20px; padding: 10px; background-color: var(--card-color); border-radius: var(--border-radius); display: none;">
+                        <h4 style="margin: 0 0 10px 0;">Connected Accounts:</h4>
+                        <div id="connected-accounts"></div>
+                    </div>
                     
                     <!-- Login Tabs -->
                     <div class="login-tabs" style="display: flex; gap: 5px; margin-bottom: 20px;">
@@ -74,7 +80,7 @@
                                 </span>
                                 <span id="mastodon-count" style="display: none;">
                                     <span class="platform-badge mastodon" style="margin-right: 5px;">Mastodon</span>
-                                    <span id="mastodon-unread-count">0</span> unread
+                                    <span id="mastodon-notif-count">0</span> notifications
                                 </span>
                             </div>
                             <button id="mark-all-read-btn" class="button-secondary" style="display: none;">Mark All Read</button>
@@ -91,8 +97,8 @@
 
                 <!-- Notification Content Areas -->
                 <div id="all-notifications" class="notification-tab-content active">
-                    <div class="coming-soon" style="text-align: center; padding: 40px; color: var(--font-color-muted); background-color: var(--card-color); border-radius: var(--border-radius);">
-                        <p>Combined notifications coming soon...</p>
+                    <div class="loading-spinner">
+                        <p>Loading all notifications...</p>
                     </div>
                 </div>
                 
@@ -138,10 +144,10 @@
             if (platform === 'lemmy') {
                 const jwt = localStorage.getItem('lemmy_jwt');
                 if (jwt) {
-                    defaultHeaders['Authorization'] = `Bearer ${jwt}`;
+                    params.auth = jwt; // Lemmy uses auth param
                 }
             } else if (platform === 'mastodon') {
-                const token = localStorage.getItem('mastodon_token');
+                const token = localStorage.getItem('fediverse-token'); // Fixed: using correct key
                 if (token) {
                     defaultHeaders['Authorization'] = `Bearer ${token}`;
                 }
@@ -187,7 +193,7 @@
             const lemmyCountEl = document.getElementById('lemmy-count');
             const mastodonCountEl = document.getElementById('mastodon-count');
             const lemmyUnreadEl = document.getElementById('lemmy-unread-count');
-            const mastodonUnreadEl = document.getElementById('mastodon-unread-count');
+            const mastodonNotifCountEl = document.getElementById('mastodon-notif-count');
             const markAllReadBtn = document.getElementById('mark-all-read-btn');
             
             // Count Lemmy unread notifications
@@ -199,11 +205,10 @@
                 lemmyCountEl.style.display = 'none';
             }
             
-            // Count Mastodon unread notifications (Mastodon doesn't really have unread status)
-            const mastodonUnread = 0; // Mastodon API doesn't provide unread status
-            if (localStorage.getItem('mastodon_token')) {
+            // Count Mastodon notifications
+            if (localStorage.getItem('fediverse-token')) {
                 mastodonCountEl.style.display = 'inline';
-                mastodonUnreadEl.textContent = `${mastodonNotifications.length} total`;
+                mastodonNotifCountEl.textContent = mastodonNotifications.length;
             } else {
                 mastodonCountEl.style.display = 'none';
             }
@@ -215,12 +220,14 @@
                 markAllReadBtn.style.display = 'none';
             }
         }
+
         function truncateWords(text, wordCount) {
             if (!text) return '';
             const words = text.split(/\s+/);
             if (words.length <= wordCount) return text;
             return words.slice(0, wordCount).join(' ') + '...';
         }
+
         function timeAgo(dateString) {
             const date = new Date(dateString);
             const now = new Date();
@@ -245,15 +252,12 @@
             let timestamp = '';
             let context = '';
 
-            console.log('Rendering notification:', type, platform, notification);
-
             try {
                 if (platform === 'lemmy') {
                     // Lemmy notification structure
                     avatar = (notification.creator && notification.creator.avatar) || '';
                     timestamp = (notification.comment && notification.comment.published) || '';
                     
-                    // Truncate comment content to 10 words
                     const fullContent = (notification.comment && notification.comment.content) || '';
                     const truncatedContent = truncateWords(fullContent, 10);
                     context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
@@ -268,15 +272,6 @@
                     avatar = (notification.account && notification.account.avatar_static) || '';
                     timestamp = notification.created_at || '';
                     
-                    console.log('Processing Mastodon notification details:', {
-                        type: notification.type,
-                        hasAccount: !!notification.account,
-                        hasStatus: !!notification.status,
-                        avatar,
-                        timestamp
-                    });
-                    
-                    // Mastodon notifications have different content based on type
                     const fullContent = notification.status ? (notification.status.content || '').replace(/<[^>]*>/g, "") : '';
                     const truncatedContent = truncateWords(fullContent, 10);
                     context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
@@ -291,21 +286,14 @@
                         content = `<strong>${accountName}</strong> boosted your post`;
                     } else if (notification.type === 'follow') {
                         content = `<strong>${accountName}</strong> followed you`;
+                    } else if (notification.type === 'poll') {
+                        content = `A poll you voted in has ended`;
+                    } else if (notification.type === 'status') {
+                        content = `<strong>${accountName}</strong> posted a new status`;
                     } else {
                         content = `<strong>${accountName}</strong> ${notification.type}`;
                     }
-                    
-                    console.log('Generated Mastodon content:', content);
                 }
-
-                console.log('Notification rendered successfully:', {
-                    type,
-                    platform,
-                    avatar,
-                    timestamp,
-                    hasContext: !!context,
-                    content
-                });
 
             } catch (error) {
                 console.error('Error rendering notification:', error, notification);
@@ -332,16 +320,59 @@
             return notifDiv;
         }
 
+        // Load all notifications for combined view
+        async function loadAllNotifications() {
+            const container = document.getElementById('all-notifications');
+            container.innerHTML = '<div class="loading-spinner"><p>Loading all notifications...</p></div>';
+            
+            try {
+                const [lemmyNotifs, mastodonNotifs] = await Promise.all([
+                    loadLemmyNotifications(false),
+                    loadMastodonNotifications(false)
+                ]);
+                
+                // Combine and sort all notifications by date
+                const allNotifs = [
+                    ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy' })),
+                    ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon' }))
+                ];
+                
+                allNotifs.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                container.innerHTML = '';
+                
+                if (allNotifs.length === 0) {
+                    container.innerHTML = '<div class="no-notifications"><p>No notifications found.</p></div>';
+                    return;
+                }
+                
+                allNotifs.forEach(notification => {
+                    const notifElement = renderNotification(notification, notification.type, notification.platform);
+                    if (notifElement) {
+                        container.appendChild(notifElement);
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Failed to load all notifications:', error);
+                container.innerHTML = '<div class="error-message"><p>Failed to load notifications.</p></div>';
+            }
+        }
+
         // Load Lemmy notifications
-        async function loadLemmyNotifications() {
+        async function loadLemmyNotifications(updateUI = true) {
             const instance = localStorage.getItem('lemmy_instance');
             const jwt = localStorage.getItem('lemmy_jwt');
             
             if (!instance || !jwt) {
+                if (updateUI) {
+                    const container = document.getElementById('lemmy-notifications');
+                    container.innerHTML = '<div class="no-notifications"><p>Please log in to Lemmy first.</p></div>';
+                }
                 return [];
             }
 
-            const container = document.getElementById('lemmy-notifications');
+            const container = updateUI ? document.getElementById('lemmy-notifications') : null;
             
             try {
                 // Fetch mentions and replies
@@ -384,21 +415,21 @@
 
                 allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                // Clear container and render
-                container.innerHTML = '';
+                // Update UI if needed
+                if (updateUI && container) {
+                    container.innerHTML = '';
 
-                if (allNotifications.length === 0) {
-                    container.innerHTML = '<div class="no-notifications"><p>No Lemmy notifications found.</p></div>';
-                    return [];
-                }
-
-                // Render notifications
-                allNotifications.forEach(notification => {
-                    const notifElement = renderNotification(notification, notification.type, 'lemmy');
-                    if (notifElement) {
-                        container.appendChild(notifElement);
+                    if (allNotifications.length === 0) {
+                        container.innerHTML = '<div class="no-notifications"><p>No Lemmy notifications found.</p></div>';
+                    } else {
+                        allNotifications.forEach(notification => {
+                            const notifElement = renderNotification(notification, notification.type, 'lemmy');
+                            if (notifElement) {
+                                container.appendChild(notifElement);
+                            }
+                        });
                     }
-                });
+                }
 
                 // Update counts
                 updateNotificationCounts(allNotifications, []);
@@ -407,99 +438,61 @@
 
             } catch (error) {
                 console.error('Failed to load Lemmy notifications:', error);
-                container.innerHTML = '<div class="error-message"><p>Failed to load Lemmy notifications.</p></div>';
+                if (updateUI && container) {
+                    container.innerHTML = '<div class="error-message"><p>Failed to load Lemmy notifications.</p></div>';
+                }
                 return [];
             }
         }
 
         // Load Mastodon notifications
-        async function loadMastodonNotifications() {
-            const instance = localStorage.getItem('mastodon_instance');
-            const token = localStorage.getItem('mastodon_token');
+        async function loadMastodonNotifications(updateUI = true) {
+            const instance = localStorage.getItem('fediverse-instance'); // Fixed: using correct key
+            const token = localStorage.getItem('fediverse-token'); // Fixed: using correct key
             
-            console.log('Loading Mastodon notifications...', { instance, token: token ? 'exists' : 'missing' });
+            console.log('Loading Mastodon notifications...', { instance, hasToken: !!token });
             
             if (!instance || !token) {
-                console.log('Missing Mastodon credentials');
-                const container = document.getElementById('mastodon-notifications');
-                container.innerHTML = '<div class="no-notifications"><p>Please log in to Mastodon first.</p></div>';
+                if (updateUI) {
+                    const container = document.getElementById('mastodon-notifications');
+                    container.innerHTML = '<div class="no-notifications"><p>Please log in to Mastodon first.</p></div>';
+                }
                 return [];
             }
 
-            const container = document.getElementById('mastodon-notifications');
-            container.innerHTML = '<div class="loading-spinner"><p>Loading Mastodon notifications...</p></div>';
+            const container = updateUI ? document.getElementById('mastodon-notifications') : null;
+            if (updateUI && container) {
+                container.innerHTML = '<div class="loading-spinner"><p>Loading Mastodon notifications...</p></div>';
+            }
             
             try {
-                console.log(`Fetching from Mastodon API: https://${instance}/api/v1/notifications`);
+                const response = await apiFetch(instance, '/api/v1/notifications', {}, { limit: 50 }, 'mastodon');
+                const notifications = response.data || [];
                 
-                // Try the API call with detailed logging
-                const url = new URL(`https://${instance}/api/v1/notifications`);
-                url.searchParams.append('limit', '50');
-                
-                console.log('Making request to:', url.toString());
-                console.log('With token:', token.substring(0, 10) + '...');
-                
-                const response = await fetch(url.toString(), {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error Response:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                const notifications = await response.json();
-                console.log('Mastodon notifications received:', notifications);
-                console.log('Number of notifications:', notifications.length);
-
-                // Clear container and render
-                container.innerHTML = '';
-
-                if (notifications.length === 0) {
-                    container.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
-                    updateNotificationCounts([], []);
-                    return [];
-                }
+                console.log('Mastodon notifications received:', notifications.length);
 
                 // Process notifications
-                const processedNotifications = notifications.map((n, index) => {
-                    console.log(`Processing Mastodon notification ${index}:`, n);
-                    return {
-                        ...n,
-                        date: n.created_at,
-                        read: true, // Mastodon doesn't have read/unread status in the same way
-                        platform: 'mastodon'
-                    };
-                });
+                const processedNotifications = notifications.map((n) => ({
+                    ...n,
+                    date: n.created_at,
+                    read: true, // Mastodon doesn't have read/unread status in the same way
+                    platform: 'mastodon'
+                }));
 
-                console.log('Processed notifications:', processedNotifications.length);
+                // Update UI if needed
+                if (updateUI && container) {
+                    container.innerHTML = '';
 
-                // Render notifications
-                let renderedCount = 0;
-                processedNotifications.forEach((notification, index) => {
-                    console.log(`Rendering Mastodon notification ${index}:`, notification);
-                    const notifElement = renderNotification(notification, notification.type, 'mastodon');
-                    if (notifElement) {
-                        container.appendChild(notifElement);
-                        renderedCount++;
-                        console.log('Successfully rendered notification', index);
+                    if (processedNotifications.length === 0) {
+                        container.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
                     } else {
-                        console.warn('Failed to render notification', index, notification);
+                        processedNotifications.forEach((notification) => {
+                            const notifElement = renderNotification(notification, notification.type, 'mastodon');
+                            if (notifElement) {
+                                container.appendChild(notifElement);
+                            }
+                        });
                     }
-                });
-
-                console.log(`Rendered ${renderedCount} out of ${processedNotifications.length} Mastodon notifications`);
-
-                if (renderedCount === 0) {
-                    container.innerHTML = '<div class="no-notifications"><p>No renderable Mastodon notifications found.</p></div>';
                 }
 
                 // Update counts
@@ -509,8 +502,9 @@
 
             } catch (error) {
                 console.error('Failed to load Mastodon notifications:', error);
-                container.innerHTML = `<div class="error-message"><p>Failed to load Mastodon notifications.</p><p class="error-details">Error: ${error.message}</p></div>`;
-                updateNotificationCounts([], []);
+                if (updateUI && container) {
+                    container.innerHTML = `<div class="error-message"><p>Failed to load Mastodon notifications.</p><p class="error-details">Error: ${error.message}</p></div>`;
+                }
                 return [];
             }
         }
@@ -559,7 +553,8 @@
                 }
 
                 showToast('All notifications marked as read', 'success');
-                loadLemmyNotifications(); // Reload Lemmy notifications
+                await loadLemmyNotifications();
+                await loadAllNotifications();
 
             } catch (error) {
                 console.error('Failed to mark all as read:', error);
@@ -630,12 +625,15 @@
                 connectBtn.disabled = true;
                 errorDiv.style.display = 'none';
 
+                // Store temporarily for verification
+                localStorage.setItem('fediverse-token', token);
+                localStorage.setItem('fediverse-instance', instance);
+
                 // Verify the token by fetching user info
                 const response = await apiFetch(instance, '/api/v1/accounts/verify_credentials', {}, {}, 'mastodon');
 
                 if (response.data.id) {
-                    localStorage.setItem('mastodon_token', token);
-                    localStorage.setItem('mastodon_instance', instance);
+                    // Keep the stored credentials
                     localStorage.setItem('mastodon_username', response.data.username);
                     
                     showToast('Mastodon login successful!', 'success');
@@ -645,6 +643,9 @@
                 }
             } catch (error) {
                 console.error('Mastodon login failed:', error);
+                // Clear invalid credentials
+                localStorage.removeItem('fediverse-token');
+                localStorage.removeItem('fediverse-instance');
                 errorDiv.textContent = 'Login failed. Please check your instance and token.';
                 errorDiv.style.display = 'block';
                 showToast('Mastodon login failed', 'error');
@@ -655,59 +656,21 @@
             }
         }
 
-        // Logout function
-        function logout() {
-            localStorage.removeItem('lemmy_jwt');
-            localStorage.removeItem('lemmy_username');
-            localStorage.removeItem('lemmy_instance');
-            
-            document.getElementById('login-section').style.display = 'flex';
-            document.getElementById('notifications-section').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'none';
-            
-            // Clear form
-            document.getElementById('lemmy-instance-input').value = '';
-            document.getElementById('lemmy-username-input').value = '';
-            document.getElementById('lemmy-password-input').value = '';
-            
-            showToast('Logged out successfully', 'success');
-        }
-
-        // Check login status and show appropriate sections
-        function checkLoginStatus() {
-            const lemmyJwt = localStorage.getItem('lemmy_jwt');
-            const mastodonToken = localStorage.getItem('mastodon_token');
-            
-            if (lemmyJwt || mastodonToken) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('notifications-section').style.display = 'flex';
-                document.getElementById('logout-btn').style.display = 'block';
-                
-                // Load notifications for connected services
-                if (lemmyJwt) {
-                    loadLemmyNotifications();
-                }
-                if (mastodonToken) {
-                    loadMastodonNotifications();
-                }
-                
-                // Update initial counts
-                updateNotificationCounts([], []);
-            } else {
-                document.getElementById('login-section').style.display = 'flex';
-                document.getElementById('notifications-section').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'none';
+        // Unified logout function
+        function logoutAll() {
+            if (!confirm('Are you sure you want to log out of all accounts?')) {
+                return;
             }
-        }
 
-        // Logout function
-        function logout() {
+            // Clear Lemmy credentials
             localStorage.removeItem('lemmy_jwt');
             localStorage.removeItem('lemmy_username');
             localStorage.removeItem('lemmy_instance');
-            localStorage.removeItem('mastodon_token');
+            
+            // Clear Mastodon credentials
+            localStorage.removeItem('fediverse-token');
+            localStorage.removeItem('fediverse-instance');
             localStorage.removeItem('mastodon_username');
-            localStorage.removeItem('mastodon_instance');
             
             // Clear form fields
             document.getElementById('lemmy-instance-input').value = '';
@@ -717,7 +680,63 @@
             document.getElementById('mastodon-token-input').value = '';
             
             checkLoginStatus();
-            showToast('Logged out successfully', 'success');
+            showToast('Logged out of all accounts', 'success');
+        }
+
+        // Check login status and show appropriate sections
+        function checkLoginStatus() {
+            const lemmyJwt = localStorage.getItem('lemmy_jwt');
+            const mastodonToken = localStorage.getItem('fediverse-token');
+            const logoutAllBtn = document.getElementById('logout-all-btn');
+            
+            // Update login status display
+            const loginStatus = document.getElementById('login-status');
+            const connectedAccounts = document.getElementById('connected-accounts');
+            
+            if (lemmyJwt || mastodonToken) {
+                loginStatus.style.display = 'block';
+                connectedAccounts.innerHTML = '';
+                
+                if (lemmyJwt) {
+                    const lemmyUsername = localStorage.getItem('lemmy_username');
+                    const lemmyInstance = localStorage.getItem('lemmy_instance');
+                    connectedAccounts.innerHTML += `
+                        <div style="margin-bottom: 5px;">
+                            <span class="platform-badge lemmy">Lemmy</span> 
+                            ${lemmyUsername}@${lemmyInstance}
+                        </div>
+                    `;
+                }
+                
+                if (mastodonToken) {
+                    const mastodonUsername = localStorage.getItem('mastodon_username');
+                    const mastodonInstance = localStorage.getItem('fediverse-instance');
+                    connectedAccounts.innerHTML += `
+                        <div>
+                            <span class="platform-badge mastodon">Mastodon</span> 
+                            ${mastodonUsername ? `${mastodonUsername}@${mastodonInstance}` : mastodonInstance}
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('notifications-section').style.display = 'flex';
+                logoutAllBtn.style.display = 'block';
+                
+                // Load notifications for connected services
+                loadAllNotifications();
+                if (lemmyJwt) {
+                    loadLemmyNotifications();
+                }
+                if (mastodonToken) {
+                    loadMastodonNotifications();
+                }
+            } else {
+                loginStatus.style.display = 'none';
+                document.getElementById('login-section').style.display = 'flex';
+                document.getElementById('notifications-section').style.display = 'none';
+                logoutAllBtn.style.display = 'none';
+            }
         }
 
         // Event listeners
@@ -749,6 +768,15 @@
                     
                     btn.classList.add('active');
                     document.getElementById(`${tab}-notifications`).classList.add('active');
+                    
+                    // Load appropriate notifications
+                    if (tab === 'all') {
+                        loadAllNotifications();
+                    } else if (tab === 'lemmy') {
+                        loadLemmyNotifications();
+                    } else if (tab === 'mastodon') {
+                        loadMastodonNotifications();
+                    }
                 });
             });
 
@@ -769,14 +797,17 @@
             });
 
             // Other buttons
-            document.getElementById('logout-btn').addEventListener('click', logout);
-            document.getElementById('refresh-btn').addEventListener('click', () => {
+            document.getElementById('logout-all-btn').addEventListener('click', logoutAll);
+            document.getElementById('refresh-btn').addEventListener('click', async () => {
+                showToast('Refreshing notifications...', 'info');
+                await loadAllNotifications();
                 if (localStorage.getItem('lemmy_jwt')) {
-                    loadLemmyNotifications();
+                    await loadLemmyNotifications();
                 }
-                if (localStorage.getItem('mastodon_token')) {
-                    loadMastodonNotifications();
+                if (localStorage.getItem('fediverse-token')) {
+                    await loadMastodonNotifications();
                 }
+                showToast('Notifications refreshed', 'success');
             });
             document.getElementById('mark-all-read-btn').addEventListener('click', markAllAsRead);
 
@@ -796,6 +827,7 @@
     </script>
 
     <style>
+        /* Keep all existing styles from the original */
         .notifications-container {
             display: flex;
             flex-direction: column;
@@ -896,6 +928,12 @@
             border-radius: var(--border-radius);
         }
 
+        .error-details {
+            font-size: 12px;
+            margin-top: 10px;
+            color: var(--font-color-muted);
+        }
+
         /* Tab styling */
         .login-tabs,
         .notification-tabs {
@@ -971,14 +1009,6 @@
             align-items: flex-start;
         }
 
-        .coming-soon {
-            text-align: center;
-            padding: 40px;
-            color: var(--font-color-muted);
-            background-color: var(--card-color);
-            border-radius: var(--border-radius);
-            font-style: italic;
-        }
         #toast-notification {
             position: fixed;
             bottom: -100px;
@@ -1013,6 +1043,20 @@
 
         .toast-info {
             background-color: var(--info-color, #0084ff);
+        }
+
+        .button-danger {
+            background-color: var(--error-color, #ea0027);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .button-danger:hover {
+            opacity: 0.9;
         }
     </style>
 </body>
