@@ -105,8 +105,12 @@ async function getLemmyProfile(userAcct, page = 1) {
 }
 
 function renderLemmyCommentOnProfile(commentView, state, actions) {
-    // Use the base renderer to create the main card
-    const commentCard = renderBaseLemmyComment(commentView, state, actions);
+    // Pass the actual post creator ID (from the commentView) to the renderer
+    // This ensures the OP badge shows correctly
+    const postAuthorId = commentView.post?.creator_id || null;
+    
+    // Use the base renderer to create the main card, passing the correct post author ID
+    const commentCard = renderBaseLemmyComment(commentView, state, actions, postAuthorId);
 
     // Remove the username from the header since we're on the user's profile
     const usernameElement = commentCard.querySelector('.username-instance');
@@ -114,11 +118,8 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
         usernameElement.style.display = 'none';
     }
     
-    // Also remove the OP badge if present
-    const opBadge = commentCard.querySelector('.op-badge');
-    if (opBadge) {
-        opBadge.style.display = 'none';
-    }
+    // The OP badge should now display correctly based on the actual post author
+    // We don't need to hide it anymore since it will only show when appropriate
     
     // Hide the original timestamp in the header
     const originalTimestamp = commentCard.querySelector('.time-ago');
@@ -154,6 +155,7 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
         postLink.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Pass the full commentView which includes the correct post data
             actions.showLemmyPostDetail(commentView);
         });
     }
@@ -169,6 +171,7 @@ function renderLemmyCommentOnProfile(commentView, state, actions) {
     
     // Add double-click event listener to navigate to the post
     commentCard.addEventListener('dblclick', () => {
+        // Pass the full commentView which includes the correct post data
         actions.showLemmyPostDetail(commentView);
     });
 
