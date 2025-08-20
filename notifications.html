@@ -406,7 +406,7 @@
             }
         }
 
-        // Mark all notifications as read
+        // Mark all notifications as read (currently only works for Lemmy)
         async function markAllAsRead() {
             const instance = localStorage.getItem('lemmy_instance');
             const jwt = localStorage.getItem('lemmy_jwt');
@@ -414,13 +414,12 @@
             if (!instance || !jwt) return;
 
             try {
-                // This is a simple approach - in a real implementation you'd need to mark each notification individually
                 showToast('Marking all as read...', 'info');
                 
                 // Fetch unread mentions and replies
                 const [mentionsResponse, repliesResponse] = await Promise.all([
-                    apiFetch(instance, '/api/v3/user/mention', {}, { unread_only: true }),
-                    apiFetch(instance, '/api/v3/user/replies', {}, { unread_only: true })
+                    apiFetch(instance, '/api/v3/user/mention', {}, { unread_only: true }, 'lemmy'),
+                    apiFetch(instance, '/api/v3/user/replies', {}, { unread_only: true }, 'lemmy')
                 ]);
 
                 const unreadMentions = mentionsResponse.data.mentions || [];
@@ -432,7 +431,7 @@
                         await apiFetch(instance, '/api/v3/user/mention/mark_as_read', {
                             method: 'POST',
                             body: { person_mention_id: mention.person_mention.id, read: true }
-                        });
+                        }, {}, 'lemmy');
                     } catch (err) {
                         console.error('Failed to mark mention as read:', err);
                     }
@@ -444,14 +443,14 @@
                         await apiFetch(instance, '/api/v3/comment/mark_as_read', {
                             method: 'POST',
                             body: { comment_reply_id: reply.comment_reply.id, read: true }
-                        });
+                        }, {}, 'lemmy');
                     } catch (err) {
                         console.error('Failed to mark reply as read:', err);
                     }
                 }
 
                 showToast('All notifications marked as read', 'success');
-                loadNotifications(); // Reload notifications
+                loadLemmyNotifications(); // Reload Lemmy notifications
 
             } catch (error) {
                 console.error('Failed to mark all as read:', error);
@@ -565,33 +564,120 @@
             showToast('Logged out successfully', 'success');
         }
 
-        // Check if already logged in
-        function checkExistingLogin() {
-            const jwt = localStorage.getItem('lemmy_jwt');
-            const instance = localStorage.getItem('lemmy_instance');
-            const username = localStorage.getItem('lemmy_username');
-
-            if (jwt && instance && username) {
+        // Check login status and show appropriate sections
+        function checkLoginStatus() {
+            const lemmyJwt = localStorage.getItem('lemmy_jwt');
+            const mastodonToken = localStorage.getItem('mastodon_token');
+            
+            if (lemmyJwt || mastodonToken) {
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('notifications-section').style.display = 'flex';
                 document.getElementById('logout-btn').style.display = 'block';
-                loadNotifications();
+                
+                // Load notifications for connected services
+                if (lemmyJwt) {
+                    loadLemmyNotifications();
+                }
+                if (mastodonToken) {
+                    loadMastodonNotifications();
+                }
+            } else {
+                document.getElementById('login-section').style.display = 'flex';
+                document.getElementById('notifications-section').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'none';
             }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('lemmy_jwt');
+            localStorage.removeItem('lemmy_username');
+            localStorage.removeItem('lemmy_instance');
+            localStorage.removeItem('mastodon_token');
+            localStorage.removeItem('mastodon_username');
+            localStorage.removeItem('mastodon_instance');
+            
+            // Clear form fields
+            document.getElementById('lemmy-instance-input').value = '';
+            document.getElementById('lemmy-username-input').value = '';
+            document.getElementById('lemmy-password-input').value = '';
+            document.getElementById('mastodon-instance-input').value = '';
+            document.getElementById('mastodon-token-input').value = '';
+            
+            checkLoginStatus();
+            showToast('Logged out successfully', 'success');
         }
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
-            checkExistingLogin();
+            checkLoginStatus();
 
-            document.getElementById('connect-lemmy-btn').addEventListener('click', login);
+            // Login tab switching
+            document.querySelectorAll('.login-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.loginTab;
+                    
+                    // Update active tab
+                    document.querySelectorAll('.login-tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.login-tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    btn.classList.add('active');
+                    document.getElementById(`${tab}-login-tab`).classList.add('active');
+                });
+            });
+
+            // Notification tab switching
+            document.querySelectorAll('.notification-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.notifTab;
+                    
+                    // Update active tab
+                    document.querySelectorAll('.notification-tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.notification-tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    btn.classList.add('active');
+                    document.getElementById(`${tab}-notifications`).classList.add('active');
+                });
+            });
+
+            // Login buttons
+            document.getElementById('connect-lemmy-btn').addEventListener('click', loginLemmy);
+            document.getElementById('connect-mastodon-btn').addEventListener('click', loginMastodon);
+            
+            // Get token link
+            document.getElementById('get-token-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                const instanceUrl = document.getElementById('mastodon-instance-input').value.trim();
+                if (!instanceUrl) {
+                    showToast('Please enter your Mastodon instance URL first.', 'error');
+                    return;
+                }
+                const tokenUrl = `https://${instanceUrl}/settings/applications/new`;
+                window.open(tokenUrl, '_blank');
+            });
+
+            // Other buttons
             document.getElementById('logout-btn').addEventListener('click', logout);
-            document.getElementById('refresh-btn').addEventListener('click', loadNotifications);
+            document.getElementById('refresh-btn').addEventListener('click', () => {
+                if (localStorage.getItem('lemmy_jwt')) {
+                    loadLemmyNotifications();
+                }
+                if (localStorage.getItem('mastodon_token')) {
+                    loadMastodonNotifications();
+                }
+            });
             document.getElementById('mark-all-read-btn').addEventListener('click', markAllAsRead);
 
             // Enter key support for login
             document.getElementById('lemmy-password-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    login();
+                    loginLemmy();
+                }
+            });
+            
+            document.getElementById('mastodon-token-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loginMastodon();
                 }
             });
         });
@@ -698,7 +784,89 @@
             border-radius: var(--border-radius);
         }
 
-        /* Toast notification styles */
+        /* Tab styling */
+        .login-tabs,
+        .notification-tabs {
+            display: flex;
+            gap: 5px;
+        }
+
+        .login-tab-btn,
+        .notification-tab-btn {
+            flex: 1;
+            padding: 10px 15px;
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--font-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .login-tab-btn.active,
+        .notification-tab-btn.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .login-tab-content,
+        .notification-tab-content {
+            display: none;
+        }
+
+        .login-tab-content.active,
+        .notification-tab-content.active {
+            display: block;
+        }
+
+        /* Platform indicators */
+        .platform-indicator {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .platform-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--border-radius);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .platform-badge.lemmy {
+            background-color: #00a846;
+            color: white;
+        }
+
+        .platform-badge.mastodon {
+            background-color: #595aff;
+            color: white;
+        }
+
+        /* Update notification item to accommodate platform badge */
+        .notification-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            position: relative;
+            transition: background-color 0.2s;
+            align-items: flex-start;
+        }
+
+        .coming-soon {
+            text-align: center;
+            padding: 40px;
+            color: var(--font-color-muted);
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
+            font-style: italic;
+        }
         #toast-notification {
             position: fixed;
             bottom: -100px;
