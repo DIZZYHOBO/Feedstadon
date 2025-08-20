@@ -99,7 +99,7 @@ export function renderLemmyCard(post, actions) {
                     </div>
                 </a>
                 <div class="status-header-side">
-                    <button class="post-options-btn" title="More options">${ICONS.more}</button>
+                    <button class="post-options-btn" title="More options">${ICONS.lemmyDownvote}</button>
                     <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
                 </div>
             </div>
@@ -179,7 +179,7 @@ export function renderLemmyCard(post, actions) {
             
             const menu = document.createElement('div');
             menu.className = 'post-dropdown-menu';
-            menu.style.position = 'absolute';
+            menu.style.position = 'fixed'; // Changed from 'absolute' to 'fixed'
             menu.style.zIndex = '1000';
             
             const menuItems = [];
@@ -242,20 +242,28 @@ export function renderLemmyCard(post, actions) {
             document.body.appendChild(menu);
             
             const rect = optionsBtn.getBoundingClientRect();
+            
+            // Get menu dimensions after adding to DOM
             const menuHeight = menu.offsetHeight;
             const menuWidth = menu.offsetWidth;
             
+            // Calculate vertical position
+            let topPosition = rect.bottom + window.scrollY;
             if (rect.bottom + menuHeight > window.innerHeight) {
-                menu.style.top = `${rect.top - menuHeight}px`;
-            } else {
-                menu.style.top = `${rect.bottom}px`;
+                // Position above the button if it would go off-screen
+                topPosition = rect.top + window.scrollY - menuHeight;
             }
             
+            // Calculate horizontal position
+            let leftPosition = rect.left;
             if (rect.left + menuWidth > window.innerWidth) {
-                menu.style.left = `${rect.right - menuWidth}px`;
-            } else {
-                menu.style.left = `${rect.left}px`;
+                // Align to right edge of button if it would go off-screen
+                leftPosition = rect.right - menuWidth;
             }
+            
+            // Apply calculated positions
+            menu.style.top = `${topPosition}px`;
+            menu.style.left = `${leftPosition}px`;
             
             setTimeout(() => {
                 document.addEventListener('click', function closeMenu(e) {
