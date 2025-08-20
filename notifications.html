@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lemmy Notifications</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
 </head>
 <body>
@@ -147,23 +148,38 @@
             let timestamp = '';
             let context = '';
 
-            if (type === 'mention') {
-                const mention = notification.person_mention;
-                avatar = mention.creator.avatar || './images/php.png';
-                content = `<strong>${mention.creator.name}</strong> mentioned you in a comment`;
-                timestamp = mention.comment.published;
-                context = `<div class="notification-context">${mention.comment.content}</div>`;
-            } else if (type === 'reply') {
-                const reply = notification.comment_reply;
-                avatar = reply.creator.avatar || './images/php.png';
-                content = `<strong>${reply.creator.name}</strong> replied to your comment`;
-                timestamp = reply.comment.published;
-                context = `<div class="notification-context">${reply.comment.content}</div>`;
+            try {
+                if (type === 'mention') {
+                    const mention = notification.person_mention;
+                    if (mention && mention.creator && mention.comment) {
+                        avatar = mention.creator.avatar || './images/php.png';
+                        content = `<strong>${mention.creator.name}</strong> mentioned you in a comment`;
+                        timestamp = mention.comment.published;
+                        context = `<div class="notification-context">${mention.comment.content}</div>`;
+                    } else {
+                        console.warn('Invalid mention structure:', notification);
+                        return null;
+                    }
+                } else if (type === 'reply') {
+                    const reply = notification.comment_reply;
+                    if (reply && reply.creator && reply.comment) {
+                        avatar = reply.creator.avatar || './images/php.png';
+                        content = `<strong>${reply.creator.name}</strong> replied to your comment`;
+                        timestamp = reply.comment.published;
+                        context = `<div class="notification-context">${reply.comment.content}</div>`;
+                    } else {
+                        console.warn('Invalid reply structure:', notification);
+                        return null;
+                    }
+                }
+            } catch (error) {
+                console.error('Error rendering notification:', error, notification);
+                return null;
             }
 
             notifDiv.innerHTML = `
                 <div class="notification-avatar">
-                    <img src="${avatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                    <img src="${avatar}" alt="avatar" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'><text y=\\'.9em\\' font-size=\\'90\\'>👤</text></svg>';">
                 </div>
                 <div class="notification-content">
                     <div class="notification-header">
@@ -202,10 +218,35 @@
                 const replies = repliesResponse.data.replies || [];
 
                 // Combine and sort by date
-                const allNotifications = [
-                    ...mentions.map(m => ({ ...m, type: 'mention', date: m.person_mention.comment.published, read: m.person_mention.read })),
-                    ...replies.map(r => ({ ...r, type: 'reply', date: r.comment_reply.comment.published, read: r.comment_reply.read }))
-                ];
+                const allNotifications = [];
+                
+                // Process mentions
+                mentions.forEach(m => {
+                    if (m.person_mention && m.person_mention.comment && m.person_mention.comment.published) {
+                        allNotifications.push({
+                            ...m, 
+                            type: 'mention', 
+                            date: m.person_mention.comment.published, 
+                            read: m.person_mention.read
+                        });
+                    } else {
+                        console.warn('Invalid mention structure:', m);
+                    }
+                });
+
+                // Process replies
+                replies.forEach(r => {
+                    if (r.comment_reply && r.comment_reply.comment && r.comment_reply.comment.published) {
+                        allNotifications.push({
+                            ...r, 
+                            type: 'reply', 
+                            date: r.comment_reply.comment.published, 
+                            read: r.comment_reply.read
+                        });
+                    } else {
+                        console.warn('Invalid reply structure:', r);
+                    }
+                });
 
                 allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -221,7 +262,9 @@
                 // Render notifications
                 allNotifications.forEach(notification => {
                     const notifElement = renderNotification(notification, notification.type);
-                    container.appendChild(notifElement);
+                    if (notifElement) {
+                        container.appendChild(notifElement);
+                    }
                 });
 
                 const unreadCount = allNotifications.filter(n => !n.read).length;
@@ -237,7 +280,8 @@
 
             } catch (error) {
                 console.error('Failed to load notifications:', error);
-                container.innerHTML = '<div class="error-message"><p>Failed to load notifications. Please try again.</p></div>';
+                console.error('Error details:', error.message);
+                container.innerHTML = '<div class="error-message"><p>Failed to load notifications. Please try again.</p><p class="error-details">Error: ' + error.message + '</p></div>';
                 showToast('Failed to load notifications', 'error');
             }
         }
