@@ -1,6 +1,7 @@
 import { apiFetch } from './api.js';
 import { formatTimestamp, timeAgo } from './utils.js';
 import { showToast } from './ui.js';
+import { ICONS } from './icons.js';
 
 // Helper function to truncate text
 function truncateWords(text, wordCount) {
@@ -68,6 +69,9 @@ function renderNotification(notification, type, platform = 'lemmy') {
         return null;
     }
 
+    // Use platform logos instead of text badges
+    const platformIcon = platform === 'lemmy' ? ICONS.lemmy : ICONS.mastodon;
+
     notifDiv.innerHTML = `
         <div class="notification-avatar">
             <img src="${avatar}" alt="avatar" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'><text y=\\'.9em\\' font-size=\\'90\\'>👤</text></svg>';">
@@ -81,7 +85,7 @@ function renderNotification(notification, type, platform = 'lemmy') {
             ${!notification.read ? '<div class="unread-indicator"></div>' : ''}
         </div>
         <div class="platform-indicator">
-            <span class="platform-badge ${platform}">${platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+            <div class="platform-icon ${platform}">${platformIcon}</div>
         </div>
     `;
 
@@ -200,7 +204,7 @@ async function loadMastodonNotifications(state, updateUI = true) {
         const processedNotifications = notifications.map((n) => ({
             ...n,
             date: n.created_at,
-            read: true, // Mastodon doesn't have read/unread status in the same way
+            read: false, // Mastodon doesn't have read/unread status, so we'll treat them as unread for marking
             platform: 'mastodon'
         }));
 
@@ -267,69 +271,108 @@ export async function updateNotificationBell() {
     }
 }
 
-// Mark all Lemmy notifications as read
-async function markAllLemmyAsRead(notifications) {
+// Mark all notifications as read (both Lemmy and Mastodon)
+async function markAllAsRead(lemmyNotifications = [], mastodonNotifications = []) {
     const lemmyInstance = localStorage.getItem('lemmy_instance');
     const jwt = localStorage.getItem('lemmy_jwt');
+    const mastodonInstance = localStorage.getItem('fediverse-instance');
+    const mastodonToken = localStorage.getItem('fediverse-token');
     
-    if (!lemmyInstance || !jwt) return;
+    showToast('Marking all as read...', 'info');
+    let successCount = 0;
+    let errorCount = 0;
 
-    try {
-        showToast('Marking all as read...', 'info');
-        
-        // Filter unread notifications
-        const unreadMentions = notifications.filter(n => 
-            n.type === 'mention' && !n.read && n.person_mention
-        );
-        const unreadReplies = notifications.filter(n => 
-            n.type === 'reply' && !n.read && n.comment_reply
-        );
+    // Mark Lemmy notifications as read
+    if (lemmyInstance && jwt) {
+        try {
+            // Filter unread Lemmy notifications
+            const unreadMentions = lemmyNotifications.filter(n => 
+                n.type === 'mention' && !n.read && n.person_mention
+            );
+            const unreadReplies = lemmyNotifications.filter(n => 
+                n.type === 'reply' && !n.read && n.comment_reply
+            );
 
-        // Mark mentions as read
-        for (const mention of unreadMentions) {
-            try {
-                await fetch(`https://${lemmyInstance}/api/v3/user/mention/mark_as_read`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${jwt}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        person_mention_id: mention.person_mention.id,
-                        read: true
-                    })
-                });
-            } catch (err) {
-                console.error('Failed to mark mention as read:', err);
+            // Mark mentions as read
+            for (const mention of unreadMentions) {
+                try {
+                    await fetch(`https://${lemmyInstance}/api/v3/user/mention/mark_as_read`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${jwt}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            person_mention_id: mention.person_mention.id,
+                            read: true
+                        })
+                    });
+                    successCount++;
+                } catch (err) {
+                    console.error('Failed to mark mention as read:', err);
+                    errorCount++;
+                }
             }
-        }
 
-        // Mark replies as read
-        for (const reply of unreadReplies) {
-            try {
-                await fetch(`https://${lemmyInstance}/api/v3/comment/mark_as_read`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${jwt}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        comment_reply_id: reply.comment_reply.id,
-                        read: true
-                    })
-                });
-            } catch (err) {
-                console.error('Failed to mark reply as read:', err);
+            // Mark replies as read
+            for (const reply of unreadReplies) {
+                try {
+                    await fetch(`https://${lemmyInstance}/api/v3/comment/mark_as_read`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${jwt}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            comment_reply_id: reply.comment_reply.id,
+                            read: true
+                        })
+                    });
+                    successCount++;
+                } catch (err) {
+                    console.error('Failed to mark reply as read:', err);
+                    errorCount++;
+                }
             }
+        } catch (error) {
+            console.error('Failed to mark Lemmy notifications as read:', error);
         }
-
-        showToast('All notifications marked as read', 'success');
-        await updateNotificationBell();
-
-    } catch (error) {
-        console.error('Failed to mark all as read:', error);
-        showToast('Failed to mark all as read', 'error');
     }
+
+    // Mark Mastodon notifications as read
+    if (mastodonInstance && mastodonToken && mastodonNotifications.length > 0) {
+        try {
+            // Mastodon has a single endpoint to mark all as read
+            const response = await fetch(`https://${mastodonInstance}/api/v1/notifications/clear`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${mastodonToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                successCount += mastodonNotifications.length;
+            } else {
+                errorCount += mastodonNotifications.length;
+            }
+        } catch (error) {
+            console.error('Failed to mark Mastodon notifications as read:', error);
+            errorCount += mastodonNotifications.length;
+        }
+    }
+
+    if (successCount > 0 && errorCount === 0) {
+        showToast('All notifications marked as read', 'success');
+    } else if (successCount > 0 && errorCount > 0) {
+        showToast(`Marked ${successCount} as read, ${errorCount} failed`, 'warning');
+    } else if (errorCount > 0) {
+        showToast('Failed to mark notifications as read', 'error');
+    } else {
+        showToast('No unread notifications to mark', 'info');
+    }
+
+    await updateNotificationBell();
 }
 
 // Main render function for notifications page
@@ -344,11 +387,11 @@ export async function renderNotificationsPage(state, actions) {
                 <div class="notifications-header-actions">
                     <div class="notification-counts">
                         <span id="lemmy-count" style="display: none;">
-                            <span class="platform-badge lemmy">Lemmy</span>
+                            <span class="platform-icon-small lemmy">${ICONS.lemmy}</span>
                             <span id="lemmy-unread-count">0</span> unread
                         </span>
                         <span id="mastodon-count" style="display: none;">
-                            <span class="platform-badge mastodon">Mastodon</span>
+                            <span class="platform-icon-small mastodon">${ICONS.mastodon}</span>
                             <span id="mastodon-notif-count">0</span> notifications
                         </span>
                     </div>
@@ -380,21 +423,24 @@ export async function renderNotificationsPage(state, actions) {
 
     // Update counts
     const lemmyUnread = lemmyNotifs.filter(n => !n.read).length;
+    const mastodonUnread = mastodonNotifs.filter(n => !n.read).length;
     const lemmyCountEl = document.getElementById('lemmy-count');
     const mastodonCountEl = document.getElementById('mastodon-count');
     const markAllBtn = document.getElementById('mark-all-read-btn');
     
     if (localStorage.getItem('lemmy_jwt')) {
-        lemmyCountEl.style.display = 'inline';
+        lemmyCountEl.style.display = 'inline-flex';
         document.getElementById('lemmy-unread-count').textContent = lemmyUnread;
-        if (lemmyUnread > 0) {
-            markAllBtn.style.display = 'block';
-        }
     }
     
     if (localStorage.getItem('fediverse-token')) {
-        mastodonCountEl.style.display = 'inline';
+        mastodonCountEl.style.display = 'inline-flex';
         document.getElementById('mastodon-notif-count').textContent = mastodonNotifs.length;
+    }
+    
+    // Show mark all read button if there are any unread notifications
+    if (lemmyUnread > 0 || mastodonUnread > 0) {
+        markAllBtn.style.display = 'block';
     }
 
     // Render all notifications combined
@@ -460,10 +506,10 @@ export async function renderNotificationsPage(state, actions) {
         });
     });
 
-    // Mark all read button
+    // Mark all read button - now marks both Lemmy and Mastodon
     if (markAllBtn) {
         markAllBtn.addEventListener('click', async () => {
-            await markAllLemmyAsRead(lemmyNotifs);
+            await markAllAsRead(lemmyNotifs, mastodonNotifs);
             // Refresh the page
             await renderNotificationsPage(state, actions);
         });
