@@ -9,20 +9,46 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* Ensure theme is applied to all base elements */
+        body[data-theme] {
+            background-color: var(--bg-color) !important;
+            color: var(--font-color) !important;
+        }
+        
+        /* Force all direct children to inherit */
+        body[data-theme] * {
+            border-color: var(--border-color);
+        }
+        
+        /* Ensure app-view uses theme */
+        body[data-theme] #app-view {
+            background-color: var(--bg-color) !important;
+            color: var(--font-color) !important;
+        }
+        
+        /* Fix for dynamically created elements */
+        body[data-theme] .status,
+        body[data-theme] .lemmy-card {
+            background-color: var(--card-color) !important;
+            border-color: var(--border-color) !important;
+        }
+    </style>
 </head>
 <body>
 
     <div id="app-view">
         <div id="pull-to-refresh-indicator"></div>
         <nav class="top-nav">
-             <div class="nav-left">
+            <div class="nav-left">
                 <button id="refresh-btn" class="icon-button"></button>
                 <div class="dropdown" id="feeds-dropdown">
                     <button class="nav-button">Feeds</button>
                     <div class="dropdown-content">
                         <a href="#" data-timeline="home">Home</a>
                         <a href="#" data-timeline="merged">Merged</a>
-                        <hr>
+                        <hr class="dropdown-divider">
                         <a href="#" id="lemmy-main-link">Lemmy</a>
                         <a href="#" id="mastodon-main-link">Mastodon</a>
                     </div>
@@ -30,14 +56,13 @@
                 <button id="discover-btn" class="nav-button">Discover</button>
             </div>
 
-            <div class="nav-center">
-                 </div>
+            <div class="nav-center"></div>
 
             <div class="nav-right">
                 <div class="dropdown" id="user-dropdown">
                     <button class="nav-button">
                         Menu
-                        <div class="notification-dot"></div> <!-- Notification dot on menu -->
+                        <div class="notification-dot"></div>
                     </button>
                     <div class="dropdown-content">
                         <a href="#" id="new-post-link">New Post</a>
@@ -54,23 +79,23 @@
 
         <div class="container">
             <div id="timeline-sub-nav" class="timeline-sub-nav"></div>
-            <div id="timeline" class="view-container"></div>
-            <div id="notifications-view" class="view-container">
+            <div id="timeline" class="view-container timeline-view"></div>
+            <div id="notifications-view" class="view-container notifications-view">
                 <div class="notifications-sub-nav"></div>
-                <div id="notifications-list"></div>
+                <div id="notifications-list" class="notifications-list"></div>
             </div>
-            <div id="discover-view" class="view-container"></div>
-            <div id="screenshot-view" class="view-container"></div>
-            <div id="merged-post-view" class="view-container"></div>
-            <div id="profile-page-view" class="view-container"></div>
-            <div id="edit-profile-view" class="view-container"></div>
-            <div id="search-results-view" class="view-container"></div>
-            <div id="settings-view" class="view-container"></div>
-            <div id="status-detail-view" class="view-container"></div>
-            <div id="lemmy-post-view" class="view-container"></div>
-            <div id="lemmy-comments-view" class="view-container"></div>
-            <div id="lemmy-community-view" class="view-container"></div>
-            <div id="scroll-loader"><p>Loading more posts...</p></div>
+            <div id="discover-view" class="view-container discover-view"></div>
+            <div id="screenshot-view" class="view-container screenshot-view"></div>
+            <div id="merged-post-view" class="view-container merged-view"></div>
+            <div id="profile-page-view" class="view-container profile-view"></div>
+            <div id="edit-profile-view" class="view-container edit-profile-view"></div>
+            <div id="search-results-view" class="view-container search-view"></div>
+            <div id="settings-view" class="view-container settings-view"></div>
+            <div id="status-detail-view" class="view-container status-detail-view"></div>
+            <div id="lemmy-post-view" class="view-container lemmy-post-view"></div>
+            <div id="lemmy-comments-view" class="view-container lemmy-comments-view"></div>
+            <div id="lemmy-community-view" class="view-container lemmy-community-view"></div>
+            <div id="scroll-loader" class="scroll-loader"><p>Loading more posts...</p></div>
         </div>
         <div id="refresh-spinner"></div>
     </div>
