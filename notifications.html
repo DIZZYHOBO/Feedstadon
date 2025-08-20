@@ -33,6 +33,7 @@
                     <div id="login-status" style="margin-bottom: 20px; padding: 10px; background-color: var(--card-color); border-radius: var(--border-radius); display: none;">
                         <h4 style="margin: 0 0 10px 0;">Connected Accounts:</h4>
                         <div id="connected-accounts"></div>
+                        <button id="enter-notifications-btn" class="button-primary" style="width: 100%; margin-top: 15px;">Enter Notifications</button>
                     </div>
                     
                     <!-- Login Tabs -->
@@ -593,6 +594,10 @@
                     
                     showToast('Lemmy login successful!', 'success');
                     checkLoginStatus();
+                    // Clear form after successful login
+                    document.getElementById('lemmy-instance-input').value = '';
+                    document.getElementById('lemmy-username-input').value = '';
+                    document.getElementById('lemmy-password-input').value = '';
                 } else {
                     throw new Error('No JWT token received');
                 }
@@ -638,6 +643,9 @@
                     
                     showToast('Mastodon login successful!', 'success');
                     checkLoginStatus();
+                    // Clear form after successful login
+                    document.getElementById('mastodon-instance-input').value = '';
+                    document.getElementById('mastodon-token-input').value = '';
                 } else {
                     throw new Error('Invalid token');
                 }
