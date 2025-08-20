@@ -99,7 +99,7 @@ export function renderLemmyCard(post, actions) {
                     </div>
                 </a>
                 <div class="status-header-side">
-                    <button class="post-options-btn" title="More options">${ICONS.lemmyDownvote}</button>
+                    <button class="post-options-btn" title="More options">${ICONS.more}</button>
                     <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
                 </div>
             </div>
@@ -179,7 +179,7 @@ export function renderLemmyCard(post, actions) {
             
             const menu = document.createElement('div');
             menu.className = 'post-dropdown-menu';
-            menu.style.position = 'fixed'; // Changed from 'absolute' to 'fixed'
+            menu.style.position = 'absolute';
             menu.style.zIndex = '1000';
             
             const menuItems = [];
@@ -239,31 +239,36 @@ export function renderLemmyCard(post, actions) {
                 menu.appendChild(button);
             });
             
-            document.body.appendChild(menu);
+            // Append to the card instead of document.body
+            card.appendChild(menu);
             
-            const rect = optionsBtn.getBoundingClientRect();
+            // Position relative to the button within the card
+            const btnRect = optionsBtn.getBoundingClientRect();
+            const cardRect = card.getBoundingClientRect();
             
-            // Get menu dimensions after adding to DOM
-            const menuHeight = menu.offsetHeight;
-            const menuWidth = menu.offsetWidth;
+            // Calculate position relative to the card
+            const relativeTop = btnRect.bottom - cardRect.top;
+            const relativeLeft = btnRect.left - cardRect.left;
             
-            // Calculate vertical position
-            let topPosition = rect.bottom + window.scrollY;
-            if (rect.bottom + menuHeight > window.innerHeight) {
-                // Position above the button if it would go off-screen
-                topPosition = rect.top + window.scrollY - menuHeight;
-            }
+            menu.style.top = `${relativeTop}px`;
+            menu.style.left = `${relativeLeft}px`;
             
-            // Calculate horizontal position
-            let leftPosition = rect.left;
-            if (rect.left + menuWidth > window.innerWidth) {
-                // Align to right edge of button if it would go off-screen
-                leftPosition = rect.right - menuWidth;
-            }
-            
-            // Apply calculated positions
-            menu.style.top = `${topPosition}px`;
-            menu.style.left = `${leftPosition}px`;
+            // Adjust if menu goes off screen
+            setTimeout(() => {
+                const menuRect = menu.getBoundingClientRect();
+                
+                // Check if menu goes off bottom of viewport
+                if (menuRect.bottom > window.innerHeight) {
+                    const adjustedTop = btnRect.top - cardRect.top - menu.offsetHeight;
+                    menu.style.top = `${adjustedTop}px`;
+                }
+                
+                // Check if menu goes off right side of viewport
+                if (menuRect.right > window.innerWidth) {
+                    const adjustedLeft = btnRect.right - cardRect.left - menu.offsetWidth;
+                    menu.style.left = `${adjustedLeft}px`;
+                }
+            }, 0);
             
             setTimeout(() => {
                 document.addEventListener('click', function closeMenu(e) {
