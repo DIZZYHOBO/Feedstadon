@@ -2775,3 +2775,266 @@ select:focus {
     display: inline-flex;
     align-items: center;
 }
+/* Enhanced Notifications Header Styles - More Compact */
+.notifications-stats-header {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: linear-gradient(135deg, var(--card-color) 0%, var(--bg-color) 100%);
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.notification-stat-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: transform 0.2s, box-shadow 0.2s;
+    min-height: 50px;
+    max-height: 60px;
+}
+
+.notification-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.notification-stat-card.lemmy-stat {
+    border-left: 3px solid #00a846;
+}
+
+.notification-stat-card.mastodon-stat {
+    border-left: 3px solid #595aff;
+}
+
+.stat-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-color);
+    border-radius: 50%;
+    padding: 6px;
+    flex-shrink: 0;
+}
+
+.stat-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.lemmy-stat .stat-icon svg {
+    fill: #00a846;
+}
+
+.mastodon-stat .stat-icon svg {
+    fill: #595aff;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.stat-number {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--font-color);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--font-color-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mark-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-color) 80%);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    height: fit-content;
+}
+
+.mark-all-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(89, 90, 255, 0.3);
+}
+
+.mark-all-icon {
+    width: 16px;
+    height: 16px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+/* Enhanced Notification Tabs - More Compact */
+.notification-tabs {
+    display: flex;
+    gap: 0;
+    background-color: var(--card-color);
+    padding: 4px;
+    border-radius: var(--border-radius);
+    margin: 10px;
+}
+
+.notification-tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--font-color-muted);
+    border-radius: calc(var(--border-radius) - 2px);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.notification-tab-btn:hover {
+    background-color: var(--hover-color);
+}
+
+.notification-tab-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.tab-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+}
+
+.tab-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+/* Platform icon styles for notifications - Adjusted sizes */
+.platform-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-color);
+    padding: 3px;
+    border-radius: var(--border-radius);
+}
+
+.platform-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.platform-icon.lemmy svg {
+    fill: #00a846;
+}
+
+.platform-icon.mastodon svg {
+    fill: #595aff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .notifications-stats-header {
+        padding: 8px;
+        gap: 8px;
+    }
+    
+    .notification-stat-card {
+        padding: 8px;
+        min-height: 45px;
+        max-height: 50px;
+    }
+    
+    .stat-icon {
+        width: 28px;
+        height: 28px;
+        padding: 5px;
+    }
+    
+    .stat-number {
+        font-size: 16px;
+    }
+    
+    .stat-label {
+        font-size: 10px;
+    }
+    
+    .mark-all-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .notification-tabs {
+        margin: 8px;
+        padding: 3px;
+    }
+    
+    .notification-tab-btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .tab-icon {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .notifications-stats-header {
+        flex-wrap: wrap;
+    }
+    
+    .notification-stat-card {
+        flex: 1 1 calc(50% - 5px);
+        min-width: 120px;
+    }
+    
+    .mark-all-btn {
+        flex: 1 1 100%;
+        justify-content: center;
+        margin-top: 8px;
+    }
+    
+    .stat-number {
+        font-size: 14px;
+    }
+    
+    .notification-tab-btn .tab-icon {
+        display: none;
+    }
+}
