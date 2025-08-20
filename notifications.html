@@ -150,23 +150,23 @@
 
             try {
                 if (type === 'mention') {
-                    const mention = notification.person_mention;
-                    if (mention && mention.creator && mention.comment) {
-                        avatar = mention.creator.avatar || './images/php.png';
-                        content = `<strong>${mention.creator.name}</strong> mentioned you in a comment`;
-                        timestamp = mention.comment.published;
-                        context = `<div class="notification-context">${mention.comment.content}</div>`;
+                    // For mentions, the structure has person_mention, creator, comment, etc. at top level
+                    if (notification.creator && notification.comment && notification.person_mention) {
+                        avatar = notification.creator.avatar || '';
+                        content = `<strong>${notification.creator.name}</strong> mentioned you in a comment`;
+                        timestamp = notification.comment.published;
+                        context = `<div class="notification-context">${notification.comment.content}</div>`;
                     } else {
                         console.warn('Invalid mention structure:', notification);
                         return null;
                     }
                 } else if (type === 'reply') {
-                    const reply = notification.comment_reply;
-                    if (reply && reply.creator && reply.comment) {
-                        avatar = reply.creator.avatar || './images/php.png';
-                        content = `<strong>${reply.creator.name}</strong> replied to your comment`;
-                        timestamp = reply.comment.published;
-                        context = `<div class="notification-context">${reply.comment.content}</div>`;
+                    // For replies, the structure has comment_reply, creator, comment, etc. at top level
+                    if (notification.creator && notification.comment && notification.comment_reply) {
+                        avatar = notification.creator.avatar || '';
+                        content = `<strong>${notification.creator.name}</strong> replied to your comment`;
+                        timestamp = notification.comment.published;
+                        context = `<div class="notification-context">${notification.comment.content}</div>`;
                     } else {
                         console.warn('Invalid reply structure:', notification);
                         return null;
