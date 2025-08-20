@@ -99,7 +99,7 @@ export function renderLemmyCard(post, actions) {
                     </div>
                 </a>
                 <div class="status-header-side">
-                    <button class="post-options-btn" title="More options">${ICONS.more}</button>
+                    <button class="post-options-btn" title="More options">${ICONS.lemmyDownvote}</button>
                     <div class="lemmy-icon-indicator">${ICONS.lemmy}</div>
                 </div>
             </div>
