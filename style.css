@@ -41,6 +41,7 @@
     --error-color: #ea0027;
     --warning-color: #ffd23f;
     --info-color: #0084ff;
+}
 
 [data-theme="git"] {
     --bg-color: #0d1117;
