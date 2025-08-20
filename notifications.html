@@ -66,8 +66,17 @@
                 <div class="notifications-header" style="background-color: var(--card-color); padding: 20px; border-radius: var(--border-radius); margin-bottom: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h3 style="margin: 0;">Your Notifications</h3>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <span id="notification-count" style="color: var(--font-color-muted);">Loading...</span>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <div class="notification-counts" style="display: flex; gap: 15px; color: var(--font-color-muted); font-size: 14px;">
+                                <span id="lemmy-count" style="display: none;">
+                                    <span class="platform-badge lemmy" style="margin-right: 5px;">Lemmy</span>
+                                    <span id="lemmy-unread-count">0</span> unread
+                                </span>
+                                <span id="mastodon-count" style="display: none;">
+                                    <span class="platform-badge mastodon" style="margin-right: 5px;">Mastodon</span>
+                                    <span id="mastodon-unread-count">0</span> unread
+                                </span>
+                            </div>
                             <button id="mark-all-read-btn" class="button-secondary" style="display: none;">Mark All Read</button>
                         </div>
                     </div>
@@ -173,7 +182,39 @@
             }
         }
 
-        // Helper function to truncate text to specified word count
+        // Update notification counts
+        function updateNotificationCounts(lemmyNotifications = [], mastodonNotifications = []) {
+            const lemmyCountEl = document.getElementById('lemmy-count');
+            const mastodonCountEl = document.getElementById('mastodon-count');
+            const lemmyUnreadEl = document.getElementById('lemmy-unread-count');
+            const mastodonUnreadEl = document.getElementById('mastodon-unread-count');
+            const markAllReadBtn = document.getElementById('mark-all-read-btn');
+            
+            // Count Lemmy unread notifications
+            const lemmyUnread = lemmyNotifications.filter(n => !n.read).length;
+            if (localStorage.getItem('lemmy_jwt')) {
+                lemmyCountEl.style.display = 'inline';
+                lemmyUnreadEl.textContent = lemmyUnread;
+            } else {
+                lemmyCountEl.style.display = 'none';
+            }
+            
+            // Count Mastodon unread notifications (Mastodon doesn't really have unread status)
+            const mastodonUnread = 0; // Mastodon API doesn't provide unread status
+            if (localStorage.getItem('mastodon_token')) {
+                mastodonCountEl.style.display = 'inline';
+                mastodonUnreadEl.textContent = `${mastodonNotifications.length} total`;
+            } else {
+                mastodonCountEl.style.display = 'none';
+            }
+            
+            // Show mark all read button if there are unread Lemmy notifications
+            if (lemmyUnread > 0) {
+                markAllReadBtn.style.display = 'block';
+            } else {
+                markAllReadBtn.style.display = 'none';
+            }
+        }
         function truncateWords(text, wordCount) {
             if (!text) return '';
             const words = text.split(/\s+/);
@@ -227,12 +268,20 @@
                     avatar = (notification.account && notification.account.avatar_static) || '';
                     timestamp = notification.created_at || '';
                     
+                    console.log('Processing Mastodon notification details:', {
+                        type: notification.type,
+                        hasAccount: !!notification.account,
+                        hasStatus: !!notification.status,
+                        avatar,
+                        timestamp
+                    });
+                    
                     // Mastodon notifications have different content based on type
                     const fullContent = notification.status ? (notification.status.content || '').replace(/<[^>]*>/g, "") : '';
                     const truncatedContent = truncateWords(fullContent, 10);
                     context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
 
-                    const accountName = notification.account ? notification.account.display_name || notification.account.username : 'Unknown';
+                    const accountName = notification.account ? (notification.account.display_name || notification.account.username) : 'Unknown';
                     
                     if (notification.type === 'mention') {
                         content = `<strong>${accountName}</strong> mentioned you`;
@@ -245,6 +294,8 @@
                     } else {
                         content = `<strong>${accountName}</strong> ${notification.type}`;
                     }
+                    
+                    console.log('Generated Mastodon content:', content);
                 }
 
                 console.log('Notification rendered successfully:', {
@@ -349,6 +400,9 @@
                     }
                 });
 
+                // Update counts
+                updateNotificationCounts(allNotifications, []);
+
                 return allNotifications;
 
             } catch (error) {
@@ -363,45 +417,100 @@
             const instance = localStorage.getItem('mastodon_instance');
             const token = localStorage.getItem('mastodon_token');
             
+            console.log('Loading Mastodon notifications...', { instance, token: token ? 'exists' : 'missing' });
+            
             if (!instance || !token) {
+                console.log('Missing Mastodon credentials');
+                const container = document.getElementById('mastodon-notifications');
+                container.innerHTML = '<div class="no-notifications"><p>Please log in to Mastodon first.</p></div>';
                 return [];
             }
 
             const container = document.getElementById('mastodon-notifications');
+            container.innerHTML = '<div class="loading-spinner"><p>Loading Mastodon notifications...</p></div>';
             
             try {
-                const response = await apiFetch(instance, '/api/v1/notifications', {}, { limit: 50 }, 'mastodon');
-                const notifications = response.data || [];
+                console.log(`Fetching from Mastodon API: https://${instance}/api/v1/notifications`);
+                
+                // Try the API call with detailed logging
+                const url = new URL(`https://${instance}/api/v1/notifications`);
+                url.searchParams.append('limit', '50');
+                
+                console.log('Making request to:', url.toString());
+                console.log('With token:', token.substring(0, 10) + '...');
+                
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const notifications = await response.json();
+                console.log('Mastodon notifications received:', notifications);
+                console.log('Number of notifications:', notifications.length);
 
                 // Clear container and render
                 container.innerHTML = '';
 
                 if (notifications.length === 0) {
                     container.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
+                    updateNotificationCounts([], []);
                     return [];
                 }
 
                 // Process notifications
-                const processedNotifications = notifications.map(n => ({
-                    ...n,
-                    date: n.created_at,
-                    read: true, // Mastodon doesn't have read/unread status in the same way
-                    platform: 'mastodon'
-                }));
+                const processedNotifications = notifications.map((n, index) => {
+                    console.log(`Processing Mastodon notification ${index}:`, n);
+                    return {
+                        ...n,
+                        date: n.created_at,
+                        read: true, // Mastodon doesn't have read/unread status in the same way
+                        platform: 'mastodon'
+                    };
+                });
+
+                console.log('Processed notifications:', processedNotifications.length);
 
                 // Render notifications
-                processedNotifications.forEach(notification => {
+                let renderedCount = 0;
+                processedNotifications.forEach((notification, index) => {
+                    console.log(`Rendering Mastodon notification ${index}:`, notification);
                     const notifElement = renderNotification(notification, notification.type, 'mastodon');
                     if (notifElement) {
                         container.appendChild(notifElement);
+                        renderedCount++;
+                        console.log('Successfully rendered notification', index);
+                    } else {
+                        console.warn('Failed to render notification', index, notification);
                     }
                 });
+
+                console.log(`Rendered ${renderedCount} out of ${processedNotifications.length} Mastodon notifications`);
+
+                if (renderedCount === 0) {
+                    container.innerHTML = '<div class="no-notifications"><p>No renderable Mastodon notifications found.</p></div>';
+                }
+
+                // Update counts
+                updateNotificationCounts([], processedNotifications);
 
                 return processedNotifications;
 
             } catch (error) {
                 console.error('Failed to load Mastodon notifications:', error);
-                container.innerHTML = '<div class="error-message"><p>Failed to load Mastodon notifications.</p></div>';
+                container.innerHTML = `<div class="error-message"><p>Failed to load Mastodon notifications.</p><p class="error-details">Error: ${error.message}</p></div>`;
+                updateNotificationCounts([], []);
                 return [];
             }
         }
@@ -581,6 +690,9 @@
                 if (mastodonToken) {
                     loadMastodonNotifications();
                 }
+                
+                // Update initial counts
+                updateNotificationCounts([], []);
             } else {
                 document.getElementById('login-section').style.display = 'flex';
                 document.getElementById('notifications-section').style.display = 'none';
