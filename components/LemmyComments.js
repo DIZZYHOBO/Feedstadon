@@ -93,6 +93,8 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
         const response = await apiFetch(lemmyInstance, null, `/api/v3/comment/list?post_id=${postId}&max_depth=8&sort=Old`, {}, 'lemmy');
         const allComments = response?.data?.comments || [];
         
+        console.log('Total comments fetched:', allComments.length);
+        
         if (allComments.length === 0) {
             container.innerHTML = '<p class="no-comments">No comments found.</p>';
             return;
@@ -106,22 +108,41 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
             return;
         }
 
-        console.log('Root comment:', rootComment);
-        console.log('Looking for replies to comment ID:', parseInt(rootCommentId));
+        console.log('Root comment found:', rootComment);
+        console.log('Root comment path:', rootComment.comment.path);
 
-        // Find direct replies to this comment
-        const directReplies = allComments.filter(comment => 
-            comment.comment.parent_id === parseInt(rootCommentId)
-        );
+        // Find direct replies using the path system
+        // The path is like "0.123.456.789" where each number is a comment ID
+        // Direct replies will have the root comment's path as a prefix plus one more ID
+        const rootPath = rootComment.comment.path;
+        const rootPathDepth = rootPath.split('.').length;
+        
+        const directReplies = allComments.filter(comment => {
+            // Skip the root comment itself
+            if (comment.comment.id === parseInt(rootCommentId)) {
+                return false;
+            }
+            
+            // Check if this comment's path starts with the root comment's path
+            const commentPath = comment.comment.path;
+            if (!commentPath.startsWith(rootPath + '.')) {
+                return false;
+            }
+            
+            // Check if it's exactly one level deeper (direct child)
+            const commentPathDepth = commentPath.split('.').length;
+            return commentPathDepth === rootPathDepth + 1;
+        });
 
         console.log('Found direct replies:', directReplies.length);
+        directReplies.forEach(r => console.log('Reply:', r.creator.name, 'Path:', r.comment.path));
 
         // Sort replies by creation time (oldest first)
         directReplies.sort((a, b) => new Date(a.comment.published) - new Date(b.comment.published));
 
         container.innerHTML = '';
         
-        // Build and show breadcrumb
+        // Build and show breadcrumb if there's a chain
         const commentChain = buildCommentChain(allComments, parseInt(rootCommentId));
         if (commentChain.length > 1) {
             const breadcrumb = createCommentBreadcrumb(commentChain, actions, postView);
@@ -129,11 +150,11 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
         }
         
         // First, render the root comment (the one that was clicked)
-        const rootCommentElement = renderLemmyComment(rootComment, state, actions, postAuthorId);
+        const rootCommentElement = renderLemmyComment(rootComment, state, actions, postAuthorId, postView);
         rootCommentElement.classList.add('thread-root-comment');
         
         // Override the "View replies" button functionality for this context
-        overrideViewRepliesButtons(rootCommentElement, rootComment, actions, postView, allComments);
+        overrideViewRepliesButtons(rootCommentElement, rootComment, actions, postView, allComments, directReplies);
         
         container.appendChild(rootCommentElement);
 
@@ -146,11 +167,29 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
 
             // Then render all direct replies (no indentation, full width)
             directReplies.forEach(replyComment => {
-                const replyElement = renderLemmyComment(replyComment, state, actions, postAuthorId);
+                const replyElement = renderLemmyComment(replyComment, state, actions, postAuthorId, postView);
                 replyElement.classList.add('direct-reply-comment');
                 
+                // Check if this reply has its own replies
+                const replyPath = replyComment.comment.path;
+                const replyPathDepth = replyPath.split('.').length;
+                
+                const repliesOfReply = allComments.filter(comment => {
+                    if (comment.comment.id === replyComment.comment.id) {
+                        return false;
+                    }
+                    const commentPath = comment.comment.path;
+                    if (!commentPath.startsWith(replyPath + '.')) {
+                        return false;
+                    }
+                    const commentPathDepth = commentPath.split('.').length;
+                    return commentPathDepth === replyPathDepth + 1;
+                });
+                
+                console.log(`Reply ${replyComment.comment.id} has ${repliesOfReply.length} sub-replies`);
+                
                 // Override the "View replies" button for replies too
-                overrideViewRepliesButtons(replyElement, replyComment, actions, postView, allComments);
+                overrideViewRepliesButtons(replyElement, replyComment, actions, postView, allComments, repliesOfReply);
                 
                 container.appendChild(replyElement);
             });
@@ -167,10 +206,19 @@ async function loadCommentThread(state, actions, postId, rootCommentId, containe
     }
 }
 
-function overrideViewRepliesButtons(commentElement, commentView, actions, postView, allComments = null) {
+function overrideViewRepliesButtons(commentElement, commentView, actions, postView, allComments = null, directReplies = null) {
     // Find and override any "View X replies" buttons in this comment
     const viewRepliesBtn = commentElement.querySelector('.view-replies-btn');
     if (viewRepliesBtn) {
+        // Update the button text with the actual count if we have it
+        if (directReplies && directReplies.length > 0) {
+            viewRepliesBtn.textContent = `View ${directReplies.length} ${directReplies.length === 1 ? 'reply' : 'replies'}`;
+            viewRepliesBtn.style.display = 'block';
+        } else if (directReplies && directReplies.length === 0) {
+            // Hide the button if there are no replies
+            viewRepliesBtn.style.display = 'none';
+        }
+        
         // Remove the old event listener by cloning the node
         const newBtn = viewRepliesBtn.cloneNode(true);
         viewRepliesBtn.parentNode.replaceChild(newBtn, viewRepliesBtn);
