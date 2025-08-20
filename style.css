@@ -2547,3 +2547,172 @@ select:focus {
 .comment-thread-list > .replies-separator:last-child {
     margin-bottom: 0;
 }
+
+/* Notifications Container and Items */
+.notifications-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    position: relative;
+    transition: background-color 0.2s;
+    align-items: flex-start;
+}
+
+.notification-item.unread {
+    border-left: 4px solid var(--accent-color);
+    background-color: rgba(89, 90, 255, 0.05);
+}
+
+.notification-avatar img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    gap: 10px;
+}
+
+.notification-text {
+    color: var(--font-color);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.notification-time {
+    color: var(--font-color-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.notification-context {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    margin-top: 8px;
+    color: var(--font-color-muted);
+    font-size: 13px;
+    line-height: 1.4;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.unread-indicator {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+}
+
+/* Notification specific loading and error states */
+.notifications-container .loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+}
+
+.notifications-container .no-notifications {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+}
+
+.notifications-container .error-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--error-color);
+    background-color: var(--card-color);
+    border: 1px solid var(--error-color);
+    border-radius: var(--border-radius);
+}
+
+.error-details {
+    font-size: 12px;
+    margin-top: 10px;
+    color: var(--font-color-muted);
+}
+
+/* Notification Tabs */
+.login-tabs,
+.notification-tabs {
+    display: flex;
+    gap: 5px;
+}
+
+.login-tab-btn,
+.notification-tab-btn {
+    flex: 1;
+    padding: 10px 15px;
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--font-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.login-tab-btn.active,
+.notification-tab-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.login-tab-content,
+.notification-tab-content {
+    display: none;
+}
+
+.login-tab-content.active,
+.notification-tab-content.active {
+    display: block;
+}
+
+/* Platform indicators */
+.platform-indicator {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Note: .platform-badge styles already exist in main style.css */
+
+/* Button danger style (if not already in main style.css) */
+.button-danger {
+    background-color: var(--error-color, #ea0027);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.button-danger:hover {
+    opacity: 0.9;
+}
