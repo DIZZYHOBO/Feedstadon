@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lemmy Notifications</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+</head>
+<body>
+    <div id="app-view">
+        <nav class="top-nav">
+            <div class="nav-left">
+                <h2 style="margin: 0; color: var(--font-color);">Lemmy Notifications</h2>
+            </div>
+            <div class="nav-right">
+                <button id="refresh-btn" class="icon-button" title="Refresh">
+                    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+                </button>
+                <button id="logout-btn" class="nav-button" style="display: none;">Logout</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Login Section -->
+            <div id="login-section" class="view-container" style="display: flex;">
+                <div class="login-prompt" style="margin: 40px auto; max-width: 400px;">
+                    <h3>Connect to Lemmy</h3>
+                    <p>Please log in to see your notifications.</p>
+                    <div class="login-fields">
+                        <input type="text" id="lemmy-instance-input" placeholder="lemmy.world" style="margin-bottom: 10px;">
+                        <input type="text" id="lemmy-username-input" placeholder="Username" style="margin-bottom: 10px;">
+                        <input type="password" id="lemmy-password-input" placeholder="Password" style="margin-bottom: 15px;">
+                    </div>
+                    <button class="button-primary" id="connect-lemmy-btn" style="width: 100%;">Connect</button>
+                    <div id="login-error" style="color: var(--error-color); margin-top: 10px; display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Notifications Section -->
+            <div id="notifications-section" class="view-container" style="display: none;">
+                <div class="notifications-header" style="background-color: var(--card-color); padding: 20px; border-radius: var(--border-radius); margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0;">Your Notifications</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span id="notification-count" style="color: var(--font-color-muted);">Loading...</span>
+                            <button id="mark-all-read-btn" class="button-secondary" style="display: none;">Mark All Read</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="notifications-list" class="notifications-container">
+                    <div class="loading-spinner">
+                        <p>Loading notifications...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification"></div>
+
+    <script>
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.getElementById('toast-notification');
+            if (!toast) return;
+
+            toast.className = 'toast-notification';
+            toast.classList.add(`toast-${type}`);
+            toast.textContent = message;
+            toast.classList.add('visible');
+            
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, duration);
+        }
+
+        // API fetch function for Lemmy
+        async function apiFetch(instanceUrl, endpoint, options = {}, params = {}) {
+            const jwt = localStorage.getItem('lemmy_jwt');
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+            };
+
+            if (jwt) {
+                defaultHeaders['Authorization'] = `Bearer ${jwt}`;
+            }
+            
+            const config = {
+                method: options.method || 'GET',
+                headers: { ...defaultHeaders, ...options.headers },
+            };
+
+            if (options.body) {
+                config.body = JSON.stringify(options.body);
+            }
+
+            const url = new URL(`https://${instanceUrl}${endpoint}`);
+            if (params) {
+                Object.keys(params).forEach(key => {
+                    if (params[key] !== undefined && params[key] !== null) {
+                        url.searchParams.append(key, params[key]);
+                    }
+                });
+            }
+
+            try {
+                const response = await fetch(url.toString(), config);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || errorData.message || 'Unknown error'}`);
+                }
+
+                const data = await response.json();
+                return { data };
+
+            } catch (error) {
+                console.error('API Fetch Error:', error);
+                throw error;
+            }
+        }
+
+        // Time formatting functions
+        function timeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.round((now - date) / 1000);
+            const minutes = Math.round(seconds / 60);
+            const hours = Math.round(minutes / 60);
+            const days = Math.round(hours / 24);
+
+            if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
+        // Notification rendering
+        function renderNotification(notification, type) {
+            const notifDiv = document.createElement('div');
+            notifDiv.className = `notification-item ${!notification.read ? 'unread' : 'read'}`;
+            
+            let content = '';
+            let avatar = '';
+            let timestamp = '';
+            let context = '';
+
+            if (type === 'mention') {
+                const mention = notification.person_mention;
+                avatar = mention.creator.avatar || './images/php.png';
+                content = `<strong>${mention.creator.name}</strong> mentioned you in a comment`;
+                timestamp = mention.comment.published;
+                context = `<div class="notification-context">${mention.comment.content}</div>`;
+            } else if (type === 'reply') {
+                const reply = notification.comment_reply;
+                avatar = reply.creator.avatar || './images/php.png';
+                content = `<strong>${reply.creator.name}</strong> replied to your comment`;
+                timestamp = reply.comment.published;
+                context = `<div class="notification-context">${reply.comment.content}</div>`;
+            }
+
+            notifDiv.innerHTML = `
+                <div class="notification-avatar">
+                    <img src="${avatar}" alt="avatar" onerror="this.onerror=null;this.src='./images/php.png';">
+                </div>
+                <div class="notification-content">
+                    <div class="notification-header">
+                        <span class="notification-text">${content}</span>
+                        <span class="notification-time">${timeAgo(timestamp)}</span>
+                    </div>
+                    ${context}
+                    ${!notification.read ? '<div class="unread-indicator"></div>' : ''}
+                </div>
+            `;
+
+            return notifDiv;
+        }
+
+        // Load notifications
+        async function loadNotifications() {
+            const instance = localStorage.getItem('lemmy_instance');
+            const jwt = localStorage.getItem('lemmy_jwt');
+            
+            if (!instance || !jwt) {
+                showToast('Please log in first', 'error');
+                return;
+            }
+
+            const container = document.getElementById('notifications-list');
+            const countSpan = document.getElementById('notification-count');
+            
+            try {
+                // Fetch mentions and replies
+                const [mentionsResponse, repliesResponse] = await Promise.all([
+                    apiFetch(instance, '/api/v3/user/mention', {}, { sort: 'New', unread_only: false, limit: 50 }),
+                    apiFetch(instance, '/api/v3/user/replies', {}, { sort: 'New', unread_only: false, limit: 50 })
+                ]);
+
+                const mentions = mentionsResponse.data.mentions || [];
+                const replies = repliesResponse.data.replies || [];
+
+                // Combine and sort by date
+                const allNotifications = [
+                    ...mentions.map(m => ({ ...m, type: 'mention', date: m.person_mention.comment.published, read: m.person_mention.read })),
+                    ...replies.map(r => ({ ...r, type: 'reply', date: r.comment_reply.comment.published, read: r.comment_reply.read }))
+                ];
+
+                allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // Clear container
+                container.innerHTML = '';
+
+                if (allNotifications.length === 0) {
+                    container.innerHTML = '<div class="no-notifications"><p>No notifications found.</p></div>';
+                    countSpan.textContent = '0 notifications';
+                    return;
+                }
+
+                // Render notifications
+                allNotifications.forEach(notification => {
+                    const notifElement = renderNotification(notification, notification.type);
+                    container.appendChild(notifElement);
+                });
+
+                const unreadCount = allNotifications.filter(n => !n.read).length;
+                countSpan.textContent = `${allNotifications.length} total (${unreadCount} unread)`;
+
+                // Show mark all read button if there are unread notifications
+                const markAllReadBtn = document.getElementById('mark-all-read-btn');
+                if (unreadCount > 0) {
+                    markAllReadBtn.style.display = 'block';
+                } else {
+                    markAllReadBtn.style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+                container.innerHTML = '<div class="error-message"><p>Failed to load notifications. Please try again.</p></div>';
+                showToast('Failed to load notifications', 'error');
+            }
+        }
+
+        // Mark all notifications as read
+        async function markAllAsRead() {
+            const instance = localStorage.getItem('lemmy_instance');
+            const jwt = localStorage.getItem('lemmy_jwt');
+            
+            if (!instance || !jwt) return;
+
+            try {
+                // This is a simple approach - in a real implementation you'd need to mark each notification individually
+                showToast('Marking all as read...', 'info');
+                
+                // Fetch unread mentions and replies
+                const [mentionsResponse, repliesResponse] = await Promise.all([
+                    apiFetch(instance, '/api/v3/user/mention', {}, { unread_only: true }),
+                    apiFetch(instance, '/api/v3/user/replies', {}, { unread_only: true })
+                ]);
+
+                const unreadMentions = mentionsResponse.data.mentions || [];
+                const unreadReplies = repliesResponse.data.replies || [];
+
+                // Mark mentions as read
+                for (const mention of unreadMentions) {
+                    try {
+                        await apiFetch(instance, '/api/v3/user/mention/mark_as_read', {
+                            method: 'POST',
+                            body: { person_mention_id: mention.person_mention.id, read: true }
+                        });
+                    } catch (err) {
+                        console.error('Failed to mark mention as read:', err);
+                    }
+                }
+
+                // Mark replies as read
+                for (const reply of unreadReplies) {
+                    try {
+                        await apiFetch(instance, '/api/v3/comment/mark_as_read', {
+                            method: 'POST',
+                            body: { comment_reply_id: reply.comment_reply.id, read: true }
+                        });
+                    } catch (err) {
+                        console.error('Failed to mark reply as read:', err);
+                    }
+                }
+
+                showToast('All notifications marked as read', 'success');
+                loadNotifications(); // Reload notifications
+
+            } catch (error) {
+                console.error('Failed to mark all as read:', error);
+                showToast('Failed to mark all as read', 'error');
+            }
+        }
+
+        // Login function
+        async function login() {
+            const instance = document.getElementById('lemmy-instance-input').value.trim();
+            const username = document.getElementById('lemmy-username-input').value.trim();
+            const password = document.getElementById('lemmy-password-input').value.trim();
+            const errorDiv = document.getElementById('login-error');
+
+            if (!instance || !username || !password) {
+                errorDiv.textContent = 'Please fill in all fields';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const connectBtn = document.getElementById('connect-lemmy-btn');
+                connectBtn.textContent = 'Connecting...';
+                connectBtn.disabled = true;
+                errorDiv.style.display = 'none';
+
+                const response = await apiFetch(instance, '/api/v3/user/login', {
+                    method: 'POST',
+                    body: { username_or_email: username, password: password }
+                });
+
+                if (response.data.jwt) {
+                    localStorage.setItem('lemmy_jwt', response.data.jwt);
+                    localStorage.setItem('lemmy_username', username);
+                    localStorage.setItem('lemmy_instance', instance);
+                    
+                    showToast('Login successful!', 'success');
+                    
+                    // Hide login section, show notifications
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('notifications-section').style.display = 'flex';
+                    document.getElementById('logout-btn').style.display = 'block';
+                    
+                    loadNotifications();
+                } else {
+                    throw new Error('No JWT token received');
+                }
+            } catch (error) {
+                console.error('Login failed:', error);
+                errorDiv.textContent = 'Login failed. Please check your credentials.';
+                errorDiv.style.display = 'block';
+                showToast('Login failed', 'error');
+            } finally {
+                const connectBtn = document.getElementById('connect-lemmy-btn');
+                connectBtn.textContent = 'Connect';
+                connectBtn.disabled = false;
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('lemmy_jwt');
+            localStorage.removeItem('lemmy_username');
+            localStorage.removeItem('lemmy_instance');
+            
+            document.getElementById('login-section').style.display = 'flex';
+            document.getElementById('notifications-section').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'none';
+            
+            // Clear form
+            document.getElementById('lemmy-instance-input').value = '';
+            document.getElementById('lemmy-username-input').value = '';
+            document.getElementById('lemmy-password-input').value = '';
+            
+            showToast('Logged out successfully', 'success');
+        }
+
+        // Check if already logged in
+        function checkExistingLogin() {
+            const jwt = localStorage.getItem('lemmy_jwt');
+            const instance = localStorage.getItem('lemmy_instance');
+            const username = localStorage.getItem('lemmy_username');
+
+            if (jwt && instance && username) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('notifications-section').style.display = 'flex';
+                document.getElementById('logout-btn').style.display = 'block';
+                loadNotifications();
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            checkExistingLogin();
+
+            document.getElementById('connect-lemmy-btn').addEventListener('click', login);
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('refresh-btn').addEventListener('click', loadNotifications);
+            document.getElementById('mark-all-read-btn').addEventListener('click', markAllAsRead);
+
+            // Enter key support for login
+            document.getElementById('lemmy-password-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+        });
+    </script>
+
+    <style>
+        .notifications-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .notification-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            position: relative;
+            transition: background-color 0.2s;
+        }
+
+        .notification-item.unread {
+            border-left: 4px solid var(--accent-color);
+            background-color: rgba(89, 90, 255, 0.05);
+        }
+
+        .notification-avatar img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+
+        .notification-text {
+            color: var(--font-color);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .notification-time {
+            color: var(--font-color-muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .notification-context {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 10px;
+            margin-top: 8px;
+            color: var(--font-color-muted);
+            font-size: 13px;
+            line-height: 1.4;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .unread-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: var(--font-color-muted);
+        }
+
+        .no-notifications {
+            text-align: center;
+            padding: 40px;
+            color: var(--font-color-muted);
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 40px;
+            color: var(--error-color);
+            background-color: var(--card-color);
+            border: 1px solid var(--error-color);
+            border-radius: var(--border-radius);
+        }
+
+        /* Toast notification styles */
+        #toast-notification {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            transition: bottom 0.3s;
+            z-index: 3000;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        #toast-notification.visible {
+            bottom: 20px;
+        }
+
+        .toast-success {
+            background-color: var(--success-color, #46d160);
+        }
+
+        .toast-error {
+            background-color: var(--error-color, #ea0027);
+        }
+
+        .toast-warning {
+            background-color: var(--warning-color, #ffd23f);
+        }
+
+        .toast-info {
+            background-color: var(--info-color, #0084ff);
+        }
+    </style>
+</body>
+</html>
