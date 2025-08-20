@@ -148,30 +148,29 @@
             let timestamp = '';
             let context = '';
 
+            console.log('Rendering notification:', type, notification);
+
             try {
+                // Both types should have creator, comment at top level
+                avatar = (notification.creator && notification.creator.avatar) || '';
+                timestamp = (notification.comment && notification.comment.published) || '';
+                context = (notification.comment && notification.comment.content) ? 
+                    `<div class="notification-context">${notification.comment.content}</div>` : '';
+
                 if (type === 'mention') {
-                    // For mentions, the structure has person_mention, creator, comment, etc. at top level
-                    if (notification.creator && notification.comment && notification.person_mention) {
-                        avatar = notification.creator.avatar || '';
-                        content = `<strong>${notification.creator.name}</strong> mentioned you in a comment`;
-                        timestamp = notification.comment.published;
-                        context = `<div class="notification-context">${notification.comment.content}</div>`;
-                    } else {
-                        console.warn('Invalid mention structure:', notification);
-                        return null;
-                    }
+                    content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> mentioned you in a comment`;
                 } else if (type === 'reply') {
-                    // For replies, the structure has comment_reply, creator, comment, etc. at top level
-                    if (notification.creator && notification.comment && notification.comment_reply) {
-                        avatar = notification.creator.avatar || '';
-                        content = `<strong>${notification.creator.name}</strong> replied to your comment`;
-                        timestamp = notification.comment.published;
-                        context = `<div class="notification-context">${notification.comment.content}</div>`;
-                    } else {
-                        console.warn('Invalid reply structure:', notification);
-                        return null;
-                    }
+                    content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> replied to your comment`;
                 }
+
+                console.log('Notification rendered successfully:', {
+                    type,
+                    avatar,
+                    timestamp,
+                    hasContext: !!context,
+                    content
+                });
+
             } catch (error) {
                 console.error('Error rendering notification:', error, notification);
                 return null;
@@ -218,36 +217,62 @@
                 const replies = repliesResponse.data.replies || [];
 
                 // Combine and sort by date
+                console.log('Mentions received:', mentions);
+                console.log('Replies received:', replies);
+                
                 const allNotifications = [];
                 
-                // Process mentions
-                mentions.forEach(m => {
-                    if (m.person_mention && m.person_mention.comment && m.person_mention.comment.published) {
+                // Process mentions - the API returns flat structure
+                mentions.forEach((m, index) => {
+                    console.log(`Processing mention ${index}:`, m);
+                    console.log('Has person_mention:', !!m.person_mention);
+                    console.log('Has comment:', !!m.comment);
+                    console.log('Has creator:', !!m.creator);
+                    
+                    if (m.person_mention && m.comment && m.comment.published && m.creator) {
                         allNotifications.push({
                             ...m, 
                             type: 'mention', 
-                            date: m.person_mention.comment.published, 
+                            date: m.comment.published, 
                             read: m.person_mention.read
                         });
+                        console.log('Added mention notification');
                     } else {
-                        console.warn('Invalid mention structure:', m);
+                        console.warn('Invalid mention structure - missing required fields:', {
+                            hasMention: !!m.person_mention,
+                            hasComment: !!m.comment,
+                            hasPublished: !!(m.comment && m.comment.published),
+                            hasCreator: !!m.creator
+                        });
                     }
                 });
 
-                // Process replies
-                replies.forEach(r => {
-                    if (r.comment_reply && r.comment_reply.comment && r.comment_reply.comment.published) {
+                // Process replies - the API returns flat structure  
+                replies.forEach((r, index) => {
+                    console.log(`Processing reply ${index}:`, r);
+                    console.log('Has comment_reply:', !!r.comment_reply);
+                    console.log('Has comment:', !!r.comment);
+                    console.log('Has creator:', !!r.creator);
+                    
+                    if (r.comment_reply && r.comment && r.comment.published && r.creator) {
                         allNotifications.push({
                             ...r, 
                             type: 'reply', 
-                            date: r.comment_reply.comment.published, 
+                            date: r.comment.published, 
                             read: r.comment_reply.read
                         });
+                        console.log('Added reply notification');
                     } else {
-                        console.warn('Invalid reply structure:', r);
+                        console.warn('Invalid reply structure - missing required fields:', {
+                            hasReply: !!r.comment_reply,
+                            hasComment: !!r.comment,
+                            hasPublished: !!(r.comment && r.comment.published),
+                            hasCreator: !!r.creator
+                        });
                     }
                 });
 
+                console.log('Total notifications processed:', allNotifications.length);
                 allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
 
                 // Clear container
