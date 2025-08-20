@@ -145,7 +145,8 @@
             if (platform === 'lemmy') {
                 const jwt = localStorage.getItem('lemmy_jwt');
                 if (jwt) {
-                    params.auth = jwt; // Lemmy uses auth param
+                    // For Lemmy, add JWT as Bearer token in header
+                    defaultHeaders['Authorization'] = `Bearer ${jwt}`;
                 }
             } else if (platform === 'mastodon') {
                 const token = localStorage.getItem('fediverse-token'); // Fixed: using correct key
@@ -582,13 +583,28 @@
                 connectBtn.disabled = true;
                 errorDiv.style.display = 'none';
 
-                const response = await apiFetch(instance, '/api/v3/user/login', {
+                // For login, we need to send credentials in the body
+                const loginUrl = new URL(`https://${instance}/api/v3/user/login`);
+                const loginResponse = await fetch(loginUrl.toString(), {
                     method: 'POST',
-                    body: { username_or_email: username, password: password }
-                }, {}, 'lemmy');
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username_or_email: username,
+                        password: password
+                    })
+                });
 
-                if (response.data.jwt) {
-                    localStorage.setItem('lemmy_jwt', response.data.jwt);
+                if (!loginResponse.ok) {
+                    const errorData = await loginResponse.json().catch(() => ({ message: 'Login failed' }));
+                    throw new Error(errorData.error || errorData.message || 'Login failed');
+                }
+
+                const loginData = await loginResponse.json();
+
+                if (loginData.jwt) {
+                    localStorage.setItem('lemmy_jwt', loginData.jwt);
                     localStorage.setItem('lemmy_username', username);
                     localStorage.setItem('lemmy_instance', instance);
                     
@@ -603,7 +619,7 @@
                 }
             } catch (error) {
                 console.error('Lemmy login failed:', error);
-                errorDiv.textContent = 'Login failed. Please check your credentials.';
+                errorDiv.textContent = `Login failed: ${error.message}`;
                 errorDiv.style.display = 'block';
                 showToast('Lemmy login failed', 'error');
             } finally {
@@ -691,6 +707,21 @@
             showToast('Logged out of all accounts', 'success');
         }
 
+        // Enter notifications view
+        function enterNotifications() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('notifications-section').style.display = 'flex';
+            
+            // Load notifications for connected services
+            loadAllNotifications();
+            if (localStorage.getItem('lemmy_jwt')) {
+                loadLemmyNotifications();
+            }
+            if (localStorage.getItem('fediverse-token')) {
+                loadMastodonNotifications();
+            }
+        }
+
         // Check login status and show appropriate sections
         function checkLoginStatus() {
             const lemmyJwt = localStorage.getItem('lemmy_jwt');
@@ -727,18 +758,10 @@
                     `;
                 }
                 
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('notifications-section').style.display = 'flex';
+                // Stay on login page until user clicks Enter
+                document.getElementById('login-section').style.display = 'flex';
+                document.getElementById('notifications-section').style.display = 'none';
                 logoutAllBtn.style.display = 'block';
-                
-                // Load notifications for connected services
-                loadAllNotifications();
-                if (lemmyJwt) {
-                    loadLemmyNotifications();
-                }
-                if (mastodonToken) {
-                    loadMastodonNotifications();
-                }
             } else {
                 loginStatus.style.display = 'none';
                 document.getElementById('login-section').style.display = 'flex';
@@ -749,7 +772,18 @@
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
+            // Check if user is already logged in and show status, but stay on login page
             checkLoginStatus();
+            
+            // If user has credentials but is on login page, setup the enter button
+            const lemmyJwt = localStorage.getItem('lemmy_jwt');
+            const mastodonToken = localStorage.getItem('fediverse-token');
+            if (lemmyJwt || mastodonToken) {
+                const enterBtn = document.getElementById('enter-notifications-btn');
+                if (enterBtn) {
+                    enterBtn.addEventListener('click', enterNotifications);
+                }
+            }
 
             // Login tab switching
             document.querySelectorAll('.login-tab-btn').forEach(btn => {
@@ -791,6 +825,12 @@
             // Login buttons
             document.getElementById('connect-lemmy-btn').addEventListener('click', loginLemmy);
             document.getElementById('connect-mastodon-btn').addEventListener('click', loginMastodon);
+            
+            // Enter notifications button
+            const enterBtn = document.getElementById('enter-notifications-btn');
+            if (enterBtn) {
+                enterBtn.addEventListener('click', enterNotifications);
+            }
             
             // Get token link
             document.getElementById('get-token-link').addEventListener('click', (e) => {
