@@ -1,235 +1,502 @@
-/* Enhanced Notifications Header Styles */
-.notifications-stats-header {
-    display: flex;
-    gap: 15px;
-    padding: 20px 15px;
-    background: linear-gradient(135deg, var(--card-color) 0%, var(--bg-color) 100%);
-    border-bottom: 2px solid var(--border-color);
-    align-items: center;
+import { apiFetch } from './api.js';
+import { formatTimestamp, timeAgo } from './utils.js';
+import { showToast } from './ui.js';
+import { ICONS } from './icons.js';
+
+// Helper function to truncate text
+function truncateWords(text, wordCount) {
+    if (!text) return '';
+    const words = text.split(/\s+/);
+    if (words.length <= wordCount) return text;
+    return words.slice(0, wordCount).join(' ') + '...';
 }
 
-.notification-stat-card {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 15px;
-    background-color: var(--card-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    transition: transform 0.2s, box-shadow 0.2s;
+// Render a single notification with click handler
+function renderNotification(notification, type, platform = 'lemmy', actions) {
+    const notifDiv = document.createElement('div');
+    notifDiv.className = `notification-item ${!notification.read ? 'unread' : 'read'} ${platform}-notification`;
+    
+    let content = '';
+    let avatar = '';
+    let timestamp = '';
+    let context = '';
+
+    try {
+        if (platform === 'lemmy') {
+            // Lemmy notification structure
+            avatar = (notification.creator && notification.creator.avatar) || '';
+            timestamp = (notification.comment && notification.comment.published) || '';
+            
+            const fullContent = (notification.comment && notification.comment.content) || '';
+            const truncatedContent = truncateWords(fullContent, 10);
+            context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
+
+            if (type === 'mention') {
+                content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> mentioned you in a comment`;
+            } else if (type === 'reply') {
+                content = `<strong>${notification.creator ? notification.creator.name : 'Unknown'}</strong> replied to your comment`;
+            }
+        } else if (platform === 'mastodon') {
+            // Mastodon notification structure
+            avatar = (notification.account && notification.account.avatar_static) || '';
+            timestamp = notification.created_at || '';
+            
+            const fullContent = notification.status ? (notification.status.content || '').replace(/<[^>]*>/g, "") : '';
+            const truncatedContent = truncateWords(fullContent, 10);
+            context = truncatedContent ? `<div class="notification-context">${truncatedContent}</div>` : '';
+
+            const accountName = notification.account ? (notification.account.display_name || notification.account.username) : 'Unknown';
+            
+            if (notification.type === 'mention') {
+                content = `<strong>${accountName}</strong> mentioned you`;
+            } else if (notification.type === 'favourite') {
+                content = `<strong>${accountName}</strong> favorited your post`;
+            } else if (notification.type === 'reblog') {
+                content = `<strong>${accountName}</strong> boosted your post`;
+            } else if (notification.type === 'follow') {
+                content = `<strong>${accountName}</strong> followed you`;
+            } else if (notification.type === 'poll') {
+                content = `A poll you voted in has ended`;
+            } else if (notification.type === 'status') {
+                content = `<strong>${accountName}</strong> posted a new status`;
+            } else {
+                content = `<strong>${accountName}</strong> ${notification.type}`;
+            }
+        }
+
+    } catch (error) {
+        console.error('Error rendering notification:', error, notification);
+        return null;
+    }
+
+    // Use platform logos instead of text badges
+    const platformIcon = platform === 'lemmy' ? ICONS.lemmy : ICONS.mastodon;
+
+    notifDiv.innerHTML = `
+        <div class="notification-avatar">
+            <img src="${avatar}" alt="avatar" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 100 100\\'><text y=\\'.9em\\' font-size=\\'90\\'>👤</text></svg>';">
+        </div>
+        <div class="notification-content">
+            <div class="notification-header">
+                <span class="notification-text">${content}</span>
+                <span class="notification-time">${timeAgo(timestamp)}</span>
+            </div>
+            ${context}
+            ${!notification.read ? '<div class="unread-indicator"></div>' : ''}
+        </div>
+        <div class="platform-indicator">
+            <div class="platform-icon ${platform}">${platformIcon}</div>
+        </div>
+    `;
+
+    // Add click handler to open the related post
+    notifDiv.style.cursor = 'pointer';
+    notifDiv.addEventListener('click', async () => {
+        if (platform === 'lemmy' && notification.post) {
+            // For Lemmy, we need to construct the post view object
+            try {
+                const lemmyInstance = localStorage.getItem('lemmy_instance') || 'lemmy.world';
+                const { data } = await apiFetch(lemmyInstance, null, `/api/v3/post?id=${notification.post.id}`, {}, 'lemmy');
+                if (data && data.post_view) {
+                    actions.showLemmyPostDetail(data.post_view);
+                }
+            } catch (error) {
+                console.error('Failed to load Lemmy post:', error);
+                showToast('Could not open post', 'error');
+            }
+        } else if (platform === 'mastodon' && notification.status) {
+            // For Mastodon, open the status detail
+            actions.showStatusDetail(notification.status.id);
+        } else if (platform === 'mastodon' && notification.account && notification.type === 'follow') {
+            // For follow notifications, open the user's profile
+            actions.showProfilePage('mastodon', notification.account.id);
+        }
+    });
+
+    return notifDiv;
 }
 
-.notification-stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+// Load Lemmy notifications
+async function loadLemmyNotifications(state, updateUI = true) {
+    const instance = localStorage.getItem('lemmy_instance');
+    const jwt = localStorage.getItem('lemmy_jwt');
+    
+    if (!instance || !jwt) {
+        if (updateUI) {
+            return { notifications: [], element: '<div class="no-notifications"><p>Please log in to Lemmy first.</p></div>' };
+        }
+        return [];
+    }
+
+    try {
+        // Use apiFetch instead of direct fetch to handle CORS and authentication properly
+        const [mentionsResponse, repliesResponse] = await Promise.all([
+            apiFetch(instance, null, '/api/v3/user/mention', {}, 'lemmy', {
+                sort: 'New',
+                unread_only: false,
+                limit: 50
+            }),
+            apiFetch(instance, null, '/api/v3/user/replies', {}, 'lemmy', {
+                sort: 'New',
+                unread_only: false,
+                limit: 50
+            })
+        ]);
+
+        const mentions = mentionsResponse.data?.mentions || [];
+        const replies = repliesResponse.data?.replies || [];
+
+        // Combine and sort by date
+        const allNotifications = [];
+        
+        // Process mentions
+        mentions.forEach((m) => {
+            if (m.person_mention && m.comment && m.comment.published && m.creator) {
+                allNotifications.push({
+                    ...m, 
+                    type: 'mention', 
+                    date: m.comment.published, 
+                    read: m.person_mention.read,
+                    platform: 'lemmy'
+                });
+            }
+        });
+
+        // Process replies
+        replies.forEach((r) => {
+            if (r.comment_reply && r.comment && r.comment.published && r.creator) {
+                allNotifications.push({
+                    ...r, 
+                    type: 'reply', 
+                    date: r.comment.published, 
+                    read: r.comment_reply.read,
+                    platform: 'lemmy'
+                });
+            }
+        });
+
+        allNotifications.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        return allNotifications;
+
+    } catch (error) {
+        console.error('Failed to load Lemmy notifications:', error);
+        // Return empty array instead of throwing to prevent breaking the UI
+        return [];
+    }
 }
 
-.notification-stat-card.lemmy-stat {
-    border-left: 3px solid #00a846;
-}
-
-.notification-stat-card.mastodon-stat {
-    border-left: 3px solid #595aff;
-}
-
-.stat-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--bg-color);
-    border-radius: 50%;
-    padding: 8px;
-}
-
-.stat-icon svg {
-    width: 100%;
-    height: 100%;
-}
-
-.lemmy-stat .stat-icon svg {
-    fill: #00a846;
-}
-
-.mastodon-stat .stat-icon svg {
-    fill: #595aff;
-}
-
-.stat-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-number {
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--font-color);
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: var(--font-color-muted);
-    margin-top: 4px;
-}
-
-.mark-all-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    background: linear-gradient(135deg, var(--accent-color), var(--accent-color) 80%);
-    color: white;
-    border: none;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-left: auto;
-}
-
-.mark-all-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(89, 90, 255, 0.3);
-}
-
-.mark-all-icon {
-    width: 20px;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Enhanced Notification Tabs */
-.notification-tabs {
-    display: flex;
-    gap: 0;
-    background-color: var(--card-color);
-    padding: 5px;
-    border-radius: var(--border-radius);
-    margin: 15px;
-}
-
-.notification-tab-btn {
-    flex: 1;
-    padding: 12px;
-    background: transparent;
-    border: none;
-    color: var(--font-color-muted);
-    border-radius: calc(var(--border-radius) - 2px);
-    cursor: pointer;
-    transition: all 0.3s;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.notification-tab-btn:hover {
-    background-color: var(--hover-color);
-}
-
-.notification-tab-btn.active {
-    background-color: var(--accent-color);
-    color: white;
-}
-
-.tab-icon {
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-}
-
-.tab-icon svg {
-    width: 100%;
-    height: 100%;
-    fill: currentColor;
-}
-
-/* Notification Items - Enhanced hover effect */
-.notification-item {
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.notification-item:hover {
-    background-color: var(--hover-color);
-    transform: translateX(5px);
-}
-
-.notification-item.unread:hover {
-    background-color: rgba(89, 90, 255, 0.1);
-}
-
-/* Platform icon styles for notifications */
-.platform-icon {
-    width: 24px;
-    height: 24px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--bg-color);
-    padding: 4px;
-    border-radius: var(--border-radius);
-}
-
-.platform-icon svg {
-    width: 100%;
-    height: 100%;
-}
-
-.platform-icon.lemmy svg {
-    fill: #00a846;
-}
-
-.platform-icon.mastodon svg {
-    fill: #595aff;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .notifications-stats-header {
-        flex-direction: column;
-        gap: 10px;
+// Load Mastodon notifications
+async function loadMastodonNotifications(state, updateUI = true) {
+    const instance = localStorage.getItem('fediverse-instance');
+    const token = localStorage.getItem('fediverse-token');
+    
+    if (!instance || !token) {
+        if (updateUI) {
+            return { notifications: [], element: '<div class="no-notifications"><p>Please log in to Mastodon first.</p></div>' };
+        }
+        return [];
     }
     
-    .notification-stat-card {
-        width: 100%;
-    }
-    
-    .mark-all-btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .notification-tabs {
-        margin: 10px;
-    }
-    
-    .notification-tab-btn {
-        font-size: 13px;
-        padding: 10px;
-    }
-    
-    .tab-icon {
-        width: 14px;
-        height: 14px;
+    try {
+        // Use apiFetch for consistency
+        const response = await apiFetch(instance, token, '/api/v1/notifications', {}, 'mastodon', {
+            limit: 50
+        });
+
+        const notifications = response.data || [];
+        
+        // Process notifications
+        const processedNotifications = notifications.map((n) => ({
+            ...n,
+            date: n.created_at,
+            read: false, // Mastodon doesn't have read/unread status, so we'll treat them as unread for marking
+            platform: 'mastodon'
+        }));
+
+        return processedNotifications;
+
+    } catch (error) {
+        console.error('Failed to load Mastodon notifications:', error);
+        return [];
     }
 }
 
-@media (max-width: 480px) {
-    .stat-number {
-        font-size: 20px;
+// Update notification bell in the UI
+export async function updateNotificationBell() {
+    const notifBtn = document.getElementById('notifications-btn');
+    if (!notifBtn) return;
+
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    const jwt = localStorage.getItem('lemmy_jwt');
+    
+    if (!lemmyInstance || !jwt) {
+        notifBtn.classList.remove('unread');
+        return;
+    }
+
+    try {
+        // Use apiFetch for proper CORS handling
+        const [mentionsResponse, repliesResponse] = await Promise.all([
+            apiFetch(lemmyInstance, null, '/api/v3/user/mention', {}, 'lemmy', {
+                unread_only: true
+            }),
+            apiFetch(lemmyInstance, null, '/api/v3/user/replies', {}, 'lemmy', {
+                unread_only: true,
+                limit: 50
+            })
+        ]);
+
+        const totalUnread = (mentionsResponse.data?.mentions?.length || 0) + 
+                            (repliesResponse.data?.replies?.length || 0);
+
+        if (totalUnread > 0) {
+            notifBtn.classList.add('unread');
+        } else {
+            notifBtn.classList.remove('unread');
+        }
+    } catch (error) {
+        console.error('Failed to check for unread notifications:', error);
+        notifBtn.classList.remove('unread');
+    }
+}
+
+// Mark all notifications as read (both Lemmy and Mastodon)
+async function markAllAsRead(lemmyNotifications = [], mastodonNotifications = []) {
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    const jwt = localStorage.getItem('lemmy_jwt');
+    const mastodonInstance = localStorage.getItem('fediverse-instance');
+    const mastodonToken = localStorage.getItem('fediverse-token');
+    
+    showToast('Marking all as read...', 'info');
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Mark Lemmy notifications as read
+    if (lemmyInstance && jwt) {
+        try {
+            // Filter unread Lemmy notifications
+            const unreadMentions = lemmyNotifications.filter(n => 
+                n.type === 'mention' && !n.read && n.person_mention
+            );
+            const unreadReplies = lemmyNotifications.filter(n => 
+                n.type === 'reply' && !n.read && n.comment_reply
+            );
+
+            // Mark mentions as read using apiFetch
+            for (const mention of unreadMentions) {
+                try {
+                    await apiFetch(lemmyInstance, null, '/api/v3/user/mention/mark_as_read', {
+                        method: 'POST',
+                        body: {
+                            person_mention_id: mention.person_mention.id,
+                            read: true
+                        }
+                    }, 'lemmy');
+                    successCount++;
+                } catch (err) {
+                    console.error('Failed to mark mention as read:', err);
+                    errorCount++;
+                }
+            }
+
+            // Mark replies as read using apiFetch
+            for (const reply of unreadReplies) {
+                try {
+                    await apiFetch(lemmyInstance, null, '/api/v3/comment/mark_as_read', {
+                        method: 'POST',
+                        body: {
+                            comment_reply_id: reply.comment_reply.id,
+                            read: true
+                        }
+                    }, 'lemmy');
+                    successCount++;
+                } catch (err) {
+                    console.error('Failed to mark reply as read:', err);
+                    errorCount++;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to mark Lemmy notifications as read:', error);
+        }
+    }
+
+    // Mark Mastodon notifications as read
+    if (mastodonInstance && mastodonToken && mastodonNotifications.length > 0) {
+        try {
+            // Use apiFetch for Mastodon as well
+            await apiFetch(mastodonInstance, mastodonToken, '/api/v1/notifications/clear', {
+                method: 'POST'
+            }, 'mastodon');
+            successCount += mastodonNotifications.length;
+        } catch (error) {
+            console.error('Failed to mark Mastodon notifications as read:', error);
+            errorCount += mastodonNotifications.length;
+        }
+    }
+
+    if (successCount > 0 && errorCount === 0) {
+        showToast('All notifications marked as read', 'success');
+    } else if (successCount > 0 && errorCount > 0) {
+        showToast(`Marked ${successCount} as read, ${errorCount} failed`, 'warning');
+    } else if (errorCount > 0) {
+        showToast('Failed to mark notifications as read', 'error');
+    } else {
+        showToast('No unread notifications to mark', 'info');
+    }
+
+    await updateNotificationBell();
+}
+
+// Main render function for notifications page
+export async function renderNotificationsPage(state, actions) {
+    const container = document.getElementById('notifications-view');
+    
+    // Create the notifications structure with improved header
+    container.innerHTML = `
+        <div class="notifications-stats-header">
+            <div class="notification-stat-card lemmy-stat">
+                <div class="stat-icon">${ICONS.lemmy}</div>
+                <div class="stat-info">
+                    <div class="stat-number" id="lemmy-unread-count">0</div>
+                    <div class="stat-label">Lemmy unread</div>
+                </div>
+            </div>
+            <div class="notification-stat-card mastodon-stat">
+                <div class="stat-icon">${ICONS.mastodon}</div>
+                <div class="stat-info">
+                    <div class="stat-number" id="mastodon-notif-count">0</div>
+                    <div class="stat-label">Mastodon new</div>
+                </div>
+            </div>
+            <button id="mark-all-read-btn" class="mark-all-btn" style="display: none;">
+                <span class="mark-all-icon">✓</span>
+                Mark All Read
+            </button>
+        </div>
+        <div class="notification-tabs">
+            <button class="notification-tab-btn active" data-notif-tab="all">All</button>
+            <button class="notification-tab-btn" data-notif-tab="lemmy">
+                <span class="tab-icon">${ICONS.lemmy}</span>
+                Lemmy
+            </button>
+            <button class="notification-tab-btn" data-notif-tab="mastodon">
+                <span class="tab-icon">${ICONS.mastodon}</span>
+                Mastodon
+            </button>
+        </div>
+        <div id="all-notifications-content" class="notification-tab-content active">
+            <div class="loading-spinner"><p>Loading all notifications...</p></div>
+        </div>
+        <div id="lemmy-notifications-content" class="notification-tab-content">
+            <div class="loading-spinner"><p>Loading Lemmy notifications...</p></div>
+        </div>
+        <div id="mastodon-notifications-content" class="notification-tab-content">
+            <div class="loading-spinner"><p>Loading Mastodon notifications...</p></div>
+        </div>
+    `;
+
+    // Load notifications
+    const [lemmyNotifs, mastodonNotifs] = await Promise.all([
+        loadLemmyNotifications(state),
+        loadMastodonNotifications(state)
+    ]);
+
+    // Update counts
+    const lemmyUnread = lemmyNotifs.filter(n => !n.read).length;
+    const mastodonUnread = mastodonNotifs.filter(n => !n.read).length;
+    const markAllBtn = document.getElementById('mark-all-read-btn');
+    
+    // Update the stat cards
+    document.getElementById('lemmy-unread-count').textContent = lemmyUnread;
+    document.getElementById('mastodon-notif-count').textContent = mastodonNotifs.length;
+    
+    // Show/hide stat cards based on login status
+    const lemmyStatCard = document.querySelector('.lemmy-stat');
+    const mastodonStatCard = document.querySelector('.mastodon-stat');
+    
+    if (!localStorage.getItem('lemmy_jwt')) {
+        lemmyStatCard.style.display = 'none';
     }
     
-    .notification-tab-btn .tab-icon {
-        display: none;
+    if (!localStorage.getItem('fediverse-token')) {
+        mastodonStatCard.style.display = 'none';
+    }
+    
+    // Show mark all read button if there are any unread notifications
+    if (lemmyUnread > 0 || mastodonUnread > 0) {
+        markAllBtn.style.display = 'flex';
+    }
+
+    // Render all notifications combined
+    const allContainer = document.getElementById('all-notifications-content');
+    const allNotifs = [
+        ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy' })),
+        ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon' }))
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    allContainer.innerHTML = '';
+    if (allNotifs.length === 0) {
+        allContainer.innerHTML = '<div class="no-notifications"><p>No notifications found.</p></div>';
+    } else {
+        allNotifs.forEach(notification => {
+            const notifElement = renderNotification(notification, notification.type, notification.platform, actions);
+            if (notifElement) {
+                allContainer.appendChild(notifElement);
+            }
+        });
+    }
+
+    // Render Lemmy notifications
+    const lemmyContainer = document.getElementById('lemmy-notifications-content');
+    lemmyContainer.innerHTML = '';
+    if (lemmyNotifs.length === 0) {
+        lemmyContainer.innerHTML = '<div class="no-notifications"><p>No Lemmy notifications found.</p></div>';
+    } else {
+        lemmyNotifs.forEach(notification => {
+            const notifElement = renderNotification(notification, notification.type, 'lemmy', actions);
+            if (notifElement) {
+                lemmyContainer.appendChild(notifElement);
+            }
+        });
+    }
+
+    // Render Mastodon notifications
+    const mastodonContainer = document.getElementById('mastodon-notifications-content');
+    mastodonContainer.innerHTML = '';
+    if (mastodonNotifs.length === 0) {
+        mastodonContainer.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
+    } else {
+        mastodonNotifs.forEach(notification => {
+            const notifElement = renderNotification(notification, notification.type, 'mastodon', actions);
+            if (notifElement) {
+                mastodonContainer.appendChild(notifElement);
+            }
+        });
+    }
+
+    // Tab switching
+    const tabs = container.querySelectorAll('.notification-tab-btn');
+    const contents = container.querySelectorAll('.notification-tab-content');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.notifTab;
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            
+            tab.classList.add('active');
+            document.getElementById(`${targetTab}-notifications-content`).classList.add('active');
+        });
+    });
+
+    // Mark all read button - now marks both Lemmy and Mastodon
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', async () => {
+            await markAllAsRead(lemmyNotifs, mastodonNotifs);
+            // Refresh the page
+            await renderNotificationsPage(state, actions);
+        });
     }
 }
