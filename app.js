@@ -335,9 +335,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderSearchResults(state, `#${tagName}`);
             hideLoadingBar();
         },
-        showSettings: () => {
+      showSettings: async () => {
             switchView('settings');
-            renderSettingsPage(state);
+            await renderSettingsPage(state);
         },
         showNotifications: async () => {
             showLoadingBar();
