@@ -85,7 +85,7 @@
 }
 
 [data-theme="gitt"] {
-   --bg-color: #0b1416;
+    --bg-color: #0b1416;
     --card-color: #161b22;
     --primary-color: #161b22;
     --accent-color: #58a6ff;
@@ -93,7 +93,7 @@
     --font-color-muted: #8b949e;
     --border-color: #161b22;
     --link-color: #58a6ff;
-    --hover-color: #5c0000;
+    --hover-color: #163b5e;
     --success-color: #46d160;
     --error-color: #ea0027;
     --warning-color: #ffd23f;
