@@ -19,11 +19,11 @@
 [data-theme="black"] {
     --bg-color: #000000;
     --card-color: #000000;
-    --primary-color: #36253c;
+    --primary-color: #0e0a0f;
     --accent-color: #220202;
     --font-color: #ffffff;
     --font-color-muted: #ffffff;
-    --border-color: #393f4f;
+    --border-color: #1b1c1d;
     --link-color: #ededed;
     --hover-color: #461b1b;
     --success-color: #073b11;
