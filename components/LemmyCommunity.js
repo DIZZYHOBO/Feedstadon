@@ -83,6 +83,9 @@ function renderLemmyPostCard(postView) {
 
 export async function renderLemmyCommunityPage(view, communityNameWithInstance) {
     try {
+        // Debug: log what we're receiving
+        console.log('renderLemmyCommunityPage received:', communityNameWithInstance, 'Type:', typeof communityNameWithInstance);
+        
         // Ensure we have a valid string input
         let communityString = '';
         
@@ -91,20 +94,58 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
             communityString = communityNameWithInstance;
         } else if (communityNameWithInstance && typeof communityNameWithInstance === 'object') {
             // If it's an object, try to extract community name and instance
+            console.log('Object properties:', Object.keys(communityNameWithInstance));
+            
+            // Check for various possible property names
             if (communityNameWithInstance.name) {
                 communityString = communityNameWithInstance.name;
                 if (communityNameWithInstance.instance) {
                     communityString += '@' + communityNameWithInstance.instance;
+                } else if (communityNameWithInstance.actor_id) {
+                    // Extract instance from actor_id URL
+                    const url = new URL(communityNameWithInstance.actor_id);
+                    communityString += '@' + url.hostname;
                 }
             } else if (communityNameWithInstance.community) {
-                communityString = communityNameWithInstance.community;
+                // Handle community_view objects
+                if (typeof communityNameWithInstance.community === 'object') {
+                    const comm = communityNameWithInstance.community;
+                    communityString = comm.name;
+                    if (comm.actor_id) {
+                        const url = new URL(comm.actor_id);
+                        communityString += '@' + url.hostname;
+                    }
+                } else {
+                    communityString = communityNameWithInstance.community;
+                }
+            } else {
+                // Try to use the object directly if it has toString
+                communityString = String(communityNameWithInstance);
             }
+        } else if (communityNameWithInstance === undefined || communityNameWithInstance === null) {
+            // If nothing provided, try to get from URL or state
+            const urlParams = new URLSearchParams(window.location.search);
+            communityString = urlParams.get('community') || '';
+        } else {
+            // Convert to string as last resort
+            communityString = String(communityNameWithInstance);
+        }
+        
+        // Clean up the community string
+        communityString = communityString.trim();
+        
+        // Remove any leading '!' if present
+        if (communityString.startsWith('!')) {
+            communityString = communityString.substring(1);
         }
         
         // Validate we have something to work with
         if (!communityString) {
-            throw new Error('Invalid community identifier provided');
+            console.error('No valid community identifier could be extracted from:', communityNameWithInstance);
+            throw new Error('No community specified');
         }
+        
+        console.log('Processing community string:', communityString);
         
         // Parse the community name and instance
         const [name, instance] = communityString.includes('@') 
@@ -114,8 +155,10 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
         const lemmyInstance = instance || localStorage.getItem('lemmy_instance');
         
         if (!lemmyInstance) {
-            throw new Error('No Lemmy instance configured');
+            throw new Error('No Lemmy instance configured. Please log in to a Lemmy instance first.');
         }
+        
+        console.log('Fetching community:', name, 'from instance:', lemmyInstance);
         
         view.innerHTML = '<div class="loading-spinner">Loading community...</div>';
         
