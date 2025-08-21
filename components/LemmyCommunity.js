@@ -129,6 +129,33 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
         const communityView = data.community_view;
         const community = communityView.community;
         
+        // Check subscription status if logged in
+        let actualSubscriptionStatus = communityView.subscribed;
+        const isLoggedIn = localStorage.getItem('lemmy_jwt');
+        
+        if (isLoggedIn) {
+            const userInstance = localStorage.getItem('lemmy_instance');
+            
+            // If viewing a remote community, check subscription status on user's instance
+            const communityInstance = new URL(community.actor_id).hostname;
+            if (communityInstance !== userInstance) {
+                try {
+                    // Try to resolve the community on the user's instance to get accurate subscription status
+                    const resolveResponse = await apiFetch(userInstance, null, '/api/v3/resolve_object', {}, 'lemmy', {
+                        q: community.actor_id
+                    });
+                    
+                    if (resolveResponse.data && resolveResponse.data.community) {
+                        actualSubscriptionStatus = resolveResponse.data.community.subscribed;
+                        // Update the communityView with the correct subscription status
+                        communityView.subscribed = actualSubscriptionStatus;
+                    }
+                } catch (error) {
+                    console.log('Could not check subscription status on home instance, using remote status');
+                }
+            }
+        }
+        
         // Fetch posts
         const postsResponse = await apiFetch(lemmyInstance, null, '/api/v3/post/list', {}, 'lemmy', { 
             community_name: name, 
@@ -138,15 +165,15 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
         
         // Create the buttons - Subscribe and New Post
         let actionButtons = '';
-        const isLoggedIn = localStorage.getItem('lemmy_jwt');
         
         if (isLoggedIn) {
-            const isSubscribed = communityView.subscribed === 'Subscribed' || communityView.subscribed === 'Pending';
+            const isSubscribed = actualSubscriptionStatus === 'Subscribed' || actualSubscriptionStatus === 'Pending';
             actionButtons = `
                 <div class="community-action-buttons" style="display: flex; gap: 10px;">
                     <button class="button subscribe-btn ${isSubscribed ? 'subscribed' : ''}" 
-                            data-community-id="${community.id}">
-                        ${isSubscribed ? 'Unsubscribed' : 'Subscribe'}
+                            data-community-id="${community.id}"
+                            data-subscription-status="${actualSubscriptionStatus || 'NotSubscribed'}">
+                        ${isSubscribed ? 'Unsubscribe' : 'Subscribe'}
                     </button>
                     <button class="button new-post-btn" 
                             data-community="${community.name}@${new URL(community.actor_id).hostname}">
@@ -357,7 +384,8 @@ function setupCommunityEventListeners(view, communityView) {
                 if (response.data) {
                     const newSubscribedState = response.data.community_view.subscribed === 'Subscribed' || response.data.community_view.subscribed === 'Pending';
                     subscribeBtn.classList.toggle('subscribed', newSubscribedState);
-                    subscribeBtn.textContent = newSubscribedState ? 'Unsubscribed' : 'Subscribe';
+                    subscribeBtn.textContent = newSubscribedState ? 'Unsubscribe' : 'Subscribe';
+                    subscribeBtn.dataset.subscriptionStatus = response.data.community_view.subscribed || 'NotSubscribed';
                     
                     // Update stats if needed
                     const statsElement = view.querySelector('.stats span:first-child strong');
@@ -372,7 +400,7 @@ function setupCommunityEventListeners(view, communityView) {
                 showToast(error.message || 'Failed to update subscription');
                 // Reset button text based on current state
                 const isSubscribed = subscribeBtn.classList.contains('subscribed');
-                subscribeBtn.textContent = isSubscribed ? 'Unsubscribed' : 'Subscribe';
+                subscribeBtn.textContent = isSubscribed ? 'Unsubscribe' : 'Subscribe';
             } finally {
                 subscribeBtn.disabled = false;
             }
