@@ -323,11 +323,52 @@ function setupCommunityEventListeners(view, communityView) {
                 const isCurrentlySubscribed = subscribeBtn.classList.contains('subscribed');
                 const communityId = parseInt(subscribeBtn.dataset.communityId);
                 
-                const lemmyInstance = localStorage.getItem('lemmy_instance');
-                const response = await apiFetch(lemmyInstance, null, '/api/v3/community/follow', {
+                const userInstance = localStorage.getItem('lemmy_instance');
+                const community = communityView.community;
+                
+                // If this is a remote community, we need to resolve it on the user's instance first
+                let localCommunityId = communityId;
+                
+                // Check if this community is from a different instance
+                const communityInstance = new URL(community.actor_id).hostname;
+                if (communityInstance !== userInstance) {
+                    try {
+                        // First, try to resolve the community on the user's instance
+                        const resolveResponse = await apiFetch(userInstance, null, '/api/v3/resolve_object', {}, 'lemmy', {
+                            q: community.actor_id
+                        });
+                        
+                        if (resolveResponse.data && resolveResponse.data.community) {
+                            localCommunityId = resolveResponse.data.community.community.id;
+                        } else {
+                            throw new Error('Could not resolve community on your instance');
+                        }
+                    } catch (resolveError) {
+                        console.error('Failed to resolve community:', resolveError);
+                        // Try alternative: search for the community
+                        try {
+                            const searchResponse = await apiFetch(userInstance, null, '/api/v3/search', {}, 'lemmy', {
+                                q: `!${community.name}@${communityInstance}`,
+                                type_: 'Communities',
+                                limit: 1
+                            });
+                            
+                            if (searchResponse.data && searchResponse.data.communities && searchResponse.data.communities.length > 0) {
+                                localCommunityId = searchResponse.data.communities[0].community.id;
+                            } else {
+                                throw new Error('Community not found on your instance. It may need to be fetched first.');
+                            }
+                        } catch (searchError) {
+                            throw new Error('Could not find community on your instance. Try searching for it first to federate it.');
+                        }
+                    }
+                }
+                
+                // Now subscribe/unsubscribe using the correct community ID
+                const response = await apiFetch(userInstance, null, '/api/v3/community/follow', {
                     method: 'POST',
                     body: { 
-                        community_id: communityId, 
+                        community_id: localCommunityId, 
                         follow: !isCurrentlySubscribed 
                     }
                 }, 'lemmy');
@@ -339,7 +380,7 @@ function setupCommunityEventListeners(view, communityView) {
                     
                     // Update stats if needed
                     const statsElement = view.querySelector('.stats span:first-child strong');
-                    if (statsElement) {
+                    if (statsElement && response.data.community_view.counts) {
                         statsElement.textContent = response.data.community_view.counts.subscribers;
                     }
                     
@@ -347,7 +388,7 @@ function setupCommunityEventListeners(view, communityView) {
                 }
             } catch (error) {
                 console.error('Failed to update subscription:', error);
-                showToast('Failed to update subscription');
+                showToast(error.message || 'Failed to update subscription');
                 // Reset button text
                 const isSubscribed = subscribeBtn.classList.contains('subscribed');
                 subscribeBtn.textContent = isSubscribed ? 'Unsubscribe' : 'Subscribe';
