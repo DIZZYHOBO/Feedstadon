@@ -433,5 +433,3 @@ function setupPostEventHandlers(view) {
         }
     });
 }
-
-// No need to export again - already exported at the top with the function declaration
