@@ -1,6 +1,7 @@
 // components/LemmyCommunity.js
 
 import { apiFetch } from './api.js';
+import { renderLemmyCard } from './Lemmy.js'; // Import the proper rendering function
 
 // Simple toast notification function
 function showToast(message, type = 'info') {
@@ -40,45 +41,6 @@ function showToast(message, type = 'info') {
         toast.style.transition = 'opacity 0.3s';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
-}
-
-// We'll create a simple inline function to render posts
-function renderLemmyPostCard(postView) {
-    const post = postView.post;
-    const creator = postView.creator;
-    const community = postView.community;
-    const counts = postView.counts;
-    
-    // Create a simple post card HTML
-    return `
-        <div class="status lemmy-card" data-post-id="${post.id}">
-            <div class="status-body-content">
-                <div class="status-header">
-                    <div class="status-header-main">
-                        <img class="avatar" src="${creator.avatar || './images/logo.png'}" alt="avatar" style="width: 40px; height: 40px; border-radius: var(--border-radius);">
-                        <div>
-                            <div class="display-name">${creator.display_name || creator.name}</div>
-                            <div class="acct">@${creator.name} · ${community.name}</div>
-                        </div>
-                    </div>
-                </div>
-                ${post.name ? `<div class="lemmy-title">${post.name}</div>` : ''}
-                ${post.body ? `<div class="status-content">${post.body.substring(0, 300)}${post.body.length > 300 ? '...' : ''}</div>` : ''}
-                ${post.url && post.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 
-                    `<div class="status-media"><img src="${post.url}" alt="Post image" style="width: 100%; border-radius: var(--border-radius);"></div>` : 
-                    ''}
-                ${post.url && !post.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 
-                    `<div class="status-card"><a href="${post.url}" target="_blank" rel="noopener">${post.url}</a></div>` : 
-                    ''}
-                <div class="status-footer">
-                    <button class="status-action">↑ ${counts.upvotes}</button>
-                    <button class="status-action">↓ ${counts.downvotes}</button>
-                    <button class="status-action">💬 ${counts.comments}</button>
-                    <button class="status-action">↗️ Share</button>
-                </div>
-            </div>
-        </div>
-    `;
 }
 
 export async function renderLemmyCommunityPage(view, communityNameWithInstance) {
@@ -179,12 +141,12 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
         const isLoggedIn = localStorage.getItem('lemmy_jwt');
         
         if (isLoggedIn) {
-            const isSubscribed = communityView.subscribed === 'Subscribed';
+            const isSubscribed = communityView.subscribed === 'Subscribed' || communityView.subscribed === 'Pending';
             actionButtons = `
                 <div class="community-action-buttons" style="display: flex; gap: 10px;">
                     <button class="button subscribe-btn ${isSubscribed ? 'subscribed' : ''}" 
                             data-community-id="${community.id}">
-                        ${isSubscribed ? 'Unsubscribe' : 'Subscribe'}
+                        ${isSubscribed ? 'Unsubscribed' : 'Subscribe'}
                     </button>
                     <button class="button new-post-btn" 
                             data-community="${community.name}@${new URL(community.actor_id).hostname}">
@@ -265,7 +227,15 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
             <div class="profile-feed">
                 <div class="profile-feed-content" id="community-posts">
                     ${posts.length > 0 ? 
-                        posts.map(post => renderLemmyPostCard(post)).join('') : 
+                        posts.map(post => {
+                            // Use renderLemmyCard if available, otherwise use the simple card
+                            if (typeof renderLemmyCard === 'function') {
+                                return renderLemmyCard(post);
+                            } else {
+                                // Fallback to simple rendering if renderLemmyCard is not available
+                                return renderLemmyPostCard(post);
+                            }
+                        }).join('') : 
                         '<div class="empty-feed-message">No posts yet</div>'
                     }
                 </div>
@@ -374,9 +344,9 @@ function setupCommunityEventListeners(view, communityView) {
                 }, 'lemmy');
                 
                 if (response.data) {
-                    const newSubscribedState = response.data.community_view.subscribed === 'Subscribed';
+                    const newSubscribedState = response.data.community_view.subscribed === 'Subscribed' || response.data.community_view.subscribed === 'Pending';
                     subscribeBtn.classList.toggle('subscribed', newSubscribedState);
-                    subscribeBtn.textContent = newSubscribedState ? 'Unsubscribe' : 'Subscribe';
+                    subscribeBtn.textContent = newSubscribedState ? 'Unsubscribed' : 'Subscribe';
                     
                     // Update stats if needed
                     const statsElement = view.querySelector('.stats span:first-child strong');
@@ -389,9 +359,9 @@ function setupCommunityEventListeners(view, communityView) {
             } catch (error) {
                 console.error('Failed to update subscription:', error);
                 showToast(error.message || 'Failed to update subscription');
-                // Reset button text
+                // Reset button text based on current state
                 const isSubscribed = subscribeBtn.classList.contains('subscribed');
-                subscribeBtn.textContent = isSubscribed ? 'Unsubscribe' : 'Subscribe';
+                subscribeBtn.textContent = isSubscribed ? 'Unsubscribed' : 'Subscribe';
             } finally {
                 subscribeBtn.disabled = false;
             }
@@ -474,3 +444,5 @@ function setupPostEventHandlers(view) {
         }
     });
 }
+
+// No need to export again - already exported at the top with the function declaration
