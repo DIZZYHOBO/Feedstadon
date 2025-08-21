@@ -1,9 +1,47 @@
 // components/LemmyCommunity.js
 
 import { apiFetch } from './api.js';
-// Fix: LemmyPost.js uses a named export, not default
-import { renderLemmyPost } from './LemmyPost.js';
 import { showToast } from './utils.js';
+// Remove the import for renderLemmyPost since it doesn't exist
+
+// We'll create a simple inline function to render posts
+function renderLemmyPostCard(postView) {
+    const post = postView.post;
+    const creator = postView.creator;
+    const community = postView.community;
+    const counts = postView.counts;
+    
+    // Create a simple post card HTML
+    return `
+        <div class="status lemmy-card" data-post-id="${post.id}">
+            <div class="status-body-content">
+                <div class="status-header">
+                    <div class="status-header-main">
+                        <img class="avatar" src="${creator.avatar || './images/logo.png'}" alt="avatar" style="width: 40px; height: 40px; border-radius: var(--border-radius);">
+                        <div>
+                            <div class="display-name">${creator.display_name || creator.name}</div>
+                            <div class="acct">@${creator.name} · ${community.name}</div>
+                        </div>
+                    </div>
+                </div>
+                ${post.name ? `<div class="lemmy-title">${post.name}</div>` : ''}
+                ${post.body ? `<div class="status-content">${post.body.substring(0, 300)}${post.body.length > 300 ? '...' : ''}</div>` : ''}
+                ${post.url && post.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 
+                    `<div class="status-media"><img src="${post.url}" alt="Post image" style="width: 100%; border-radius: var(--border-radius);"></div>` : 
+                    ''}
+                ${post.url && !post.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 
+                    `<div class="status-card"><a href="${post.url}" target="_blank" rel="noopener">${post.url}</a></div>` : 
+                    ''}
+                <div class="status-footer">
+                    <button class="status-action">↑ ${counts.upvotes}</button>
+                    <button class="status-action">↓ ${counts.downvotes}</button>
+                    <button class="status-action">💬 ${counts.comments}</button>
+                    <button class="status-action">↗️ Share</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
 export async function renderLemmyCommunityPage(view, communityNameWithInstance) {
     try {
@@ -119,7 +157,7 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
             <div class="profile-feed">
                 <div class="profile-feed-content" id="community-posts">
                     ${posts.length > 0 ? 
-                        posts.map(post => renderLemmyPost(post)).join('') : 
+                        posts.map(post => renderLemmyPostCard(post)).join('') : 
                         '<div class="empty-feed-message">No posts yet</div>'
                     }
                 </div>
