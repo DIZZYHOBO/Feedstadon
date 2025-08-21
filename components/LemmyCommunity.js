@@ -1,8 +1,8 @@
 // components/LemmyCommunity.js
 
 import { apiFetch } from './api.js';
-// Fix: LemmyPost.js likely has a default export, not a named export
-import renderLemmyPost from './LemmyPost.js';
+// Fix: LemmyPost.js uses a named export, not default
+import { renderLemmyPost } from './LemmyPost.js';
 import { showToast } from './utils.js';
 
 export async function renderLemmyCommunityPage(view, communityNameWithInstance) {
