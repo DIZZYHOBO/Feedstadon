@@ -1,8 +1,46 @@
 // components/LemmyCommunity.js
 
 import { apiFetch } from './api.js';
-import { showToast } from './utils.js';
-// Remove the import for renderLemmyPost since it doesn't exist
+
+// Simple toast notification function
+function showToast(message, type = 'info') {
+    // Check if there's a global showToast function
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type);
+        return;
+    }
+    
+    // Otherwise, create a simple toast
+    const existingToast = document.getElementById('toast-notification');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    const toast = document.createElement('div');
+    toast.id = 'toast-notification';
+    toast.className = `toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        z-index: 3000;
+        background-color: ${type === 'error' ? '#ea0027' : type === 'success' ? '#46d160' : '#0084ff'};
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
 // We'll create a simple inline function to render posts
 function renderLemmyPostCard(postView) {
