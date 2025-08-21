@@ -16,6 +16,23 @@
     --info-color: #0084ff;
 }
 
+[data-theme="black"] {
+    --bg-color: #000000;
+    --card-color: #000000;
+    --primary-color: #36253c;
+    --accent-color: #220202;
+    --font-color: #ffffff;
+    --font-color-muted: #ffffff;
+    --border-color: #393f4f;
+    --link-color: #ededed;
+    --hover-color: #461b1b;
+    --success-color: #073b11;
+    --error-color: #5f0211;
+    --warning-color: #974a21;
+    --info-color: #01376a;
+    --border-radius: 1px;
+}
+
 [data-theme="feedstodon"] {
     --bg-color: #1a1a1b;
     --card-color: #272729;
