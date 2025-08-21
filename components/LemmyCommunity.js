@@ -83,12 +83,39 @@ function renderLemmyPostCard(postView) {
 
 export async function renderLemmyCommunityPage(view, communityNameWithInstance) {
     try {
+        // Ensure we have a valid string input
+        let communityString = '';
+        
+        // Handle different input types
+        if (typeof communityNameWithInstance === 'string') {
+            communityString = communityNameWithInstance;
+        } else if (communityNameWithInstance && typeof communityNameWithInstance === 'object') {
+            // If it's an object, try to extract community name and instance
+            if (communityNameWithInstance.name) {
+                communityString = communityNameWithInstance.name;
+                if (communityNameWithInstance.instance) {
+                    communityString += '@' + communityNameWithInstance.instance;
+                }
+            } else if (communityNameWithInstance.community) {
+                communityString = communityNameWithInstance.community;
+            }
+        }
+        
+        // Validate we have something to work with
+        if (!communityString) {
+            throw new Error('Invalid community identifier provided');
+        }
+        
         // Parse the community name and instance
-        const [name, instance] = communityNameWithInstance.includes('@') 
-            ? communityNameWithInstance.split('@') 
-            : [communityNameWithInstance, localStorage.getItem('lemmy_instance')];
+        const [name, instance] = communityString.includes('@') 
+            ? communityString.split('@') 
+            : [communityString, localStorage.getItem('lemmy_instance')];
         
         const lemmyInstance = instance || localStorage.getItem('lemmy_instance');
+        
+        if (!lemmyInstance) {
+            throw new Error('No Lemmy instance configured');
+        }
         
         view.innerHTML = '<div class="loading-spinner">Loading community...</div>';
         
