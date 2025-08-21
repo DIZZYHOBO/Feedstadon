@@ -489,7 +489,7 @@ export async function fetchLemmyFeed(state, actions, loadMore = false, onLemmySu
         const params = {
             sort: state.currentLemmySort,
             page: loadMore ? state.lemmyPage + 1 : 1,
-            limit: 20,
+            limit: 4,
             type_: state.currentLemmyFeed
         };
         
