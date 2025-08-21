@@ -2857,11 +2857,12 @@ select:focus {
     margin-left: 10px;
 }
 
+/* Simple spin animation for other elements */
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
-/* Refresh Spinner */
+/* Refresh Spinner - ANIMATION REMOVED */
 #refresh-spinner {
     display: none;
     position: fixed;
@@ -2874,15 +2875,17 @@ select:focus {
 #refresh-spinner .icon {
     width: 40px;
     height: 40px;
-    animation: spin 1s linear infinite;
+    /* Animation removed - no spinning */
 }
 
-#refresh-btn.loading {
-    animation: spin 1s linear infinite;
+/* Refresh button - NO ANIMATION */
+#refresh-btn:active {
+    opacity: 0.7; /* Just a simple press feedback */
 }
 
-.refresher {
-    animation: spin 1s linear infinite;
+#refresh-btn:active .icon {
+    /* No animation - just subtle feedback */
+    opacity: 0.8;
 }
 
 /* Pull to Refresh */
