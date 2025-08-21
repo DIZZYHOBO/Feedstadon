@@ -288,5 +288,4 @@ function setupPostEventHandlers(view) {
     });
 }
 
-// Export the main function
-export { renderLemmyCommunityPage };
+// No need to export again - already exported at the top with the function declaration
