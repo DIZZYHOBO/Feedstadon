@@ -376,12 +376,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderPublicLemmyPostPage(state, postView, actions, instance);
             hideLoadingBar();
         },
-        showLemmyCommunity: async (communityName) => {
-            showLoadingBar();
-            switchView('lemmyCommunity');
-            await renderLemmyCommunityPage(state, actions, communityName);
-            hideLoadingBar();
-        },
+       showLemmyCommunity: async (communityName) => {
+    const view = document.getElementById('app-view');
+    await renderLemmyCommunityPage(view, communityName); // Pass communityName, not actions!
+},
         showMergedPost: async (post) => {
             showLoadingBar();
             switchView('mergedPost');
