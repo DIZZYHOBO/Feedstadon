@@ -226,24 +226,35 @@ export async function renderLemmyCommunityPage(view, communityNameWithInstance) 
             </div>
             <div class="profile-feed">
                 <div class="profile-feed-content" id="community-posts">
-                    ${posts.length > 0 ? 
-                        posts.map(post => {
-                            // Use renderLemmyCard if available, otherwise use the simple card
-                            if (typeof renderLemmyCard === 'function') {
-                                return renderLemmyCard(post);
-                            } else {
-                                // Fallback to simple rendering if renderLemmyCard is not available
-                                return renderLemmyPostCard(post);
-                            }
-                        }).join('') : 
-                        '<div class="empty-feed-message">No posts yet</div>'
-                    }
+                    <!-- Posts will be added here -->
                 </div>
             </div>
         `;
         
         // Add event listeners for the buttons
         setupCommunityEventListeners(view, communityView);
+        
+        // Now render the posts into the container
+        const postsContainer = view.querySelector('#community-posts');
+        if (postsContainer && posts.length > 0) {
+            postsContainer.innerHTML = ''; // Clear the container
+            
+            posts.forEach(post => {
+                if (typeof renderLemmyCard === 'function') {
+                    // renderLemmyCard returns a DOM element, so append it directly
+                    const postElement = renderLemmyCard(post);
+                    if (postElement) {
+                        postsContainer.appendChild(postElement);
+                    }
+                } else {
+                    // Fallback: create a simple post card as HTML
+                    const postHtml = renderLemmyPostCard(post);
+                    postsContainer.insertAdjacentHTML('beforeend', postHtml);
+                }
+            });
+        } else if (postsContainer && posts.length === 0) {
+            postsContainer.innerHTML = '<div class="empty-feed-message">No posts yet</div>';
+        }
         
         // Handle "read more" for description
         const readMoreLink = view.querySelector('.read-more-bio');
