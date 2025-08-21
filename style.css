@@ -3110,3 +3110,169 @@ div, section, article, aside, header, footer, nav {
 .flex {
     display: flex !important;
 }
+
+
+/* Community Action Buttons */
+.community-action-buttons {
+    padding: 0 20px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Subscribe/Unsubscribe Button */
+.subscribe-btn {
+    background-color: var(--primary-color) !important;
+    color: var(--font-color) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 120px;
+    text-align: center;
+}
+
+.subscribe-btn:hover {
+    background-color: var(--hover-color) !important;
+    transform: translateY(-1px);
+}
+
+.subscribe-btn.subscribed {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+    border-color: var(--accent-color) !important;
+}
+
+.subscribe-btn.subscribed:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.subscribe-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* New Post Button */
+.new-post-btn {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+    border: 1px solid var(--accent-color) !important;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 120px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.new-post-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.new-post-btn:active {
+    transform: translateY(0);
+}
+
+/* Community Bio Styles */
+.community-bio {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    color: var(--font-color) !important;
+}
+
+.bio-truncated,
+.bio-full {
+    color: var(--font-color) !important;
+}
+
+.bio-full {
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+}
+
+.read-more-bio {
+    display: block;
+    text-align: right;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--accent-color) !important;
+    margin-top: 5px;
+    text-decoration: none;
+}
+
+.read-more-bio:hover {
+    text-decoration: underline;
+}
+
+/* Profile Actions Container */
+.profile-actions {
+    padding: 0 20px 20px;
+}
+
+/* Empty Feed Message */
+.empty-feed-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--font-color-muted) !important;
+    font-style: italic;
+    background-color: var(--card-color) !important;
+    border-radius: var(--border-radius);
+    margin: 10px 0;
+}
+
+/* Error Container */
+.error-container {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: var(--card-color) !important;
+    border-radius: var(--border-radius);
+    margin: 20px 0;
+}
+
+.error-container h3 {
+    color: var(--error-color) !important;
+    margin-bottom: 10px;
+}
+
+.error-container p {
+    color: var(--font-color-muted) !important;
+    margin-bottom: 20px;
+}
+
+.error-container .button {
+    background-color: var(--primary-color) !important;
+    color: var(--font-color) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.error-container .button:hover {
+    background-color: var(--hover-color) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .community-action-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .subscribe-btn,
+    .new-post-btn {
+        width: 100%;
+    }
+}
