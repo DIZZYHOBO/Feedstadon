@@ -54,21 +54,31 @@ async function captureScreenshot() {
 
 function getCommentChain(targetCommentId, allComments) {
     const commentMap = {};
+    
+    // Ensure we're working with numbers
+    const numericTargetId = parseInt(targetCommentId, 10);
+    
+    // Create lookup map
     allComments.forEach(comment => {
         commentMap[comment.comment.id] = comment;
     });
     
-    const targetComment = commentMap[targetCommentId];
+    const targetComment = commentMap[numericTargetId];
     if (!targetComment) {
-        console.error('Target comment not found:', targetCommentId);
+        console.error('Target comment not found:', numericTargetId);
+        console.error('Available IDs:', Object.keys(commentMap));
         return { parents: [], target: null, replies: [] };
     }
     
-    // Get parent chain - walk up the tree
+    console.log('Target comment found:', targetComment);
+    console.log('Target comment path:', targetComment.comment.path);
+    
+    // Get parent chain - walk up the tree using parent_id
     const parents = [];
     let current = targetComment;
     while (current && current.comment.parent_id) {
-        const parent = commentMap[current.comment.parent_id];
+        const parentId = current.comment.parent_id;
+        const parent = commentMap[parentId];
         if (parent) {
             parents.unshift(parent); // Add to beginning to maintain order
             current = parent;
@@ -78,14 +88,44 @@ function getCommentChain(targetCommentId, allComments) {
     }
     
     // Get ALL direct replies to the target comment
-    const replies = allComments.filter(c => {
-        // Check if this comment is a direct reply to our target
-        return c.comment.parent_id === targetCommentId;
-    }).sort((a, b) => 
+    // Method 1: Check by parent_id
+    let replies = allComments.filter(c => {
+        return c.comment.parent_id === numericTargetId;
+    });
+    
+    // Method 2: If no replies found, try using the path system
+    if (replies.length === 0 && targetComment.comment.path) {
+        const targetPath = targetComment.comment.path;
+        const targetPathDepth = targetPath.split('.').length;
+        
+        replies = allComments.filter(comment => {
+            // Skip the target comment itself
+            if (comment.comment.id === numericTargetId) {
+                return false;
+            }
+            
+            // Check if this comment's path indicates it's a child of our target
+            const commentPath = comment.comment.path;
+            
+            // The path should start with our target's path plus a dot
+            if (!commentPath.startsWith(targetPath + '.')) {
+                return false;
+            }
+            
+            // Check if it's a direct child (one level deeper)
+            const commentPathDepth = commentPath.split('.').length;
+            return commentPathDepth === targetPathDepth + 1;
+        });
+    }
+    
+    // Sort replies by creation time (oldest first)
+    replies.sort((a, b) => 
         new Date(a.comment.published) - new Date(b.comment.published)
     );
     
-    console.log(`Found ${parents.length} parents and ${replies.length} replies for comment ${targetCommentId}`);
+    console.log(`Found ${parents.length} parents and ${replies.length} replies for comment ${numericTargetId}`);
+    console.log('Parents:', parents.map(p => ({ id: p.comment.id, author: p.creator.name })));
+    console.log('Replies:', replies.map(r => ({ id: r.comment.id, author: r.creator.name })));
     
     return { parents, target: targetComment, replies };
 }
@@ -102,6 +142,10 @@ function renderScreenshotContent(state, actions) {
     
     screenshotContent.innerHTML = '';
     screenshotContent.style.background = 'transparent';
+    
+    console.log('Current comment view:', currentCommentView);
+    console.log('Current post view:', currentPostView);
+    console.log('All comments available:', allComments.length);
     
     // Render the main post
     const postCard = renderLemmyCard(currentPostView, actions);
@@ -126,11 +170,9 @@ function renderScreenshotContent(state, actions) {
     const footer = postCard.querySelector('.status-footer');
     if (footer) footer.remove();
     
-    // Remove options button
     const optionsBtn = postCard.querySelector('.post-options-btn');
     if (optionsBtn) optionsBtn.remove();
     
-    // Remove quick reply container if it exists
     const quickReply = postCard.querySelector('.quick-reply-container');
     if (quickReply) quickReply.remove();
     
@@ -143,23 +185,28 @@ function renderScreenshotContent(state, actions) {
     }
     
     const chain = getCommentChain(currentCommentView.comment.id, allComments);
+    console.log('Comment chain built:', chain);
+    
     const commentsToShow = [];
     
     // Add comments based on toggle states
     if (includeParents && chain.parents.length > 0) {
+        console.log('Including', chain.parents.length, 'parent comments');
         commentsToShow.push(...chain.parents);
     }
     
-    // Always include the target comment (the one that initiated the screenshot)
+    // Always include the target comment
     if (chain.target) {
+        console.log('Including target comment');
         commentsToShow.push(chain.target);
     }
     
     if (includeReplies && chain.replies.length > 0) {
+        console.log('Including', chain.replies.length, 'reply comments');
         commentsToShow.push(...chain.replies);
     }
     
-    console.log('Comments to show:', commentsToShow.length);
+    console.log('Total comments to show:', commentsToShow.length);
     
     // Render comments if any
     if (commentsToShow.length > 0) {
@@ -169,13 +216,14 @@ function renderScreenshotContent(state, actions) {
         screenshotContent.appendChild(separator);
         
         commentsToShow.forEach((commentView, index) => {
+            console.log('Rendering comment:', commentView.comment.id, 'by', commentView.creator.name);
+            
             const commentElement = renderLemmyComment(commentView, state, actions);
             
             // Apply visibility toggles to comments
             if (!showBody) {
                 const contentElements = commentElement.querySelectorAll('.status-content');
                 contentElements.forEach(el => {
-                    // Hide all text content but keep images if they're enabled
                     el.childNodes.forEach(node => {
                         if (node.nodeType === Node.TEXT_NODE) {
                             const span = document.createElement('span');
@@ -197,7 +245,7 @@ function renderScreenshotContent(state, actions) {
                 imageElements.forEach(el => el.style.display = 'none');
             }
             
-            // Highlight the target comment with a left border
+            // Highlight the target comment
             if (commentView.comment.id === currentCommentView.comment.id) {
                 const statusEl = commentElement.querySelector('.status');
                 if (statusEl) {
@@ -332,6 +380,8 @@ export async function renderScreenshotPage(state, commentView, postView, actions
         allComments = response?.data?.comments || [];
         
         console.log(`Loaded ${allComments.length} total comments for post ${postView.post.id}`);
+        console.log('Target comment ID:', commentView.comment.id);
+        console.log('Sample of comment IDs:', allComments.slice(0, 5).map(c => c.comment.id));
         
         // Update comment counts
         const chain = getCommentChain(commentView.comment.id, allComments);
