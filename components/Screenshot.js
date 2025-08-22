@@ -59,27 +59,33 @@ function getCommentChain(targetCommentId, allComments) {
     });
     
     const targetComment = commentMap[targetCommentId];
-    if (!targetComment) return { parents: [], target: null, replies: [] };
+    if (!targetComment) {
+        console.error('Target comment not found:', targetCommentId);
+        return { parents: [], target: null, replies: [] };
+    }
     
-    // Get parent chain
+    // Get parent chain - walk up the tree
     const parents = [];
     let current = targetComment;
     while (current && current.comment.parent_id) {
         const parent = commentMap[current.comment.parent_id];
         if (parent) {
-            parents.unshift(parent);
+            parents.unshift(parent); // Add to beginning to maintain order
             current = parent;
         } else {
             break;
         }
     }
     
-    // Get direct replies
-    const replies = allComments.filter(c => 
-        c.comment.parent_id === targetCommentId
-    ).sort((a, b) => 
+    // Get ALL direct replies to the target comment
+    const replies = allComments.filter(c => {
+        // Check if this comment is a direct reply to our target
+        return c.comment.parent_id === targetCommentId;
+    }).sort((a, b) => 
         new Date(a.comment.published) - new Date(b.comment.published)
     );
+    
+    console.log(`Found ${parents.length} parents and ${replies.length} replies for comment ${targetCommentId}`);
     
     return { parents, target: targetComment, replies };
 }
@@ -124,9 +130,13 @@ function renderScreenshotContent(state, actions) {
     const optionsBtn = postCard.querySelector('.post-options-btn');
     if (optionsBtn) optionsBtn.remove();
     
+    // Remove quick reply container if it exists
+    const quickReply = postCard.querySelector('.quick-reply-container');
+    if (quickReply) quickReply.remove();
+    
     screenshotContent.appendChild(postCard);
     
-    // Build comment chain - FIXED to ensure we have the comment data
+    // Build comment chain
     if (!currentCommentView || !allComments.length) {
         console.log('No comment data available');
         return;
@@ -135,16 +145,12 @@ function renderScreenshotContent(state, actions) {
     const chain = getCommentChain(currentCommentView.comment.id, allComments);
     const commentsToShow = [];
     
-    // Debug logging
-    console.log('Chain parents:', chain.parents.length);
-    console.log('Chain replies:', chain.replies.length);
-    console.log('Include parents checkbox:', includeParents);
-    console.log('Include replies checkbox:', includeReplies);
-    
+    // Add comments based on toggle states
     if (includeParents && chain.parents.length > 0) {
         commentsToShow.push(...chain.parents);
     }
     
+    // Always include the target comment (the one that initiated the screenshot)
     if (chain.target) {
         commentsToShow.push(chain.target);
     }
@@ -152,6 +158,90 @@ function renderScreenshotContent(state, actions) {
     if (includeReplies && chain.replies.length > 0) {
         commentsToShow.push(...chain.replies);
     }
+    
+    console.log('Comments to show:', commentsToShow.length);
+    
+    // Render comments if any
+    if (commentsToShow.length > 0) {
+        // Add subtle separator between post and comments
+        const separator = document.createElement('div');
+        separator.style.cssText = 'height: 10px; background: transparent;';
+        screenshotContent.appendChild(separator);
+        
+        commentsToShow.forEach((commentView, index) => {
+            const commentElement = renderLemmyComment(commentView, state, actions);
+            
+            // Apply visibility toggles to comments
+            if (!showBody) {
+                const contentElements = commentElement.querySelectorAll('.status-content');
+                contentElements.forEach(el => {
+                    // Hide all text content but keep images if they're enabled
+                    el.childNodes.forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            const span = document.createElement('span');
+                            span.style.display = 'none';
+                            span.textContent = node.textContent;
+                            node.parentNode.replaceChild(span, node);
+                        } else if (node.nodeType === Node.ELEMENT_NODE) {
+                            if (!node.classList.contains('comment-image-wrapper') && 
+                                !node.querySelector('img')) {
+                                node.style.display = 'none';
+                            }
+                        }
+                    });
+                });
+            }
+            
+            if (!showImages) {
+                const imageElements = commentElement.querySelectorAll('img:not(.avatar), .comment-image-wrapper');
+                imageElements.forEach(el => el.style.display = 'none');
+            }
+            
+            // Highlight the target comment with a left border
+            if (commentView.comment.id === currentCommentView.comment.id) {
+                const statusEl = commentElement.querySelector('.status');
+                if (statusEl) {
+                    statusEl.style.borderLeft = '3px solid var(--accent-color)';
+                    statusEl.style.paddingLeft = '12px';
+                }
+            }
+            
+            // Style parent comments with reduced opacity
+            if (chain.parents.includes(commentView)) {
+                commentElement.style.opacity = '0.85';
+            }
+            
+            // Remove all action buttons and interactive elements
+            const elementsToRemove = [
+                '.status-footer',
+                '.lemmy-reply-box-container', 
+                '.lemmy-replies-container',
+                '.view-replies-btn',
+                '.more-options-btn',
+                '.reply-btn',
+                '.share-comment-btn'
+            ];
+            
+            elementsToRemove.forEach(selector => {
+                const element = commentElement.querySelector(selector);
+                if (element) element.remove();
+            });
+            
+            screenshotContent.appendChild(commentElement);
+        });
+    } else {
+        // If no comments to show, add a notice
+        const noComments = document.createElement('div');
+        noComments.style.cssText = `
+            text-align: center;
+            padding: 20px;
+            color: var(--font-color-muted);
+            font-style: italic;
+        `;
+        noComments.textContent = 'No comments selected for screenshot';
+        screenshotContent.appendChild(noComments);
+    }
+}
     
     // Render comments if any
     if (commentsToShow.length > 0) {
@@ -269,8 +359,8 @@ export async function renderScreenshotPage(state, commentView, postView, actions
                     </div>
                     
                     <div class="control-actions">
-                        <button id="capture-screenshot-btn" class="button-primary">
-                            ${ICONS.screenshot || '📸'} Capture Screenshot
+                        <button id="capture-screenshot-btn" class="button-primary capture-btn">
+                            📸 Capture
                         </button>
                     </div>
                 </div>
@@ -297,11 +387,13 @@ export async function renderScreenshotPage(state, commentView, postView, actions
         const response = await apiFetch(
             lemmyInstance, 
             null, 
-            `/api/v3/comment/list?post_id=${postView.post.id}&max_depth=8&sort=Old`, 
+            `/api/v3/comment/list?post_id=${postView.post.id}&max_depth=8&sort=Old&limit=500`, 
             {}, 
             'lemmy'
         );
         allComments = response?.data?.comments || [];
+        
+        console.log(`Loaded ${allComments.length} total comments for post ${postView.post.id}`);
         
         // Update comment counts
         const chain = getCommentChain(commentView.comment.id, allComments);
@@ -315,6 +407,12 @@ export async function renderScreenshotPage(state, commentView, postView, actions
         if (replyCount && chain.replies.length > 0) {
             replyCount.textContent = `(${chain.replies.length})`;
         }
+        
+        console.log('Comment chain built:', {
+            parents: chain.parents.length,
+            target: chain.target ? 'found' : 'missing',
+            replies: chain.replies.length
+        });
         
     } catch (error) {
         console.error('Failed to load comments:', error);
@@ -436,18 +534,17 @@ const screenshotStyles = `
 }
 
 .control-actions {
-    margin-top: auto;
+    margin-top: 15px;
 }
 
-.control-actions button {
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
+.capture-btn {
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    width: auto !important;
+    display: inline-flex !important;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .screenshot-preview-area {
