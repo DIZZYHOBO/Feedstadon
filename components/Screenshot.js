@@ -58,7 +58,7 @@ function getCommentChain(targetCommentId, allComments) {
     // Ensure we're working with numbers
     const numericTargetId = parseInt(targetCommentId, 10);
     
-    // Create lookup map
+    // Create lookup map - map by comment ID
     allComments.forEach(comment => {
         commentMap[comment.comment.id] = comment;
     });
@@ -66,35 +66,75 @@ function getCommentChain(targetCommentId, allComments) {
     const targetComment = commentMap[numericTargetId];
     if (!targetComment) {
         console.error('Target comment not found:', numericTargetId);
-        console.error('Available IDs:', Object.keys(commentMap));
+        console.error('Available IDs:', Object.keys(commentMap).slice(0, 10));
         return { parents: [], target: null, replies: [] };
     }
     
-    console.log('Target comment found:', targetComment);
-    console.log('Target comment path:', targetComment.comment.path);
+    console.log('Target comment found:', {
+        id: targetComment.comment.id,
+        author: targetComment.creator.name,
+        parent_id: targetComment.comment.parent_id,
+        path: targetComment.comment.path
+    });
     
-    // Get parent chain - walk up the tree using parent_id
+    // Build parent chain by walking up using parent_id
     const parents = [];
-    let current = targetComment;
-    while (current && current.comment.parent_id) {
-        const parentId = current.comment.parent_id;
-        const parent = commentMap[parentId];
+    let currentParentId = targetComment.comment.parent_id;
+    
+    // Keep walking up the parent chain
+    while (currentParentId) {
+        console.log('Looking for parent with ID:', currentParentId);
+        const parent = commentMap[currentParentId];
+        
         if (parent) {
-            parents.unshift(parent); // Add to beginning to maintain order
-            current = parent;
+            console.log('Found parent:', {
+                id: parent.comment.id,
+                author: parent.creator.name,
+                parent_id: parent.comment.parent_id
+            });
+            parents.unshift(parent); // Add to beginning to maintain order from top to bottom
+            currentParentId = parent.comment.parent_id; // Move up to next parent
         } else {
+            console.log('Parent not found for ID:', currentParentId);
             break;
         }
     }
     
-    // Get ALL direct replies to the target comment
+    // Alternative method using path if no parents found
+    if (parents.length === 0 && targetComment.comment.path) {
+        console.log('Trying path-based parent search...');
+        const targetPath = targetComment.comment.path;
+        const pathParts = targetPath.split('.');
+        
+        // Remove the last part (which is the target comment's position)
+        // and try to find comments that match parent paths
+        for (let i = pathParts.length - 2; i >= 0; i--) {
+            const parentPath = pathParts.slice(0, i + 1).join('.');
+            
+            // Find comment with this exact path
+            const parentComment = allComments.find(c => c.comment.path === parentPath);
+            if (parentComment && parentComment.comment.id !== numericTargetId) {
+                console.log('Found parent via path:', {
+                    id: parentComment.comment.id,
+                    author: parentComment.creator.name,
+                    path: parentComment.comment.path
+                });
+                parents.unshift(parentComment);
+            }
+        }
+    }
+    
+    // Get direct replies to the target comment
     // Method 1: Check by parent_id
     let replies = allComments.filter(c => {
         return c.comment.parent_id === numericTargetId;
     });
     
+    console.log('Found replies by parent_id:', replies.length);
+    
     // Method 2: If no replies found, try using the path system
     if (replies.length === 0 && targetComment.comment.path) {
+        console.log('Trying path-based reply search...');
         const targetPath = targetComment.comment.path;
         const targetPathDepth = targetPath.split('.').length;
         
@@ -116,6 +156,8 @@ function getCommentChain(targetCommentId, allComments) {
             const commentPathDepth = commentPath.split('.').length;
             return commentPathDepth === targetPathDepth + 1;
         });
+        
+        console.log('Found replies by path:', replies.length);
     }
     
     // Sort replies by creation time (oldest first)
@@ -123,13 +165,25 @@ function getCommentChain(targetCommentId, allComments) {
         new Date(a.comment.published) - new Date(b.comment.published)
     );
     
-    console.log(`Found ${parents.length} parents and ${replies.length} replies for comment ${numericTargetId}`);
-    console.log('Parents:', parents.map(p => ({ id: p.comment.id, author: p.creator.name })));
-    console.log('Replies:', replies.map(r => ({ id: r.comment.id, author: r.creator.name })));
+    console.log('=== Final Chain Summary ===');
+    console.log(`Parents (${parents.length}):`, parents.map(p => ({ 
+        id: p.comment.id, 
+        author: p.creator.name,
+        parent_id: p.comment.parent_id 
+    })));
+    console.log(`Target:`, targetComment ? { 
+        id: targetComment.comment.id, 
+        author: targetComment.creator.name,
+        parent_id: targetComment.comment.parent_id 
+    } : 'none');
+    console.log(`Replies (${replies.length}):`, replies.map(r => ({ 
+        id: r.comment.id, 
+        author: r.creator.name,
+        parent_id: r.comment.parent_id 
+    })));
     
     return { parents, target: targetComment, replies };
 }
-
 function renderScreenshotContent(state, actions) {
     const screenshotContent = document.getElementById('screenshot-content');
     
