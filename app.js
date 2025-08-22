@@ -19,20 +19,6 @@ import { renderLoopsProfilePage } from './components/Loops.js';
 import { shareService } from './components/ShareService.js';
 import { renderShareView } from './components/ShareView.js';
 
-// Add sharing functionality
-function generateShareableUrl(type, data) {
-    const baseUrl = window.location.origin;
-    
-    if (type === 'lemmy-post') {
-        const instance = new URL(data.post.ap_id).hostname;
-        return `${baseUrl}/?share=lemmy-post&instance=${instance}&postId=${data.post.id}`;
-    } else if (type === 'lemmy-comment') {
-        const instance = new URL(data.comment.ap_id).hostname;
-        return `${baseUrl}/?share=lemmy-comment&instance=${instance}&postId=${data.post.id}&commentId=${data.comment.id}`;
-    }
-    return baseUrl;
-}
-
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
         const button = dropdown.querySelector('button');
@@ -102,6 +88,45 @@ function initPullToRefresh(state, actions) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Handle short URLs for sharing
+    const path = window.location.pathname;
+    const shortUrlPattern = /^\/f\/([a-zA-Z0-9]+)$/;
+    const match = path.match(shortUrlPattern);
+    
+    if (match) {
+        const shortId = match[1];
+        const mapping = shareService.resolveShortId(shortId);
+        
+        if (mapping) {
+            // Hide the main app
+            document.getElementById('app-view').style.display = 'none';
+            document.body.classList.add('share-view-mode');
+            
+            // Create share view container
+            const shareContainer = document.createElement('div');
+            shareContainer.id = 'share-view';
+            document.body.appendChild(shareContainer);
+            
+            // Render share view
+            const shareView = await renderShareView(shortId, mapping);
+            shareContainer.appendChild(shareView);
+            
+            // Don't initialize the rest of the app
+            return;
+        } else {
+            // Short URL not found
+            document.getElementById('app-view').style.display = 'none';
+            document.body.innerHTML = `
+                <div class="share-error-view">
+                    <h2>Link Not Found</h2>
+                    <p>This share link may have expired or is invalid.</p>
+                    <button onclick="window.location.href='/'">Visit Feedstodon</button>
+                </div>
+            `;
+            return;
+        }
+    }
+
     // Apply saved theme on startup
     const savedTheme = localStorage.getItem('feedstodon-theme') || 'feedstodon';
     document.body.dataset.theme = savedTheme;
@@ -783,21 +808,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         },
         sharePost: (postView) => {
-            const url = generateShareableUrl('lemmy-post', postView);
+            const shortUrl = shareService.createShareUrl('lemmy-post', postView);
+            
             if (navigator.share) {
-                navigator.share({ title: postView.post.name, url: url });
+                navigator.share({ 
+                    title: postView.post.name,
+                    text: `Check out this post: ${postView.post.name}`,
+                    url: shortUrl 
+                });
             } else {
-                navigator.clipboard.writeText(url);
-                showSuccessToast('Share link copied to clipboard!');
+                navigator.clipboard.writeText(shortUrl);
+                showSuccessToast(`Link copied: ${shortUrl}`);
             }
         },
         shareComment: (commentView) => {
-            const url = generateShareableUrl('lemmy-comment', commentView);
+            const shortUrl = shareService.createShareUrl('lemmy-comment', commentView);
+            
             if (navigator.share) {
-                navigator.share({ title: `Comment by ${commentView.creator.name}`, url: url });
+                navigator.share({ 
+                    title: `Comment by ${commentView.creator.name}`,
+                    url: shortUrl 
+                });
             } else {
-                navigator.clipboard.writeText(url);
-                showSuccessToast('Share link copied to clipboard!');
+                navigator.clipboard.writeText(shortUrl);
+                showSuccessToast(`Link copied: ${shortUrl}`);
             }
         },
         showContextMenu: showContextMenu
@@ -881,83 +915,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateNotificationBell();
     }
     
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('share') === 'lemmy-post') {
-        const instance = urlParams.get('instance');
-        const postId = urlParams.get('postId');
-        
-        if (instance && postId) {
-            showLoadingBar();
-            const cleanInstance = instance.replace(/^https?:\/\//, '');
-            const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
-            
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.post_view) {
-                        actions.showPublicLemmyPost(data.post_view, cleanInstance);
-                    } else {
-                        showErrorToast('Post not found or deleted');
-                        switchView('timeline');
-                        state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    }
-                    hideLoadingBar();
-                })
-                .catch((error) => {
-                    showErrorToast('Could not load shared post: ' + error.message);
-                    switchView('timeline');
-                    state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    hideLoadingBar();
-                });
-        }
-    } else if (urlParams.get('share') === 'lemmy-comment') {
-        const instance = urlParams.get('instance');
-        const postId = urlParams.get('postId');
-        const commentId = urlParams.get('commentId');
-        
-        if (instance && postId) {
-            showLoadingBar();
-            const cleanInstance = instance.replace(/^https?:\/\//, '');
-            const apiUrl = `https://${cleanInstance}/api/v3/post?id=${postId}`;
-            
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.post_view) {
-                        actions.showPublicLemmyPost(data.post_view, cleanInstance);
-                        setTimeout(() => {
-                            const commentEl = document.getElementById(`comment-wrapper-${commentId}`);
-                            if (commentEl) {
-                                commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                commentEl.style.backgroundColor = 'var(--accent-color)';
-                                commentEl.style.opacity = '0.3';
-                                setTimeout(() => {
-                                    commentEl.style.backgroundColor = '';
-                                    commentEl.style.opacity = '';
-                                }, 2000);
-                            }
-                        }, 1000);
-                    } else {
-                        showErrorToast('Post not found or deleted');
-                        switchView('timeline');
-                        state.timelineDiv.innerHTML = '<p>Post not found. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    }
-                    hideLoadingBar();
-                })
-                .catch((error) => {
-                    showErrorToast('Could not load shared comment: ' + error.message);
-                    switchView('timeline');
-                    state.timelineDiv.innerHTML = '<p>Could not load shared post. <a href="/" onclick="window.location.reload()">Go to homepage</a></p>';
-                    hideLoadingBar();
-                });
-        }
-    } else if (initialView === 'timeline') {
+    // Check for standard app initialization
+    if (initialView === 'timeline') {
         if (state.accessToken || localStorage.getItem('lemmy_jwt')) {
             actions.showHomeTimeline();
         } else {
