@@ -834,8 +834,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         sharePost: (postView) => {
             const shortUrl = shareService.createShareUrl('lemmy-post', postView);
-            // Use hash routing for client-side apps
-            const fullUrl = `${window.location.origin}/#${shortUrl.replace('/', '')}`;
+            // Extract just the path part (e.g., "/f/abc123" or "f/abc123")
+            const shortPath = shortUrl.replace(/^https?:\/\/[^\/]+\//, '').replace(/^\//, '');
+            // Create the full URL with hash routing
+            const fullUrl = `${window.location.origin}/#${shortPath}`;
             
             if (navigator.share) {
                 navigator.share({ 
@@ -850,8 +852,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         shareComment: (commentView) => {
             const shortUrl = shareService.createShareUrl('lemmy-comment', commentView);
-            // Use hash routing for client-side apps
-            const fullUrl = `${window.location.origin}/#${shortUrl.replace('/', '')}`;
+            // Extract just the path part (e.g., "/f/abc123" or "f/abc123")
+            const shortPath = shortUrl.replace(/^https?:\/\/[^\/]+\//, '').replace(/^\//, '');
+            // Create the full URL with hash routing
+            const fullUrl = `${window.location.origin}/#${shortPath}`;
             
             if (navigator.share) {
                 navigator.share({ 
