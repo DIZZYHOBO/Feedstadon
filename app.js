@@ -88,36 +88,61 @@ function initPullToRefresh(state, actions) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Handle short URLs for sharing
+    // Handle short URLs for sharing - check both pathname and hash
     const path = window.location.pathname;
+    const hash = window.location.hash;
     const shortUrlPattern = /^\/f\/([a-zA-Z0-9]+)$/;
-    const match = path.match(shortUrlPattern);
+    const hashPattern = /^#f\/([a-zA-Z0-9]+)$/;
     
+    let shortId = null;
+    let match = path.match(shortUrlPattern);
     if (match) {
-        const shortId = match[1];
+        shortId = match[1];
+    } else {
+        // Also check hash for client-side routing
+        match = hash.match(hashPattern);
+        if (match) {
+            shortId = match[1];
+        }
+    }
+    
+    if (shortId) {
         const mapping = shareService.resolveShortId(shortId);
         
         if (mapping) {
-            // Hide the main app
-            document.getElementById('app-view').style.display = 'none';
+            // Hide the main app completely
+            const appView = document.getElementById('app-view');
+            if (appView) appView.style.display = 'none';
+            
+            // Hide navigation
+            const topNav = document.querySelector('.top-nav');
+            if (topNav) topNav.style.display = 'none';
+            
+            // Clear body and add share view mode
             document.body.classList.add('share-view-mode');
             
-            // Create share view container
-            const shareContainer = document.createElement('div');
-            shareContainer.id = 'share-view';
-            document.body.appendChild(shareContainer);
-            
-            // Render share view
-            const shareView = await renderShareView(shortId, mapping);
-            shareContainer.appendChild(shareView);
+            // Create and render share view
+            try {
+                const shareView = await renderShareView(shortId, mapping);
+                document.body.innerHTML = ''; // Clear everything
+                document.body.appendChild(shareView);
+            } catch (error) {
+                console.error('Error rendering share view:', error);
+                document.body.innerHTML = `
+                    <div class="share-error-view" style="padding: 40px; text-align: center;">
+                        <h2>Error Loading Content</h2>
+                        <p>There was an error loading this shared content.</p>
+                        <button onclick="window.location.href='/'">Visit Feedstodon</button>
+                    </div>
+                `;
+            }
             
             // Don't initialize the rest of the app
             return;
         } else {
             // Short URL not found
-            document.getElementById('app-view').style.display = 'none';
             document.body.innerHTML = `
-                <div class="share-error-view">
+                <div class="share-error-view" style="padding: 40px; text-align: center;">
                     <h2>Link Not Found</h2>
                     <p>This share link may have expired or is invalid.</p>
                     <button onclick="window.location.href='/'">Visit Feedstodon</button>
@@ -809,29 +834,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         sharePost: (postView) => {
             const shortUrl = shareService.createShareUrl('lemmy-post', postView);
+            // Use hash routing for client-side apps
+            const fullUrl = `${window.location.origin}/#${shortUrl.replace('/', '')}`;
             
             if (navigator.share) {
                 navigator.share({ 
                     title: postView.post.name,
                     text: `Check out this post: ${postView.post.name}`,
-                    url: shortUrl 
+                    url: fullUrl 
                 });
             } else {
-                navigator.clipboard.writeText(shortUrl);
-                showSuccessToast(`Link copied: ${shortUrl}`);
+                navigator.clipboard.writeText(fullUrl);
+                showSuccessToast(`Link copied!`);
             }
         },
         shareComment: (commentView) => {
             const shortUrl = shareService.createShareUrl('lemmy-comment', commentView);
+            // Use hash routing for client-side apps
+            const fullUrl = `${window.location.origin}/#${shortUrl.replace('/', '')}`;
             
             if (navigator.share) {
                 navigator.share({ 
                     title: `Comment by ${commentView.creator.name}`,
-                    url: shortUrl 
+                    url: fullUrl 
                 });
             } else {
-                navigator.clipboard.writeText(shortUrl);
-                showSuccessToast(`Link copied: ${shortUrl}`);
+                navigator.clipboard.writeText(fullUrl);
+                showSuccessToast(`Link copied!`);
             }
         },
         showContextMenu: showContextMenu
