@@ -274,25 +274,8 @@ function renderScreenshotContent(state, actions) {
             
             const commentElement = renderLemmyComment(commentView, state, actions);
             
-            // Apply visibility toggles to comments
-            if (!showBody) {
-                const contentElements = commentElement.querySelectorAll('.status-content');
-                contentElements.forEach(el => {
-                    el.childNodes.forEach(node => {
-                        if (node.nodeType === Node.TEXT_NODE) {
-                            const span = document.createElement('span');
-                            span.style.display = 'none';
-                            span.textContent = node.textContent;
-                            node.parentNode.replaceChild(span, node);
-                        } else if (node.nodeType === Node.ELEMENT_NODE) {
-                            if (!node.classList.contains('comment-image-wrapper') && 
-                                !node.querySelector('img')) {
-                                node.style.display = 'none';
-                            }
-                        }
-                    });
-                });
-            }
+         // Only apply image toggle to comments, not body text
+// Body text toggle only applies to the main post
             
             if (!showImages) {
                 const imageElements = commentElement.querySelectorAll('img:not(.avatar), .comment-image-wrapper');
