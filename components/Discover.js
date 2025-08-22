@@ -5,8 +5,14 @@ import { ICONS } from './icons.js';
 // --- Mastodon Discover Section ---
 
 export async function loadMoreMastodonTrendingPosts(state, actions) {
+    // Only load more if we're actually on the Mastodon discover tab
+    if (state.currentView !== 'discover' || state.currentDiscoverTab !== 'mastodon-trending') {
+        return;
+    }
     const container = document.querySelector('#mastodon-discover-content');
-    await fetchMastodonTrendingPosts(state, actions, container, true);
+    if (container) {
+        await fetchMastodonTrendingPosts(state, actions, container, true);
+    }
 }
 
 async function fetchMastodonTrendingPosts(state, actions, container, loadMore = false) {
@@ -165,7 +171,7 @@ function renderCommunityList(communities, actions, container) {
         const isSubscribed = communityView.subscribed === "Subscribed";
         
         communityEl.innerHTML = `
-            <img src="${community.icon}" class="avatar" onerror="this.src='./images/logo.png'"/>
+            <img src="${community.icon || './images/logo.png'}" class="avatar" onerror="this.src='./images/logo.png'"/>
             <div>
                 <div class="discover-item-title">${community.name}</div>
                 <div class="discover-item-subtitle">${community.actor_id.split('/')[2]}</div>
@@ -173,9 +179,11 @@ function renderCommunityList(communities, actions, container) {
             <button class="button-secondary follow-btn">${isSubscribed ? 'Unfollow' : 'Follow'}</button>
         `;
 
-        communityEl.addEventListener('click', () => {
-            const instance = new URL(community.actor_id).hostname;
-            actions.showLemmyCommunity(`${community.name}@${instance}`);
+        communityEl.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('follow-btn')) {
+                const instance = new URL(community.actor_id).hostname;
+                actions.showLemmyCommunity(`${community.name}@${instance}`);
+            }
         });
 
         communityEl.querySelector('.follow-btn').addEventListener('click', async (e) => {
@@ -192,6 +200,10 @@ function renderCommunityList(communities, actions, container) {
 }
 
 export async function loadMoreLemmyCommunities(state, actions) {
+    // Only load more if we're actually on the Lemmy discover tab
+    if (state.currentView !== 'discover' || state.currentDiscoverTab !== 'lemmy') {
+        return;
+    }
     await renderLemmyDiscover(state, actions, null, true);
 }
 
@@ -199,12 +211,12 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
     if (state.isLoadingMore) return;
     state.isLoadingMore = true;
     
-    const contentArea = document.querySelector('#lemmy-discover-content-area');
+    let contentArea = container ? container.querySelector('#lemmy-discover-content-area') : document.querySelector('#lemmy-discover-content-area');
     
     try {
         const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         
-        if (!loadMore) {
+        if (!loadMore && container) {
             container.innerHTML = `
                 <form id="lemmy-community-search-form">
                     <input type="search" id="lemmy-community-search" placeholder="Search for Lemmy communities...">
@@ -212,6 +224,8 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
                 <div id="lemmy-search-results-container" style="display: none;"></div>
                 <div id="lemmy-discover-content-area" class="discover-content-area"></div>
             `;
+            
+            contentArea = container.querySelector('#lemmy-discover-content-area');
             
             const searchForm = container.querySelector('#lemmy-community-search-form');
             const searchInput = container.querySelector('#lemmy-community-search');
@@ -228,42 +242,75 @@ async function renderLemmyDiscover(state, actions, container, loadMore = false) 
                     searchResultsContainer.style.display = 'none';
                 }
             });
+            
+            // Initialize page counter
+            state.lemmyDiscoverPage = 1;
         }
         
-        const communityContainer = container ? container.querySelector('#lemmy-discover-content-area') : contentArea;
         const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', { 
             sort: 'TopDay',
             page: loadMore ? state.lemmyDiscoverPage : 1
         });
         
         if (data.communities.length > 0) {
-            if (!loadMore) communityContainer.innerHTML = '';
-            renderCommunityList(data.communities, actions, communityContainer);
+            if (!loadMore && contentArea) {
+                contentArea.innerHTML = '';
+            }
+            if (contentArea) {
+                renderCommunityList(data.communities, actions, contentArea);
+            }
             state.lemmyDiscoverPage++;
             state.lemmyDiscoverHasMore = true;
         } else {
             state.lemmyDiscoverHasMore = false;
         }
     } catch (error) {
-        if (!loadMore) container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
+        if (!loadMore && container) {
+            container.innerHTML = `<p>Could not load Lemmy communities.</p>`;
+        }
     } finally {
         state.isLoadingMore = false;
     }
 }
 
 async function renderSubscribedLemmy(state, actions, container) {
+    // Check if user is logged in to Lemmy
+    const jwt = localStorage.getItem('lemmy_jwt');
+    const lemmyInstance = localStorage.getItem('lemmy_instance');
+    
+    if (!jwt || !lemmyInstance) {
+        container.innerHTML = `
+            <div class="no-notifications">
+                <p>Please log in to Lemmy to see your subscribed communities.</p>
+            </div>`;
+        return;
+    }
+    
     if (state.isLoadingMore) return;
     state.isLoadingMore = true;
+    
+    container.innerHTML = '<div class="loading-spinner"><p>Loading subscribed communities...</p></div>';
 
     try {
-        const lemmyInstance = localStorage.getItem('lemmy_instance') || state.lemmyInstances[0];
         const { data } = await apiFetch(lemmyInstance, null, '/api/v3/community/list', {}, 'lemmy', {
             type_: 'Subscribed',
             sort: 'TopDay',
             limit: 50
         });
-        renderCommunityList(data.communities, actions, container);
+        
+        container.innerHTML = '';
+        
+        if (data.communities && data.communities.length > 0) {
+            renderCommunityList(data.communities, actions, container);
+        } else {
+            container.innerHTML = `
+                <div class="no-notifications">
+                    <p>You haven't subscribed to any communities yet.</p>
+                    <p>Browse the Lemmy tab to find communities to follow!</p>
+                </div>`;
+        }
     } catch (error) {
+        console.error('Failed to load subscribed communities:', error);
         container.innerHTML = `<p>Could not load subscribed communities.</p>`;
     } finally {
         state.isLoadingMore = false;
@@ -326,9 +373,9 @@ export function renderDiscoverPage(state, actions) {
             <button class="tab-button" data-discover-tab="loops">Loops</button>
         </div>
         <div id="subscribed-discover-content" class="discover-tab-content active"></div>
-        <div id="lemmy-discover-content" class="discover-tab-content"></div>
-        <div id="mastodon-discover-content" class="discover-tab-content"></div>
-        <div id="loops-discover-content" class="discover-tab-content"></div>
+        <div id="lemmy-discover-content" class="discover-tab-content" style="display: none;"></div>
+        <div id="mastodon-discover-content" class="discover-tab-content" style="display: none;"></div>
+        <div id="loops-discover-content" class="discover-tab-content" style="display: none;"></div>
     `;
 
     const tabs = view.querySelectorAll('.profile-tabs .tab-button');
@@ -338,24 +385,35 @@ export function renderDiscoverPage(state, actions) {
     const loopsContent = view.querySelector('#loops-discover-content');
 
     function switchTab(platform) {
+        // Remove active class from all tabs and hide all content
         tabs.forEach(t => t.classList.remove('active'));
-        view.querySelectorAll('.discover-tab-content').forEach(c => c.classList.remove('active'));
+        view.querySelectorAll('.discover-tab-content').forEach(c => {
+            c.classList.remove('active');
+            c.style.display = 'none';  // Explicitly hide all content
+        });
 
+        // Add active class to selected tab
         view.querySelector(`[data-discover-tab="${platform}"]`).classList.add('active');
         state.currentDiscoverTab = platform;
 
+        // Show only the selected content
         if (platform === 'subscribed') {
             subscribedContent.classList.add('active');
+            subscribedContent.style.display = 'block';  // Explicitly show
             renderSubscribedLemmy(state, actions, subscribedContent);
         } else if (platform === 'lemmy') {
             lemmyContent.classList.add('active');
+            lemmyContent.style.display = 'block';  // Explicitly show
             state.lemmyDiscoverPage = 1;
+            state.lemmyDiscoverHasMore = true;  // Reset the hasMore flag
             renderLemmyDiscover(state, actions, lemmyContent);
         } else if (platform === 'loops') {
             loopsContent.classList.add('active');
+            loopsContent.style.display = 'block';  // Explicitly show
             fetchLoopsTrending(state, actions, loopsContent);
-        } else {
+        } else if (platform === 'mastodon') {
             mastodonContent.classList.add('active');
+            mastodonContent.style.display = 'block';  // Explicitly show
             renderMastodonDiscover(state, actions, mastodonContent);
         }
     }
@@ -364,5 +422,6 @@ export function renderDiscoverPage(state, actions) {
         tab.addEventListener('click', () => switchTab(tab.dataset.discoverTab));
     });
 
+    // Initial load - show subscribed
     switchTab('subscribed');
 }
