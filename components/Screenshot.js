@@ -256,12 +256,12 @@ export async function renderScreenshotPage(state, commentView, postView, actions
                         <h4>Comments</h4>
                         <div class="control-group">
                             <label class="toggle-control">
-                                <input type="checkbox" id="include-parents-checkbox">
+                                <input type="checkbox" id="include-parents-checkbox" checked>
                                 <span>Include Parent Comments</span>
                                 <small id="parent-count" class="comment-count"></small>
                             </label>
                             <label class="toggle-control">
-                                <input type="checkbox" id="include-replies-checkbox">
+                                <input type="checkbox" id="include-replies-checkbox" checked>
                                 <span>Include Reply Comments</span>
                                 <small id="reply-count" class="comment-count"></small>
                             </label>
