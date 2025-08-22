@@ -126,9 +126,20 @@ function renderScreenshotContent(state, actions) {
     
     screenshotContent.appendChild(postCard);
     
-    // Build comment chain
+    // Build comment chain - FIXED to ensure we have the comment data
+    if (!currentCommentView || !allComments.length) {
+        console.log('No comment data available');
+        return;
+    }
+    
     const chain = getCommentChain(currentCommentView.comment.id, allComments);
     const commentsToShow = [];
+    
+    // Debug logging
+    console.log('Chain parents:', chain.parents.length);
+    console.log('Chain replies:', chain.replies.length);
+    console.log('Include parents checkbox:', includeParents);
+    console.log('Include replies checkbox:', includeReplies);
     
     if (includeParents && chain.parents.length > 0) {
         commentsToShow.push(...chain.parents);
@@ -156,12 +167,11 @@ function renderScreenshotContent(state, actions) {
             if (!showBody) {
                 const contentElements = commentElement.querySelectorAll('.status-content');
                 contentElements.forEach(el => {
-                    // Keep the comment but hide the text
-                    const textNodes = el.childNodes;
-                    textNodes.forEach(node => {
-                        if (node.nodeType === Node.TEXT_NODE || 
-                            (node.nodeType === Node.ELEMENT_NODE && !node.classList.contains('comment-image-wrapper'))) {
-                            if (node.style) node.style.display = 'none';
+                    // Keep the comment structure but hide the text content
+                    const paragraphs = el.querySelectorAll('p, div:not(.comment-image-wrapper)');
+                    paragraphs.forEach(p => {
+                        if (!p.querySelector('img')) {
+                            p.style.display = 'none';
                         }
                     });
                 });
@@ -431,12 +441,13 @@ const screenshotStyles = `
 
 .control-actions button {
     width: 100%;
-    padding: 12px;
-    font-weight: 600;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .screenshot-preview-area {
