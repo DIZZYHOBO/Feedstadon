@@ -3276,3 +3276,378 @@ div, section, article, aside, header, footer, nav {
         width: 100%;
     }
 }
+
+/* Share View Styles */
+.share-view-mode {
+    background-color: var(--bg-color) !important;
+    margin: 0;
+    padding: 0;
+}
+
+#share-view {
+    min-height: 100vh;
+    background-color: var(--bg-color);
+}
+
+.share-view-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: var(--bg-color);
+}
+
+.share-view-header {
+    position: sticky;
+    top: 0;
+    background-color: var(--card-color);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 100;
+    padding: 12px 20px;
+}
+
+.share-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.share-logo {
+    height: 30px;
+    width: auto;
+}
+
+.share-tagline {
+    color: var(--font-color-muted);
+    font-size: 14px;
+    flex: 1;
+    text-align: center;
+}
+
+.share-close-btn {
+    background: none;
+    border: none;
+    color: var(--font-color-muted);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.share-close-btn:hover {
+    color: var(--font-color);
+}
+
+.share-content-wrapper {
+    padding: 20px;
+}
+
+.share-post-card {
+    margin-bottom: 20px;
+}
+
+/* Share view shouldn't show interactive elements */
+.share-view-mode .status-footer {
+    display: none !important;
+}
+
+.share-post-stats {
+    display: flex;
+    gap: 30px;
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--font-color-muted);
+}
+
+.stat-icon {
+    display: flex;
+    align-items: center;
+}
+
+.stat-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: var(--font-color);
+}
+
+.stat-label {
+    font-size: 14px;
+}
+
+/* Share Comments */
+.share-comments-section {
+    margin-top: 20px;
+}
+
+.comments-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--font-color);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.share-comment {
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+}
+
+.share-comment.nested-comment {
+    border-left: 3px solid var(--border-color);
+}
+
+.share-comment.highlighted-comment {
+    border-color: var(--accent-color);
+    background-color: rgba(89, 90, 255, 0.05);
+}
+
+.share-comment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.share-comment-header .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.comment-meta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--font-color);
+}
+
+.comment-time {
+    color: var(--font-color-muted);
+    font-size: 13px;
+}
+
+.comment-score {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--font-color-muted);
+    font-size: 14px;
+    margin-left: auto;
+}
+
+.share-comment-body {
+    color: var(--font-color);
+    line-height: 1.6;
+}
+
+.share-comment-body p {
+    margin-bottom: 10px;
+}
+
+.share-comment-body p:last-child {
+    margin-bottom: 0;
+}
+
+.share-comment-body a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.share-comment-body a:hover {
+    text-decoration: underline;
+}
+
+.share-comment-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--border-radius);
+    margin: 10px 0;
+}
+
+.share-comment-body blockquote {
+    border-left: 3px solid var(--border-color);
+    padding-left: 15px;
+    margin: 10px 0;
+    color: var(--font-color-muted);
+}
+
+.share-comment-body code {
+    background-color: var(--bg-color);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.share-comment-body pre {
+    background-color: var(--bg-color);
+    padding: 10px;
+    border-radius: var(--border-radius);
+    overflow-x: auto;
+}
+
+/* Share View Footer */
+.share-view-footer {
+    margin-top: 40px;
+    padding: 20px;
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+    text-align: center;
+}
+
+.share-view-footer p {
+    color: var(--font-color-muted);
+    margin-bottom: 15px;
+}
+
+.share-view-footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.share-view-footer a:hover {
+    text-decoration: underline;
+}
+
+.share-footer-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.share-footer-actions button {
+    padding: 8px 20px;
+    background-color: var(--primary-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-footer-actions button:hover {
+    background-color: var(--hover-color);
+}
+
+/* Error View */
+.share-error-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    text-align: center;
+}
+
+.error-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.share-error-view h2 {
+    color: var(--font-color);
+    margin-bottom: 10px;
+}
+
+.share-error-view p {
+    color: var(--font-color-muted);
+    margin-bottom: 10px;
+}
+
+.error-details {
+    font-size: 12px;
+    color: var(--error-color);
+    margin-top: 10px;
+}
+
+.share-error-view button {
+    margin-top: 20px;
+    padding: 10px 30px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.share-error-view button:hover {
+    opacity: 0.9;
+}
+
+.no-comments {
+    text-align: center;
+    padding: 40px;
+    color: var(--font-color-muted);
+    background-color: var(--card-color);
+    border-radius: var(--border-radius);
+}
+
+/* Print Styles */
+@media print {
+    .share-view-header,
+    .share-view-footer,
+    .share-close-btn,
+    .share-footer-actions {
+        display: none !important;
+    }
+    
+    .share-content-wrapper {
+        padding: 0;
+    }
+    
+    .share-comment {
+        break-inside: avoid;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .share-content-wrapper {
+        padding: 10px;
+    }
+    
+    .share-comment.nested-comment {
+        margin-left: 10px !important;
+    }
+    
+    .share-post-stats {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .share-footer-actions {
+        flex-direction: column;
+    }
+    
+    .share-footer-actions button {
+        width: 100%;
+    }
+}
