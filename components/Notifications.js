@@ -122,9 +122,6 @@ async function loadLemmyNotifications(state, updateUI = true) {
     const jwt = localStorage.getItem('lemmy_jwt');
     
     if (!instance || !jwt) {
-        if (updateUI) {
-            return { notifications: [], element: '<div class="no-notifications"><p>Please log in to Lemmy first.</p></div>' };
-        }
         return [];
     }
 
@@ -192,9 +189,6 @@ async function loadMastodonNotifications(state, updateUI = true) {
     const token = localStorage.getItem('fediverse-token');
     
     if (!instance || !token) {
-        if (updateUI) {
-            return { notifications: [], element: '<div class="no-notifications"><p>Please log in to Mastodon first.</p></div>' };
-        }
         return [];
     }
     
@@ -273,7 +267,7 @@ async function markAllAsRead(lemmyNotifications = [], mastodonNotifications = []
     let errorCount = 0;
 
     // Mark Lemmy notifications as read
-    if (lemmyInstance && jwt) {
+    if (lemmyInstance && jwt && lemmyNotifications.length > 0) {
         try {
             // Filter unread Lemmy notifications
             const unreadMentions = lemmyNotifications.filter(n => 
@@ -352,151 +346,159 @@ async function markAllAsRead(lemmyNotifications = [], mastodonNotifications = []
 export async function renderNotificationsPage(state, actions) {
     const container = document.getElementById('notifications-view');
     
+    // Check which platforms are logged in
+    const lemmyLoggedIn = !!(localStorage.getItem('lemmy_instance') && localStorage.getItem('lemmy_jwt'));
+    const mastodonLoggedIn = !!(localStorage.getItem('fediverse-instance') && localStorage.getItem('fediverse-token'));
+    
+    // Determine which tab should be active by default
+    let defaultTab = '';
+    if (lemmyLoggedIn) {
+        defaultTab = 'lemmy';
+    } else if (mastodonLoggedIn) {
+        defaultTab = 'mastodon';
+    }
+    
     // Create the notifications structure with improved header
     container.innerHTML = `
         <div class="notifications-stats-header">
-            <div class="notification-stat-card lemmy-stat">
-                <div class="stat-icon">${ICONS.lemmy}</div>
-                <div class="stat-info">
-                    <div class="stat-number" id="lemmy-unread-count">0</div>
-                    <div class="stat-label">Lemmy unread</div>
+            ${lemmyLoggedIn ? `
+                <div class="notification-stat-card lemmy-stat">
+                    <div class="stat-icon">${ICONS.lemmy}</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="lemmy-unread-count">0</div>
+                        <div class="stat-label">Lemmy unread</div>
+                    </div>
                 </div>
-            </div>
-            <div class="notification-stat-card mastodon-stat">
-                <div class="stat-icon">${ICONS.mastodon}</div>
-                <div class="stat-info">
-                    <div class="stat-number" id="mastodon-notif-count">0</div>
-                    <div class="stat-label">Mastodon new</div>
+            ` : ''}
+            ${mastodonLoggedIn ? `
+                <div class="notification-stat-card mastodon-stat">
+                    <div class="stat-icon">${ICONS.mastodon}</div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="mastodon-notif-count">0</div>
+                        <div class="stat-label">Mastodon new</div>
+                    </div>
                 </div>
-            </div>
+            ` : ''}
             <button id="mark-all-read-btn" class="mark-all-btn" style="display: none;">
                 <span class="mark-all-icon">✓</span>
                 Mark All Read
             </button>
         </div>
-        <div class="notification-tabs">
-            <button class="notification-tab-btn active" data-notif-tab="all">All</button>
-            <button class="notification-tab-btn" data-notif-tab="lemmy">
-                <span class="tab-icon">${ICONS.lemmy}</span>
-                Lemmy
-            </button>
-            <button class="notification-tab-btn" data-notif-tab="mastodon">
-                <span class="tab-icon">${ICONS.mastodon}</span>
-                Mastodon
-            </button>
-        </div>
-        <div id="all-notifications-content" class="notification-tab-content active">
-            <div class="loading-spinner"><p>Loading all notifications...</p></div>
-        </div>
-        <div id="lemmy-notifications-content" class="notification-tab-content">
-            <div class="loading-spinner"><p>Loading Lemmy notifications...</p></div>
-        </div>
-        <div id="mastodon-notifications-content" class="notification-tab-content">
-            <div class="loading-spinner"><p>Loading Mastodon notifications...</p></div>
-        </div>
+        ${(lemmyLoggedIn || mastodonLoggedIn) ? `
+            <div class="notification-tabs">
+                ${lemmyLoggedIn ? `
+                    <button class="notification-tab-btn ${defaultTab === 'lemmy' ? 'active' : ''}" data-notif-tab="lemmy">
+                        <span class="tab-icon">${ICONS.lemmy}</span>
+                        Lemmy
+                    </button>
+                ` : ''}
+                ${mastodonLoggedIn ? `
+                    <button class="notification-tab-btn ${defaultTab === 'mastodon' ? 'active' : ''}" data-notif-tab="mastodon">
+                        <span class="tab-icon">${ICONS.mastodon}</span>
+                        Mastodon
+                    </button>
+                ` : ''}
+            </div>
+        ` : ''}
+        ${lemmyLoggedIn ? `
+            <div id="lemmy-notifications-content" class="notification-tab-content ${defaultTab === 'lemmy' ? 'active' : ''}">
+                <div class="loading-spinner"><p>Loading Lemmy notifications...</p></div>
+            </div>
+        ` : ''}
+        ${mastodonLoggedIn ? `
+            <div id="mastodon-notifications-content" class="notification-tab-content ${defaultTab === 'mastodon' ? 'active' : ''}">
+                <div class="loading-spinner"><p>Loading Mastodon notifications...</p></div>
+            </div>
+        ` : ''}
+        ${!lemmyLoggedIn && !mastodonLoggedIn ? `
+            <div class="no-notifications">
+                <p>Please log in to Lemmy or Mastodon to view notifications.</p>
+                <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">You can log in from the Settings page.</p>
+            </div>
+        ` : ''}
     `;
 
-    // Load notifications
-    const [lemmyNotifs, mastodonNotifs] = await Promise.all([
-        loadLemmyNotifications(state),
-        loadMastodonNotifications(state)
-    ]);
+    // Only load notifications if at least one platform is logged in
+    if (lemmyLoggedIn || mastodonLoggedIn) {
+        // Load notifications for logged-in platforms
+        const lemmyNotifs = lemmyLoggedIn ? await loadLemmyNotifications(state) : [];
+        const mastodonNotifs = mastodonLoggedIn ? await loadMastodonNotifications(state) : [];
 
-    // Update counts
-    const lemmyUnread = lemmyNotifs.filter(n => !n.read).length;
-    const mastodonUnread = mastodonNotifs.filter(n => !n.read).length;
-    const markAllBtn = document.getElementById('mark-all-read-btn');
-    
-    // Update the stat cards
-    document.getElementById('lemmy-unread-count').textContent = lemmyUnread;
-    document.getElementById('mastodon-notif-count').textContent = mastodonNotifs.length;
-    
-    // Show/hide stat cards based on login status
-    const lemmyStatCard = document.querySelector('.lemmy-stat');
-    const mastodonStatCard = document.querySelector('.mastodon-stat');
-    
-    if (!localStorage.getItem('lemmy_jwt')) {
-        lemmyStatCard.style.display = 'none';
-    }
-    
-    if (!localStorage.getItem('fediverse-token')) {
-        mastodonStatCard.style.display = 'none';
-    }
-    
-    // Show mark all read button if there are any unread notifications
-    if (lemmyUnread > 0 || mastodonUnread > 0) {
-        markAllBtn.style.display = 'flex';
-    }
+        // Update counts
+        const lemmyUnread = lemmyNotifs.filter(n => !n.read).length;
+        const mastodonUnread = mastodonNotifs.filter(n => !n.read).length;
+        const markAllBtn = document.getElementById('mark-all-read-btn');
+        
+        // Update the stat cards
+        if (lemmyLoggedIn) {
+            document.getElementById('lemmy-unread-count').textContent = lemmyUnread;
+        }
+        if (mastodonLoggedIn) {
+            document.getElementById('mastodon-notif-count').textContent = mastodonNotifs.length;
+        }
+        
+        // Show mark all read button if there are any unread notifications
+        if (lemmyUnread > 0 || mastodonUnread > 0) {
+            markAllBtn.style.display = 'flex';
+        }
 
-    // Render all notifications combined
-    const allContainer = document.getElementById('all-notifications-content');
-    const allNotifs = [
-        ...lemmyNotifs.map(n => ({ ...n, platform: 'lemmy' })),
-        ...mastodonNotifs.map(n => ({ ...n, platform: 'mastodon' }))
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    allContainer.innerHTML = '';
-    if (allNotifs.length === 0) {
-        allContainer.innerHTML = '<div class="no-notifications"><p>No notifications found.</p></div>';
-    } else {
-        allNotifs.forEach(notification => {
-            const notifElement = renderNotification(notification, notification.type, notification.platform, actions);
-            if (notifElement) {
-                allContainer.appendChild(notifElement);
+        // Render Lemmy notifications
+        if (lemmyLoggedIn) {
+            const lemmyContainer = document.getElementById('lemmy-notifications-content');
+            lemmyContainer.innerHTML = '';
+            if (lemmyNotifs.length === 0) {
+                lemmyContainer.innerHTML = '<div class="no-notifications"><p>No Lemmy notifications found.</p></div>';
+            } else {
+                lemmyNotifs.forEach(notification => {
+                    const notifElement = renderNotification(notification, notification.type, 'lemmy', actions);
+                    if (notifElement) {
+                        lemmyContainer.appendChild(notifElement);
+                    }
+                });
             }
-        });
-    }
+        }
 
-    // Render Lemmy notifications
-    const lemmyContainer = document.getElementById('lemmy-notifications-content');
-    lemmyContainer.innerHTML = '';
-    if (lemmyNotifs.length === 0) {
-        lemmyContainer.innerHTML = '<div class="no-notifications"><p>No Lemmy notifications found.</p></div>';
-    } else {
-        lemmyNotifs.forEach(notification => {
-            const notifElement = renderNotification(notification, notification.type, 'lemmy', actions);
-            if (notifElement) {
-                lemmyContainer.appendChild(notifElement);
+        // Render Mastodon notifications
+        if (mastodonLoggedIn) {
+            const mastodonContainer = document.getElementById('mastodon-notifications-content');
+            mastodonContainer.innerHTML = '';
+            if (mastodonNotifs.length === 0) {
+                mastodonContainer.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
+            } else {
+                mastodonNotifs.forEach(notification => {
+                    const notifElement = renderNotification(notification, notification.type, 'mastodon', actions);
+                    if (notifElement) {
+                        mastodonContainer.appendChild(notifElement);
+                    }
+                });
             }
-        });
-    }
+        }
 
-    // Render Mastodon notifications
-    const mastodonContainer = document.getElementById('mastodon-notifications-content');
-    mastodonContainer.innerHTML = '';
-    if (mastodonNotifs.length === 0) {
-        mastodonContainer.innerHTML = '<div class="no-notifications"><p>No Mastodon notifications found.</p></div>';
-    } else {
-        mastodonNotifs.forEach(notification => {
-            const notifElement = renderNotification(notification, notification.type, 'mastodon', actions);
-            if (notifElement) {
-                mastodonContainer.appendChild(notifElement);
-            }
-        });
-    }
+        // Tab switching (only if there are multiple tabs)
+        const tabs = container.querySelectorAll('.notification-tab-btn');
+        const contents = container.querySelectorAll('.notification-tab-content');
+        
+        if (tabs.length > 1) {
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.dataset.notifTab;
+                    
+                    tabs.forEach(t => t.classList.remove('active'));
+                    contents.forEach(c => c.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    document.getElementById(`${targetTab}-notifications-content`).classList.add('active');
+                });
+            });
+        }
 
-    // Tab switching
-    const tabs = container.querySelectorAll('.notification-tab-btn');
-    const contents = container.querySelectorAll('.notification-tab-content');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetTab = tab.dataset.notifTab;
-            
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
-            
-            tab.classList.add('active');
-            document.getElementById(`${targetTab}-notifications-content`).classList.add('active');
-        });
-    });
-
-    // Mark all read button - now marks both Lemmy and Mastodon
-    if (markAllBtn) {
-        markAllBtn.addEventListener('click', async () => {
-            await markAllAsRead(lemmyNotifs, mastodonNotifs);
-            // Refresh the page
-            await renderNotificationsPage(state, actions);
-        });
+        // Mark all read button - now marks both Lemmy and Mastodon
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', async () => {
+                await markAllAsRead(lemmyNotifs, mastodonNotifs);
+                // Refresh the page
+                await renderNotificationsPage(state, actions);
+            });
+        }
     }
 }
