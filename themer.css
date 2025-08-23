@@ -13,6 +13,26 @@
     --error-color: #ea0027;
     --warning-color: #ffd23f;
     --info-color: #0084ff;
+
+    /* Action Bar */
+    --action-bar-link-color: #606984;
+    --action-bar-link-hover-color: #595aff;
+    --action-bar-link-active-color: #595aff;
+
+    /* Buttons */
+    --button-primary-bg-color: #595aff;
+    --button-primary-font-color: #ffffff;
+    --button-primary-hover-bg-color: #4747d1;
+    --button-secondary-bg-color: #282c37;
+    --button-secondary-font-color: #9baec8;
+    --button-secondary-border-color: #393f4f;
+    --button-secondary-hover-bg-color: rgba(255, 255, 255, 0.1);
+
+    /* Tabs */
+    --tab-font-color: #606984;
+    --tab-hover-font-color: #9baec8;
+    --tab-active-font-color: #9baec8;
+    --tab-active-border-color: #595aff;
 }
 
 body {
