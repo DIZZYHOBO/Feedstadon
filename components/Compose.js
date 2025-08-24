@@ -75,35 +75,35 @@ export function initComposeModal(state, onPostSuccess) {
 
 
     submitBtn.addEventListener('click', async () => {
-        const status = textarea.value.trim();
-        if (!status && !mediaUploadInput.files.length) return;
+    const status = textarea.value.trim();
+    if (!status && !mediaUploadInput.files.length) return;
 
-        try {
-            const body = {
-                status: status,
-                in_reply_to_id: currentReplyToId
-            };
-            
-            if (mediaUploadInput.files.length > 0) {
-                const attachment = await apiUploadMedia(state, mediaUploadInput.files[0]);
-                if (attachment && attachment.id) {
-                    body.media_ids = [attachment.id];
-                }
+    try {
+        const body = {
+            status: status,
+            in_reply_to_id: currentReplyToId
+        };
+        
+        if (mediaUploadInput.files.length > 0) {
+            const attachment = await apiUploadMedia(state, mediaUploadInput.files[0]);
+            if (attachment && attachment.id) {
+                body.media_ids = [attachment.id];
             }
-
-            await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
-                method: 'POST',
-                body: body
-            });
-            
-            modal.classList.remove('visible');
-            onPostSuccess();
-
-        } catch (error) {
-            alert('Failed to post status.');
         }
-    });
 
+        await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+            method: 'POST',
+            body: body
+        });
+        
+        modal.classList.remove('visible');
+        onPostSuccess();
+
+    } catch (error) {
+        alert('Failed to post status: ' + error.message);
+    }
+});
+    
     // Lemmy Compose Logic
     const lemmySubmitBtn = document.getElementById('submit-lemmy-compose-btn');
     lemmySubmitBtn.addEventListener('click', async (e) => {
