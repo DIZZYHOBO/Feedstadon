@@ -47,6 +47,128 @@ export function initComposeModal(state, onPostSuccess) {
     const lemmyTabBtn = document.querySelector('[data-tab="lemmy-compose"]');
     const mastodonTab = document.getElementById('mastodon-compose-tab');
     const lemmyTab = document.getElementById('lemmy-compose-tab');
+
+    // Poll functionality
+let pollCreated = false;
+let pollOptions = [];
+
+pollBtn.addEventListener('click', () => {
+    const pollContainer = document.getElementById('poll-creator-container');
+    
+    if (!pollCreated) {
+        pollContainer.innerHTML = `
+            <div class="poll-creator">
+                <div class="poll-options-container">
+                    <input type="text" class="poll-option-input" placeholder="Option 1" data-index="0">
+                    <input type="text" class="poll-option-input" placeholder="Option 2" data-index="1">
+                </div>
+                <button class="add-poll-option-btn" type="button">+ Add Option</button>
+                <div class="poll-settings">
+                    <label>Poll duration: 
+                        <select id="poll-duration">
+                            <option value="300">5 minutes</option>
+                            <option value="1800">30 minutes</option>
+                            <option value="3600">1 hour</option>
+                            <option value="21600">6 hours</option>
+                            <option value="86400" selected>1 day</option>
+                            <option value="259200">3 days</option>
+                            <option value="604800">7 days</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="remove-poll-btn" type="button">Remove Poll</button>
+            </div>
+        `;
+        
+        pollCreated = true;
+        pollOptions = ['', '']; // Start with 2 empty options
+        
+        // Add option button handler
+        const addOptionBtn = pollContainer.querySelector('.add-poll-option-btn');
+        addOptionBtn.addEventListener('click', () => {
+            if (pollOptions.length < 4) { // Mastodon allows max 4 options
+                const optionsContainer = pollContainer.querySelector('.poll-options-container');
+                const newIndex = pollOptions.length;
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.className = 'poll-option-input';
+                newInput.placeholder = `Option ${newIndex + 1}`;
+                newInput.dataset.index = newIndex;
+                optionsContainer.appendChild(newInput);
+                pollOptions.push('');
+                
+                if (pollOptions.length >= 4) {
+                    addOptionBtn.style.display = 'none';
+                }
+            }
+        });
+        
+        // Remove poll button handler
+        const removePollBtn = pollContainer.querySelector('.remove-poll-btn');
+        removePollBtn.addEventListener('click', () => {
+            pollContainer.innerHTML = '';
+            pollCreated = false;
+            pollOptions = [];
+        });
+        
+        // Track poll option changes
+        pollContainer.addEventListener('input', (e) => {
+            if (e.target.classList.contains('poll-option-input')) {
+                const index = parseInt(e.target.dataset.index);
+                pollOptions[index] = e.target.value;
+            }
+        });
+    } else {
+        pollContainer.innerHTML = '';
+        pollCreated = false;
+        pollOptions = [];
+    }
+});
+
+// Update the submit button handler to include poll data
+submitBtn.addEventListener('click', async () => {
+    const status = textarea.value.trim();
+    if (!status && !mediaUploadInput.files.length && !pollCreated) return;
+
+    try {
+        const body = {
+            status: status,
+            in_reply_to_id: currentReplyToId
+        };
+        
+        // Add media if present
+        if (mediaUploadInput.files.length > 0) {
+            const attachment = await apiUploadMedia(state, mediaUploadInput.files[0]);
+            if (attachment && attachment.id) {
+                body.media_ids = [attachment.id];
+            }
+        }
+        
+        // Add poll if created
+        if (pollCreated) {
+            const validOptions = pollOptions.filter(opt => opt.trim().length > 0);
+            if (validOptions.length >= 2) {
+                const pollDuration = document.getElementById('poll-duration').value;
+                body.poll = {
+                    options: validOptions,
+                    expires_in: parseInt(pollDuration),
+                    multiple: false // You could add a checkbox for this
+                };
+            }
+        }
+
+        await apiFetch(state.instanceUrl, state.accessToken, '/api/v1/statuses', {
+            method: 'POST',
+            body: body
+        });
+        
+        modal.classList.remove('visible');
+        onPostSuccess();
+
+    } catch (error) {
+        alert('Failed to post status: ' + error.message);
+    }
+});
     
     mastodonTabBtn.addEventListener('click', () => {
         mastodonTabBtn.classList.add('active');
