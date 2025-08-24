@@ -1,6 +1,7 @@
 import { ICONS } from './icons.js';
 import { timeAgo, formatTimestamp, getWordFilter, shouldFilterContent, processSpoilers } from './utils.js';
-import { showImageModal } from './ui.js';
+import { showImageModal, showToast } from './ui.js';
+import { apiFetch } from './api.js';
 
 function renderPoll(poll, actions, statusId) {
     const options = poll.options.map((option, index) => `
@@ -47,7 +48,7 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
     let contentHTML = originalStatus.content;
     let mediaHTML = '';
 
-    if (originalStatus.media_attachments.length > 0) {
+    if (originalStatus.media_attachments && originalStatus.media_attachments.length > 0) {
         mediaHTML = '<div class="status-media">';
         originalStatus.media_attachments.forEach(media => {
             if (media.type === 'image') {
@@ -106,22 +107,22 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
             <button class="status-action" data-action="reply" title="Reply">
                 ${ICONS.reply || ''}
             </button>
-            <button class="status-action ${status.reblogged ? 'active' : ''}" data-action="boost" title="Boost">
+            <button class="status-action ${originalStatus.reblogged ? 'active' : ''}" data-action="reblog" title="Boost">
                 ${ICONS.reblog || ''}
                 <span>${originalStatus.reblogs_count || 0}</span>
             </button>
-            <button class="status-action ${status.favourited ? 'active' : ''}" data-action="favourite" title="Favourite">
+            <button class="status-action ${originalStatus.favourited ? 'active' : ''}" data-action="favorite" title="Favourite">
                 ${ICONS.favourite || ''}
                 <span>${originalStatus.favourites_count || 0}</span>
             </button>
-            <button class="status-action ${status.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">
+            <button class="status-action ${originalStatus.bookmarked ? 'active' : ''}" data-action="bookmark" title="Bookmark">
                 ${ICONS.bookmark || ''}
             </button>
             <button class="status-action" data-action="more" title="More">
                 ${ICONS.more || ''}
             </button>
         </div>
-        <div class="reply-container" style="display: none;"></div>
+        <div class="conversation-container" style="display: none;"></div>
     `;
 
     // Add event listeners
@@ -133,7 +134,7 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
 
     card.querySelector('.status-body-content').addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        actions.showPostDetail(originalStatus.id);
+        actions.showStatusDetail(originalStatus.id);
     });
 
     if (hasSpoiler) {
@@ -149,19 +150,219 @@ export function renderStatus(status, currentUser, actions, settings, isReply = f
     card.querySelectorAll('.status-media img').forEach(img => {
         img.addEventListener('click', (e) => {
             e.stopPropagation();
-            showImageModal(img.dataset.fullUrl);
+            showImageModal(img.dataset.fullUrl || img.src);
         });
     });
 
+    // Handle all status actions
     card.querySelectorAll('.status-footer .status-action').forEach(button => {
-        button.addEventListener('click', e => {
+        button.addEventListener('click', async (e) => {
             e.stopPropagation();
             const action = e.currentTarget.dataset.action;
-            actions.handleStatusAction(action, originalStatus.id, card, isSelf);
+            
+            switch(action) {
+                case 'reply':
+                    showReplyBox(card, originalStatus, actions);
+                    break;
+                    
+                case 'reblog':
+                    try {
+                        const endpoint = originalStatus.reblogged ? 'unreblog' : 'reblog';
+                        const response = await apiFetch(
+                            actions.state.instanceUrl, 
+                            actions.state.accessToken,
+                            `/api/v1/statuses/${originalStatus.id}/${endpoint}`,
+                            { method: 'POST' }
+                        );
+                        
+                        originalStatus.reblogged = !originalStatus.reblogged;
+                        originalStatus.reblogs_count = response.data.reblogs_count;
+                        button.classList.toggle('active');
+                        button.querySelector('span').textContent = originalStatus.reblogs_count;
+                        showToast(originalStatus.reblogged ? 'Boosted!' : 'Unboosted');
+                    } catch (error) {
+                        showToast('Failed to boost', 'error');
+                    }
+                    break;
+                    
+                case 'favorite':
+                    try {
+                        const endpoint = originalStatus.favourited ? 'unfavourite' : 'favourite';
+                        const response = await apiFetch(
+                            actions.state.instanceUrl,
+                            actions.state.accessToken,
+                            `/api/v1/statuses/${originalStatus.id}/${endpoint}`,
+                            { method: 'POST' }
+                        );
+                        
+                        originalStatus.favourited = !originalStatus.favourited;
+                        originalStatus.favourites_count = response.data.favourites_count;
+                        button.classList.toggle('active');
+                        button.querySelector('span').textContent = originalStatus.favourites_count;
+                        showToast(originalStatus.favourited ? 'Favorited!' : 'Unfavorited');
+                    } catch (error) {
+                        showToast('Failed to favorite', 'error');
+                    }
+                    break;
+                    
+                case 'bookmark':
+                    try {
+                        const endpoint = originalStatus.bookmarked ? 'unbookmark' : 'bookmark';
+                        await apiFetch(
+                            actions.state.instanceUrl,
+                            actions.state.accessToken,
+                            `/api/v1/statuses/${originalStatus.id}/${endpoint}`,
+                            { method: 'POST' }
+                        );
+                        
+                        originalStatus.bookmarked = !originalStatus.bookmarked;
+                        button.classList.toggle('active');
+                        showToast(originalStatus.bookmarked ? 'Bookmarked!' : 'Removed from bookmarks');
+                    } catch (error) {
+                        showToast('Failed to bookmark', 'error');
+                    }
+                    break;
+                    
+                case 'more':
+                    showStatusMenu(button, originalStatus, isSelf, actions);
+                    break;
+            }
         });
     });
 
     return card;
+}
+
+function showReplyBox(card, status, actions) {
+    let conversationContainer = card.querySelector('.conversation-container');
+    
+    const isVisible = conversationContainer.style.display === 'flex';
+    
+    if (isVisible) {
+        conversationContainer.style.display = 'none';
+        return;
+    }
+    
+    // Hide all other conversation containers
+    document.querySelectorAll('.conversation-container').forEach(c => {
+        c.style.display = 'none';
+    });
+    
+    conversationContainer.innerHTML = `
+        <div class="conversation-reply-box">
+            <textarea class="conversation-reply-textarea" placeholder="Reply to @${status.account.acct}..."></textarea>
+            <div class="reply-actions">
+                <button class="button-secondary cancel-reply">Cancel</button>
+                <button class="button-primary send-reply-btn">Reply</button>
+            </div>
+        </div>
+    `;
+    
+    conversationContainer.style.display = 'flex';
+    
+    const textarea = conversationContainer.querySelector('.conversation-reply-textarea');
+    textarea.value = `@${status.account.acct} `;
+    textarea.focus();
+    
+    // Position cursor after the mention
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    
+    // Cancel button
+    conversationContainer.querySelector('.cancel-reply').addEventListener('click', () => {
+        conversationContainer.style.display = 'none';
+    });
+    
+    // Send reply button
+    conversationContainer.querySelector('.send-reply-btn').addEventListener('click', async () => {
+        const content = textarea.value.trim();
+        if (!content) return;
+        
+        try {
+            await apiFetch(
+                actions.state.instanceUrl,
+                actions.state.accessToken,
+                '/api/v1/statuses',
+                {
+                    method: 'POST',
+                    body: {
+                        status: content,
+                        in_reply_to_id: status.id
+                    }
+                }
+            );
+            
+            showToast('Reply posted!', 'success');
+            conversationContainer.style.display = 'none';
+            
+            // Optionally refresh the timeline
+            if (actions.showHomeTimeline) {
+                actions.showHomeTimeline();
+            }
+        } catch (error) {
+            console.error('Failed to post reply:', error);
+            showToast('Failed to post reply', 'error');
+        }
+    });
+}
+
+function showStatusMenu(button, status, isSelf, actions) {
+    // Remove any existing menu
+    const existingMenu = document.querySelector('.status-dropdown-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    const menu = document.createElement('div');
+    menu.className = 'status-dropdown-menu';
+    menu.style.position = 'absolute';
+    menu.style.zIndex = '1000';
+    
+    const menuItems = [];
+    
+    // Common options
+    menuItems.push({
+        label: 'Copy link',
+        action: () => {
+            navigator.clipboard.writeText(status.url);
+            showToast('Link copied!', 'success');
+        }
+    });
+    
+    if (isSelf) {
+        menuItems.push({
+            label: 'Delete',
+            action: () => {
+                if (confirm('Are you sure you want to delete this post?')) {
+                    actions.deleteStatus(status.id);
+                }
+            }
+        });
+    }
+    
+    menuItems.forEach(item => {
+        const menuButton = document.createElement('button');
+        menuButton.textContent = item.label;
+        menuButton.onclick = () => {
+            item.action();
+            menu.remove();
+        };
+        menu.appendChild(menuButton);
+    });
+    
+    document.body.appendChild(menu);
+    
+    // Position the menu
+    const rect = button.getBoundingClientRect();
+    menu.style.top = `${rect.bottom}px`;
+    menu.style.left = `${rect.left}px`;
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu(e) {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 0);
 }
 
 export function renderStatusDetail(status, allReplies, currentUser, actions, settings) {
