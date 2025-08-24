@@ -1093,7 +1093,9 @@ select:focus {
 }
 
 .modal-overlay.visible {
-    display: flex;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-content {
