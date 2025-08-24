@@ -69,15 +69,19 @@ export async function apiFetch(instanceUrl, accessToken, endpoint, options = {},
     }
 }
 
-export async function apiUploadMedia(instanceUrl, accessToken, file) {
+export async function apiUploadMedia(state, file) {
+    if (!state.instanceUrl || !state.accessToken) {
+        throw new Error('No instance URL or access token provided');
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-        const response = await fetch(`https://${instanceUrl}/api/v2/media`, {
+        const response = await fetch(`https://${state.instanceUrl}/api/v2/media`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${state.accessToken}`,
             },
             body: formData,
         });
@@ -95,7 +99,6 @@ export async function apiUploadMedia(instanceUrl, accessToken, file) {
         throw error;
     }
 }
-
 
 export async function lemmyImageUpload(file) {
     const lemmyInstance = localStorage.getItem('lemmy_instance');
