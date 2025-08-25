@@ -906,28 +906,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderEditBlogPostPage(state, actions, postId);
             hideLoadingBar();
         },
-        blogLogin: async (username, password) => {
+        blogLogin: async (username, password, instance) => {
             try {
-                const response = await fetch('https://b.afsapp.lol/login', {
+                const response = await fetch('https://b.afsapp.lol/.netlify/functions/api-auth-login', {
                     method: 'POST',
                     mode: 'cors',
                     credentials: 'omit',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password, instance })
                 });
                 
                 if (response.ok) {
                     const data = await response.json();
-                    state.blogAuth = data.token || data.auth;
-                    state.blogUsername = username;
-                    localStorage.setItem('blog-auth', state.blogAuth);
-                    localStorage.setItem('blog-username', username);
-                    showSuccessToast('Blog login successful!');
-                    return true;
+                    if (data.success) {
+                        state.blogAuth = data.data.access_token;
+                        state.blogUsername = data.data.user.username;
+                        localStorage.setItem('blog-auth', state.blogAuth);
+                        localStorage.setItem('blog-username', state.blogUsername);
+                        showSuccessToast('Blog login successful!');
+                        return true;
+                    } else {
+                        showErrorToast(data.message || 'Login failed');
+                        return false;
+                    }
                 } else {
-                    showErrorToast('Blog login failed');
+                    const errorData = await response.json();
+                    showErrorToast(errorData.message || 'Login failed');
                     return false;
                 }
             } catch (error) {
@@ -971,48 +977,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         blogCreatePost: async (title, content, summary) => {
             try {
-                const response = await fetch('https://b.afsapp.lol/posts', {
+                const response = await fetch('https://b.afsapp.lol/.netlify/functions/api-posts-db', {
                     method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${state.blogAuth}`
                     },
-                    body: JSON.stringify({ title, content, summary })
+                    body: JSON.stringify({ 
+                        title, 
+                        content, 
+                        description: summary,
+                        isDraft: false 
+                    })
                 });
                 
                 if (response.ok) {
-                    showSuccessToast('Post created successfully!');
-                    actions.showBlogFeed();
-                    return true;
+                    const data = await response.json();
+                    if (data.success) {
+                        showSuccessToast('Post created successfully!');
+                        actions.showBlogFeed();
+                        return true;
+                    } else {
+                        showErrorToast(data.message || 'Failed to create post');
+                        return false;
+                    }
                 } else {
-                    showErrorToast('Failed to create post');
+                    const errorData = await response.json();
+                    showErrorToast(errorData.message || 'Failed to create post');
                     return false;
                 }
             } catch (error) {
+                console.error('Error creating post:', error);
                 showErrorToast('Error creating post');
                 return false;
             }
         },
         blogUpdatePost: async (postId, title, content, summary) => {
             try {
-                const response = await fetch(`https://b.afsapp.lol/posts/${postId}`, {
+                const response = await fetch(`https://b.afsapp.lol/.netlify/functions/api-posts-slug-db?slug=${postId}`, {
                     method: 'PUT',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${state.blogAuth}`
                     },
-                    body: JSON.stringify({ title, content, summary })
+                    body: JSON.stringify({ 
+                        title, 
+                        content, 
+                        description: summary 
+                    })
                 });
                 
                 if (response.ok) {
-                    showSuccessToast('Post updated successfully!');
-                    actions.showBlogPost(postId);
-                    return true;
+                    const data = await response.json();
+                    if (data.success) {
+                        showSuccessToast('Post updated successfully!');
+                        actions.showBlogPost(postId);
+                        return true;
+                    } else {
+                        showErrorToast(data.message || 'Failed to update post');
+                        return false;
+                    }
                 } else {
-                    showErrorToast('Failed to update post');
+                    const errorData = await response.json();
+                    showErrorToast(errorData.message || 'Failed to update post');
                     return false;
                 }
             } catch (error) {
+                console.error('Error updating post:', error);
                 showErrorToast('Error updating post');
                 return false;
             }
@@ -1021,22 +1056,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!confirm('Are you sure you want to delete this post?')) return false;
             
             try {
-                const response = await fetch(`https://b.afsapp.lol/posts/${postId}`, {
+                const response = await fetch(`https://b.afsapp.lol/.netlify/functions/api-posts-slug-db?slug=${postId}`, {
                     method: 'DELETE',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
                         'Authorization': `Bearer ${state.blogAuth}`
                     }
                 });
                 
                 if (response.ok) {
-                    showSuccessToast('Post deleted successfully!');
-                    actions.showBlogFeed();
-                    return true;
+                    const data = await response.json();
+                    if (data.success) {
+                        showSuccessToast('Post deleted successfully!');
+                        actions.showBlogFeed();
+                        return true;
+                    } else {
+                        showErrorToast(data.message || 'Failed to delete post');
+                        return false;
+                    }
                 } else {
-                    showErrorToast('Failed to delete post');
+                    const errorData = await response.json();
+                    showErrorToast(errorData.message || 'Failed to delete post');
                     return false;
                 }
             } catch (error) {
+                console.error('Error deleting post:', error);
                 showErrorToast('Error deleting post');
                 return false;
             }
