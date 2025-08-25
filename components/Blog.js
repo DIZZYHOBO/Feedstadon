@@ -8,6 +8,8 @@ const BLOG_API_BASE = 'https://b.afsapp.lol';
 async function blogApiRequest(endpoint, options = {}) {
     const url = `${BLOG_API_BASE}${endpoint}`;
     const config = {
+        mode: 'cors', // Explicitly set CORS mode
+        credentials: 'omit', // Don't send credentials for CORS
         headers: {
             'Content-Type': 'application/json',
             ...options.headers
@@ -23,6 +25,10 @@ async function blogApiRequest(endpoint, options = {}) {
         return await response.json();
     } catch (error) {
         console.error('Blog API request failed:', error);
+        // If CORS error, provide helpful message
+        if (error.message.includes('CORS') || error.message.includes('fetch')) {
+            throw new Error('Unable to connect to blog service. Please check your connection.');
+        }
         throw error;
     }
 }
