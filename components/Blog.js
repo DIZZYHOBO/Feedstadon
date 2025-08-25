@@ -178,7 +178,7 @@ function initBlogAuth(state, actions) {
 
 // Render blog feed
 export async function renderBlogFeed(state, actions, loadMore = false) {
-    const blogView = document.getElementById('blog-view');
+    const blogView = document.getElementById('blog-feed-view');
     
     if (!loadMore) {
         state.blogPage = 1;
@@ -324,7 +324,7 @@ export async function renderCreateBlogPostPage(state, actions) {
         return;
     }
     
-    const createBlogPostView = document.getElementById('create-blog-post-view');
+    const createBlogPostView = document.getElementById('blog-composer-view');
     
     createBlogPostView.innerHTML = `
         <div class="blog-editor">
@@ -367,7 +367,7 @@ export async function renderEditBlogPostPage(state, actions, postId) {
         return;
     }
     
-    const editBlogPostView = document.getElementById('edit-blog-post-view');
+    const editBlogPostView = document.getElementById('blog-composer-view');
     
     editBlogPostView.innerHTML = '<div class="loading">Loading post for editing...</div>';
     
