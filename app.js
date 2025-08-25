@@ -18,9 +18,6 @@ import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, show
 import { renderLoopsProfilePage } from './components/Loops.js';
 import { shareService } from './components/ShareService.js';
 import { renderShareView } from './components/ShareView.js';
-import { initBlog, renderBlogFeed, renderBlogPostView, renderBlogComposer, showBlogLoginModal } from './components/Blog.js';
-
-
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -922,7 +919,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initPullToRefresh(state, actions);
     initComposeModal(state, () => actions.showHomeTimeline());
     initImageModal();
-    initBlog(state, actions);
     
     refreshBtn.addEventListener('click', () => {
         if (state.currentView === 'timeline') {
