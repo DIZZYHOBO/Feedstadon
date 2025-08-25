@@ -1,15 +1,15 @@
 import { showLoadingBar, hideLoadingBar, showToast, showSuccessToast, showErrorToast, showWarningToast } from './ui.js';
 import { ICONS } from './icons.js';
 
-// Blog API base URL
-const BLOG_API_BASE = 'https://b.afsapp.lol';
+// Blog API base URL - using your Netlify Functions
+const BLOG_API_BASE = 'https://b.afsapp.lol/.netlify/functions';
 
 // Utility function to make blog API requests
 async function blogApiRequest(endpoint, options = {}) {
     const url = `${BLOG_API_BASE}${endpoint}`;
     const config = {
-        mode: 'cors', // Explicitly set CORS mode
-        credentials: 'omit', // Don't send credentials for CORS
+        mode: 'cors',
+        credentials: 'omit',
         headers: {
             'Content-Type': 'application/json',
             ...options.headers
@@ -20,15 +20,12 @@ async function blogApiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(url, config);
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
         }
         return await response.json();
     } catch (error) {
         console.error('Blog API request failed:', error);
-        // If CORS error, provide helpful message
-        if (error.message.includes('CORS') || error.message.includes('fetch')) {
-            throw new Error('Unable to connect to blog service. Please check your connection.');
-        }
         throw error;
     }
 }
@@ -214,7 +211,8 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
     
     try {
         const postsContainer = blogView.querySelector('.blog-posts-container');
-        const data = await blogApiRequest(`/posts?page=${state.blogPage}&limit=10`);
+        // Use the correct API endpoint for your Netlify function
+        const data = await blogApiRequest(`/api-posts-db?page=${state.blogPage}&limit=10`);
         
         if (!loadMore) {
             postsContainer.innerHTML = '';
@@ -222,12 +220,12 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
             postsContainer.querySelector('.loading')?.remove();
         }
         
-        if (data.posts && data.posts.length > 0) {
-            data.posts.forEach(post => {
+        if (data.success && data.data.posts && data.data.posts.length > 0) {
+            data.data.posts.forEach(post => {
                 postsContainer.appendChild(renderBlogPostCard(post, state, actions));
             });
             
-            state.blogHasMore = data.posts.length === 10;
+            state.blogHasMore = data.data.pagination.has_next;
             if (state.blogHasMore) {
                 state.blogPage++;
                 postsContainer.innerHTML += '<div class="loading">Loading more...</div>';
@@ -240,7 +238,13 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
         console.error('Failed to load blog posts:', error);
         const postsContainer = blogView.querySelector('.blog-posts-container');
         if (!loadMore) {
-            postsContainer.innerHTML = '<div class="error-state">Failed to load blog posts.</div>';
+            postsContainer.innerHTML = `
+                <div class="error-state">
+                    <h3>Failed to Load Posts</h3>
+                    <p>${error.message}</p>
+                    <button class="button-primary" onclick="actions.showBlogFeed()">Retry</button>
+                </div>
+            `;
         }
     }
 }
@@ -252,9 +256,16 @@ export async function renderBlogPostPage(state, actions, postId) {
     blogPostView.innerHTML = '<div class="loading">Loading post...</div>';
     
     try {
-        const post = await blogApiRequest(`/posts/${postId}`);
+        // Use the correct API endpoint for getting single posts
+        const response = await blogApiRequest(`/api-posts-slug-db?slug=${postId}`);
         
-        const formattedDate = new Date(post.published || post.created_at).toLocaleDateString('en-US', {
+        if (!response.success) {
+            throw new Error(response.message || 'Failed to load post');
+        }
+        
+        const post = response.data.post;
+        
+        const formattedDate = new Date(post.created_at || post.date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -262,14 +273,33 @@ export async function renderBlogPostPage(state, actions, postId) {
             minute: '2-digit'
         });
         
-        const isOwner = state.blogUsername && post.author && (post.author.username === state.blogUsername || post.author === state.blogUsername);
+        const isOwner = state.blogUsername && post.author && post.author.includes(state.blogUsername);
+        
+        // Convert markdown to HTML for content
+        let content = post.content || '';
+        if (content.includes('#') || content.includes('*') || content.includes('`')) {
+            content = content
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                .replace(/!\[([^\]]*)\]\(([^\)]+)\)/gim, '<img alt="$1" src="$2" style="max-width: 100%; height: auto;">')
+                .replace(/\[([^\]]+)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank">$1</a>')
+                .replace(/`([^`]+)`/gim, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px;">$1</code>')
+                .replace(/```(\w+)?\n([\s\S]*?)\n```/gim, '<pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto;"><code>$2</code></pre>')
+                .replace(/^> (.*$)/gim, '<blockquote style="border-left: 4px solid #ddd; padding-left: 15px; margin: 15px 0; color: #666;">$1</blockquote>')
+                .replace(/\n\n/gim, '</p><p>')
+                .replace(/\n/gim, '<br>')
+                .replace(/^(.+)$/gm, '<p>$1</p>');
+        }
         
         blogPostView.innerHTML = `
             <article class="blog-post-full">
                 <header class="blog-post-full-header">
                     <h1 class="blog-post-full-title">${post.title}</h1>
                     <div class="blog-post-full-meta">
-                        <span class="blog-post-author">by ${post.author?.username || post.author || 'Unknown'}</span>
+                        <span class="blog-post-author">by ${post.author || 'Unknown'}</span>
                         <span class="blog-post-date">${formattedDate}</span>
                         ${isOwner ? `
                             <div class="blog-post-actions">
@@ -285,7 +315,7 @@ export async function renderBlogPostPage(state, actions, postId) {
                 </header>
                 
                 <div class="blog-post-full-content">
-                    ${post.content || ''}
+                    ${content}
                 </div>
                 
                 <footer class="blog-post-full-footer">
@@ -315,7 +345,7 @@ export async function renderBlogPostPage(state, actions, postId) {
         blogPostView.innerHTML = `
             <div class="error-state">
                 <h2>Failed to load post</h2>
-                <p>The blog post could not be loaded.</p>
+                <p>${error.message}</p>
                 <button class="button-primary" onclick="actions.showBlogFeed()">Back to Blog</button>
             </div>
         `;
