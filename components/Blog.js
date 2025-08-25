@@ -1,796 +1,534 @@
-// components/Blog.js - Complete Blog API integration for Feedstodon
-import { showToast, showSuccessToast, showErrorToast, showWarningToast } from './ui.js';
-import { timeAgo } from './utils.js';
+import { showLoadingBar, hideLoadingBar, showToast, showSuccessToast, showErrorToast, showWarningToast } from './ui.js';
+import { ICONS } from './icons.js';
 
-const BLOG_API_BASE = 'https://b.afsapp.lol/.netlify/functions';
+// Blog API base URL
+const BLOG_API_BASE = 'https://b.afsapp.lol';
 
-// Blog API helper with authentication
-export async function blogApiFetch(endpoint, options = {}) {
-    const state = window.appState || {};
-    const blogToken = state.blogToken || localStorage.getItem('blogToken');
-    
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
+// Utility function to make blog API requests
+async function blogApiRequest(endpoint, options = {}) {
+    const url = `${BLOG_API_BASE}${endpoint}`;
+    const config = {
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        },
+        ...options
     };
     
-    if (blogToken && !endpoint.includes('auth-login')) {
-        headers['Authorization'] = `Bearer ${blogToken}`;
-    }
-    
     try {
-        const response = await fetch(`${BLOG_API_BASE}${endpoint}`, {
-            ...options,
-            headers
-        });
-        
+        const response = await fetch(url, config);
         if (!response.ok) {
-            if (response.status === 401) {
-                // Token expired, clear it
-                localStorage.removeItem('blogToken');
-                delete state.blogToken;
-                throw new Error('Authentication expired. Please login again.');
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
         return await response.json();
     } catch (error) {
-        console.error('Blog API error:', error);
+        console.error('Blog API request failed:', error);
         throw error;
     }
 }
 
-// Blog authentication
-export async function blogLogin(instance, username, password) {
-    try {
-        const response = await blogApiFetch('/api-auth-login', {
-            method: 'POST',
-            body: JSON.stringify({ instance, username, password })
-        });
-        
-        if (response.success && response.data?.access_token) {
-            const token = response.data.access_token;
-            localStorage.setItem('blogToken', token);
-            localStorage.setItem('blogUser', JSON.stringify(response.data.user));
-            
-            if (window.appState) {
-                window.appState.blogToken = token;
-                window.appState.blogUser = response.data.user;
-            }
-            
-            showSuccessToast('Successfully logged into blog!');
-            return response.data;
-        } else {
-            throw new Error(response.message || 'Login failed');
-        }
-    } catch (error) {
-        showErrorToast(`Blog login failed: ${error.message}`);
-        throw error;
-    }
-}
-
-// Fetch blog posts
-export async function fetchBlogPosts(params = {}) {
-    const queryParams = new URLSearchParams({
-        page: params.page || 1,
-        limit: params.limit || 20,
-        ...params
+// Render a blog post card
+function renderBlogPostCard(post, state, actions) {
+    const postElement = document.createElement('article');
+    postElement.className = 'blog-post-card';
+    
+    const formattedDate = new Date(post.published || post.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
     });
     
-    try {
-        const response = await blogApiFetch(`/api-posts-db?${queryParams}`);
-        return response;
-    } catch (error) {
-        console.error('Error fetching blog posts:', error);
-        return { success: false, data: { posts: [], total: 0 } };
-    }
-}
-
-// Fetch single blog post by slug
-export async function fetchBlogPost(slug) {
-    try {
-        const response = await blogApiFetch(`/api-posts-slug-db?slug=${slug}`);
-        return response;
-    } catch (error) {
-        console.error('Error fetching blog post:', error);
-        return null;
-    }
-}
-
-// Create blog post
-export async function createBlogPost(postData) {
-    try {
-        const response = await blogApiFetch('/api-posts-db', {
-            method: 'POST',
-            body: JSON.stringify(postData)
-        });
-        
-        if (response.success) {
-            showSuccessToast('Blog post created successfully!');
-            return response.data;
-        } else {
-            throw new Error(response.message || 'Failed to create post');
-        }
-    } catch (error) {
-        showErrorToast(`Failed to create post: ${error.message}`);
-        throw error;
-    }
-}
-
-// Update blog post
-export async function updateBlogPost(slug, postData) {
-    try {
-        const response = await blogApiFetch(`/api-posts-slug-db?slug=${slug}`, {
-            method: 'PUT',
-            body: JSON.stringify(postData)
-        });
-        
-        if (response.success) {
-            showSuccessToast('Blog post updated successfully!');
-            return response.data;
-        } else {
-            throw new Error(response.message || 'Failed to update post');
-        }
-    } catch (error) {
-        showErrorToast(`Failed to update post: ${error.message}`);
-        throw error;
-    }
-}
-
-// Delete blog post
-export async function deleteBlogPost(slug) {
-    try {
-        const response = await blogApiFetch(`/api-posts-slug-db?slug=${slug}`, {
-            method: 'DELETE'
-        });
-        
-        if (response.success) {
-            showSuccessToast('Blog post deleted successfully!');
-            return true;
-        } else {
-            throw new Error(response.message || 'Failed to delete post');
-        }
-    } catch (error) {
-        showErrorToast(`Failed to delete post: ${error.message}`);
-        throw error;
-    }
-}
-
-// Render blog card for feed
-export function renderBlogCard(post, state, actions) {
-    const card = document.createElement('article');
-    card.className = 'status blog-post-card';
-    card.dataset.postId = post.id;
+    const isOwner = state.blogUsername && post.author && (post.author.username === state.blogUsername || post.author === state.blogUsername);
     
-    const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : null;
-    const excerptLength = 200;
-    const excerpt = post.description || 
-                   (post.content ? post.content.substring(0, excerptLength) + '...' : '');
-    
-    const isOwner = state.blogUser?.username === post.author;
-    
-    card.innerHTML = `
+    postElement.innerHTML = `
         <div class="blog-post-header">
-            <div class="status-header">
-                <img src="${post.authorAvatar || 'images/blog-avatar.png'}" alt="${post.author}" class="status-avatar" 
-                     onerror="this.src='images/default-avatar.png'">
-                <div class="status-meta">
-                    <div class="status-author">${post.author}</div>
-                    <div class="status-time">${timeAgo(new Date(post.createdAt))}</div>
-                </div>
+            <h2 class="blog-post-title" onclick="actions.showBlogPost('${post.id}')">${post.title}</h2>
+            <div class="blog-post-meta">
+                <span class="blog-post-author">by ${post.author?.username || post.author || 'Unknown'}</span>
+                <span class="blog-post-date">${formattedDate}</span>
                 ${isOwner ? `
-                    <div class="post-actions-menu">
-                        <button class="icon-button menu-toggle" data-post-id="${post.id}">
-                            ${ICONS.more}
+                    <div class="blog-post-actions">
+                        <button class="blog-edit-btn" onclick="actions.showEditBlogPost('${post.id}')">
+                            ${ICONS.edit || '✏️'} Edit
                         </button>
-                        <div class="dropdown-menu" style="display: none;">
-                            <button class="dropdown-item edit-post" data-slug="${post.slug}">Edit</button>
-                            <button class="dropdown-item delete-post" data-slug="${post.slug}">Delete</button>
-                        </div>
+                        <button class="blog-delete-btn" onclick="actions.blogDeletePost('${post.id}')">
+                            ${ICONS.delete || '🗑️'} Delete
+                        </button>
                     </div>
                 ` : ''}
             </div>
         </div>
-        
-        <div class="blog-post-content">
-            <h2 class="blog-post-title">${post.title}</h2>
-            <div class="blog-post-excerpt">${converter ? converter.makeHtml(excerpt) : excerpt}</div>
-            
-            ${post.tags && post.tags.length > 0 ? `
-                <div class="blog-post-tags">
-                    ${post.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
-                </div>
-            ` : ''}
+        <div class="blog-post-summary">
+            ${post.summary || post.content?.substring(0, 200) + '...' || ''}
         </div>
-        
-        <div class="status-actions blog-actions">
-            <button class="icon-button read-more" data-slug="${post.slug}">
-                ${ICONS.view} Read More
-            </button>
-            
-            <button class="icon-button share-post" data-url="${window.location.origin}/blog/${post.slug}">
-                ${ICONS.share} Share
+        <div class="blog-post-footer">
+            <button class="blog-read-more-btn" onclick="actions.showBlogPost('${post.id}')">
+                Read More →
             </button>
         </div>
     `;
     
-    // Add event listeners
-    const readMoreBtn = card.querySelector('.read-more');
-    readMoreBtn?.addEventListener('click', () => {
-        actions.navigateToBlogPost(post.slug);
-    });
-    
-    const shareBtn = card.querySelector('.share-post');
-    shareBtn?.addEventListener('click', async () => {
-        const url = shareBtn.dataset.url;
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: post.title,
-                    text: post.description || post.title,
-                    url: url
-                });
-            } catch (err) {
-                console.log('Share cancelled or failed', err);
-            }
-        } else {
-            navigator.clipboard.writeText(url);
-            showSuccessToast('Link copied to clipboard!');
-        }
-    });
-    
-    // Menu toggle for post owner
-    if (isOwner) {
-        const menuToggle = card.querySelector('.menu-toggle');
-        const dropdownMenu = card.querySelector('.dropdown-menu');
-        
-        menuToggle?.addEventListener('click', (e) => {
+    // Add click handlers for actions
+    const editBtn = postElement.querySelector('.blog-edit-btn');
+    if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            dropdownMenu.style.display = dropdownMenu.style.display === 'none' ? 'block' : 'none';
-        });
-        
-        const editBtn = card.querySelector('.edit-post');
-        editBtn?.addEventListener('click', () => {
-            actions.navigateToBlogEdit(post.slug);
-        });
-        
-        const deleteBtn = card.querySelector('.delete-post');
-        deleteBtn?.addEventListener('click', async () => {
-            if (confirm('Are you sure you want to delete this post?')) {
-                await deleteBlogPost(post.slug);
-                card.remove();
-            }
+            actions.showEditBlogPost(post.id);
         });
     }
     
-    return card;
+    const deleteBtn = postElement.querySelector('.blog-delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            actions.blogDeletePost(post.id);
+        });
+    }
+    
+    const titleEl = postElement.querySelector('.blog-post-title');
+    titleEl.addEventListener('click', () => actions.showBlogPost(post.id));
+    
+    const readMoreBtn = postElement.querySelector('.blog-read-more-btn');
+    readMoreBtn.addEventListener('click', () => actions.showBlogPost(post.id));
+    
+    return postElement;
 }
 
-// Render blog feed
-export async function renderBlogFeed(state, actions) {
-    const feedContainer = document.getElementById('blog-feed-view');
-    if (!feedContainer) return;
-    
-    feedContainer.innerHTML = '<div class="loading-spinner">Loading blog posts...</div>';
-    
-    try {
-        const response = await fetchBlogPosts({ page: state.blogPage || 1 });
-        
-        if (!response.success || !response.data?.posts) {
-            feedContainer.innerHTML = '<div class="empty-state">No blog posts available</div>';
-            return;
-        }
-        
-        feedContainer.innerHTML = '';
-        
-        // Add create post button if logged in
-        if (state.blogToken) {
-            const createBtn = document.createElement('div');
-            createBtn.className = 'blog-create-section';
-            createBtn.innerHTML = `
-                <button class="button-primary create-blog-post-btn">
-                    ✍️ Write New Post
-                </button>
-            `;
-            createBtn.querySelector('.create-blog-post-btn').addEventListener('click', () => {
-                actions.navigateToBlogCompose();
-            });
-            feedContainer.appendChild(createBtn);
-        }
-        
-        const posts = response.data.posts;
-        if (posts.length === 0) {
-            feedContainer.innerHTML += '<div class="empty-state">No blog posts yet. Be the first to write!</div>';
-            return;
-        }
-        
-        posts.forEach(post => {
-            const card = renderBlogCard(post, state, actions);
-            feedContainer.appendChild(card);
-        });
-        
-        // Add pagination if needed
-        if (response.data.total > posts.length) {
-            const loadMoreBtn = document.createElement('button');
-            loadMoreBtn.className = 'button-primary load-more';
-            loadMoreBtn.textContent = 'Load More Posts';
-            loadMoreBtn.addEventListener('click', async () => {
-                state.blogPage = (state.blogPage || 1) + 1;
-                const moreResponse = await fetchBlogPosts({ page: state.blogPage });
-                if (moreResponse.success && moreResponse.data?.posts) {
-                    moreResponse.data.posts.forEach(post => {
-                        const card = renderBlogCard(post, state, actions);
-                        feedContainer.insertBefore(card, loadMoreBtn);
-                    });
-                    
-                    if (feedContainer.children.length - 1 >= moreResponse.data.total) {
-                        loadMoreBtn.remove();
-                    }
-                }
-            });
-            feedContainer.appendChild(loadMoreBtn);
-        }
-    } catch (error) {
-        feedContainer.innerHTML = `<div class="error-state">Error loading blog posts: ${error.message}</div>`;
-    }
-}
-
-// Render blog post view
-export async function renderBlogPostView(slug, state, actions) {
-    const view = document.getElementById('blog-post-view');
-    if (!view) return;
-    
-    view.innerHTML = '<div class="loading-spinner">Loading post...</div>';
-    
-    try {
-        const response = await fetchBlogPost(slug);
-        
-        if (!response?.success || !response?.data) {
-            view.innerHTML = '<div class="error-state">Post not found</div>';
-            return;
-        }
-        
-        const post = response.data;
-        const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : null;
-        const isOwner = state.blogUser?.username === post.author;
-        
-        view.innerHTML = `
-            <article class="blog-post-full">
-                <div class="blog-post-header">
-                    <button class="back-button" id="back-to-feed">
-                        ${ICONS.reply} Back to Blog
-                    </button>
-                    
-                    ${isOwner ? `
-                        <div class="post-owner-actions">
-                            <button class="button-secondary edit-post" data-slug="${post.slug}">Edit</button>
-                            <button class="button-danger delete-post" data-slug="${post.slug}">Delete</button>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <h1 class="blog-post-title">${post.title}</h1>
-                
-                <div class="blog-post-meta">
-                    <img src="${post.authorAvatar || 'images/blog-avatar.png'}" alt="${post.author}" class="status-avatar">
-                    <div>
-                        <div class="post-author">${post.author}</div>
-                        <div class="post-date">${new Date(post.createdAt).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                        })}</div>
-                    </div>
-                </div>
-                
-                ${post.tags && post.tags.length > 0 ? `
-                    <div class="blog-post-tags">
-                        ${post.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
-                    </div>
-                ` : ''}
-                
-                <div class="blog-post-body">
-                    ${converter ? converter.makeHtml(post.content) : post.content}
-                </div>
-                
-                <div class="blog-post-footer">
-                    <button class="icon-button share-post">
-                        ${ICONS.share} Share
-                    </button>
-                </div>
-            </article>
-        `;
-        
-        // Add event listeners
-        document.getElementById('back-to-feed')?.addEventListener('click', () => {
-            actions.navigateTo('blog');
-        });
-        
-        view.querySelector('.share-post')?.addEventListener('click', async () => {
-            const url = `${window.location.origin}/blog/${post.slug}`;
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: post.title,
-                        text: post.description || post.title,
-                        url: url
-                    });
-                } catch (err) {
-                    console.log('Share cancelled or failed', err);
-                }
-            } else {
-                navigator.clipboard.writeText(url);
-                showSuccessToast('Link copied to clipboard!');
-            }
-        });
-        
-        if (isOwner) {
-            view.querySelector('.edit-post')?.addEventListener('click', () => {
-                actions.navigateToBlogEdit(post.slug);
-            });
-            
-            view.querySelector('.delete-post')?.addEventListener('click', async () => {
-                if (confirm('Are you sure you want to delete this post?')) {
-                    await deleteBlogPost(post.slug);
-                    actions.navigateTo('blog');
-                }
-            });
-        }
-    } catch (error) {
-        view.innerHTML = `<div class="error-state">Error loading post: ${error.message}</div>`;
-    }
-}
-
-// Render blog composer
-export function renderBlogComposer(state, actions, editSlug = null) {
-    const composer = document.getElementById('blog-composer-view');
-    if (!composer) return;
-    
-    let postData = {
-        title: '',
-        content: '',
-        description: '',
-        tags: [],
-        isDraft: false
-    };
-    
-    if (editSlug) {
-        composer.innerHTML = '<div class="loading-spinner">Loading post...</div>';
-        fetchBlogPost(editSlug).then(response => {
-            if (response?.success && response?.data) {
-                postData = response.data;
-                renderComposerForm();
-            }
-        });
-    } else {
-        renderComposerForm();
-    }
-    
-    function renderComposerForm() {
-        const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : null;
-        
-        composer.innerHTML = `
-            <div class="blog-composer-container">
-                <div class="composer-header">
-                    <button class="back-button" id="cancel-compose">
-                        ${ICONS.delete} Cancel
-                    </button>
-                    <h2>${editSlug ? 'Edit Post' : 'New Blog Post'}</h2>
-                </div>
-                
-                <div class="composer-form">
-                    <div class="form-group">
-                        <label for="post-title">Title</label>
-                        <input type="text" id="post-title" class="form-input" 
-                               placeholder="Enter your post title" 
-                               value="${postData.title}" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="post-description">Description (optional)</label>
-                        <textarea id="post-description" class="form-textarea" rows="2" 
-                                  placeholder="Brief description for preview">${postData.description || ''}</textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="post-content">Content (Markdown supported)</label>
-                        <div class="editor-toolbar">
-                            <button type="button" class="toolbar-btn" data-action="bold" title="Bold">B</button>
-                            <button type="button" class="toolbar-btn" data-action="italic" title="Italic">I</button>
-                            <button type="button" class="toolbar-btn" data-action="heading" title="Heading">H</button>
-                            <button type="button" class="toolbar-btn" data-action="link" title="Link">🔗</button>
-                            <button type="button" class="toolbar-btn" data-action="image" title="Image">🖼️</button>
-                            <button type="button" class="toolbar-btn" data-action="list" title="List">☰</button>
-                            <button type="button" class="toolbar-btn" data-action="code" title="Code">&lt;/&gt;</button>
-                            <button type="button" class="toolbar-btn" data-action="quote" title="Quote">❝</button>
-                        </div>
-                        <textarea id="post-content" class="form-textarea" rows="15" 
-                                  placeholder="Write your post content here...">${postData.content}</textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="post-tags">Tags (comma separated)</label>
-                        <input type="text" id="post-tags" class="form-input" 
-                               placeholder="e.g., technology, fediverse, tutorial" 
-                               value="${Array.isArray(postData.tags) ? postData.tags.join(', ') : ''}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="post-draft" ${postData.isDraft ? 'checked' : ''}>
-                            Save as draft
-                        </label>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button class="button-secondary" id="preview-post">Preview</button>
-                        <button class="button-primary" id="save-post">
-                            ${editSlug ? 'Update Post' : 'Publish Post'}
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="preview-container" class="preview-container" style="display: none;">
-                    <div class="preview-header">
-                        <h3>Preview</h3>
-                        <button class="close-preview-btn">&times;</button>
-                    </div>
-                    <div id="preview-content"></div>
-                </div>
+// Render blog authentication form
+function renderBlogAuth(state, actions) {
+    return `
+        <div class="blog-auth-container">
+            <div class="blog-auth-tabs">
+                <button class="blog-auth-tab active" data-tab="login">Login</button>
+                <button class="blog-auth-tab" data-tab="register">Register</button>
             </div>
-        `;
-        
-        // Toolbar actions
-        composer.querySelectorAll('.toolbar-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const textarea = document.getElementById('post-content');
-                const action = btn.dataset.action;
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const selectedText = textarea.value.substring(start, end);
-                let replacement = '';
-                
-                switch(action) {
-                    case 'bold':
-                        replacement = `**${selectedText || 'bold text'}**`;
-                        break;
-                    case 'italic':
-                        replacement = `*${selectedText || 'italic text'}*`;
-                        break;
-                    case 'heading':
-                        replacement = `\n## ${selectedText || 'Heading'}\n`;
-                        break;
-                    case 'link':
-                        replacement = `[${selectedText || 'link text'}](url)`;
-                        break;
-                    case 'image':
-                        replacement = `![${selectedText || 'alt text'}](image-url)`;
-                        break;
-                    case 'list':
-                        replacement = `\n- ${selectedText || 'List item'}\n`;
-                        break;
-                    case 'code':
-                        if (selectedText.includes('\n')) {
-                            replacement = `\`\`\`\n${selectedText || 'code'}\n\`\`\``;
-                        } else {
-                            replacement = `\`${selectedText || 'code'}\``;
-                        }
-                        break;
-                    case 'quote':
-                        replacement = `\n> ${selectedText || 'Quote'}\n`;
-                        break;
-                }
-                
-                textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
-                textarea.focus();
-                textarea.setSelectionRange(start + replacement.length, start + replacement.length);
-            });
-        });
-        
-        // Cancel button
-        document.getElementById('cancel-compose')?.addEventListener('click', () => {
-            if (confirm('Are you sure? Any unsaved changes will be lost.')) {
-                actions.navigateTo('blog');
-            }
-        });
-        
-        // Preview button
-        document.getElementById('preview-post')?.addEventListener('click', () => {
-            const previewContainer = document.getElementById('preview-container');
-            const previewContent = document.getElementById('preview-content');
             
-            const title = document.getElementById('post-title').value;
-            const content = document.getElementById('post-content').value;
-            
-            previewContent.innerHTML = `
-                <h1>${title || 'Untitled'}</h1>
-                <div class="preview-body">${converter ? converter.makeHtml(content || '*No content*') : content}</div>
-            `;
-            
-            previewContainer.style.display = 'block';
-        });
-        
-        // Close preview
-        composer.querySelector('.close-preview-btn')?.addEventListener('click', () => {
-            document.getElementById('preview-container').style.display = 'none';
-        });
-        
-        // Save/Update button
-        document.getElementById('save-post')?.addEventListener('click', async () => {
-            const title = document.getElementById('post-title').value.trim();
-            const content = document.getElementById('post-content').value.trim();
-            const description = document.getElementById('post-description').value.trim();
-            const tagsInput = document.getElementById('post-tags').value.trim();
-            const isDraft = document.getElementById('post-draft').checked;
-            
-            if (!title || !content) {
-                showWarningToast('Title and content are required');
-                return;
-            }
-            
-            const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
-            
-            const postPayload = {
-                title,
-                content,
-                description,
-                tags,
-                isDraft
-            };
-            
-            try {
-                if (editSlug) {
-                    await updateBlogPost(editSlug, postPayload);
-                    actions.navigateToBlogPost(editSlug);
-                } else {
-                    const newPost = await createBlogPost(postPayload);
-                    if (newPost?.slug) {
-                        actions.navigateToBlogPost(newPost.slug);
-                    } else {
-                        actions.navigateTo('blog');
-                    }
-                }
-            } catch (error) {
-                console.error('Error saving post:', error);
-            }
-        });
-    }
-}
-
-// Blog login modal
-export function showBlogLoginModal(state, actions) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay visible';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Login to Blog</h2>
-                <button class="close-modal">&times;</button>
+            <div class="blog-auth-form" id="blog-login-form">
+                <h3>Login to Blog</h3>
+                <input type="text" id="blog-login-username" placeholder="Username" required>
+                <input type="password" id="blog-login-password" placeholder="Password" required>
+                <button class="button-primary" id="blog-login-submit">Login</button>
             </div>
-            <div class="modal-body">
-                <p>Login with your Lemmy account to access blog features</p>
-                <div class="form-group">
-                    <label for="blog-instance">Lemmy Instance</label>
-                    <input type="text" id="blog-instance" class="form-input" 
-                           placeholder="e.g., lemmy.world" value="${localStorage.getItem('lemmy_instance') || ''}">
-                </div>
-                <div class="form-group">
-                    <label for="blog-username">Username</label>
-                    <input type="text" id="blog-username" class="form-input" 
-                           placeholder="Your username" value="${localStorage.getItem('lemmy_username') || ''}">
-                </div>
-                <div class="form-group">
-                    <label for="blog-password">Password</label>
-                    <input type="password" id="blog-password" class="form-input" 
-                           placeholder="Your password">
-                </div>
-                <div class="form-actions">
-                    <button class="button-secondary close-modal">Cancel</button>
-                    <button class="button-primary" id="blog-login-btn">Login</button>
-                </div>
+            
+            <div class="blog-auth-form hidden" id="blog-register-form">
+                <h3>Register for Blog</h3>
+                <input type="text" id="blog-register-username" placeholder="Username" required>
+                <input type="email" id="blog-register-email" placeholder="Email" required>
+                <input type="password" id="blog-register-password" placeholder="Password" required>
+                <button class="button-primary" id="blog-register-submit">Register</button>
             </div>
         </div>
     `;
+}
+
+// Initialize blog authentication handlers
+function initBlogAuth(state, actions) {
+    const tabs = document.querySelectorAll('.blog-auth-tab');
+    const loginForm = document.getElementById('blog-login-form');
+    const registerForm = document.getElementById('blog-register-form');
     
-    document.body.appendChild(modal);
-    
-    modal.querySelectorAll('.close-modal').forEach(btn => {
-        btn.addEventListener('click', () => modal.remove());
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            if (tab.dataset.tab === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+            }
+        });
     });
     
-    document.getElementById('blog-login-btn')?.addEventListener('click', async () => {
-        const instance = document.getElementById('blog-instance').value.trim();
-        const username = document.getElementById('blog-username').value.trim();
-        const password = document.getElementById('blog-password').value;
+    document.getElementById('blog-login-submit').addEventListener('click', async () => {
+        const username = document.getElementById('blog-login-username').value;
+        const password = document.getElementById('blog-login-password').value;
         
-        if (!instance || !username || !password) {
+        if (!username || !password) {
             showWarningToast('Please fill in all fields');
             return;
         }
         
-        try {
-            await blogLogin(instance, username, password);
-            modal.remove();
-            actions.navigateTo('blog');
-        } catch (error) {
-            console.error('Blog login error:', error);
+        const success = await actions.blogLogin(username, password);
+        if (success) {
+            actions.showBlogFeed();
+        }
+    });
+    
+    document.getElementById('blog-register-submit').addEventListener('click', async () => {
+        const username = document.getElementById('blog-register-username').value;
+        const email = document.getElementById('blog-register-email').value;
+        const password = document.getElementById('blog-register-password').value;
+        
+        if (!username || !email || !password) {
+            showWarningToast('Please fill in all fields');
+            return;
+        }
+        
+        const success = await actions.blogRegister(username, password, email);
+        if (success) {
+            // Switch to login tab
+            tabs[0].click();
+            document.getElementById('blog-login-username').value = username;
         }
     });
 }
 
-// Initialize blog component
-export function initBlog(state, actions) {
-    // Check for stored blog token
-    const storedToken = localStorage.getItem('blogToken');
-    const storedUser = localStorage.getItem('blogUser');
+// Render blog feed
+export async function renderBlogFeed(state, actions, loadMore = false) {
+    const blogView = document.getElementById('blog-view');
     
-    if (storedToken) {
-        state.blogToken = storedToken;
-        if (storedUser) {
-            try {
-                state.blogUser = JSON.parse(storedUser);
-            } catch (e) {
-                console.error('Error parsing stored blog user:', e);
-            }
+    if (!loadMore) {
+        state.blogPage = 1;
+        blogView.innerHTML = `
+            <div class="blog-header">
+                <h1>Blog</h1>
+                ${state.blogAuth ? `
+                    <div class="blog-user-info">
+                        <span>Welcome, ${state.blogUsername}</span>
+                        <button class="button-primary" onclick="actions.showCreateBlogPost()">New Post</button>
+                        <button class="button-secondary" onclick="actions.blogLogout()">Logout</button>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="blog-content">
+                ${!state.blogAuth ? renderBlogAuth(state, actions) : ''}
+                <div class="blog-posts-container">
+                    <div class="loading">Loading posts...</div>
+                </div>
+            </div>
+        `;
+        
+        if (!state.blogAuth) {
+            initBlogAuth(state, actions);
         }
     }
     
-    // Add blog navigation actions
-    actions.navigateTo = (view, params = {}) => {
-        if (view === 'blog') {
-            actions.showBlogFeed();
-        } else if (view === 'blog-post') {
-            actions.showBlogPost(params.slug);
-        } else if (view === 'blog-compose') {
-            actions.showBlogCompose(params.slug);
-        }
-    };
-    
-    actions.showBlogFeed = () => {
-        switchView('blog');
-        renderBlogFeed(state, actions);
-    };
-    
-    actions.showBlogPost = (slug) => {
-        switchView('blog-post');
-        renderBlogPostView(slug, state, actions);
-    };
-    
-    actions.showBlogCompose = (editSlug = null) => {
-        if (!state.blogToken) {
-            showBlogLoginModal(state, actions);
+    try {
+        const postsContainer = blogView.querySelector('.blog-posts-container');
+        const data = await blogApiRequest(`/posts?page=${state.blogPage}&limit=10`);
+        
+        if (!loadMore) {
+            postsContainer.innerHTML = '';
         } else {
-            switchView('blog-compose');
-            renderBlogComposer(state, actions, editSlug);
+            postsContainer.querySelector('.loading')?.remove();
         }
-    };
+        
+        if (data.posts && data.posts.length > 0) {
+            data.posts.forEach(post => {
+                postsContainer.appendChild(renderBlogPostCard(post, state, actions));
+            });
+            
+            state.blogHasMore = data.posts.length === 10;
+            if (state.blogHasMore) {
+                state.blogPage++;
+                postsContainer.innerHTML += '<div class="loading">Loading more...</div>';
+            }
+        } else if (!loadMore) {
+            postsContainer.innerHTML = '<div class="empty-state">No blog posts yet.</div>';
+        }
+        
+    } catch (error) {
+        console.error('Failed to load blog posts:', error);
+        const postsContainer = blogView.querySelector('.blog-posts-container');
+        if (!loadMore) {
+            postsContainer.innerHTML = '<div class="error-state">Failed to load blog posts.</div>';
+        }
+    }
+}
+
+// Render individual blog post page
+export async function renderBlogPostPage(state, actions, postId) {
+    const blogPostView = document.getElementById('blog-post-view');
     
-    actions.navigateToBlog = () => {
-        actions.navigateTo('blog');
-    };
+    blogPostView.innerHTML = '<div class="loading">Loading post...</div>';
     
-    actions.navigateToBlogPost = (slug) => {
-        actions.navigateTo('blog-post', { slug });
-    };
-    
-    actions.navigateToBlogEdit = (slug) => {
-        actions.navigateTo('blog-compose', { slug });
-    };
-    
-    actions.navigateToBlogCompose = () => {
-        actions.showBlogCompose();
-    };
-    
-    // Helper function for view switching
-    function switchView(viewName) {
-        document.querySelectorAll('.view-container').forEach(view => {
-            view.style.display = 'none';
+    try {
+        const post = await blogApiRequest(`/posts/${postId}`);
+        
+        const formattedDate = new Date(post.published || post.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         });
         
-        const viewElement = document.getElementById(`${viewName}-view`);
-        if (viewElement) {
-            viewElement.style.display = 'flex';
+        const isOwner = state.blogUsername && post.author && (post.author.username === state.blogUsername || post.author === state.blogUsername);
+        
+        blogPostView.innerHTML = `
+            <article class="blog-post-full">
+                <header class="blog-post-full-header">
+                    <h1 class="blog-post-full-title">${post.title}</h1>
+                    <div class="blog-post-full-meta">
+                        <span class="blog-post-author">by ${post.author?.username || post.author || 'Unknown'}</span>
+                        <span class="blog-post-date">${formattedDate}</span>
+                        ${isOwner ? `
+                            <div class="blog-post-actions">
+                                <button class="button-secondary blog-edit-btn">
+                                    ${ICONS.edit || '✏️'} Edit
+                                </button>
+                                <button class="button-danger blog-delete-btn">
+                                    ${ICONS.delete || '🗑️'} Delete
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </header>
+                
+                <div class="blog-post-full-content">
+                    ${post.content || ''}
+                </div>
+                
+                <footer class="blog-post-full-footer">
+                    <button class="button-secondary" onclick="actions.showBlogFeed()">
+                        ← Back to Blog
+                    </button>
+                </footer>
+            </article>
+        `;
+        
+        // Add event handlers for edit/delete buttons
+        const editBtn = blogPostView.querySelector('.blog-edit-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => actions.showEditBlogPost(postId));
         }
+        
+        const deleteBtn = blogPostView.querySelector('.blog-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => actions.blogDeletePost(postId));
+        }
+        
+        // Store current post in state
+        state.currentBlogPost = post;
+        
+    } catch (error) {
+        console.error('Failed to load blog post:', error);
+        blogPostView.innerHTML = `
+            <div class="error-state">
+                <h2>Failed to load post</h2>
+                <p>The blog post could not be loaded.</p>
+                <button class="button-primary" onclick="actions.showBlogFeed()">Back to Blog</button>
+            </div>
+        `;
     }
+}
+
+// Render create blog post page
+export async function renderCreateBlogPostPage(state, actions) {
+    if (!state.blogAuth) {
+        showWarningToast('Please login to create a post');
+        actions.showBlogFeed();
+        return;
+    }
+    
+    const createBlogPostView = document.getElementById('create-blog-post-view');
+    
+    createBlogPostView.innerHTML = `
+        <div class="blog-editor">
+            <header class="blog-editor-header">
+                <h1>Create New Post</h1>
+                <div class="blog-editor-actions">
+                    <button class="button-secondary" onclick="actions.showBlogFeed()">Cancel</button>
+                    <button class="button-primary" id="blog-save-post">Publish</button>
+                </div>
+            </header>
+            
+            <div class="blog-editor-form">
+                <input type="text" id="blog-post-title" placeholder="Post Title" required>
+                <textarea id="blog-post-summary" placeholder="Brief summary (optional)" rows="2"></textarea>
+                <div class="blog-editor-toolbar">
+                    <button type="button" class="editor-btn" data-action="bold"><strong>B</strong></button>
+                    <button type="button" class="editor-btn" data-action="italic"><em>I</em></button>
+                    <button type="button" class="editor-btn" data-action="heading">H1</button>
+                    <button type="button" class="editor-btn" data-action="link">🔗</button>
+                    <button type="button" class="editor-btn" data-action="image">🖼️</button>
+                    <button type="button" class="editor-btn" data-action="code">Code</button>
+                </div>
+                <textarea id="blog-post-content" placeholder="Write your post content here... (Markdown supported)" rows="20" required></textarea>
+                <div class="blog-editor-preview">
+                    <h3>Preview</h3>
+                    <div id="blog-preview-content">Start typing to see preview...</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    initBlogEditor(state, actions, 'create');
+}
+
+// Render edit blog post page
+export async function renderEditBlogPostPage(state, actions, postId) {
+    if (!state.blogAuth) {
+        showWarningToast('Please login to edit posts');
+        actions.showBlogFeed();
+        return;
+    }
+    
+    const editBlogPostView = document.getElementById('edit-blog-post-view');
+    
+    editBlogPostView.innerHTML = '<div class="loading">Loading post for editing...</div>';
+    
+    try {
+        const post = await blogApiRequest(`/posts/${postId}`);
+        
+        // Check if user owns this post
+        const isOwner = state.blogUsername && post.author && (post.author.username === state.blogUsername || post.author === state.blogUsername);
+        if (!isOwner) {
+            showErrorToast('You can only edit your own posts');
+            actions.showBlogFeed();
+            return;
+        }
+        
+        editBlogPostView.innerHTML = `
+            <div class="blog-editor">
+                <header class="blog-editor-header">
+                    <h1>Edit Post</h1>
+                    <div class="blog-editor-actions">
+                        <button class="button-secondary" onclick="actions.showBlogPost('${postId}')">Cancel</button>
+                        <button class="button-primary" id="blog-update-post">Update</button>
+                    </div>
+                </header>
+                
+                <div class="blog-editor-form">
+                    <input type="text" id="blog-post-title" value="${post.title}" required>
+                    <textarea id="blog-post-summary" placeholder="Brief summary (optional)" rows="2">${post.summary || ''}</textarea>
+                    <div class="blog-editor-toolbar">
+                        <button type="button" class="editor-btn" data-action="bold"><strong>B</strong></button>
+                        <button type="button" class="editor-btn" data-action="italic"><em>I</em></button>
+                        <button type="button" class="editor-btn" data-action="heading">H1</button>
+                        <button type="button" class="editor-btn" data-action="link">🔗</button>
+                        <button type="button" class="editor-btn" data-action="image">🖼️</button>
+                        <button type="button" class="editor-btn" data-action="code">Code</button>
+                    </div>
+                    <textarea id="blog-post-content" rows="20" required>${post.content || ''}</textarea>
+                    <div class="blog-editor-preview">
+                        <h3>Preview</h3>
+                        <div id="blog-preview-content"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        initBlogEditor(state, actions, 'edit', postId);
+        
+        // Update preview with existing content
+        updatePreview();
+        
+    } catch (error) {
+        console.error('Failed to load post for editing:', error);
+        editBlogPostView.innerHTML = `
+            <div class="error-state">
+                <h2>Failed to load post</h2>
+                <p>Could not load the post for editing.</p>
+                <button class="button-primary" onclick="actions.showBlogFeed()">Back to Blog</button>
+            </div>
+        `;
+    }
+}
+
+// Initialize blog editor functionality
+function initBlogEditor(state, actions, mode, postId = null) {
+    const titleInput = document.getElementById('blog-post-title');
+    const summaryInput = document.getElementById('blog-post-summary');
+    const contentTextarea = document.getElementById('blog-post-content');
+    const previewDiv = document.getElementById('blog-preview-content');
+    const saveBtn = document.getElementById('blog-save-post') || document.getElementById('blog-update-post');
+    
+    // Simple markdown to HTML converter
+    function markdownToHtml(markdown) {
+        return markdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*)\*/gim, '<em>$1</em>')
+            .replace(/!\[([^\]]*)\]\(([^\)]+)\)/gim, '<img alt="$1" src="$2">')
+            .replace(/\[([^\]]+)\]\(([^\)]+)\)/gim, '<a href="$2">$1</a>')
+            .replace(/`([^`]+)`/gim, '<code>$1</code>')
+            .replace(/\n\n/gim, '</p><p>')
+            .replace(/^\s*[\r\n]/gm, '<br>')
+            .replace(/^(.+)$/gm, '<p>$1</p>');
+    }
+    
+    // Update preview function
+    window.updatePreview = function() {
+        const content = contentTextarea.value;
+        if (content.trim()) {
+            previewDiv.innerHTML = markdownToHtml(content);
+        } else {
+            previewDiv.innerHTML = 'Start typing to see preview...';
+        }
+    };
+    
+    // Live preview updates
+    contentTextarea.addEventListener('input', updatePreview);
+    
+    // Editor toolbar functionality
+    document.querySelectorAll('.editor-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            const textarea = contentTextarea;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            let replacement = selectedText;
+            
+            switch (action) {
+                case 'bold':
+                    replacement = `**${selectedText}**`;
+                    break;
+                case 'italic':
+                    replacement = `*${selectedText}*`;
+                    break;
+                case 'heading':
+                    replacement = `# ${selectedText}`;
+                    break;
+                case 'link':
+                    const url = prompt('Enter URL:', 'https://');
+                    if (url) {
+                        replacement = `[${selectedText || 'Link text'}](${url})`;
+                    }
+                    break;
+                case 'image':
+                    const imgUrl = prompt('Enter image URL:', 'https://');
+                    if (imgUrl) {
+                        replacement = `![${selectedText || 'Alt text'}](${imgUrl})`;
+                    }
+                    break;
+                case 'code':
+                    replacement = `\`${selectedText}\``;
+                    break;
+            }
+            
+            textarea.setRangeText(replacement, start, end);
+            textarea.focus();
+            updatePreview();
+        });
+    });
+    
+    // Save/Update button functionality
+    saveBtn.addEventListener('click', async () => {
+        const title = titleInput.value.trim();
+        const summary = summaryInput.value.trim();
+        const content = contentTextarea.value.trim();
+        
+        if (!title || !content) {
+            showWarningToast('Title and content are required');
+            return;
+        }
+        
+        showLoadingBar();
+        
+        let success;
+        if (mode === 'create') {
+            success = await actions.blogCreatePost(title, content, summary);
+        } else {
+            success = await actions.blogUpdatePost(postId, title, content, summary);
+        }
+        
+        hideLoadingBar();
+    });
 }
