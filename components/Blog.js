@@ -1,7 +1,6 @@
-// Blog.js - Blog component for your fediverse client
-import { showToast } from './ui.js';
+// components/Blog.js - Complete Blog API integration for Feedstodon
+import { showToast, showSuccessToast, showErrorToast, showWarningToast } from './ui.js';
 import { timeAgo } from './utils.js';
-import showdown from './showdown.min.js';
 
 const BLOG_API_BASE = 'https://b.afsapp.lol/.netlify/functions';
 
@@ -60,13 +59,13 @@ export async function blogLogin(instance, username, password) {
                 window.appState.blogUser = response.data.user;
             }
             
-            showToast('Successfully logged into blog!', 'success');
+            showSuccessToast('Successfully logged into blog!');
             return response.data;
         } else {
             throw new Error(response.message || 'Login failed');
         }
     } catch (error) {
-        showToast(`Blog login failed: ${error.message}`, 'error');
+        showErrorToast(`Blog login failed: ${error.message}`);
         throw error;
     }
 }
@@ -108,13 +107,13 @@ export async function createBlogPost(postData) {
         });
         
         if (response.success) {
-            showToast('Blog post created successfully!', 'success');
+            showSuccessToast('Blog post created successfully!');
             return response.data;
         } else {
             throw new Error(response.message || 'Failed to create post');
         }
     } catch (error) {
-        showToast(`Failed to create post: ${error.message}`, 'error');
+        showErrorToast(`Failed to create post: ${error.message}`);
         throw error;
     }
 }
@@ -128,13 +127,13 @@ export async function updateBlogPost(slug, postData) {
         });
         
         if (response.success) {
-            showToast('Blog post updated successfully!', 'success');
+            showSuccessToast('Blog post updated successfully!');
             return response.data;
         } else {
             throw new Error(response.message || 'Failed to update post');
         }
     } catch (error) {
-        showToast(`Failed to update post: ${error.message}`, 'error');
+        showErrorToast(`Failed to update post: ${error.message}`);
         throw error;
     }
 }
@@ -147,13 +146,13 @@ export async function deleteBlogPost(slug) {
         });
         
         if (response.success) {
-            showToast('Blog post deleted successfully!', 'success');
+            showSuccessToast('Blog post deleted successfully!');
             return true;
         } else {
             throw new Error(response.message || 'Failed to delete post');
         }
     } catch (error) {
-        showToast(`Failed to delete post: ${error.message}`, 'error');
+        showErrorToast(`Failed to delete post: ${error.message}`);
         throw error;
     }
 }
@@ -164,7 +163,7 @@ export function renderBlogCard(post, state, actions) {
     card.className = 'status blog-post-card';
     card.dataset.postId = post.id;
     
-    const converter = new showdown.Converter();
+    const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : null;
     const excerptLength = 200;
     const excerpt = post.description || 
                    (post.content ? post.content.substring(0, excerptLength) + '...' : '');
@@ -174,7 +173,7 @@ export function renderBlogCard(post, state, actions) {
     card.innerHTML = `
         <div class="blog-post-header">
             <div class="status-header">
-                <img src="images/blog-avatar.png" alt="${post.author}" class="status-avatar" 
+                <img src="${post.authorAvatar || 'images/blog-avatar.png'}" alt="${post.author}" class="status-avatar" 
                      onerror="this.src='images/default-avatar.png'">
                 <div class="status-meta">
                     <div class="status-author">${post.author}</div>
@@ -183,11 +182,7 @@ export function renderBlogCard(post, state, actions) {
                 ${isOwner ? `
                     <div class="post-actions-menu">
                         <button class="icon-button menu-toggle" data-post-id="${post.id}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="1"></circle>
-                                <circle cx="12" cy="5" r="1"></circle>
-                                <circle cx="12" cy="19" r="1"></circle>
-                            </svg>
+                            ${ICONS.more}
                         </button>
                         <div class="dropdown-menu" style="display: none;">
                             <button class="dropdown-item edit-post" data-slug="${post.slug}">Edit</button>
@@ -200,7 +195,7 @@ export function renderBlogCard(post, state, actions) {
         
         <div class="blog-post-content">
             <h2 class="blog-post-title">${post.title}</h2>
-            <div class="blog-post-excerpt">${converter.makeHtml(excerpt)}</div>
+            <div class="blog-post-excerpt">${converter ? converter.makeHtml(excerpt) : excerpt}</div>
             
             ${post.tags && post.tags.length > 0 ? `
                 <div class="blog-post-tags">
@@ -211,22 +206,11 @@ export function renderBlogCard(post, state, actions) {
         
         <div class="status-actions blog-actions">
             <button class="icon-button read-more" data-slug="${post.slug}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <span>Read More</span>
+                ${ICONS.view} Read More
             </button>
             
             <button class="icon-button share-post" data-url="${window.location.origin}/blog/${post.slug}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="18" cy="5" r="3"></circle>
-                    <circle cx="6" cy="12" r="3"></circle>
-                    <circle cx="18" cy="19" r="3"></circle>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-                <span>Share</span>
+                ${ICONS.share} Share
             </button>
         </div>
     `;
@@ -252,7 +236,7 @@ export function renderBlogCard(post, state, actions) {
             }
         } else {
             navigator.clipboard.writeText(url);
-            showToast('Link copied to clipboard!', 'success');
+            showSuccessToast('Link copied to clipboard!');
         }
     });
     
@@ -285,10 +269,10 @@ export function renderBlogCard(post, state, actions) {
 
 // Render blog feed
 export async function renderBlogFeed(state, actions) {
-    const feedContainer = document.getElementById('blog-feed');
+    const feedContainer = document.getElementById('blog-feed-view');
     if (!feedContainer) return;
     
-    feedContainer.innerHTML = '<div class="loading">Loading blog posts...</div>';
+    feedContainer.innerHTML = '<div class="loading-spinner">Loading blog posts...</div>';
     
     try {
         const response = await fetchBlogPosts({ page: state.blogPage || 1 });
@@ -300,9 +284,24 @@ export async function renderBlogFeed(state, actions) {
         
         feedContainer.innerHTML = '';
         
+        // Add create post button if logged in
+        if (state.blogToken) {
+            const createBtn = document.createElement('div');
+            createBtn.className = 'blog-create-section';
+            createBtn.innerHTML = `
+                <button class="button-primary create-blog-post-btn">
+                    ✍️ Write New Post
+                </button>
+            `;
+            createBtn.querySelector('.create-blog-post-btn').addEventListener('click', () => {
+                actions.navigateToBlogCompose();
+            });
+            feedContainer.appendChild(createBtn);
+        }
+        
         const posts = response.data.posts;
         if (posts.length === 0) {
-            feedContainer.innerHTML = '<div class="empty-state">No blog posts yet. Be the first to write!</div>';
+            feedContainer.innerHTML += '<div class="empty-state">No blog posts yet. Be the first to write!</div>';
             return;
         }
         
@@ -342,7 +341,7 @@ export async function renderBlogPostView(slug, state, actions) {
     const view = document.getElementById('blog-post-view');
     if (!view) return;
     
-    view.innerHTML = '<div class="loading">Loading post...</div>';
+    view.innerHTML = '<div class="loading-spinner">Loading post...</div>';
     
     try {
         const response = await fetchBlogPost(slug);
@@ -353,18 +352,14 @@ export async function renderBlogPostView(slug, state, actions) {
         }
         
         const post = response.data;
-        const converter = new showdown.Converter();
+        const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : null;
         const isOwner = state.blogUser?.username === post.author;
         
         view.innerHTML = `
             <article class="blog-post-full">
                 <div class="blog-post-header">
                     <button class="back-button" id="back-to-feed">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
-                        </svg>
-                        Back to Feed
+                        ${ICONS.reply} Back to Blog
                     </button>
                     
                     ${isOwner ? `
@@ -378,7 +373,7 @@ export async function renderBlogPostView(slug, state, actions) {
                 <h1 class="blog-post-title">${post.title}</h1>
                 
                 <div class="blog-post-meta">
-                    <img src="images/blog-avatar.png" alt="${post.author}" class="status-avatar">
+                    <img src="${post.authorAvatar || 'images/blog-avatar.png'}" alt="${post.author}" class="status-avatar">
                     <div>
                         <div class="post-author">${post.author}</div>
                         <div class="post-date">${new Date(post.createdAt).toLocaleDateString('en-US', { 
@@ -396,19 +391,12 @@ export async function renderBlogPostView(slug, state, actions) {
                 ` : ''}
                 
                 <div class="blog-post-body">
-                    ${converter.makeHtml(post.content)}
+                    ${converter ? converter.makeHtml(post.content) : post.content}
                 </div>
                 
                 <div class="blog-post-footer">
                     <button class="icon-button share-post">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="18" cy="5" r="3"></circle>
-                            <circle cx="6" cy="12" r="3"></circle>
-                            <circle cx="18" cy="19" r="3"></circle>
-                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                        </svg>
-                        Share
+                        ${ICONS.share} Share
                     </button>
                 </div>
             </article>
@@ -433,7 +421,7 @@ export async function renderBlogPostView(slug, state, actions) {
                 }
             } else {
                 navigator.clipboard.writeText(url);
-                showToast('Link copied to clipboard!', 'success');
+                showSuccessToast('Link copied to clipboard!');
             }
         });
         
@@ -456,7 +444,7 @@ export async function renderBlogPostView(slug, state, actions) {
 
 // Render blog composer
 export function renderBlogComposer(state, actions, editSlug = null) {
-    const composer = document.getElementById('blog-composer');
+    const composer = document.getElementById('blog-composer-view');
     if (!composer) return;
     
     let postData = {
@@ -468,7 +456,7 @@ export function renderBlogComposer(state, actions, editSlug = null) {
     };
     
     if (editSlug) {
-        composer.innerHTML = '<div class="loading">Loading post...</div>';
+        composer.innerHTML = '<div class="loading-spinner">Loading post...</div>';
         fetchBlogPost(editSlug).then(response => {
             if (response?.success && response?.data) {
                 postData = response.data;
@@ -480,15 +468,13 @@ export function renderBlogComposer(state, actions, editSlug = null) {
     }
     
     function renderComposerForm() {
+        const converter = typeof showdown !== 'undefined' ? new showdown.Converter() : null;
+        
         composer.innerHTML = `
             <div class="blog-composer-container">
                 <div class="composer-header">
                     <button class="back-button" id="cancel-compose">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                        Cancel
+                        ${ICONS.delete} Cancel
                     </button>
                     <h2>${editSlug ? 'Edit Post' : 'New Blog Post'}</h2>
                 </div>
@@ -510,13 +496,14 @@ export function renderBlogComposer(state, actions, editSlug = null) {
                     <div class="form-group">
                         <label for="post-content">Content (Markdown supported)</label>
                         <div class="editor-toolbar">
-                            <button type="button" class="toolbar-btn" data-action="bold">B</button>
-                            <button type="button" class="toolbar-btn" data-action="italic">I</button>
-                            <button type="button" class="toolbar-btn" data-action="heading">H</button>
-                            <button type="button" class="toolbar-btn" data-action="link">🔗</button>
-                            <button type="button" class="toolbar-btn" data-action="image">🖼️</button>
-                            <button type="button" class="toolbar-btn" data-action="list">☰</button>
-                            <button type="button" class="toolbar-btn" data-action="code">&lt;/&gt;</button>
+                            <button type="button" class="toolbar-btn" data-action="bold" title="Bold">B</button>
+                            <button type="button" class="toolbar-btn" data-action="italic" title="Italic">I</button>
+                            <button type="button" class="toolbar-btn" data-action="heading" title="Heading">H</button>
+                            <button type="button" class="toolbar-btn" data-action="link" title="Link">🔗</button>
+                            <button type="button" class="toolbar-btn" data-action="image" title="Image">🖼️</button>
+                            <button type="button" class="toolbar-btn" data-action="list" title="List">☰</button>
+                            <button type="button" class="toolbar-btn" data-action="code" title="Code">&lt;/&gt;</button>
+                            <button type="button" class="toolbar-btn" data-action="quote" title="Quote">❝</button>
                         </div>
                         <textarea id="post-content" class="form-textarea" rows="15" 
                                   placeholder="Write your post content here...">${postData.content}</textarea>
@@ -545,7 +532,10 @@ export function renderBlogComposer(state, actions, editSlug = null) {
                 </div>
                 
                 <div id="preview-container" class="preview-container" style="display: none;">
-                    <h3>Preview</h3>
+                    <div class="preview-header">
+                        <h3>Preview</h3>
+                        <button class="close-preview-btn">&times;</button>
+                    </div>
                     <div id="preview-content"></div>
                 </div>
             </div>
@@ -581,7 +571,14 @@ export function renderBlogComposer(state, actions, editSlug = null) {
                         replacement = `\n- ${selectedText || 'List item'}\n`;
                         break;
                     case 'code':
-                        replacement = `\`${selectedText || 'code'}\``;
+                        if (selectedText.includes('\n')) {
+                            replacement = `\`\`\`\n${selectedText || 'code'}\n\`\`\``;
+                        } else {
+                            replacement = `\`${selectedText || 'code'}\``;
+                        }
+                        break;
+                    case 'quote':
+                        replacement = `\n> ${selectedText || 'Quote'}\n`;
                         break;
                 }
                 
@@ -602,17 +599,21 @@ export function renderBlogComposer(state, actions, editSlug = null) {
         document.getElementById('preview-post')?.addEventListener('click', () => {
             const previewContainer = document.getElementById('preview-container');
             const previewContent = document.getElementById('preview-content');
-            const converter = new showdown.Converter();
             
             const title = document.getElementById('post-title').value;
             const content = document.getElementById('post-content').value;
             
             previewContent.innerHTML = `
                 <h1>${title || 'Untitled'}</h1>
-                <div class="preview-body">${converter.makeHtml(content || '*No content*')}</div>
+                <div class="preview-body">${converter ? converter.makeHtml(content || '*No content*') : content}</div>
             `;
             
-            previewContainer.style.display = previewContainer.style.display === 'none' ? 'block' : 'none';
+            previewContainer.style.display = 'block';
+        });
+        
+        // Close preview
+        composer.querySelector('.close-preview-btn')?.addEventListener('click', () => {
+            document.getElementById('preview-container').style.display = 'none';
         });
         
         // Save/Update button
@@ -624,7 +625,7 @@ export function renderBlogComposer(state, actions, editSlug = null) {
             const isDraft = document.getElementById('post-draft').checked;
             
             if (!title || !content) {
-                showToast('Title and content are required', 'error');
+                showWarningToast('Title and content are required');
                 return;
             }
             
@@ -660,7 +661,7 @@ export function renderBlogComposer(state, actions, editSlug = null) {
 // Blog login modal
 export function showBlogLoginModal(state, actions) {
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.className = 'modal-overlay visible';
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
@@ -672,12 +673,12 @@ export function showBlogLoginModal(state, actions) {
                 <div class="form-group">
                     <label for="blog-instance">Lemmy Instance</label>
                     <input type="text" id="blog-instance" class="form-input" 
-                           placeholder="e.g., lemmy.world" value="${state.lemmyInstance || ''}">
+                           placeholder="e.g., lemmy.world" value="${localStorage.getItem('lemmy_instance') || ''}">
                 </div>
                 <div class="form-group">
                     <label for="blog-username">Username</label>
                     <input type="text" id="blog-username" class="form-input" 
-                           placeholder="Your username" value="${state.lemmyUsername || ''}">
+                           placeholder="Your username" value="${localStorage.getItem('lemmy_username') || ''}">
                 </div>
                 <div class="form-group">
                     <label for="blog-password">Password</label>
@@ -704,7 +705,7 @@ export function showBlogLoginModal(state, actions) {
         const password = document.getElementById('blog-password').value;
         
         if (!instance || !username || !password) {
-            showToast('Please fill in all fields', 'error');
+            showWarningToast('Please fill in all fields');
             return;
         }
         
@@ -736,6 +737,35 @@ export function initBlog(state, actions) {
     }
     
     // Add blog navigation actions
+    actions.navigateTo = (view, params = {}) => {
+        if (view === 'blog') {
+            actions.showBlogFeed();
+        } else if (view === 'blog-post') {
+            actions.showBlogPost(params.slug);
+        } else if (view === 'blog-compose') {
+            actions.showBlogCompose(params.slug);
+        }
+    };
+    
+    actions.showBlogFeed = () => {
+        switchView('blog');
+        renderBlogFeed(state, actions);
+    };
+    
+    actions.showBlogPost = (slug) => {
+        switchView('blog-post');
+        renderBlogPostView(slug, state, actions);
+    };
+    
+    actions.showBlogCompose = (editSlug = null) => {
+        if (!state.blogToken) {
+            showBlogLoginModal(state, actions);
+        } else {
+            switchView('blog-compose');
+            renderBlogComposer(state, actions, editSlug);
+        }
+    };
+    
     actions.navigateToBlog = () => {
         actions.navigateTo('blog');
     };
@@ -749,10 +779,18 @@ export function initBlog(state, actions) {
     };
     
     actions.navigateToBlogCompose = () => {
-        if (!state.blogToken) {
-            showBlogLoginModal(state, actions);
-        } else {
-            actions.navigateTo('blog-compose');
-        }
+        actions.showBlogCompose();
     };
+    
+    // Helper function for view switching
+    function switchView(viewName) {
+        document.querySelectorAll('.view-container').forEach(view => {
+            view.style.display = 'none';
+        });
+        
+        const viewElement = document.getElementById(`${viewName}-view`);
+        if (viewElement) {
+            viewElement.style.display = 'flex';
+        }
+    }
 }
