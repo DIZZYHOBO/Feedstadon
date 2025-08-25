@@ -49,6 +49,7 @@
                         <a href="#" data-timeline="home">Home</a>
                         <a href="#" data-timeline="merged">Merged</a>
                         <hr class="dropdown-divider">
+                        <a href="#" id="blog-link">📚 Blog</a>
                         <a href="#" id="lemmy-main-link">Lemmy</a>
                         <a href="#" id="mastodon-main-link">Mastodon</a>
                     </div>
@@ -95,6 +96,12 @@
             <div id="lemmy-post-view" class="view-container lemmy-post-view"></div>
             <div id="lemmy-comments-view" class="view-container lemmy-comments-view"></div>
             <div id="lemmy-community-view" class="view-container lemmy-community-view"></div>
+            
+            <!-- Blog Views -->
+            <div id="blog-feed-view" class="view-container blog-view"></div>
+            <div id="blog-post-view" class="view-container blog-post-view"></div>
+            <div id="blog-composer-view" class="view-container blog-composer-view"></div>
+            
             <div id="scroll-loader" class="scroll-loader"><p>Loading more posts...</p></div>
         </div>
         <div id="refresh-spinner"></div>
@@ -171,6 +178,19 @@
                         <li>Include reply comments to show responses</li>
                         <li>Use content filters to hide text or images as needed</li>
                         <li>Preview your screenshot before capturing</li>
+                    </ul>
+                </div>
+                
+                <div class="help-section">
+                    <h4>Blog Feature</h4>
+                    <p>Create and manage blog posts:</p>
+                    <ul>
+                        <li>Access the blog from the Feeds menu</li>
+                        <li>Login with your Lemmy credentials to write posts</li>
+                        <li>Use Markdown for rich text formatting</li>
+                        <li>Add tags to categorize your posts</li>
+                        <li>Save drafts or publish immediately</li>
+                        <li>Edit or delete your own posts</li>
                     </ul>
                 </div>
                 
