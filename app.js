@@ -910,6 +910,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch('https://b.afsapp.lol/login', {
                     method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -929,7 +931,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return false;
                 }
             } catch (error) {
-                showErrorToast('Blog login error');
+                console.error('Blog login error:', error);
+                showErrorToast('Unable to connect to blog service');
                 return false;
             }
         },
@@ -937,6 +940,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch('https://b.afsapp.lol/register', {
                     method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -951,7 +956,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return false;
                 }
             } catch (error) {
-                showErrorToast('Registration error');
+                console.error('Blog register error:', error);
+                showErrorToast('Unable to connect to blog service');
                 return false;
             }
         },
