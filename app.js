@@ -18,6 +18,7 @@ import { showLoadingBar, hideLoadingBar, initImageModal, renderLoginPrompt, show
 import { renderLoopsProfilePage } from './components/Loops.js';
 import { shareService } from './components/ShareService.js';
 import { renderShareView } from './components/ShareView.js';
+import { renderBlogFeed, renderBlogPostPage, renderCreateBlogPostPage, renderEditBlogPostPage } from './components/Blog.js';
 
 function initDropdowns() {
     document.querySelectorAll('.dropdown').forEach(dropdown => {
@@ -82,6 +83,8 @@ function initPullToRefresh(state, actions) {
                 }
             } else if (state.currentView === 'notifications') {
                 actions.showNotifications();
+            } else if (state.currentView === 'blog') {
+                actions.showBlogFeed();
             }
         }
     });
@@ -192,7 +195,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideNsfw: false,
         },
         actions: {},
-        currentPostView: null
+        currentPostView: null,
+        // Blog state
+        blogPage: 1,
+        blogHasMore: true,
+        currentBlogFeed: null,
+        blogAuth: localStorage.getItem('blog-auth') || null,
+        blogUsername: localStorage.getItem('blog-username') || null,
+        currentBlogPost: null
     };
 
     const views = {
@@ -210,6 +220,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyPost: document.getElementById('lemmy-post-view'),
         lemmyComments: document.getElementById('lemmy-comments-view'),
         lemmyCommunity: document.getElementById('lemmy-community-view'),
+        blog: document.getElementById('blog-view'),
+        blogPost: document.getElementById('blog-post-view'),
+        createBlogPost: document.getElementById('create-blog-post-view'),
+        editBlogPost: document.getElementById('edit-blog-post-view')
     };
     
     // --- Global Context Menu ---
@@ -428,9 +442,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideLoadingBar();
         },
        showLemmyCommunity: async (communityName) => {
-    const view = document.getElementById('app-view');
-    await renderLemmyCommunityPage(view, communityName); // Pass communityName, not actions!
-},
+            const view = document.getElementById('app-view');
+            await renderLemmyCommunityPage(view, communityName); // Pass communityName, not actions!
+        },
         showMergedPost: async (post) => {
             showLoadingBar();
             switchView('mergedPost');
@@ -867,7 +881,160 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showSuccessToast(`Link copied!`);
             }
         },
-        showContextMenu: showContextMenu
+        showContextMenu: showContextMenu,
+        
+        // Blog actions
+        showBlogFeed: async () => {
+            showLoadingBar();
+            switchView('blog');
+            await renderBlogFeed(state, actions);
+            hideLoadingBar();
+        },
+        showBlogPost: async (postId) => {
+            showLoadingBar();
+            switchView('blogPost');
+            await renderBlogPostPage(state, actions, postId);
+            hideLoadingBar();
+        },
+        showCreateBlogPost: async () => {
+            switchView('createBlogPost');
+            await renderCreateBlogPostPage(state, actions);
+        },
+        showEditBlogPost: async (postId) => {
+            showLoadingBar();
+            switchView('editBlogPost');
+            await renderEditBlogPostPage(state, actions, postId);
+            hideLoadingBar();
+        },
+        blogLogin: async (username, password) => {
+            try {
+                const response = await fetch('https://b.afsapp.lol/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    state.blogAuth = data.token || data.auth;
+                    state.blogUsername = username;
+                    localStorage.setItem('blog-auth', state.blogAuth);
+                    localStorage.setItem('blog-username', username);
+                    showSuccessToast('Blog login successful!');
+                    return true;
+                } else {
+                    showErrorToast('Blog login failed');
+                    return false;
+                }
+            } catch (error) {
+                showErrorToast('Blog login error');
+                return false;
+            }
+        },
+        blogRegister: async (username, password, email) => {
+            try {
+                const response = await fetch('https://b.afsapp.lol/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password, email })
+                });
+                
+                if (response.ok) {
+                    showSuccessToast('Registration successful! Please login.');
+                    return true;
+                } else {
+                    showErrorToast('Registration failed');
+                    return false;
+                }
+            } catch (error) {
+                showErrorToast('Registration error');
+                return false;
+            }
+        },
+        blogLogout: () => {
+            state.blogAuth = null;
+            state.blogUsername = null;
+            localStorage.removeItem('blog-auth');
+            localStorage.removeItem('blog-username');
+            showInfoToast('Logged out from blog');
+            actions.showBlogFeed();
+        },
+        blogCreatePost: async (title, content, summary) => {
+            try {
+                const response = await fetch('https://b.afsapp.lol/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.blogAuth}`
+                    },
+                    body: JSON.stringify({ title, content, summary })
+                });
+                
+                if (response.ok) {
+                    showSuccessToast('Post created successfully!');
+                    actions.showBlogFeed();
+                    return true;
+                } else {
+                    showErrorToast('Failed to create post');
+                    return false;
+                }
+            } catch (error) {
+                showErrorToast('Error creating post');
+                return false;
+            }
+        },
+        blogUpdatePost: async (postId, title, content, summary) => {
+            try {
+                const response = await fetch(`https://b.afsapp.lol/posts/${postId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.blogAuth}`
+                    },
+                    body: JSON.stringify({ title, content, summary })
+                });
+                
+                if (response.ok) {
+                    showSuccessToast('Post updated successfully!');
+                    actions.showBlogPost(postId);
+                    return true;
+                } else {
+                    showErrorToast('Failed to update post');
+                    return false;
+                }
+            } catch (error) {
+                showErrorToast('Error updating post');
+                return false;
+            }
+        },
+        blogDeletePost: async (postId) => {
+            if (!confirm('Are you sure you want to delete this post?')) return false;
+            
+            try {
+                const response = await fetch(`https://b.afsapp.lol/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${state.blogAuth}`
+                    }
+                });
+                
+                if (response.ok) {
+                    showSuccessToast('Post deleted successfully!');
+                    actions.showBlogFeed();
+                    return true;
+                } else {
+                    showErrorToast('Failed to delete post');
+                    return false;
+                }
+            } catch (error) {
+                showErrorToast('Error deleting post');
+                return false;
+            }
+        }
     };
     state.actions = actions;
 
@@ -929,6 +1096,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } else if (state.currentView === 'notifications') {
             actions.showNotifications();
+        } else if (state.currentView === 'blog') {
+            actions.showBlogFeed();
         }
     });
 
@@ -962,6 +1131,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
         }
+    } else if (initialView === 'blog') {
+        actions.showBlogFeed();
     } else {
         switchView(initialView, false);
     }
@@ -988,6 +1159,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showHomeTimeline();
         } else if (target.dataset.timeline === 'merged') {
             actions.showMergedTimeline();
+        } else if (target.dataset.timeline === 'blog') {
+            actions.showBlogFeed();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
     });
@@ -1026,6 +1199,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'help-link':
                 document.getElementById('help-modal').classList.add('visible');
                 break;
+            case 'new-blog-post-link':
+                if (state.blogAuth) {
+                    actions.showCreateBlogPost();
+                } else {
+                    showWarningToast("Please log in to create a blog post.");
+                }
+                break;
         }
         document.getElementById('user-dropdown').classList.remove('active');
     });
@@ -1052,6 +1232,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } else if (state.currentView === 'profile' && state.currentProfileTab === 'lemmy' && state.lemmyProfileHasMore) {
                 loadMoreLemmyProfile(state, actions);
+            } else if (state.currentView === 'blog' && state.blogHasMore) {
+                // Load more blog posts
+                renderBlogFeed(state, actions, true);
             }
         }
     });
