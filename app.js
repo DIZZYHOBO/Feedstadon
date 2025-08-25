@@ -220,10 +220,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         lemmyPost: document.getElementById('lemmy-post-view'),
         lemmyComments: document.getElementById('lemmy-comments-view'),
         lemmyCommunity: document.getElementById('lemmy-community-view'),
-        blog: document.getElementById('blog-view'),
+        blog: document.getElementById('blog-feed-view'),
         blogPost: document.getElementById('blog-post-view'),
-        createBlogPost: document.getElementById('create-blog-post-view'),
-        editBlogPost: document.getElementById('edit-blog-post-view')
+        createBlogPost: document.getElementById('blog-composer-view'),
+        editBlogPost: document.getElementById('blog-composer-view')
     };
     
     // --- Global Context Menu ---
@@ -1159,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             actions.showHomeTimeline();
         } else if (target.dataset.timeline === 'merged') {
             actions.showMergedTimeline();
-        } else if (target.dataset.timeline === 'blog') {
+        } else if (target.id === 'blog-link') {
             actions.showBlogFeed();
         }
         document.getElementById('feeds-dropdown').classList.remove('active');
@@ -1203,7 +1203,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (state.blogAuth) {
                     actions.showCreateBlogPost();
                 } else {
-                    showWarningToast("Please log in to create a blog post.");
+                    showWarningToast("Please login to the blog first.");
+                    actions.showBlogFeed();
                 }
                 break;
         }
