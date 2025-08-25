@@ -1,5 +1,6 @@
 import { showLoadingBar, hideLoadingBar, showToast, showSuccessToast, showErrorToast, showWarningToast } from './ui.js';
 import { ICONS } from './icons.js';
+import { formatTimestamp } from './utils.js';
 
 // Blog API base URL - using your Netlify Functions
 const BLOG_API_BASE = 'https://b.afsapp.lol/.netlify/functions';
@@ -30,71 +31,187 @@ async function blogApiRequest(endpoint, options = {}) {
     }
 }
 
-// Render a blog post card
+// Render a blog post card in Lemmy style
 function renderBlogPostCard(post, state, actions) {
-    const postElement = document.createElement('article');
-    postElement.className = 'blog-post-card';
-    
-    const formattedDate = new Date(post.published || post.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-    
+    const card = document.createElement('div');
+    card.className = 'status lemmy-card blog-post-card';
+    card.dataset.id = post.slug || post.id;
+
     const isOwner = state.blogUsername && post.author && post.author.includes(state.blogUsername);
+    const isLoggedIn = state.blogAuth;
     
-    postElement.innerHTML = `
-        <div class="blog-post-header">
-            <h2 class="blog-post-title">${post.title}</h2>
-            <div class="blog-post-meta">
-                <span class="blog-post-author">by ${post.author || 'Unknown'}</span>
-                <span class="blog-post-date">${formattedDate}</span>
-                ${isOwner ? `
-                    <div class="blog-post-actions">
-                        <button class="blog-edit-btn">
-                            ${ICONS.edit || '✏️'} Edit
-                        </button>
-                        <button class="blog-delete-btn">
-                            ${ICONS.delete || '🗑️'} Delete
-                        </button>
+    // Create a blog icon similar to how Lemmy shows community icons
+    const blogIcon = '📚'; // You can replace this with a proper blog icon
+    
+    // Process summary/description with markdown if needed
+    const summary = post.description || post.content_preview || post.content?.substring(0, 200) + '...' || '';
+    let summaryHTML = summary;
+    
+    // Simple markdown processing for summary
+    if (summary.includes('*') || summary.includes('#')) {
+        summaryHTML = summary
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>');
+    }
+
+    card.innerHTML = `
+        <div class="status-body-content">
+            <div class="status-header">
+                <div class="status-header-main">
+                    <div class="blog-icon-wrapper" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background-color: var(--accent-color); border-radius: var(--border-radius); color: white; font-size: 20px;">
+                        ${blogIcon}
                     </div>
-                ` : ''}
+                    <div>
+                        <span class="display-name">Blog</span>
+                        <span class="acct">posted by ${post.author || 'Unknown'} · ${formatTimestamp(post.published || post.created_at)}</span>
+                    </div>
+                </div>
+                <div class="status-header-side">
+                    ${isOwner ? `<button class="post-options-btn" title="More options">${ICONS.lemmyDownvote}</button>` : ''}
+                    <div class="blog-icon-indicator">📚</div>
+                </div>
+            </div>
+            <div class="status-content">
+                <h3 class="lemmy-title blog-title">${post.title}</h3>
+                <div class="lemmy-post-body blog-summary">${summaryHTML}</div>
             </div>
         </div>
-        <div class="blog-post-summary">
-            ${post.description || post.content_preview || post.content?.substring(0, 200) + '...' || ''}
-        </div>
-        <div class="blog-post-footer">
-            <button class="blog-read-more-btn">
-                Read More →
-            </button>
+        <div class="status-footer">
+            <button class="status-action" data-action="view-post" title="Read full post">${ICONS.comments || '💬'} Read</button>
+            <button class="status-action" data-action="share" title="Share post">${ICONS.share || '🔗'} Share</button>
+            ${isLoggedIn && isOwner ? `
+                <button class="status-action" data-action="edit" title="Edit post">${ICONS.edit || '✏️'} Edit</button>
+                <button class="status-action" data-action="delete" title="Delete post">${ICONS.delete || '🗑️'} Delete</button>
+            ` : ''}
         </div>
     `;
-    
-    // Add click handlers for actions
-    const editBtn = postElement.querySelector('.blog-edit-btn');
-    if (editBtn) {
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            actions.showEditBlogPost(post.slug || post.id);
-        });
+
+    // Add click handler to title for navigation
+    const titleEl = card.querySelector('.blog-title');
+    titleEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        actions.showBlogPost(post.slug || post.id);
+    });
+
+    // Add double-click handler to card body for navigation
+    card.querySelector('.status-body-content').addEventListener('dblclick', () => {
+        actions.showBlogPost(post.slug || post.id);
+    });
+
+    // Add options menu functionality for post owner
+    if (isOwner) {
+        const optionsBtn = card.querySelector('.post-options-btn');
+        if (optionsBtn) {
+            optionsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                const existingMenu = document.querySelector('.post-dropdown-menu');
+                if (existingMenu) existingMenu.remove();
+                
+                const menu = document.createElement('div');
+                menu.className = 'post-dropdown-menu';
+                menu.style.position = 'absolute';
+                menu.style.zIndex = '1000';
+                
+                const menuItems = [
+                    { label: 'Edit Post', action: () => actions.showEditBlogPost(post.slug || post.id) },
+                    { label: 'Delete Post', action: () => actions.blogDeletePost(post.slug || post.id) },
+                    { label: 'Share Post', action: () => {
+                        if (navigator.share) {
+                            navigator.share({
+                                title: post.title,
+                                text: post.description || post.title,
+                                url: window.location.href
+                            });
+                        } else {
+                            navigator.clipboard.writeText(window.location.href);
+                            showSuccessToast('Link copied to clipboard!');
+                        }
+                    }}
+                ];
+                
+                menuItems.forEach(item => {
+                    const button = document.createElement('button');
+                    button.innerHTML = item.label;
+                    button.onclick = (event) => {
+                        event.stopPropagation();
+                        item.action();
+                        menu.remove();
+                    };
+                    menu.appendChild(button);
+                });
+                
+                card.appendChild(menu);
+                
+                const btnRect = optionsBtn.getBoundingClientRect();
+                const cardRect = card.getBoundingClientRect();
+                
+                const relativeTop = btnRect.bottom - cardRect.top;
+                const relativeLeft = btnRect.left - cardRect.left;
+                
+                menu.style.top = `${relativeTop}px`;
+                menu.style.left = `${relativeLeft}px`;
+                
+                setTimeout(() => {
+                    const menuRect = menu.getBoundingClientRect();
+                    
+                    if (menuRect.bottom > window.innerHeight) {
+                        const adjustedTop = btnRect.top - cardRect.top - menu.offsetHeight;
+                        menu.style.top = `${adjustedTop}px`;
+                    }
+                    
+                    if (menuRect.right > window.innerWidth) {
+                        const adjustedLeft = btnRect.right - cardRect.left - menu.offsetWidth;
+                        menu.style.left = `${adjustedLeft}px`;
+                    }
+                }, 0);
+                
+                setTimeout(() => {
+                    document.addEventListener('click', function closeMenu(e) {
+                        if (!menu.contains(e.target)) {
+                            menu.remove();
+                            document.removeEventListener('click', closeMenu);
+                        }
+                    });
+                }, 0);
+            });
+        }
     }
-    
-    const deleteBtn = postElement.querySelector('.blog-delete-btn');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', (e) => {
+
+    // Add footer action handlers
+    card.querySelectorAll('.status-footer .status-action').forEach(button => {
+        button.addEventListener('click', e => {
             e.stopPropagation();
-            actions.blogDeletePost(post.slug || post.id);
+            const action = e.currentTarget.dataset.action;
+            
+            switch(action) {
+                case 'view-post':
+                    actions.showBlogPost(post.slug || post.id);
+                    break;
+                case 'share':
+                    if (navigator.share) {
+                        navigator.share({
+                            title: post.title,
+                            text: post.description || post.title,
+                            url: window.location.href
+                        });
+                    } else {
+                        navigator.clipboard.writeText(window.location.href);
+                        showSuccessToast('Link copied to clipboard!');
+                    }
+                    break;
+                case 'edit':
+                    actions.showEditBlogPost(post.slug || post.id);
+                    break;
+                case 'delete':
+                    actions.blogDeletePost(post.slug || post.id);
+                    break;
+            }
         });
-    }
-    
-    const titleEl = postElement.querySelector('.blog-post-title');
-    titleEl.addEventListener('click', () => actions.showBlogPost(post.slug || post.id));
-    
-    const readMoreBtn = postElement.querySelector('.blog-read-more-btn');
-    readMoreBtn.addEventListener('click', () => actions.showBlogPost(post.slug || post.id));
-    
-    return postElement;
+    });
+
+    return card;
 }
 
 // Render blog authentication form
