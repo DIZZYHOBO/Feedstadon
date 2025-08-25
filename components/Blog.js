@@ -3,32 +3,101 @@ import { ICONS } from './icons.js';
 import { formatTimestamp } from './utils.js';
 
 // Blog API base URL - using your Netlify Functions
-const BLOG_API_BASE = 'https://b.afsapp.lol/.netlify/functions';
+const BLOG_API_BASE = 'https://b.afsapp.lol';
 
-// Utility function to make blog API requests
+// Utility function to make blog API requests with better CORS handling
 async function blogApiRequest(endpoint, options = {}) {
     const url = `${BLOG_API_BASE}${endpoint}`;
     const config = {
+        method: options.method || 'GET',
         mode: 'cors',
         credentials: 'omit',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Origin': window.location.origin,
             ...options.headers
         },
         ...options
     };
     
+    // Remove body if it's a GET request
+    if (config.method === 'GET') {
+        delete config.body;
+    }
+    
     try {
+        console.log(`Making blog API request to: ${url}`);
         const response = await fetch(url, config);
+        
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            let errorMessage;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
-        return await response.json();
+        
+        const data = await response.json();
+        console.log('Blog API response:', data);
+        return data;
     } catch (error) {
         console.error('Blog API request failed:', error);
+        
+        // Check if it's a CORS error
+        if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+            throw new Error('Unable to connect to blog service. Please check your internet connection or try again later.');
+        }
+        
         throw error;
     }
+}
+
+// Alternative blog API request using different endpoints
+async function fallbackBlogApiRequest(endpoint, options = {}) {
+    // Try different endpoint patterns that might work better
+    const alternativeEndpoints = [
+        `${BLOG_API_BASE}${endpoint}`,
+        `${BLOG_API_BASE}/.netlify/functions${endpoint}`,
+        `${BLOG_API_BASE}/api${endpoint}`
+    ];
+    
+    for (const url of alternativeEndpoints) {
+        try {
+            console.log(`Trying fallback blog API request to: ${url}`);
+            const config = {
+                method: options.method || 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            };
+            
+            if (config.method === 'GET') {
+                delete config.body;
+            }
+            
+            const response = await fetch(url, config);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Fallback blog API response:', data);
+                return data;
+            }
+        } catch (error) {
+            console.warn(`Fallback attempt failed for ${url}:`, error);
+            continue;
+        }
+    }
+    
+    throw new Error('All blog API endpoints failed. Service may be temporarily unavailable.');
 }
 
 // Render a blog post card in Lemmy style
@@ -224,7 +293,7 @@ function renderBlogAuth(state, actions) {
             
             <div class="blog-auth-form" id="blog-login-form">
                 <h3>Login with your Lemmy Account</h3>
-                <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+                <p style="color: var(--font-color-muted); font-size: 0.9rem; margin-bottom: 15px;">
                     Use your existing Lemmy account to create and manage blog posts.
                 </p>
                 <input type="text" id="blog-login-instance" placeholder="Lemmy instance (e.g., lemmy.world)" required>
@@ -301,8 +370,15 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
     
     try {
         const postsContainer = blogView.querySelector('.blog-posts-container');
-        // Use the correct API endpoint for your Netlify function
-        const data = await blogApiRequest(`/api-posts-db?page=${state.blogPage}&limit=10`);
+        
+        // Try the main API endpoint first, then fallback
+        let data;
+        try {
+            data = await blogApiRequest(`/.netlify/functions/api-posts-db?page=${state.blogPage}&limit=10`);
+        } catch (error) {
+            console.warn('Main API endpoint failed, trying fallback:', error);
+            data = await fallbackBlogApiRequest(`/api-posts-db?page=${state.blogPage}&limit=10`);
+        }
         
         if (!loadMore) {
             postsContainer.innerHTML = '';
@@ -310,12 +386,12 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
             postsContainer.querySelector('.loading')?.remove();
         }
         
-        if (data.success && data.data.posts && data.data.posts.length > 0) {
+        if (data.success && data.data && data.data.posts && data.data.posts.length > 0) {
             data.data.posts.forEach(post => {
                 postsContainer.appendChild(renderBlogPostCard(post, state, actions));
             });
             
-            state.blogHasMore = data.data.pagination.has_next;
+            state.blogHasMore = data.data.pagination && data.data.pagination.has_next;
             if (state.blogHasMore) {
                 state.blogPage++;
                 postsContainer.innerHTML += '<div class="loading">Loading more...</div>';
@@ -330,8 +406,11 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
         if (!loadMore) {
             postsContainer.innerHTML = `
                 <div class="error-state">
-                    <h3>Failed to Load Posts</h3>
+                    <h3>Unable to Load Blog Posts</h3>
                     <p>${error.message}</p>
+                    <p style="font-size: 0.9em; color: var(--font-color-muted); margin-top: 10px;">
+                        The blog service may be temporarily unavailable. Please try again later.
+                    </p>
                     <button class="button-primary" id="retry-blog-btn">Retry</button>
                 </div>
             `;
@@ -352,14 +431,24 @@ export async function renderBlogPostPage(state, actions, postId) {
     blogPostView.innerHTML = '<div class="loading">Loading post...</div>';
     
     try {
-        // Use the correct API endpoint for getting single posts
-        const response = await blogApiRequest(`/api-posts-slug-db?slug=${postId}`);
+        // Try different API endpoint patterns
+        let response;
+        try {
+            response = await blogApiRequest(`/.netlify/functions/api-posts-slug-db?slug=${postId}`);
+        } catch (error) {
+            console.warn('Main endpoint failed, trying fallback:', error);
+            response = await fallbackBlogApiRequest(`/api-posts-slug-db?slug=${postId}`);
+        }
         
         if (!response.success) {
             throw new Error(response.message || 'Failed to load post');
         }
         
         const post = response.data.post;
+        
+        if (!post) {
+            throw new Error('Post not found');
+        }
         
         const formattedDate = new Date(post.created_at || post.date).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -382,9 +471,9 @@ export async function renderBlogPostPage(state, actions, postId) {
                 .replace(/\*(.*?)\*/gim, '<em>$1</em>')
                 .replace(/!\[([^\]]*)\]\(([^\)]+)\)/gim, '<img alt="$1" src="$2" style="max-width: 100%; height: auto;">')
                 .replace(/\[([^\]]+)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank">$1</a>')
-                .replace(/`([^`]+)`/gim, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px;">$1</code>')
-                .replace(/```(\w+)?\n([\s\S]*?)\n```/gim, '<pre style="background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto;"><code>$2</code></pre>')
-                .replace(/^> (.*$)/gim, '<blockquote style="border-left: 4px solid #ddd; padding-left: 15px; margin: 15px 0; color: #666;">$1</blockquote>')
+                .replace(/`([^`]+)`/gim, '<code style="background: var(--bg-color); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--border-color);">$1</code>')
+                .replace(/```(\w+)?\n([\s\S]*?)\n```/gim, '<pre style="background: var(--bg-color); padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-color);"><code>$2</code></pre>')
+                .replace(/^> (.*$)/gim, '<blockquote style="border-left: 4px solid var(--border-color); padding-left: 15px; margin: 15px 0; color: var(--font-color-muted);">$1</blockquote>')
                 .replace(/\n\n/gim, '</p><p>')
                 .replace(/\n/gim, '<br>')
                 .replace(/^(.+)$/gm, '<p>$1</p>');
@@ -446,8 +535,11 @@ export async function renderBlogPostPage(state, actions, postId) {
         console.error('Failed to load blog post:', error);
         blogPostView.innerHTML = `
             <div class="error-state">
-                <h2>Failed to load post</h2>
+                <h2>Unable to Load Post</h2>
                 <p>${error.message}</p>
+                <p style="font-size: 0.9em; color: var(--font-color-muted); margin-top: 10px;">
+                    The blog service may be temporarily unavailable, or this post may not exist.
+                </p>
                 <button class="button-primary" id="back-to-blog-error-btn">Back to Blog</button>
             </div>
         `;
@@ -516,7 +608,19 @@ export async function renderEditBlogPostPage(state, actions, postId) {
     editBlogPostView.innerHTML = '<div class="loading">Loading post for editing...</div>';
     
     try {
-        const post = await blogApiRequest(`/posts/${postId}`);
+        let post;
+        try {
+            const response = await blogApiRequest(`/.netlify/functions/api-posts-slug-db?slug=${postId}`);
+            post = response.data.post;
+        } catch (error) {
+            console.warn('Main endpoint failed, trying fallback:', error);
+            const response = await fallbackBlogApiRequest(`/api-posts-slug-db?slug=${postId}`);
+            post = response.data.post;
+        }
+        
+        if (!post) {
+            throw new Error('Post not found');
+        }
         
         // Check if user owns this post
         const isOwner = state.blogUsername && post.author && (post.author.username === state.blogUsername || post.author === state.blogUsername);
@@ -571,8 +675,11 @@ export async function renderEditBlogPostPage(state, actions, postId) {
         console.error('Failed to load post for editing:', error);
         editBlogPostView.innerHTML = `
             <div class="error-state">
-                <h2>Failed to load post</h2>
-                <p>Could not load the post for editing.</p>
+                <h2>Unable to Load Post</h2>
+                <p>${error.message}</p>
+                <p style="font-size: 0.9em; color: var(--font-color-muted); margin-top: 10px;">
+                    The blog service may be temporarily unavailable.
+                </p>
                 <button class="button-primary" id="back-to-blog-edit-error-btn">Back to Blog</button>
             </div>
         `;
