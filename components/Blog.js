@@ -41,20 +41,20 @@ function renderBlogPostCard(post, state, actions) {
         day: 'numeric'
     });
     
-    const isOwner = state.blogUsername && post.author && (post.author.username === state.blogUsername || post.author === state.blogUsername);
+    const isOwner = state.blogUsername && post.author && post.author.includes(state.blogUsername);
     
     postElement.innerHTML = `
         <div class="blog-post-header">
-            <h2 class="blog-post-title" onclick="actions.showBlogPost('${post.id}')">${post.title}</h2>
+            <h2 class="blog-post-title">${post.title}</h2>
             <div class="blog-post-meta">
-                <span class="blog-post-author">by ${post.author?.username || post.author || 'Unknown'}</span>
+                <span class="blog-post-author">by ${post.author || 'Unknown'}</span>
                 <span class="blog-post-date">${formattedDate}</span>
                 ${isOwner ? `
                     <div class="blog-post-actions">
-                        <button class="blog-edit-btn" onclick="actions.showEditBlogPost('${post.id}')">
+                        <button class="blog-edit-btn">
                             ${ICONS.edit || '✏️'} Edit
                         </button>
-                        <button class="blog-delete-btn" onclick="actions.blogDeletePost('${post.id}')">
+                        <button class="blog-delete-btn">
                             ${ICONS.delete || '🗑️'} Delete
                         </button>
                     </div>
@@ -62,10 +62,10 @@ function renderBlogPostCard(post, state, actions) {
             </div>
         </div>
         <div class="blog-post-summary">
-            ${post.summary || post.content?.substring(0, 200) + '...' || ''}
+            ${post.description || post.content_preview || post.content?.substring(0, 200) + '...' || ''}
         </div>
         <div class="blog-post-footer">
-            <button class="blog-read-more-btn" onclick="actions.showBlogPost('${post.id}')">
+            <button class="blog-read-more-btn">
                 Read More →
             </button>
         </div>
@@ -76,7 +76,7 @@ function renderBlogPostCard(post, state, actions) {
     if (editBtn) {
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            actions.showEditBlogPost(post.id);
+            actions.showEditBlogPost(post.slug || post.id);
         });
     }
     
@@ -84,15 +84,15 @@ function renderBlogPostCard(post, state, actions) {
     if (deleteBtn) {
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            actions.blogDeletePost(post.id);
+            actions.blogDeletePost(post.slug || post.id);
         });
     }
     
     const titleEl = postElement.querySelector('.blog-post-title');
-    titleEl.addEventListener('click', () => actions.showBlogPost(post.id));
+    titleEl.addEventListener('click', () => actions.showBlogPost(post.slug || post.id));
     
     const readMoreBtn = postElement.querySelector('.blog-read-more-btn');
-    readMoreBtn.addEventListener('click', () => actions.showBlogPost(post.id));
+    readMoreBtn.addEventListener('click', () => actions.showBlogPost(post.slug || post.id));
     
     return postElement;
 }
@@ -153,8 +153,8 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
                 ${state.blogAuth ? `
                     <div class="blog-user-info">
                         <span>Welcome, ${state.blogUsername}</span>
-                        <button class="button-primary" onclick="actions.showCreateBlogPost()">New Post</button>
-                        <button class="button-secondary" onclick="actions.blogLogout()">Logout</button>
+                        <button class="button-primary" id="new-blog-post-btn">New Post</button>
+                        <button class="button-secondary" id="blog-logout-btn">Logout</button>
                     </div>
                 ` : ''}
             </div>
@@ -168,6 +168,17 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
         
         if (!state.blogAuth) {
             initBlogAuth(state, actions);
+        } else {
+            // Add event listeners for authenticated user buttons
+            const newPostBtn = blogView.querySelector('#new-blog-post-btn');
+            if (newPostBtn) {
+                newPostBtn.addEventListener('click', () => actions.showCreateBlogPost());
+            }
+            
+            const logoutBtn = blogView.querySelector('#blog-logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => actions.blogLogout());
+            }
         }
     }
     
@@ -204,9 +215,15 @@ export async function renderBlogFeed(state, actions, loadMore = false) {
                 <div class="error-state">
                     <h3>Failed to Load Posts</h3>
                     <p>${error.message}</p>
-                    <button class="button-primary" onclick="actions.showBlogFeed()">Retry</button>
+                    <button class="button-primary" id="retry-blog-btn">Retry</button>
                 </div>
             `;
+            
+            // Add retry button event listener
+            const retryBtn = postsContainer.querySelector('#retry-blog-btn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => actions.showBlogFeed());
+            }
         }
     }
 }
@@ -281,7 +298,7 @@ export async function renderBlogPostPage(state, actions, postId) {
                 </div>
                 
                 <footer class="blog-post-full-footer">
-                    <button class="button-secondary" onclick="actions.showBlogFeed()">
+                    <button class="button-secondary" id="back-to-blog-btn">
                         ← Back to Blog
                     </button>
                 </footer>
@@ -299,6 +316,12 @@ export async function renderBlogPostPage(state, actions, postId) {
             deleteBtn.addEventListener('click', () => actions.blogDeletePost(postId));
         }
         
+        // Add back button event listener
+        const backBtn = blogPostView.querySelector('#back-to-blog-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => actions.showBlogFeed());
+        }
+        
         // Store current post in state
         state.currentBlogPost = post;
         
@@ -308,9 +331,15 @@ export async function renderBlogPostPage(state, actions, postId) {
             <div class="error-state">
                 <h2>Failed to load post</h2>
                 <p>${error.message}</p>
-                <button class="button-primary" onclick="actions.showBlogFeed()">Back to Blog</button>
+                <button class="button-primary" id="back-to-blog-error-btn">Back to Blog</button>
             </div>
         `;
+        
+        // Add back button event listener for error state
+        const backBtn = blogPostView.querySelector('#back-to-blog-error-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => actions.showBlogFeed());
+        }
     }
 }
 
@@ -385,14 +414,14 @@ export async function renderEditBlogPostPage(state, actions, postId) {
                 <header class="blog-editor-header">
                     <h1>Edit Post</h1>
                     <div class="blog-editor-actions">
-                        <button class="button-secondary" onclick="actions.showBlogPost('${postId}')">Cancel</button>
+                        <button class="button-secondary" id="cancel-edit-btn">Cancel</button>
                         <button class="button-primary" id="blog-update-post">Update</button>
                     </div>
                 </header>
                 
                 <div class="blog-editor-form">
                     <input type="text" id="blog-post-title" value="${post.title}" required>
-                    <textarea id="blog-post-summary" placeholder="Brief summary (optional)" rows="2">${post.summary || ''}</textarea>
+                    <textarea id="blog-post-summary" placeholder="Brief summary (optional)" rows="2">${post.description || post.summary || ''}</textarea>
                     <div class="blog-editor-toolbar">
                         <button type="button" class="editor-btn" data-action="bold"><strong>B</strong></button>
                         <button type="button" class="editor-btn" data-action="italic"><em>I</em></button>
@@ -410,6 +439,12 @@ export async function renderEditBlogPostPage(state, actions, postId) {
             </div>
         `;
         
+        // Add cancel button event listener
+        const cancelBtn = editBlogPostView.querySelector('#cancel-edit-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => actions.showBlogPost(postId));
+        }
+        
         initBlogEditor(state, actions, 'edit', postId);
         
         // Update preview with existing content
@@ -421,9 +456,15 @@ export async function renderEditBlogPostPage(state, actions, postId) {
             <div class="error-state">
                 <h2>Failed to load post</h2>
                 <p>Could not load the post for editing.</p>
-                <button class="button-primary" onclick="actions.showBlogFeed()">Back to Blog</button>
+                <button class="button-primary" id="back-to-blog-edit-error-btn">Back to Blog</button>
             </div>
         `;
+        
+        // Add back button event listener for error state
+        const backBtn = editBlogPostView.querySelector('#back-to-blog-edit-error-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => actions.showBlogFeed());
+        }
     }
 }
 
