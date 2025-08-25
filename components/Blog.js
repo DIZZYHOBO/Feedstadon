@@ -102,23 +102,18 @@ function renderBlogAuth(state, actions) {
     return `
         <div class="blog-auth-container">
             <div class="blog-auth-tabs">
-                <button class="blog-auth-tab active" data-tab="login">Login</button>
-                <button class="blog-auth-tab" data-tab="register">Register</button>
+                <button class="blog-auth-tab active" data-tab="login">Login with Lemmy</button>
             </div>
             
             <div class="blog-auth-form" id="blog-login-form">
-                <h3>Login to Blog</h3>
+                <h3>Login with your Lemmy Account</h3>
+                <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+                    Use your existing Lemmy account to create and manage blog posts.
+                </p>
+                <input type="text" id="blog-login-instance" placeholder="Lemmy instance (e.g., lemmy.world)" required>
                 <input type="text" id="blog-login-username" placeholder="Username" required>
                 <input type="password" id="blog-login-password" placeholder="Password" required>
                 <button class="button-primary" id="blog-login-submit">Login</button>
-            </div>
-            
-            <div class="blog-auth-form hidden" id="blog-register-form">
-                <h3>Register for Blog</h3>
-                <input type="text" id="blog-register-username" placeholder="Username" required>
-                <input type="email" id="blog-register-email" placeholder="Email" required>
-                <input type="password" id="blog-register-password" placeholder="Password" required>
-                <button class="button-primary" id="blog-register-submit">Register</button>
             </div>
         </div>
     `;
@@ -126,55 +121,22 @@ function renderBlogAuth(state, actions) {
 
 // Initialize blog authentication handlers
 function initBlogAuth(state, actions) {
-    const tabs = document.querySelectorAll('.blog-auth-tab');
-    const loginForm = document.getElementById('blog-login-form');
-    const registerForm = document.getElementById('blog-register-form');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            if (tab.dataset.tab === 'login') {
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-            } else {
-                loginForm.classList.add('hidden');
-                registerForm.classList.remove('hidden');
-            }
-        });
-    });
-    
     document.getElementById('blog-login-submit').addEventListener('click', async () => {
-        const username = document.getElementById('blog-login-username').value;
+        const instance = document.getElementById('blog-login-instance').value.trim();
+        const username = document.getElementById('blog-login-username').value.trim();
         const password = document.getElementById('blog-login-password').value;
         
-        if (!username || !password) {
+        if (!instance || !username || !password) {
             showWarningToast('Please fill in all fields');
             return;
         }
         
-        const success = await actions.blogLogin(username, password);
+        // Clean up instance URL (remove https:// if present)
+        const cleanInstance = instance.replace(/^https?:\/\//, '');
+        
+        const success = await actions.blogLogin(username, password, cleanInstance);
         if (success) {
             actions.showBlogFeed();
-        }
-    });
-    
-    document.getElementById('blog-register-submit').addEventListener('click', async () => {
-        const username = document.getElementById('blog-register-username').value;
-        const email = document.getElementById('blog-register-email').value;
-        const password = document.getElementById('blog-register-password').value;
-        
-        if (!username || !email || !password) {
-            showWarningToast('Please fill in all fields');
-            return;
-        }
-        
-        const success = await actions.blogRegister(username, password, email);
-        if (success) {
-            // Switch to login tab
-            tabs[0].click();
-            document.getElementById('blog-login-username').value = username;
         }
     });
 }
